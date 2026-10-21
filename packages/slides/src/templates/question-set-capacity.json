@@ -1,0 +1,108 @@
+{
+  "early": {
+    "3": {
+      "questions": {
+        "cap": 72,
+        "hardMax": 72
+      },
+      "answers": {
+        "cap": 28,
+        "hardMax": 28
+      }
+    },
+    "4": {
+      "questions": {
+        "cap": 38,
+        "hardMax": 38
+      },
+      "answers": {
+        "cap": 17,
+        "hardMax": 17
+      }
+    }
+  },
+  "primary": {
+    "3": {
+      "questions": {
+        "cap": 47,
+        "hardMax": 89
+      },
+      "answers": {
+        "cap": 38,
+        "hardMax": 38
+      }
+    },
+    "4": {
+      "questions": {
+        "cap": 46,
+        "hardMax": 89
+      },
+      "answers": {
+        "cap": 37,
+        "hardMax": 37
+      }
+    },
+    "5": {
+      "questions": {
+        "cap": 46,
+        "hardMax": 49
+      },
+      "answers": {
+        "cap": 21,
+        "hardMax": 21
+      }
+    },
+    "6": {
+      "questions": {
+        "cap": 46,
+        "hardMax": 47
+      },
+      "answers": {
+        "cap": 20,
+        "hardMax": 20
+      }
+    }
+  },
+  "secondary": {
+    "3": {
+      "questions": {
+        "cap": 97,
+        "hardMax": 97
+      },
+      "answers": {
+        "cap": 39,
+        "hardMax": 39
+      }
+    },
+    "4": {
+      "questions": {
+        "cap": 97,
+        "hardMax": 97
+      },
+      "answers": {
+        "cap": 39,
+        "hardMax": 39
+      }
+    },
+    "5": {
+      "questions": {
+        "cap": 51,
+        "hardMax": 51
+      },
+      "answers": {
+        "cap": 22,
+        "hardMax": 22
+      }
+    },
+    "6": {
+      "questions": {
+        "cap": 41,
+        "hardMax": 41
+      },
+      "answers": {
+        "cap": 17,
+        "hardMax": 17
+      }
+    }
+  }
+}

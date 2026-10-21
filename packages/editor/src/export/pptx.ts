@@ -48,21 +48,42 @@ import type {
   Theme,
   TimerElement,
 } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
+  answerKeyText,
+  diagramBuildAt,
+  richDocMaxStrikeStep,
+  SLIDE_H,
+  SLIDE_W,
+  TEACHER_ONLY_MARK,
+} from "@tj/domain/documents";
+import {
+  type BadgeGlyph,
+  badgeGlyph,
   fittedFontSize,
+  footStrip,
   growFixedText,
+  HIGHLIGHT_FALLBACK_FILLS,
+  isBadgeBox,
+  mathFaceOf,
   type PathSegment,
   pathSegments,
   presentedSlide,
+  type RunRect,
+  runRects,
   slideBackground,
+  v2Profile,
 } from "@tj/slides";
+import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
+import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
+import { markHexagonPoints, notchPoints } from "@tj/slides/marks";
+import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { withDiagramFonts } from "../images/diagram-fonts";
 import { resolveImageSrc } from "../images/resolve-src";
+import { type Crop, currentCrop, normaliseTransform, renderedFit } from "../lesson/image-adjust";
 import { normaliseAngle } from "../model/geometry";
 import { choiceText } from "../slide/elements/choice";
 import {
@@ -78,8 +99,11 @@ import {
 } from "../slide/elements/kit";
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
+import { hingeRevealShapes, oneStepReveal } from "./hinge-reveal";
 import { imageCredentials } from "./image-credentials";
+import { dataUrlImageSize } from "./image-size";
 import { slugify } from "./json";
+import { addGroundArt, shareMedia } from "./pptx-surfaces";
 import { docToRuns, type RunParagraph } from "./runs";
 
 type Pptx = PptxGenJS;
@@ -141,6 +165,7 @@ export const FONT_FAMILIES: Record<string, string> = {
   nunito: "Nunito",
   outfit: "Outfit",
   geist: "Geist",
+  andika: "Andika",
 };
 
 const FALLBACK_FACE = "Arial";
@@ -199,6 +224,13 @@ const SHAPES: Record<ShapeKind, ShapeName> = {
   star: "star5",
   speech: "wedgeRoundRectCallout",
   pill: "roundRect",
+  // Theme marks (TEACH-215 part c): native presets. The hexagon's and octagon's default adjust
+  // values are the editor's (25% side cut, 29% corner cut); the notch is written as custom
+  // geometry from the editor's own outline (`notchPoints`), since `snip2DiagRect` cuts the other
+  // diagonal by default and pptxgenjs cannot set its adjust value.
+  hexagon: "hexagon",
+  octagon: "octagon",
+  notch: "snip2DiagRect",
 };
 
 export const pptxShapeName = (kind: ShapeKind): ShapeName => SHAPES[kind] ?? "rect";
@@ -226,6 +258,12 @@ export type RunStyle = {
   charSpacing?: number;
   /** A theme's own bullet (`Theme.ornament.marker`) as a Unicode code point; PowerPoint's dot when absent. */
   bulletCode?: string;
+  /** The face a `font: "quote"` run is set in, and whether the theme sets quotes italic. */
+  quoteFace?: string;
+  /** A maths variable's face (`mathFaceOf`) and whether it is set italic. */
+  mathFace?: string;
+  mathItalic?: boolean;
+  quoteItalic?: boolean;
 };
 
 /** The nearest PowerPoint bullet character to each theme marker. */
@@ -295,6 +333,14 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
       const color = hexColor(run.color) ?? style.color;
       if (color) options.color = color;
       if (run.bold || style.bold) options.bold = true;
+      if (run.font === "quote" && style.quoteFace) {
+        options.fontFace = style.quoteFace;
+        if (style.quoteItalic) options.italic = true;
+      }
+      if (run.font === "math" && style.mathFace) {
+        options.fontFace = style.mathFace;
+        if (style.mathItalic) options.italic = true;
+      }
       if (run.italic) options.italic = true;
       if (run.underline) options.underline = { style: "sng" };
       if (run.strike) options.strike = true;
@@ -310,6 +356,10 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
 
 const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
   fontFace: fontFaceFor(r.fontFamily || theme.fonts.body),
+  quoteFace: fontFaceFor(v2Profile(theme).fonts.quote),
+  quoteItalic: v2Profile(theme).quoteStyle === "italic",
+  mathFace: fontFaceFor(mathFaceOf(theme).family),
+  mathItalic: mathFaceOf(theme).italic,
   fontSize: r.fontSize,
   color: hexColor(r.color) ?? hexColor(theme.colors.ink),
   bold: r.fontWeight >= 600,
@@ -320,6 +370,19 @@ const runStyleFor = (r: ResolvedText, theme: Theme): RunStyle => ({
     ? { bulletCode: MARKER_CODES[theme.ornament.marker] }
     : {}),
 });
+
+/**
+ * A badge glyph's insets [left, right, bottom, top] in points (1pt = one slide unit): the
+ * slide's shift as an uneven pair, since a centred text box moves by half their difference.
+ * Line metrics are PowerPoint's own, so this matches the slide closely but not to the pixel.
+ */
+export function glyphInsets(g: BadgeGlyph | null): [number, number, number, number] {
+  if (!g) return [0, 0, 0, 0];
+  const x = 2 * g.shiftX;
+  const y = 2 * g.shiftY;
+  const r1 = (n: number) => Math.round(Math.max(0, n) * 100) / 100;
+  return [r1(x), r1(-x), r1(-y), r1(y)];
+}
 
 /** The box a text-ish element sits in: position, padding, fill, rotation. */
 export function textBoxOptions(
@@ -357,12 +420,19 @@ export function textBoxOptions(
 /* Reveal steps and answers                                            */
 /* ------------------------------------------------------------------ */
 
-/** The highest reveal step on a slide, walking into groups. */
+/**
+ * The highest reveal step on a slide, walking into groups. A diagram whose builds ride rows
+ * (`buildFrom`) and a myth strike on its own step count too (TEACH-205 part c): each needs its
+ * build slide. Builds that play after the reveals, and the answer reveal, stay Present-only.
+ */
 export function maxRevealStep(slide: Slide): number {
   let max = 0;
   const walk = (els: SlideElement[]) => {
     for (const el of els) {
       if (el.revealStep && el.revealStep > max) max = el.revealStep;
+      if (el.type === "image" && el.buildFrom !== undefined && (el.builds ?? 0) > 0)
+        max = Math.max(max, el.buildFrom + Math.floor(el.builds ?? 0) - 1);
+      if (el.type === "text") max = Math.max(max, richDocMaxStrikeStep(el.doc));
       if (el.type === "group") walk(el.children);
     }
   };
@@ -378,7 +448,8 @@ export type BuildSlide = { slide: Slide; index: number; step: number; steps: num
 
 export function buildSlidePlan(lesson: Lesson): BuildSlide[] {
   return lesson.slides.flatMap((slide, index) => {
-    const steps = maxRevealStep(slide);
+    // A one-click answer (the hinge) is one more build slide: the reveal (TEACH-256 part b).
+    const steps = maxRevealStep(slide) + (oneStepReveal(slide) ? 1 : 0);
     return Array.from({ length: steps + 1 }, (_, step) => ({
       slide,
       index,
@@ -477,7 +548,7 @@ export function answerText(slide: Slide): string | null {
           .join("   ") || null
       );
     case "open-response":
-      return q.modelAnswer?.trim() || null;
+      return answerKeyText(q).trim() || null;
     default:
       return null;
   }
@@ -724,7 +795,7 @@ async function drawElement(
   const { slide, step } = ctx;
   switch (element.type) {
     case "text":
-      drawText(pptxSlide, element, theme);
+      drawText(pptxSlide, element, theme, step);
       return;
     case "gap-text":
       drawGapText(pptxSlide, element, theme, slide.question);
@@ -781,15 +852,80 @@ async function drawElement(
   }
 }
 
-function drawText(pptxSlide: PptxGenJS.Slide, element: TextElement, theme: Theme): void {
+function drawText(
+  pptxSlide: PptxGenJS.Slide,
+  element: TextElement,
+  theme: Theme,
+  step = Number.POSITIVE_INFINITY,
+): void {
   // The size the renderer draws a fixed-height box at when its words outgrew it (TEACH-75 part o).
   const resolved = resolveTextStyle(element.style, theme);
   const fitted = fittedFontSize(element, theme);
   const r = fitted === undefined ? resolved : { ...resolved, fontSize: fitted };
+  const marks = runMarkRects(element, theme, r.fontSize, step);
+  for (const shape of marks.under) pptxSlide.addShape("roundRect", shape);
   pptxSlide.addText(
     paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)),
     textBoxOptions(element, r),
   );
+  for (const shape of marks.over) pptxSlide.addShape("rect", shape);
+}
+
+/**
+ * Highlights and myth strikes as native shapes (TEACH-205 part c; THEME-FIT PPTX mapping): a
+ * highlight is a rounded rect per measured line *under* the text box, in the slot's fill, padded as
+ * `slide.css` pads it; a strike is a thin accent rect per line *over* it, centred 0.25em above the
+ * baseline and 0.075em thick, drawn only on build slides at or after its step. Lines come from the
+ * headless ruler (`runRects`), so they match the editor's wraps, not PowerPoint's own. A rotated box
+ * gets neither (the shapes would not turn with it).
+ */
+export function runMarkRects(
+  element: TextElement,
+  theme: Theme,
+  fontSize: number,
+  step = Number.POSITIVE_INFINITY,
+): { under: PptxGenJS.ShapeProps[]; over: PptxGenJS.ShapeProps[] } {
+  const none = { under: [], over: [] };
+  if (element.rotation || !/"(highlight|strikeStep)"/.test(JSON.stringify(element.doc)))
+    return none;
+  const rects: RunRect[] = runRects(
+    element.doc,
+    element.style,
+    theme,
+    { w: element.w, h: element.h },
+    (a) => a.highlight !== undefined || (a.strikeStep !== undefined && a.strikeStep <= step),
+    fontSize,
+  );
+  const under: PptxGenJS.ShapeProps[] = [];
+  const over: PptxGenJS.ShapeProps[] = [];
+  const accent = hexColor(theme.colors.accent) ?? "000000";
+  for (const q of rects) {
+    const em = q.fontSize;
+    const slot = q.attrs.highlight;
+    if (slot !== undefined) {
+      const h = Math.min(q.h, 1.28 * em);
+      under.push({
+        x: inches(element.x + q.x - 0.14 * em),
+        y: inches(element.y + q.y + (q.h - h) / 2),
+        w: inches(q.w + 0.28 * em),
+        h: inches(h),
+        fill: { color: hexColor(HIGHLIGHT_FALLBACK_FILLS[slot - 1]) ?? "FFFFFF" },
+        line: { type: "none" },
+        rectRadius: inches(5),
+      });
+    }
+    if (q.attrs.strikeStep !== undefined && q.attrs.strikeStep <= step) {
+      over.push({
+        x: inches(element.x + q.x),
+        y: inches(element.y + q.baseline - 0.2875 * em),
+        w: inches(q.w),
+        h: inches(0.075 * em),
+        fill: { color: accent },
+        line: { type: "none" },
+      });
+    }
+  }
+  return { under, over };
 }
 
 function drawGapText(
@@ -896,7 +1032,9 @@ function drawOption(
       h: inches(OPTION_CHIP),
       align: "center",
       valign: "middle",
-      margin: 0,
+      margin: glyphInsets(badgeGlyph(label, theme.fonts.title, 19)),
+      lineSpacingMultiple: 1,
+      wrap: false,
       fontFace: fontFaceFor(theme.fonts.title),
       fontSize: 19,
       bold: true,
@@ -946,6 +1084,18 @@ function drawOption(
   }
 }
 
+/** A hard offset block as PowerPoint's outer shadow: no blur, full colour, at the block's angle. */
+export function offsetShadow(o: { x: number; y: number; color: string }): PptxGenJS.ShadowProps {
+  return {
+    type: "outer",
+    blur: 0,
+    offset: Math.round(Math.hypot(o.x, o.y) * 100) / 100,
+    angle: Math.round(((Math.atan2(o.y, o.x) * 180) / Math.PI + 360) % 360),
+    color: hexColor(o.color) ?? "000000",
+    opacity: 1,
+  };
+}
+
 function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: Theme): void {
   const stroke = hexColor(element.stroke);
   const strokeWidth = element.strokeWidth ?? (element.stroke ? 2 : 0);
@@ -958,14 +1108,36 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     y: inches(element.y),
     w: inches(element.w),
     h: inches(element.h),
-    fill: { color: hexColor(element.fill ?? theme.colors.surface) ?? "FFFFFF" },
+    // A clear fill (the hinge reveal's ring) paints nothing under its line.
+    fill:
+      element.fill === "transparent"
+        ? { type: "none" }
+        : { color: hexColor(element.fill ?? theme.colors.surface) ?? "FFFFFF" },
     line: stroke && strokeWidth > 0 ? { color: stroke, width: strokeWidth } : { type: "none" },
   };
   if (element.shape === "rounded" || element.shape === "pill") options.rectRadius = inches(radius);
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
   const transparency = transparencyOf(element.opacity);
   if (transparency != null && options.fill) options.fill = { ...options.fill, transparency };
-  pptxSlide.addShape(pptxShapeName(element.shape), options);
+  // An offset block (Poster): a blur-free outer shadow, PowerPoint's own hard offset.
+  if (element.shadow) options.shadow = offsetShadow(element.shadow);
+  // A notch, and a hexagon mark (its sides at 25% of the width and its top and bottom 4% inside the
+  // box, `markHexagonPoints`), are written as custom geometry from the editor's own outline: the
+  // presets cut by the shorter side and cannot take the inset.
+  if (element.shape === "notch" || element.shape === "hexagon") {
+    const n = Math.max(0, element.radius ?? 8);
+    const pts =
+      element.shape === "hexagon" ? markHexagonPoints() : notchPoints(element.w, element.h, n);
+    options.points = [
+      ...pts.map((p, i) => ({
+        x: inches(p.x * element.w),
+        y: inches(p.y * element.h),
+        ...(i === 0 ? { moveTo: true } : {}),
+      })),
+      { close: true },
+    ] as ShapeOptions["points"];
+    pptxSlide.addShape("custGeom" as PptxGenJS.SHAPE_NAME, options);
+  } else pptxSlide.addShape(pptxShapeName(element.shape), options);
 
   if (element.doc && docToPlainText(element.doc).trim()) {
     const r = resolveTextStyle(
@@ -973,14 +1145,26 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
       theme,
       element.textStyle?.preset ?? "body",
     );
+    // A badge glyph centres as on the slide (`badgeGlyph`): no padding, single spacing, and the
+    // slide's shift carried by uneven insets (PowerPoint has no cap-height anchor).
+    const glyph = isBadgeBox(element.w, element.h)
+      ? badgeGlyph(docToPlainText(element.doc), r.fontFamily, r.fontSize)
+      : null;
     pptxSlide.addText(paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)), {
       ...textBoxOptions(element, r),
+      ...(glyph ? { margin: glyphInsets(glyph), lineSpacingMultiple: 1, wrap: false } : {}),
       fill: undefined,
       fit: "none",
     });
   }
 }
 
+/**
+ * Lines with arrowheads match the editor's arrow primitive (TEACH-75 part x): an open arrowhead
+ * (OOXML `arrow`, sized med × med: about 3 strokes long and 3 wide, the nearest preset to the
+ * primitive's 3.2-stroke arms at ±32°). A dashed or dotted shaft stops two strokes short of the
+ * head, which is carried by a short solid stub along the shaft, so no dot sits inside the head.
+ */
 function drawLine(pptxSlide: PptxGenJS.Slide, element: LineElement, theme: Theme): void {
   // Every other element maps opacity through `transparencyOf`; so does this one.
   const transparency = transparencyOf(element.opacity);
@@ -988,23 +1172,82 @@ function drawLine(pptxSlide: PptxGenJS.Slide, element: LineElement, theme: Theme
   const y1 = element.y + element.from.y * element.h;
   const x2 = element.x + element.to.x * element.w;
   const y2 = element.y + element.to.y * element.h;
-  pptxSlide.addShape("line", {
-    x: inches(Math.min(x1, x2)),
-    y: inches(Math.min(y1, y2)),
-    w: inches(Math.max(Math.abs(x2 - x1), 0.01)),
-    h: inches(Math.max(Math.abs(y2 - y1), 0.01)),
-    flipH: x2 < x1,
-    flipV: y2 < y1,
-    ...(element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {}),
-    line: {
-      color: hexColor(element.stroke ?? theme.colors.ink) ?? "000000",
-      width: element.strokeWidth ?? 3,
-      dashType: pptxDashType(element.dash),
-      beginArrowType: element.arrowStart ? "triangle" : "none",
-      endArrowType: element.arrowEnd ? "triangle" : "none",
-      ...(transparency != null ? { transparency } : {}),
-    },
-  });
+  const sw = element.strokeWidth ?? 3;
+  const color = hexColor(element.stroke ?? theme.colors.ink) ?? "000000";
+  const rotate = element.rotation ? { rotate: Math.round(normaliseAngle(element.rotation)) } : {};
+  const add = (
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    dashType: ReturnType<typeof pptxDashType>,
+    begin: boolean,
+    end: boolean,
+  ) =>
+    pptxSlide.addShape("line", {
+      x: inches(Math.min(ax, bx)),
+      y: inches(Math.min(ay, by)),
+      w: inches(Math.max(Math.abs(bx - ax), 0.01)),
+      h: inches(Math.max(Math.abs(by - ay), 0.01)),
+      flipH: bx < ax,
+      flipV: by < ay,
+      ...rotate,
+      line: {
+        color,
+        width: sw,
+        dashType,
+        beginArrowType: begin ? "arrow" : "none",
+        endArrowType: end ? "arrow" : "none",
+        ...(transparency != null ? { transparency } : {}),
+      },
+    });
+  const dashed = !!element.dash && element.dash !== "solid";
+  const L = Math.hypot(x2 - x1, y2 - y1);
+  if (!dashed || (!element.arrowStart && !element.arrowEnd) || L === 0) {
+    add(x1, y1, x2, y2, pptxDashType(element.dash), !!element.arrowStart, !!element.arrowEnd);
+    return;
+  }
+  const ux = (x2 - x1) / L;
+  const uy = (y2 - y1) / L;
+  const depth = sw * ARROW_ARM_K * Math.cos((ARROW_ARM_DEG * Math.PI) / 180);
+  const stop = Math.min(depth + 2 * sw, L / 2);
+  const s0 = element.arrowStart ? stop : 0;
+  const s1 = element.arrowEnd ? stop : 0;
+  if (L - s0 - s1 > 0)
+    add(
+      x1 + ux * s0,
+      y1 + uy * s0,
+      x2 - ux * s1,
+      y2 - uy * s1,
+      pptxDashType(element.dash),
+      false,
+      false,
+    );
+  const stub = Math.min(depth, L / 2);
+  if (element.arrowEnd) add(x2 - ux * stub, y2 - uy * stub, x2, y2, "solid", false, true);
+  if (element.arrowStart) add(x1 + ux * stub, y1 + uy * stub, x1, y1, "solid", false, true);
+}
+
+/** Every open arrowhead sized med × med (pptxgenjs writes the type only). */
+export async function sizeArrowEnds(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(buffer);
+  let changed = false;
+  for (const path of Object.keys(zip.files)) {
+    if (!/^ppt\/slides\/[^/]+\.xml$/.test(path)) continue;
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("string");
+    const next = xml.replace(
+      /<a:(head|tail)End type="arrow"\/>/g,
+      '<a:$1End type="arrow" w="med" len="med"/>',
+    );
+    if (next !== xml) {
+      zip.file(path, next);
+      changed = true;
+    }
+  }
+  return changed ? zip.generateAsync({ type: "arraybuffer" }) : buffer;
 }
 
 type PptxPoint = NonNullable<ShapeOptions["points"]>[number];
@@ -1055,8 +1298,8 @@ function drawPath(pptxSlide: PptxGenJS.Slide, element: PathElement, theme: Theme
       color: hexColor(element.stroke ?? theme.colors.ink) ?? "000000",
       width: element.strokeWidth ?? 3,
       dashType: pptxDashType(element.dash),
-      beginArrowType: element.arrowStart ? "triangle" : "none",
-      endArrowType: element.arrowEnd ? "triangle" : "none",
+      beginArrowType: element.arrowStart ? "arrow" : "none",
+      endArrowType: element.arrowEnd ? "arrow" : "none",
       ...(transparency != null ? { transparency } : {}),
     },
   });
@@ -1184,11 +1427,28 @@ function drawEmbed(pptxSlide: PptxGenJS.Slide, element: EmbedLike, theme: Theme)
 
 type EmbedLike = { x: number; y: number; w: number; h: number; url: string };
 
+/**
+ * A diagram whose builds ride rows (`buildFrom`, TEACH-205 part c) at the build its build slide
+ * shows, so build *i* is on the PowerPoint slide of row *i*. Every other diagram keeps its stored
+ * drawing (the last build), as before.
+ */
+export function rowBuildSrc(
+  element: ImageElement,
+  ctx: Partial<Pick<DrawContext, "slide" | "step">>,
+): string {
+  if (element.buildFrom === undefined || !ctx.slide || ctx.step === undefined) return element.src;
+  const svg = svgOfDataUrl(element.src);
+  if (!svg) return element.src;
+  const build = diagramBuildAt(ctx.slide, ctx.step, element);
+  return builtSvgDataUrl(svgAtBuild(svg, build, { answer: true, motion: false }));
+}
+
 async function drawImage(
   pptxSlide: PptxGenJS.Slide,
   element: ImageElement,
   theme: Theme,
-  ctx: Pick<DrawContext, "imageOrigin" | "rasteriseSvg" | "warn">,
+  ctx: Pick<DrawContext, "imageOrigin" | "rasteriseSvg" | "warn"> &
+    Partial<Pick<DrawContext, "slide" | "step">>,
 ): Promise<void> {
   // A drawn diagram (an SVG data URL) goes in as a PNG, never as SVG: PowerPoint, Keynote and
   // Slides import SVG differently, a bitmap at twice the box reads the same everywhere (TEACH-247).
@@ -1196,7 +1456,7 @@ async function drawImage(
   const svg = element.src.startsWith("data:image/svg+xml");
   const data = svg
     ? await ctx
-        .rasteriseSvg(await withDiagramFonts(element.src), element.w, element.h)
+        .rasteriseSvg(await withDiagramFonts(rowBuildSrc(element, ctx)), element.w, element.h)
         .catch(() => undefined)
     : await toDataUrl(element.src, ctx.imageOrigin);
   if (svg && !data)
@@ -1217,12 +1477,132 @@ async function drawImage(
       h: inches(element.h),
     },
   };
+  // PptxGenJS sizes "cover" and "contain" against the frame, not the picture, so a picture whose
+  // shape differs from its box came out stretched (TEACH-25 part b). With the picture's own size
+  // read from its header: a cover picture (and any crop or focal point) becomes its source
+  // rectangle, the window the editor shows (`currentCrop`); a contain picture is placed at its
+  // contained size, centred in the box. PptxGenJS's "crop" sizing takes the whole picture's size
+  // (the frame over the window) and the window inside it.
+  const natural = svg ? undefined : dataUrlImageSize(data);
+  const window = natural ? exportWindow(element, natural) : undefined;
+  if (window) {
+    const fullW = element.w / window.w;
+    const fullH = element.h / window.h;
+    options.w = inches(fullW);
+    options.h = inches(fullH);
+    options.sizing = {
+      type: "crop",
+      x: inches(window.x * fullW),
+      y: inches(window.y * fullH),
+      w: inches(element.w),
+      h: inches(element.h),
+    };
+  } else if (natural && renderedFit(element) === "contain") {
+    const k = Math.min(element.w / natural.w, element.h / natural.h);
+    const w = natural.w * k;
+    const h = natural.h * k;
+    options.x = inches(element.x + (element.w - w) / 2);
+    options.y = inches(element.y + (element.h - h) / 2);
+    options.w = inches(w);
+    options.h = inches(h);
+    delete options.sizing;
+  }
   if (element.alt) options.altText = element.alt;
   if (element.rotation) options.rotate = Math.round(normaliseAngle(element.rotation));
-  if ((element.radius ?? 0) > 0) options.rounding = true;
+  // PptxGenJS's `rounding` writes an ellipse, so a rounded picture came out as an oval in
+  // PowerPoint. The picture carries a marker name instead, and `roundPictureCorners` rewrites its
+  // geometry as a roundRect after the deck is written (TEACH-25 part b).
+  const radius = element.radius ?? 0;
+  if (radius > 0) {
+    const frameW = options.sizing?.type === "crop" ? element.w : (options.w as number) * 72;
+    const frameH = options.sizing?.type === "crop" ? element.h : (options.h as number) * 72;
+    options.objectName = roundedPictureName(radius, frameW, frameH, element.name ?? "Picture");
+  }
+  if (element.mask === "hexagon")
+    options.objectName = `tj-hex:${hexagonAdj(element.w, element.h)}:${element.name ?? "Picture"}`;
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
+}
+
+/**
+ * The window a cover picture shows, as fractions of the picture: its crop, re-derived for the box
+ * as the editor does, else cover round its focal point. Undefined for a contain picture and for a
+ * turned, flipped or straightened one: its window is in the turned picture's frame, which a source
+ * rectangle cannot express, so it keeps PptxGenJS's cover.
+ */
+function exportWindow(element: ImageElement, natural: { w: number; h: number }): Crop | undefined {
+  if (renderedFit(element) !== "cover") return undefined;
+  if (normaliseTransform(element.imageTransform)) return undefined;
+  return currentCrop(element, natural);
+}
+
+const ROUNDED_PICTURE = /^tj-round:(\d+):/;
+
+/**
+ * The `hexagon` preset's `adj` for the editor's outline (side points at 25% of the WIDTH, ImageView
+ * and `hexagonPoints`). The preset cuts `adj` of the SHORTER side (ECMA-376 presetShapeDefinitions:
+ * x1 = ss * a / 100000, a pinned to 0..50000 * w / ss), so a wide box needs 25000 * w / ss. Its
+ * default `vf` (115470) puts the top and bottom edges on the box, as the editor does.
+ */
+export function hexagonAdj(w: number, h: number): number {
+  const ss = Math.min(w, h);
+  return ss > 0 ? Math.round((25_000 * w) / ss) : 25_000;
+}
+
+/**
+ * The name a rounded picture is written under: its roundRect `adj` (the corner radius as a share
+ * of the frame's shorter side, in 1/100000ths, capped at a half) and the name it keeps.
+ */
+export function roundedPictureName(radius: number, w: number, h: number, name: string): string {
+  const short = Math.min(w, h);
+  const adj = short > 0 ? Math.min(50_000, Math.round((radius / short) * 100_000)) : 0;
+  return `tj-round:${adj}:${name}`;
+}
+
+/**
+ * Rewrites every marked picture's `rect` geometry as a `roundRect` with its `adj`, and gives it back
+ * its own name. PptxGenJS has no rounded-rectangle picture, only `rounding` (an ellipse).
+ */
+export async function roundPictureCorners(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(buffer);
+  let changed = false;
+  for (const path of Object.keys(zip.files)) {
+    if (!/^ppt\/(slides|slideLayouts|slideMasters)\/[^/]+\.xml$/.test(path)) continue;
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("string");
+    if (!xml.includes('name="tj-round:') && !xml.includes('name="tj-hex:')) continue;
+    const next = xml.replace(/<p:pic>[\s\S]*?<\/p:pic>/g, (pic) => {
+      // A hexagon-masked picture (Geometric's cover): the preset hexagon, PowerPoint's own crop.
+      const hex = /name="(tj-hex:(\d+):([^"]*))"/.exec(pic);
+      if (hex?.[1]) {
+        return pic
+          .replace(`name="${hex[1]}"`, `name="${hex[3] ?? ""}"`)
+          .replace(
+            /<a:prstGeom prst="rect"><a:avLst\/><\/a:prstGeom>/,
+            `<a:prstGeom prst="hexagon"><a:avLst><a:gd name="adj" fmla="val ${hex[2]}"/></a:avLst></a:prstGeom>`,
+          );
+      }
+      const named = /name="(tj-round:(\d+):[^"]*)"/.exec(pic);
+      if (!named?.[1]) return pic;
+      const marker = named[1];
+      const adj = Number(ROUNDED_PICTURE.exec(marker)?.[1] ?? 0);
+      return pic
+        .replace(`name="${marker}"`, `name="${marker.replace(ROUNDED_PICTURE, "")}"`)
+        .replace(
+          /<a:prstGeom prst="rect"><a:avLst\/><\/a:prstGeom>/,
+          `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${adj}"/></a:avLst></a:prstGeom>`,
+        );
+    });
+    if (next !== xml) {
+      zip.file(path, next);
+      changed = true;
+    }
+  }
+  if (!changed) return buffer;
+  return zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
 }
 
 /** A CORS-blocked or missing image leaves a labelled plate, never a broken deck. */
@@ -1330,8 +1710,15 @@ export async function exportLessonPptx(
     for (const build of buildSlidePlan(lesson)) {
       const { step, steps } = build;
       // Laid out as present shows it: no diagram note or open slot to the class.
-      const slide = presentedSlide(build.slide, theme);
+      const shown = presentedSlide(build.slide, theme);
+      // End-of-deck Answers slides (ruling 240): never the "Teacher only" pill, and hidden (the
+      // slideshow skips them) unless the export includes the answers.
+      const slide =
+        shown.answersRole === "answers"
+          ? { ...shown, elements: shown.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) }
+          : shown;
       const pptxSlide = pptx.addSlide();
+      if (slide.answersRole === "answers") pptxSlide.hidden = !revealAnswers;
       pptxSlide.background = { color: hexColor(slide.background?.color) ?? background };
 
       // A slide's own background wins outright, as in `SlideView`: theme art must
@@ -1357,6 +1744,7 @@ export async function exportLessonPptx(
           });
         }
       }
+      if (art) await addGroundArt(pptxSlide, theme, slide);
 
       const ctx: DrawContext = {
         slide,
@@ -1372,6 +1760,23 @@ export async function exportLessonPptx(
         if (!visibleAt(element, step)) continue;
         await drawElement(pptxSlide, element, theme, ctx, NO_FRAME);
       }
+      if (oneStepReveal(slide) && step === steps - 1)
+        for (const mark of hingeRevealShapes(slide, theme, {
+          ring: surfaceStyle(theme, "verdict-right").fill,
+          keyFill: surfaceStyle(theme, "key", "right").fill,
+          keyInk: surfaceStyle(theme, "key", "right").ink ?? theme.colors.onAccent,
+        }))
+          await drawElement(pptxSlide, mark, theme, ctx, NO_FRAME);
+      // The theme's foot strip over everything, as the editor draws it (`footStrip`).
+      const strip = footStrip(theme, slide);
+      if (strip)
+        await drawElement(
+          pptxSlide,
+          { id: `${slide.id}-foot`, type: "shape", shape: "rect", name: "Foot strip", ...strip },
+          theme,
+          ctx,
+          NO_FRAME,
+        );
 
       const notes = slide.notes?.trim();
       const stepNote = steps > 1 ? `Reveal ${step + 1} of ${steps}.` : "";
@@ -1386,7 +1791,12 @@ export async function exportLessonPptx(
     const answers = revealAnswers ? lessonAnswers(lesson) : [];
     if (answers.length > 0) addAnswersSlide(pptx, lesson, theme, answers);
 
-    const buffer = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
+    const written = (await pptx.write({ outputType: "arraybuffer" })) as ArrayBuffer;
+    // A v2 theme's faces name their checked fallback (ruling 213); v1 exports are left as written.
+    const { withFallbackFaces } = await import("./pptx-fonts");
+    const buffer = await shareMedia(
+      await sizeArrowEnds(await roundPictureCorners(await withFallbackFaces(written, theme))),
+    );
     return new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     });

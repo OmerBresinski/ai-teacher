@@ -67,13 +67,6 @@ const LAST_CLICK_DROPS: Record<string, Owned> = {
   "clock_time/y1-oclock-half-past": "clock_time", // drops 3 o’clock
   "clock_time/y3-how-long": "clock_time", // drops 10:40 am, 20 minutes to 11
   "angles_turns/y6-missing-line": "angles_turns", // drops a
-  "number_bonds/rec-bonds-5": "number_bonds", // drops 3, part, 2, part (part y ends on the list of bonds)
-  "number_bonds/y1-bonds-10": "number_bonds", // drops 7, part, 3, part (part y ends on the list of bonds)
-  "place_value/y3-exchange": "place_value", // drops 50, 5, 2 (part y: the x10 arcs give way to the move)
-  "equal_groups/y3-13-div-4": "equal_groups", // drops 13 counters
-  "clock_time/y2-quarter-to": "clock_time", // drops 15, 45 (part y: the five-minute ring steps away)
-  "data_chart/y3-sport": "data_chart", // drops 12, 12 children (part y: the key card becomes a key line)
-  "evolution_adaptation/y6-giraffe-fossils": "evolution_adaptation", // drops Longer-necked, 2 of 7, 7 of 7 (part z ends on the fossils)
   "data_chart/y1-fruit": "data_chart", // drops 5 children
   "data_chart/y2-books": "data_chart", // drops 4 × 2 + 1 = 9
   "data_chart/y6-travel": "data_chart", // drops 360° ÷ 30 = 12°
@@ -87,6 +80,9 @@ const MORPH: Record<string, string> = {
   "counting_subitising/rec-dice": "one more: the 5 becomes 6 as the sixth dot is added",
   "counting_subitising/rec-fingers": "one less: the 7 becomes 6 as a finger goes down",
   "fractions/y1-half-pizza": "the whole pizza is cut: its two halves replace “One pizza”",
+  "number_bonds/rec-bonds-5": "every bond to 5: the tree becomes the list, 3 + 2 picked out in it",
+  "number_bonds/y1-bonds-10": "every bond to 10: the tree becomes the list, 7 + 3 picked out in it",
+  "place_value/y3-exchange": "the exchange: a ten moves across, so 5 and 2 become 4 and 12",
 };
 
 /** The words Present shows at frame `k` (the markup's `data-s` / `data-f` / `data-x` frames). */

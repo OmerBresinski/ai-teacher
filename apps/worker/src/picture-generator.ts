@@ -17,6 +17,7 @@ import {
   type ImageSize,
   pngSize,
   sizeForAspect,
+  withRetryLine,
 } from "@tj/images";
 import type { MadeProvenance, PictureLibrary } from "./picture-library";
 
@@ -146,7 +147,7 @@ export function createGeneratingBank(opts: {
       generated.delete(photo.src);
       await opts.remove?.(photo.src);
     },
-    async generate(req, faithful, signal) {
+    async generate(req, faithful, signal, retry) {
       if (req.draw) {
         const svg = countArraySvg(req.draw, req.aspect ?? 1);
         const saved = await opts.save(new TextEncoder().encode(svg), "image/svg+xml");
@@ -168,7 +169,8 @@ export function createGeneratingBank(opts: {
       if (!opts.generator || !req.imagePrompt) return undefined;
       const { size } = sizeForAspect(req.aspect);
       if (!opts.cap.allow(size)) return undefined;
-      const prompt = directedImagePrompt(req.imagePrompt, faithful);
+      // A retry carries why the last try failed, so it never repeats the same prompt.
+      const prompt = withRetryLine(directedImagePrompt(req.imagePrompt, faithful), retry);
       const out = await opts.generator.generate({ prompt, size, signal });
       opts.cap.spent(out.costUsd);
       const saved = await opts.save(out.bytes, out.mime);
@@ -176,7 +178,15 @@ export function createGeneratingBank(opts: {
       const [sw, sh] = size.split("x").map(Number) as [number, number];
       const dims = pngSize(out.bytes) ?? { width: sw, height: sh };
       opts.logger.info(
-        { stage: "illustrate", generated: saved.id, size, costUsd: out.costUsd, ms: out.ms },
+        {
+          stage: "illustrate",
+          generated: saved.id,
+          size,
+          costUsd: out.costUsd,
+          ms: out.ms,
+          attempts: out.attempts ?? 1,
+          ...(retry ? { retry: retry.reason } : {}),
+        },
         "picture generated",
       );
       if (library)

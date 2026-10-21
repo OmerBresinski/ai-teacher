@@ -54,6 +54,7 @@ export {
   putDocumentAsJob,
   type ReleaseStaleLockOptions,
   releaseStaleLock,
+  relockLesson,
   relockWorksheet,
   restore,
   type SetPlanRevisionOptions,
@@ -66,6 +67,14 @@ export {
 } from "./documents";
 export { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./errors";
 export {
+  deleteExpiredGenerationDebug,
+  GENERATION_DEBUG_DELETE_BATCH,
+  type GenerationDebugInsert,
+  type GenerationDebugRow,
+  insertGenerationDebug,
+  listGenerationDebug,
+} from "./generation-debug";
+export {
   getTerminalJobEvent,
   hasQueuedJobEvent,
   insertJobEvent,
@@ -76,6 +85,7 @@ export {
   type ListJobEventsOptions,
   listJobEvents,
   notifyJobEvent,
+  pruneEphemeralJobEvents,
   terminalJobEventFor,
 } from "./job-events";
 export { MIGRATIONS_FOLDER, migrateDatabase } from "./migrator";

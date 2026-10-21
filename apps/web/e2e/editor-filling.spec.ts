@@ -162,7 +162,9 @@ test.describe("a guest while the lesson fills @smoke", () => {
     // The whole guest path over the fake worker: brief, objectives, generation.
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/lessons/new?topic=Adaptations");
+    // "held at review" (the e2e fake's `FAKE_HOLD_TOPIC`) keeps the job in its review until it is
+    // cancelled, so Stop always lands on a running job instead of racing the paced run's end.
+    await page.goto(`/lessons/new?topic=${encodeURIComponent("Adaptations held at review")}`);
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByRole("heading", { name: "Learning objectives" })).toBeVisible({
       timeout: 35_000,

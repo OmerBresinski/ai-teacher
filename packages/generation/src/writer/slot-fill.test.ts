@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { writerBundle } from "./bundle";
 import { charsOver, fitTable } from "./fixes";
 import { replayRun, replayServices } from "./replay-fixture";
@@ -217,7 +218,7 @@ describe("the prompt", () => {
       const sys = (writerBundle("base4g") as unknown as Record<string, string>)[keys[st]] ?? "";
       if (!sys) continue;
       const schema = split(st);
-      const out = slotFillSystem(sys, schema);
+      const out = slotFillSystem(sys, schema, st);
       // NET LENGTH MUST NOT GROW (Greg, 10 Oct).
       expect(out.length).toBeLessThanOrEqual(sys.length);
       expect(out).not.toMatch(/TODO-PROMPT/);
@@ -235,7 +236,7 @@ describe("the prompt", () => {
         enum: [...SHAPES],
       });
       // What the writer reads is what it is held to: each variant's numbers come from its def.
-      const { lines } = fitsLines(schema);
+      const { lines } = fitsLines(schema, st);
       for (const [name, def] of Object.entries(defsOf(schema))) {
         const [layout, key] = name.split("~");
         if (!layout || !key) continue;
@@ -260,5 +261,50 @@ describe("the prompt", () => {
           );
       expect(keep(out)).toEqual(keep(sys));
     }
+  });
+});
+
+// Review S2/S3 (19 Oct 2026): base4g (no pack) is byte-identical to master. The hashes and words
+// below were taken from master's slot-fill.ts on the same schema (934 prompts and arrivals equal).
+describe("off a pack run, slot-fill is master's", () => {
+  const keys = { KS1: "systemKS1", KS2: "systemKS2", "KS3-5": "systemKS3_5" } as const;
+  test.each([
+    [
+      "KS1",
+      "0ec8577ca6ae9a083e4fd9a9f333bcd358d79354",
+      "Fits: points-0-fig 23; points-2-fig 9, each 6;",
+    ],
+    [
+      "KS2",
+      "5bf2ebbb6ed16530b4f17fc809c082076b289640",
+      "Fits: points-0-fig 30; points-2-fig 13, each 9;",
+    ],
+    [
+      "KS3-5",
+      "0cb4547029100f9bf2affb5b859676d246cbb0e4",
+      "Fits: points-0-fig 30; points-2-fig 25, each 17;",
+    ],
+  ] as const)("%s: the prompt as master's, lead words literal", (st, sha, visualText) => {
+    const sys = (writerBundle("base4g") as unknown as Record<string, string>)[keys[st]] ?? "";
+    const out = slotFillSystem(sys, split(st), st);
+    expect(createHash("sha1").update(out).digest("hex")).toBe(sha);
+    expect(fitsLines(split(st), st).lines["visual-text"]?.startsWith(visualText)).toBe(true);
+  });
+  test("a hinge option past its count's room is not a cut, and fields log master's words", () => {
+    const schema = split("KS2");
+    // 60 characters: inside the def's 100, past the 4-option count's measured room (pack only).
+    const slide = {
+      template: "hinge",
+      fit: "options-4",
+      heading: "Which is right?",
+      stem: "Pick the one.",
+      options: [`${"Sun ".repeat(15).trim()}.`, "b", "c", "d"],
+    } as J;
+    const base = slotFillArrival(structuredClone(slide), "KS2", schema);
+    expect(base.cuts).toEqual([]);
+    expect(base.route).toBe("as-written");
+    expect(base.fields[0]).toEqual({ path: "heading", words: 3, capWords: 8 });
+    const pack = slotFillArrival(structuredClone(slide), "KS2", schema, undefined, true);
+    expect(pack.cuts).toContain("options[0]");
   });
 });

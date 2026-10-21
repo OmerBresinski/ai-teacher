@@ -1,3 +1,4 @@
+import { safeError } from "@tj/domain";
 import {
   type AgeBand,
   DEFAULT_SLIDE_TIER,
@@ -7,14 +8,19 @@ import {
   SLIDE_TIER_RANGES,
   type Slide,
   type SlideGenerationState,
+  SlideSchema,
   type SlideTier,
 } from "@tj/domain/documents";
+import { atKeyStage, getTheme } from "@tj/slides/themes";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
+import { withEndAnswers } from "../writer/materialise";
+import { overflowFindings, withOverflowFindings } from "../writer/overflow-findings";
+import { PILOT_PACK_ID } from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
@@ -88,6 +94,9 @@ export function writerBrief(lesson: Lesson): Brief {
     id: lesson.id,
     topic: b?.topic ?? lesson.title,
     subject: lesson.subject ?? "",
+    ...(lesson.historicalPeriod
+      ? { historicalPeriod: lesson.historicalPeriod, fictionInPeriod: lesson.fictionInPeriod }
+      : {}),
     yearGroup: lesson.yearGroup ?? `Year ${year}`,
     year,
     keyStage: stageOf(lesson.ageBand, lesson.yearGroup),
@@ -166,6 +175,65 @@ export function writtenTitle(lesson: Lesson, heading: string | undefined): strin
  * came, leaves `worksheet: false`, so the exit ticket goes on the last slide and no slide points
  * at a worksheet that does not exist.
  */
+/**
+ * Live writing (ADR 0039): a slide the writer has planned but not written, as the deck holds it
+ * while it is `writing`: blank but for one muted line saying what it will do (the flow's `does`),
+ * named "Planned" so the editor knows it for a placeholder. Its laid copy replaces it at close.
+ */
+export function plannedSlide(id: string, does?: string, look?: string) {
+  const text = (does ?? "").trim().slice(0, 140);
+  // The flow says whether the slide shows a picture or a diagram: its skeleton holds the visual
+  // column where the slide's layout will put it (live writing, TEACH-202 part f), so the slide's
+  // shape is there before its words and never changes when they arrive.
+  const visual =
+    look === "picture" || look === "diagram" || look === "picture-sequence"
+      ? [
+          {
+            id: `${id}-planned-visual`,
+            type: "shape",
+            name: "Planned visual",
+            shape: "rounded",
+            x: 504,
+            y: 136,
+            w: 392,
+            h: 300,
+            radius: 16,
+            fill: "rgba(128, 128, 128, 0.10)",
+          },
+        ]
+      : [];
+  return {
+    id,
+    kind: "content",
+    notes: "",
+    elements: [
+      ...visual,
+      ...(text
+        ? [
+            {
+              id: `${id}-planned`,
+              type: "text",
+              name: "Planned",
+              x: 64,
+              y: 470,
+              w: 832,
+              h: 36,
+              doc: {
+                type: "doc",
+                content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+              },
+              style: { preset: "small", fontSize: 18, color: "#8A8F98" },
+            },
+          ]
+        : []),
+    ],
+  };
+}
+const plannedOf = (slide: unknown) =>
+  ((slide as { elements?: { name?: string }[] }).elements ?? []).some(
+    (e) => e.name === "Planned" || e.name === "Planned visual",
+  );
+
 export async function withQueuedWorksheet(lesson: Lesson, deps: PipelineDeps): Promise<Lesson> {
   const brief = lesson.brief;
   if (brief?.worksheet !== true || deps.worksheetQueued === undefined) return lesson;
@@ -199,7 +267,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         stage,
         promptVersions: {
           ...(lesson.generation?.promptVersions ?? {}),
-          generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}`,
+          // The pilot pack rides on the bundle: the stamp names both, so a render and a replay
+          // know which menu and caps wrote the deck (TEACH-110 part s).
+          generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}+pilot-${PILOT_PACK_ID}`,
         },
         usage: deps.budget.totals(),
         ...(slideStates ? { slideStates } : {}),
@@ -259,6 +329,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   const images = deps.images as DirectedPlacer | undefined;
   /** The stage's re-lay for a slide whose picture just landed (`bindPictureLanded`). */
   let landed: ((index: number) => void) | undefined;
+  /** No image placer: open diagram slots close (failed) once the deck turns editable. */
+  let noPicturesSettled = false;
   const pictures = images
     ? createWriterPictures({
         lesson,
@@ -308,11 +380,32 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         states[slide.id] = own?.state ?? "writing";
       }
       const { updatedAt } = await deps.persist(toLesson(credited(slides), "planned", states));
-      const written = [...patches.keys()].filter((i) => i >= 2).length;
+      // Blank slides waiting for their words (live writing) are not written yet.
+      const written = [...patches.keys()].filter((i) => i >= 2 && latest.has(i)).length;
       const percent = Math.min(65, 20 + Math.round((45 * written) / range.max));
       await deps.onProgress(percent, "Writing slides", "generate", updatedAt);
     },
   });
+  /** One slide draft out (ADR 0039); a draft that fails only stops showing (never the lesson). */
+  const draft = (index: number, slide: Laid, final: boolean) => {
+    if (!deps.onDraft || deps.signal.aborted) return;
+    try {
+      deps.onDraft({ index, slideId: slide.id, slide, ...(final ? { final } : {}) });
+    } catch (err) {
+      deps.logger.warn({ stage: "generate", err: String(err).slice(0, 200) }, "slide draft failed");
+    }
+  };
+  /** Live writing (ADR 0039): a blank `writing` slide for index i, until its words close. */
+  const blank = (i: number, id: string, does?: string, look?: string) => {
+    const was = progressive.patches().get(i);
+    if (latest.has(i) || (was && (!does || plannedOf(was.slide)))) return;
+    progressive.patch(i, plannedSlide(id, does, look) as unknown as Laid, "writing");
+  };
+  // Live writing: the deck is saved as the job's at once (title and objectives still `writing`),
+  // so the editor opens on it while the writer thinks; each later slide joins as a blank.
+  const live = !!deps.onDraft && !offScreen;
+  if (live && lesson.slides[0])
+    progressive.patch(0, lesson.slides[0] as unknown as Laid, "writing");
   let out: Awaited<ReturnType<typeof runWriter>>;
   /** Aborted when the stage fails: the writer's diagram jobs start no further call. */
   const failed = new AbortController();
@@ -324,6 +417,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       brief: writerBrief(lesson),
       objectives,
       bundle: writerBundleOf(lesson),
+      // The pilot layouts (TEACH-110 part s): the writer runs the pilot pack, its system text
+      // assembled from the layout menus and its caps from the measured tables (pilot-pack.ts).
+      pilotPack: PILOT_PACK_ID,
       services,
       // The writer's diagrams are drawn before editable: its own spec by code, else the drawer
       // call on the small model (TEACH-247).
@@ -333,7 +429,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // stay off. Asking slides hold the answer back (roleAsk). Each switch turns one piece off.
       // Checks only log (Greg, 10 Oct: "turn off the ENTIRE check system... logging what it would
       // have done"): no repair, no check-driven word change, and a model is kept as drawn rather
-      // than falling back for overlapping or split labels (TEACH-312 part i).
+      // than falling back for overlapping or split labels (TEACH-312 part i). One exception (Greg
+      // 70 B, 20 Oct): a slide whose text or a card runs off the slide still splits onto a
+      // continuation slide.
       checks: "log",
       library: true,
       libraryMenuFilter: true,
@@ -342,7 +440,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       libraryPanelsOff: true,
       libraryLabelOverlap: false,
       libraryLabelFloor: false,
-      visual: (i, key) => (pictures ? pictures.state(i, key) : { status: "failed" }),
+      // With no image placer a photo is failed (text-only), but a diagram is drawn by the stage
+      // itself: it stays an open slot until the deck is editable, so a slide never loses its
+      // figure column at the hand-over and gets it back when the drawing lands (TEACH-202 part f).
+      visual: (i, key, ask) =>
+        pictures
+          ? pictures.state(i, key)
+          : ask?.type === "diagram" && !noPicturesSettled
+            ? { status: "pending" }
+            : { status: "failed" },
       ...(pictures ? { vetoed: pictures.vetoed } : {}),
       // Ruling 189 (ADR 0037): a slide's words are done once the writer has moved past it, so it
       // turns `done` (editable) then; the newest slide stays `writing` until the next one opens or
@@ -359,7 +465,34 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         }
         // Off-screen (a resumed run): nothing streams onto the slides the teacher already has.
         if (!offScreen) progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
+        // Live writing (ADR 0039): the slide still being written ends its drafts with itself, as
+        // the next save will carry it, so the client hands over with nothing left to swap.
+        if (!offScreen && !closed.has(i)) draft(i, slide, true);
       },
+      ...(live
+        ? {
+            // The flow names every slide: each joins the deck as a blank at once, so the strip
+            // shows the whole lesson before its first words.
+            onFlow: (
+              flow: { slide?: number; does?: string; look_at?: { kind: string } }[] | undefined,
+            ) => {
+              for (const f of flow ?? [])
+                if (typeof f.slide === "number" && f.slide >= 3)
+                  blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind);
+            },
+            // Each planned slide joins as its flow entry closes, labelled with what it does.
+            onFlowItem: (f: { slide?: number; does?: string; look_at?: { kind: string } }) => {
+              if (typeof f.slide === "number" && f.slide >= 3)
+                blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind);
+            },
+            onDraftSlide: (i: number, slide: Laid) => {
+              // The slide joins the deck as soon as it is being written, as a blank `writing` slide
+              // (no draft words are ever saved); its laid copy replaces the blank when it closes.
+              blank(i, slide.id);
+              draft(i, slide, false);
+            },
+          }
+        : {}),
       // A slide the final parse opened from other words: its pictures start afresh.
       onReopen: (i) => pictures?.forget(i),
       bindPictureLanded: (fn) => {
@@ -375,6 +508,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       },
       beforeEditable: async () => {
         await pictures?.settle();
+        noPicturesSettled = true;
       },
       // lostPic: single pictures for a lost compound picture, placed and settled after editable.
       // Only this slide's pictures are waited for: the slides' tails run in parallel.
@@ -387,6 +521,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
             held: (i, key) => pictures.held(i, key),
             drawAs: (i, key) => pictures.drawAs(i, key),
             retryable: (i, key) => pictures.retryable(i, key),
+            canReask: (i, key) => pictures.canReask(i, key),
           }
         : {}),
       onEditable: async (slides) => {
@@ -404,6 +539,17 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   } catch (error) {
     // No streamed save lands after the failure; pictures and diagram jobs started off the stream
     // stop spending, whatever the failure (K3, a budget stop, a cancel or any other throw).
+    // Every throw is logged with where it happened (TEACH-110 part z): the job's own failure line
+    // carries only the error's type, and a picture's or a slide's tail throw read as "undefined".
+    deps.logger.warn(
+      {
+        stage: "write",
+        phase: editableSaved ? "after-editable" : "writing",
+        slide: newest >= 0 ? newest + 1 : null,
+        err: safeError(error),
+      },
+      "write stage failed",
+    );
     failed.abort();
     await progressive.close();
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
@@ -413,10 +559,17 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     if (error instanceof WriterIncompleteError || streamed) {
       // Slides whose words were done stay (ADR 0037: they are the teacher's) and stay `done`, so
       // a retry keeps them as they are (TEACH-312 part j); the rest go back to the plan, and no
-      // slide stays `writing` once the job has stopped. A writer that ran out of length (K3)
-      // shipped no valid deck, so this run's streamed slides go back to the plan too (a slide the
-      // teacher edited is still kept by the merge); an earlier attempt's finished slides stay.
-      if (error instanceof WriterIncompleteError) closed.clear();
+      // slide stays `writing` once the job has stopped. That holds for a writer that ran out of
+      // length or broke off (K3) too: a slide is closed only once the writer moved past it, so
+      // its words are whole; only the slide still being written goes back (UX-A: the screen
+      // promises what was written is kept, and Try again resumes after these slides).
+      // A closed slide is kept only if it is a whole slide: a stream cut off (by length or
+      // otherwise) never leaves a slide that fails the schema in the lesson; that one goes back.
+      const whole = (i: number) => {
+        const slide = latest.get(i);
+        return slide !== undefined && SlideSchema.safeParse(slide).success;
+      };
+      for (const i of [...closed]) if (!whole(i)) closed.delete(i);
       const count = Math.max(lesson.slides.length, ...[...closed].map((i) => i + 1));
       const keep = Array.from({ length: count }, (_, i) => {
         const saved = lesson.slides[i];
@@ -469,8 +622,30 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           ),
       })
     : credited(out.slides);
+  // TEACH-191 part b: the practice and exit answers on Answers slides behind a guard, at the end.
+  const keyStage = stageOf(lesson.ageBand, lesson.yearGroup);
+  const shipped = withEndAnswers(deck as unknown as Slide[], {
+    theme: atKeyStage(getTheme(lesson.themeId, null), keyStage),
+    stage: keyStage,
+  });
+  const generated = toLesson(shipped, "generated", allIn(shipped, "done"));
+  // UX-C J8: a slide the stage could not fit ships with a "things to check" finding, never silently.
+  const overflow = overflowFindings(out.overflow, shipped);
+  if (overflow.length)
+    deps.logger.warn(
+      { stage: "generate", slides: out.overflow.map((o) => o.slide) },
+      "slides shipped overflowing, flagged to check",
+    );
   const done = {
-    ...toLesson(deck, "generated", allIn(deck, "done")),
+    ...generated,
+    ...(generated.generation
+      ? {
+          generation: {
+            ...generated.generation,
+            findings: withOverflowFindings(generated.generation.findings, overflow),
+          },
+        }
+      : {}),
     title: writtenTitle(lesson, out.title),
   };
   const { updatedAt } = await deps.persist(done);

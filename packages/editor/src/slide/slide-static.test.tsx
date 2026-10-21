@@ -194,4 +194,11 @@ describe("PathView", () => {
     const [tip] = (polygons[0]?.getAttribute("points") ?? "").split(" ");
     expect(tip).toBe("400,300");
   });
+
+  test("dots are 2.2 stroke widths apart by default, dashGap widths apart when set", () => {
+    const dots = view(path({ dash: "dotted", strokeWidth: 5 }));
+    expect(dots.container.querySelector("path")?.getAttribute("stroke-dasharray")).toBe("0.001 11");
+    const wide = view(path({ dash: "dotted", strokeWidth: 5, dashGap: 4.4 }));
+    expect(wide.container.querySelector("path")?.getAttribute("stroke-dasharray")).toBe("0.001 22");
+  });
 });

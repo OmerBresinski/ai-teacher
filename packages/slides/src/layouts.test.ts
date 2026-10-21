@@ -219,9 +219,10 @@ describe("layoutSlide", () => {
   });
 
   it("spends no reveal step on an open response until it has a model answer", () => {
+    // A plenary question: practice and the exit ticket never reveal on the slide (TEACH-230 part c).
     const slide: Slide = {
       id: "s1",
-      kind: "open-response",
+      kind: "plenary",
       ...layoutSlide("open-response", "chalk"),
     };
     expect(slideStepCount(slide), "a blank model answer reveals nothing").toBe(0);
@@ -230,6 +231,8 @@ describe("layoutSlide", () => {
       question: { type: "open-response", modelAnswer: "Water vapour cools." },
     };
     expect(slideStepCount(written)).toBe(1);
+    // A practice slide keeps its answer for the Answers slides and builds nothing.
+    expect(slideStepCount({ ...written, kind: "open-response" })).toBe(0);
     expect(
       slideStepCount({ ...slide, question: { type: "open-response", modelAnswer: "   " } }),
     ).toBe(0);
@@ -324,7 +327,9 @@ describe("layoutSlide", () => {
    * change, and say so in the PR.
    */
   const frozen = defaultRecipes as Record<string, unknown>;
-  for (const theme of THEMES) {
+  // Theme v2 (TEACH-152 part b) and the round 5 themes (TEACH-215 part c, 16 Oct 2026) came after
+  // the freeze: nothing to hold them to.
+  for (const theme of THEMES.filter((t) => !t.v2 && `title/${t.id}` in frozen)) {
     for (const kind of KINDS) {
       it(`${kind} on ${theme.id}: the default recipe is the one frozen before the catalogue`, () => {
         const expected = frozen[`${kind}/${theme.id}`];

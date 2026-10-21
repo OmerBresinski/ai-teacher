@@ -1,0 +1,553 @@
+{
+  "elements": [
+    {
+      "id": "d-s5-layout",
+      "type": "group",
+      "name": "Layout",
+      "x": 0,
+      "y": 0,
+      "w": 960,
+      "h": 521,
+      "children": [
+        {
+          "id": "d-s5-layout:~Background-0",
+          "type": "shape",
+          "shape": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 960,
+          "h": 540,
+          "fill": "#EDF8FC",
+          "radius": 0,
+          "name": "Background"
+        },
+        {
+          "id": "d-s5-layout:heading",
+          "type": "text",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 54,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Three types of "
+                  },
+                  {
+                    "type": "text",
+                    "text": "blood vessel",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#B8175A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 48,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#0A5CA2"
+          }
+        },
+        {
+          "id": "d-s5-layout:~Connecting_line-0",
+          "type": "path",
+          "x": 0,
+          "y": 144,
+          "w": 960,
+          "h": 93,
+          "points": [
+            {
+              "x": 0,
+              "y": 0.2023
+            },
+            {
+              "x": 0.1906,
+              "y": 0.5
+            },
+            {
+              "x": 0.3608,
+              "y": 0.369
+            },
+            {
+              "x": 0.5,
+              "y": 0.5
+            },
+            {
+              "x": 0.6702,
+              "y": 0.631
+            },
+            {
+              "x": 0.8094,
+              "y": 0.5
+            },
+            {
+              "x": 1,
+              "y": 0.3303
+            }
+          ],
+          "smooth": true,
+          "stroke": "#A9C9E1",
+          "strokeWidth": 14.4,
+          "name": "Connecting line"
+        },
+        {
+          "id": "d-s5-layout:~Connecting_dots-0",
+          "type": "path",
+          "x": 0,
+          "y": 144,
+          "w": 960,
+          "h": 93,
+          "points": [
+            {
+              "x": 0,
+              "y": 0.2023
+            },
+            {
+              "x": 0.1906,
+              "y": 0.5
+            },
+            {
+              "x": 0.3608,
+              "y": 0.369
+            },
+            {
+              "x": 0.5,
+              "y": 0.5
+            },
+            {
+              "x": 0.6702,
+              "y": 0.631
+            },
+            {
+              "x": 0.8094,
+              "y": 0.5
+            },
+            {
+              "x": 1,
+              "y": 0.3303
+            }
+          ],
+          "smooth": true,
+          "stroke": "#0A5CA2",
+          "strokeWidth": 3.3,
+          "name": "Connecting dots",
+          "dash": "dotted",
+          "dashGap": 4.4
+        },
+        {
+          "id": "d-s5-layout:~Circle_edge-0",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 138,
+          "y": 146,
+          "w": 90,
+          "h": 90,
+          "fill": "#ddedf6",
+          "name": "Circle edge"
+        },
+        {
+          "id": "d-s5-layout:~Circle-0",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 148,
+          "y": 155,
+          "w": 71,
+          "h": 71,
+          "fill": "#FFFFFF",
+          "name": "Circle"
+        },
+        {
+          "id": "d-s5-layout:~Number-0",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 148,
+          "y": 155,
+          "w": 71,
+          "h": 71,
+          "name": "Number",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 33,
+            "fontWeight": 600,
+            "color": "#0A5CA2",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-layout:items.0.name",
+          "type": "text",
+          "x": 53,
+          "y": 239,
+          "w": 260,
+          "h": 32,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Arteries"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item name",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.08,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#0A5CA2",
+            "align": "center"
+          }
+        },
+        {
+          "id": "d-s5-layout:items.0.text",
+          "type": "text",
+          "x": 53,
+          "y": 277,
+          "w": 260,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Carry blood away from the heart."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item line",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B",
+            "align": "center"
+          }
+        },
+        {
+          "id": "d-s5-layout:~Circle_edge-1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 435,
+          "y": 146,
+          "w": 90,
+          "h": 90,
+          "fill": "#ddedf6",
+          "name": "Circle edge"
+        },
+        {
+          "id": "d-s5-layout:~Circle-1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 445,
+          "y": 155,
+          "w": 71,
+          "h": 71,
+          "fill": "#FFFFFF",
+          "name": "Circle"
+        },
+        {
+          "id": "d-s5-layout:~Number-1",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 445,
+          "y": 155,
+          "w": 71,
+          "h": 71,
+          "name": "Number",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 33,
+            "fontWeight": 600,
+            "color": "#0A5CA2",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-layout:items.1.name",
+          "type": "text",
+          "x": 350,
+          "y": 239,
+          "w": 260,
+          "h": 32,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Capillaries"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item name",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.08,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#0A5CA2",
+            "align": "center"
+          }
+        },
+        {
+          "id": "d-s5-layout:items.1.text",
+          "type": "text",
+          "x": 350,
+          "y": 277,
+          "w": 260,
+          "h": 227.5,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item line",
+          "style": {
+            "preset": "body",
+            "autoHeight": false,
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B",
+            "align": "center",
+            "autoFit": false,
+            "valign": "top"
+          }
+        },
+        {
+          "id": "d-s5-layout:~Circle_edge-2",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 732,
+          "y": 146,
+          "w": 90,
+          "h": 90,
+          "fill": "#ddedf6",
+          "name": "Circle edge"
+        },
+        {
+          "id": "d-s5-layout:~Circle-2",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 742,
+          "y": 155,
+          "w": 71,
+          "h": 71,
+          "fill": "#FFFFFF",
+          "name": "Circle"
+        },
+        {
+          "id": "d-s5-layout:~Number-2",
+          "type": "shape",
+          "shape": "ellipse",
+          "x": 742,
+          "y": 155,
+          "w": 71,
+          "h": 71,
+          "name": "Number",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 33,
+            "fontWeight": 600,
+            "color": "#0A5CA2",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-layout:items.2.name",
+          "type": "text",
+          "x": 647,
+          "y": 239,
+          "w": 260,
+          "h": 32,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Veins"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item name",
+          "style": {
+            "preset": "heading",
+            "autoHeight": true,
+            "fontSize": 29,
+            "lineHeight": 1.08,
+            "fontWeight": 600,
+            "padding": 0,
+            "color": "#0A5CA2",
+            "align": "center"
+          }
+        },
+        {
+          "id": "d-s5-layout:items.2.text",
+          "type": "text",
+          "x": 647,
+          "y": 277,
+          "w": 260,
+          "h": 65,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Carry blood back towards the heart."
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item line",
+          "style": {
+            "preset": "body",
+            "autoHeight": true,
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 400,
+            "padding": 0,
+            "color": "#465F6B",
+            "align": "center"
+          }
+        }
+      ],
+      "layout": {
+        "template": "items-row",
+        "input": {
+          "template": "items-row",
+          "heading": "Three types of blood vessel",
+          "accentWord": "blood vessel",
+          "ordered": true,
+          "motif": "vessel",
+          "items": [
+            {
+              "name": "Arteries",
+              "text": "Carry blood away from the heart."
+            },
+            {
+              "name": "Capillaries",
+              "text": "Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells. Tiny, thin-walled vessels where substances pass between blood and cells."
+            },
+            {
+              "name": "Veins",
+              "text": "Carry blood back towards the heart."
+            }
+          ]
+        },
+        "frame": {
+          "x": 0,
+          "y": 0,
+          "w": 960,
+          "h": 521
+        }
+      },
+      "authoredBy": "ai"
+    }
+  ]
+}

@@ -5,10 +5,13 @@
  * whose call fails (after callStructured's one retry) or whose answer is unusable gets no picture.
  */
 
+import { safeError } from "@tj/domain";
 import type { ImageBrief, Lesson, PhotoSource } from "@tj/domain/documents";
 import { anchorQueries, type CountArray, joinPanels, pngSize } from "@tj/images";
 import { z } from "zod";
 import { type CallStructuredOptions, callStructured } from "../call";
+import { recordDebug } from "../debug";
+import { isHistoricalLesson, type PeriodFields } from "../period";
 import {
   lessonLine,
   PICTURE_DIRECTOR_VERSION,
@@ -21,7 +24,13 @@ import { PICTURE_DIRECTOR_BATCH_VERSION } from "../prompts/picture-director-batc
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
-import { isFatal, nonFatal, nonFatalSync, whenNonFatal } from "../writer/services";
+import {
+  isFatal,
+  isReservationRefusal,
+  nonFatal,
+  nonFatalSync,
+  whenNonFatal,
+} from "../writer/services";
 import {
   type DirectedPlacer,
   judgeMadeDirected,
@@ -47,6 +56,7 @@ import {
   type SetAsk,
   type SetPicture,
   setIsGenerated,
+  setLookFor,
 } from "./picture-set";
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
@@ -524,12 +534,17 @@ export async function findDirected(args: {
   ask: { subject: string; named?: string | null };
   brief: ImageBrief;
   slide: SlideForPicture;
-  lesson: { title: string; yearGroup?: string; subject?: string };
+  lesson: { title: string; yearGroup?: string } & PeriodFields;
   country: string;
   index: number;
   /** `signal` cancels this one search (a race it lost) without stopping the slot. */
   stock: (brief: ImageBrief, signal?: AbortSignal) => Promise<PlacedPhoto | undefined>;
-  judgeMade: (brief: ImageBrief, picture: MadePicture, reuse?: boolean) => Promise<boolean>;
+  judgeMade: (
+    brief: ImageBrief,
+    picture: MadePicture,
+    reuse?: boolean,
+    onWhy?: (why: string) => void,
+  ) => Promise<boolean>;
   deps: DirectorDeps;
   /** C7: race stock against generation after this long (`findPicture`); absent, one then the other. */
   raceMs?: number;
@@ -570,8 +585,7 @@ export async function findDirected(args: {
       ...(args.look ? { look: args.look } : {}),
       ...(b.mustShow?.length ? { mustShow: b.mustShow } : {}),
       historical:
-        isHistoricalSet([ask.subject]) ||
-        (/^hist/i.test(lesson.subject ?? "") && DEPICTS.test(ask.subject)),
+        isHistoricalSet([ask.subject]) || (isHistoricalLesson(lesson) && DEPICTS.test(ask.subject)),
     },
     { draws: args.draws === true, ...(args.realOnly ? { real: true } : {}) },
   );
@@ -585,7 +599,16 @@ export async function findDirected(args: {
       },
       "picture director",
     );
+  // The debug record (Greg, 20 Oct 2026): the director's answer, the plan and the outcome.
+  const debugPicture = (extra: Record<string, unknown>) =>
+    recordDebug(
+      deps.debug,
+      "picture",
+      { ask: ask.subject, mustShow: b.mustShow ?? [], direction: direction ?? null, ...extra },
+      args.index,
+    );
   if (plan.kind === "none") {
+    debugPicture({ plan: "none", outcome: "none" });
     log({ plan: "none" });
     args.onOutcome?.({
       director: direction?.route ?? "failed",
@@ -596,6 +619,7 @@ export async function findDirected(args: {
   }
   // The caller's drawer draws it (with the ask's words); nothing is searched or generated here.
   if (plan.kind === "drawing") {
+    debugPicture({ plan: "drawing", diagram: plan.diagram, outcome: "drawer" });
     log({ plan: "drawing", diagram: plan.diagram });
     args.onOutcome?.({
       director: "code",
@@ -615,7 +639,7 @@ export async function findDirected(args: {
     args.bank,
     (signal) => args.stock(brief, signal),
     deps.signal,
-    (made, reuse) => args.judgeMade(brief, made, reuse),
+    (made, reuse, onWhy) => args.judgeMade(brief, made, reuse, onWhy),
     Date.now,
     sharedVerdictCache,
     args.raceMs,
@@ -637,23 +661,54 @@ export async function findDirected(args: {
         return undefined;
       }),
     );
-    if (got) out = { photo: got, via: "fetched", route: req.route, ms: out.ms + Date.now() - t0 };
+    if (got) out = { ...out, photo: got, via: "fetched", ms: out.ms + Date.now() - t0 };
   }
-  log({ via: out.via, ms: out.ms });
+  log({
+    via: out.via,
+    ms: out.ms,
+    attempts: out.attempts,
+    ...(out.reason ? { reason: out.reason } : {}),
+  });
+  const emptyReason =
+    req.route === "real" && (req.realFallback ?? "none") === "none"
+      ? "real-miss-no-fallback"
+      : "generation-refused-or-failed";
+  // One line per picture (codes and counts only, ADR 0015), the same shape as a set frame's, so a
+  // paid eval can count empty photos and why. `reason` is the last failure, also on a placed
+  // picture that needed a retry.
+  deps.logger.info(
+    {
+      stage: "illustrate",
+      ev: "picture-outcome",
+      kind: "single",
+      slideIndex: args.index,
+      outcome: out.photo ? "placed" : "empty",
+      via: out.via,
+      attempts: out.attempts,
+      ...(out.reason ? { reason: out.reason } : out.photo ? {} : { reason: emptyReason }),
+    },
+    "picture outcome",
+  );
+  debugPicture({
+    plan: plan.kind,
+    request: req,
+    queries: brief.queries ?? [],
+    outcome: out.photo ? "placed" : "empty",
+    via: out.via,
+    attempts: out.attempts,
+    ms: out.ms,
+    ...(out.reason ? { failure: out.reason } : out.photo ? {} : { reason: emptyReason }),
+    ...(out.photo ? { chosen: out.photo.source } : {}),
+  });
   const style = (out.photo as MadePicture | undefined)?.style;
   args.onOutcome?.({
     director: direction?.route ?? "failed",
     via: out.via,
     route: req.route,
     ...(req.period ? { period: req.period } : {}),
-    ...(out.photo
-      ? {}
-      : {
-          reason:
-            req.route === "real" && (req.realFallback ?? "none") === "none"
-              ? "real-miss-no-fallback"
-              : "generation-refused-or-failed",
-        }),
+    attempts: out.attempts,
+    ...(out.reason ? { failure: out.reason } : {}),
+    ...(out.photo ? {} : { reason: emptyReason }),
   });
   if (!out.photo) return undefined;
   // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
@@ -716,6 +771,10 @@ export interface PictureOutcome {
     | "director-failed"
     | "real-miss-no-fallback"
     | "generation-refused-or-failed";
+  /** Generations the ladder asked for (0: none ran). */
+  attempts?: number;
+  /** The last generation failure's code (`judge`, `refused-safety`, `server-error`...). */
+  failure?: string;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -845,13 +904,19 @@ export async function placeWriterPicture(args: {
         ask: { subject: b.request ?? ask.shows, named: ask.named ? b.subject : null },
         brief: b,
         slide: ask.slide,
-        lesson: { title: lesson.title, yearGroup: lesson.yearGroup, subject: lesson.subject },
+        lesson: {
+          title: lesson.title,
+          yearGroup: lesson.yearGroup,
+          subject: lesson.subject,
+          historicalPeriod: lesson.historicalPeriod,
+          fictionInPeriod: lesson.fictionInPeriod,
+        },
         country: args.country,
         index: ask.index,
         stock,
         // A made picture is shown to judge v17 with the slot's brief (TEACH-237): the same bytes
         // the slide shows. One with no bytes to show (a code-drawn count) is never judged here.
-        judgeMade: (brief, made, reuse) =>
+        judgeMade: (brief, made, reuse, onWhy) =>
           made.dataUrl
             ? judgeMadeDirected({
                 lesson,
@@ -860,6 +925,7 @@ export async function placeWriterPicture(args: {
                 deps,
                 dataUrl: made.dataUrl,
                 ...(reuse !== undefined ? { reuse } : {}),
+                ...(onWhy ? { onVerdict: (v) => v.why && onWhy(v.why) } : {}),
               })
             : Promise.resolve(false),
         deps,
@@ -924,9 +990,13 @@ export type WriterPictureMiss =
   | "set-not-searched"
   | "deadline"
   | "error"
+  /** The budget refused the picture's call before it ran (a reservation, not spend over the cap). */
+  | "budget"
   | "match6"
   /** Ruling 163: a history activity card's picture was generated; the card shows its word. */
   | "history-card-generated"
+  /** Rulings 163 and 209: a named set missed a real picture; it is never part real, part generated. */
+  | "set-real-incomplete"
   /** An ask with no words to search for (no `shows`): nothing is searched. */
   | "malformed-ask";
 
@@ -952,6 +1022,8 @@ export interface WriterPictures {
   drawAs(index: number, key: string): string | undefined;
   /** The ask failed for a reason a second placement can fix (the deadline or an error). */
   retryable(index: number, key: string): boolean;
+  /** True while `start` would place this key again (once per round after settle). */
+  canReask(index: number, key: string): boolean;
   /** Each placed picture's source by its stored `src`, for `withPhotoSources`. */
   sources(): ReadonlyMap<string, PhotoSource>;
   /**
@@ -1006,9 +1078,11 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   "set-not-searched": "Picture sets are made by the generator, which is not on.",
   deadline: "The picture search ran out of time.",
   error: "The picture search failed.",
+  budget: "The picture search stopped at this lesson's spending limit.",
   match6: "",
   // Ruling 163: the same line as a real thing missed (a history card is never generated).
   "history-card-generated": "No real photograph of this was found, and none is generated for it.",
+  "set-real-incomplete": "No real photograph was found for every picture in this set.",
   "malformed-ask": "The slide did not say what the picture shows.",
 };
 
@@ -1124,6 +1198,18 @@ export function createWriterPictures(opts: {
         slot.miss = "deadline";
         return;
       }
+      // A picture whose call the budget refused up front is a missing picture, not a failed lesson
+      // (TEACH-110 part z): its slot ends empty for the teacher to fill, the other placements keep
+      // running, and nothing was spent on it. Spend over the cap (`BudgetExceeded`) still stops.
+      if (isReservationRefusal(error) && !opts.deps.signal.aborted) {
+        slot.miss = "budget";
+        const key = [...slots].find(([, s]) => s === slot)?.[0];
+        opts.deps.logger.warn(
+          { stage: "illustrate", picture: key, miss: "budget", err: safeError(error) },
+          "picture call refused by the lesson budget; slot left empty",
+        );
+        return;
+      }
       if (isFatal(error) || opts.deps.signal.aborted) {
         fatal ??= error;
         roundStop.abort();
@@ -1137,9 +1223,9 @@ export function createWriterPictures(opts: {
    * Ruling 163 for activity cards (TEACH-101 part c): a history card is a searched picture or its
    * word, never a generated picture (no painted fallback either).
    */
-  const realOnly = (ask: WriterPhotoAsk, shows: string[]) =>
-    ask.key.startsWith("card.") &&
-    (ask.named || /^hist/i.test(opts.lesson.subject ?? "") || isHistoricalSet(shows));
+  // Ruling 210: real-only is for a specific real thing (a named ask) only.
+  const realOnly = (ask: WriterPhotoAsk, _shows: string[]) =>
+    ask.key.startsWith("card.") && ask.named;
   const place = (
     slot: Slot,
     index: number,
@@ -1266,25 +1352,6 @@ export function createWriterPictures(opts: {
       named: a.named,
       ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
     }));
-    if (!setIsGenerated(asks, opts.lesson.subject ?? "")) {
-      void Promise.all(
-        panels.map(({ ask, slot }) =>
-          slot
-            ? place(
-                slot,
-                group.index,
-                ask,
-                group.slide,
-                realOnly(
-                  ask,
-                  group.asks.map((a) => a.shows),
-                ),
-              )
-            : undefined,
-        ),
-      ).then(finish, finish);
-      return;
-    }
     const set = (p: SetPicture | undefined, ask: WriterPhotoAsk, slot: Slot | undefined) => {
       opts.onOutcome?.(ask.key, {
         director: "set",
@@ -1301,31 +1368,51 @@ export function createWriterPictures(opts: {
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
-    makePictureSet(
-      asks,
-      {
-        generator: maker.generator,
-        save: maker.save,
-        ...directedSetJudges(opts.lesson, deps),
-        ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
-        ...(maker.allow ? { allow: maker.allow } : {}),
-        ...(maker.spent ? { spent: maker.spent } : {}),
-        signal: AbortSignal.any([
-          deps.signal,
-          ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
-        ]),
-        log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
-      },
-      setLook,
-    ).then(
-      (made) => {
-        for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
-        finish();
-      },
-      (error: unknown) => {
-        for (const { slot } of panels) if (slot) onError(slot)(error);
-        finish();
-      },
+    const generateSet = (look: typeof setLook) =>
+      makePictureSet(
+        asks,
+        {
+          generator: maker.generator,
+          save: maker.save,
+          ...directedSetJudges(opts.lesson, deps),
+          ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
+          ...(maker.allow ? { allow: maker.allow } : {}),
+          ...(maker.spent ? { spent: maker.spent } : {}),
+          signal: AbortSignal.any([
+            deps.signal,
+            ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
+          ]),
+          log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+        },
+        look,
+      ).then(
+        (made) => {
+          for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
+          finish();
+        },
+        (error: unknown) => {
+          for (const { slot } of panels) if (slot) onError(slot)(error);
+          finish();
+        },
+      );
+    if (!setIsGenerated(asks, opts.lesson)) {
+      // Rulings 163 and 210: a set naming a specific real thing takes the real ladder only, each
+      // panel; a panel with no real picture is a caption tile, never a generated picture beside
+      // real ones.
+      void Promise.all(
+        panels.map(({ ask, slot }) =>
+          slot ? place(slot, group.index, ask, group.slide, true) : undefined,
+        ),
+      ).then(finish, finish);
+      return;
+    }
+    // Ruling 210: anything else is generated, in one look (drawn for history, rulings 163/209).
+    generateSet(
+      setLookFor(
+        opts.lesson,
+        asks.map((a) => a.shows),
+        setLook,
+      ),
     );
   };
 
@@ -1498,7 +1585,7 @@ export function createWriterPictures(opts: {
         subjects &&
         parts &&
         !isHistoricalSet([ask.shows]) &&
-        setIsGenerated(parts, opts.lesson.subject ?? "")
+        setIsGenerated(parts, opts.lesson)
       ) {
         slot.done = placeSplit(slot, index, ask, opts.maker, subjects, parts);
         slots.set(k, slot);
@@ -1590,6 +1677,11 @@ export function createWriterPictures(opts: {
     drawAs(index, key) {
       const slot = slots.get(id(index, key));
       return slot?.miss === "director-code" ? slot.draw : undefined;
+    },
+    canReask(index, key) {
+      const k = id(index, key);
+      const prev = slots.get(k);
+      return !prev || (settled && prev.state.status === "failed" && !reasked.has(k));
     },
     retryable(index, key) {
       const miss = slots.get(id(index, key))?.miss;

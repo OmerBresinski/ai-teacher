@@ -1,4 +1,5 @@
-import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
+import type { SlideKind, Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
+import TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
  * The ten themes' art per role (UX ruling 107), in slide points (960x540). Each theme keeps one
@@ -16,10 +17,16 @@ import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
 
 type Art = Partial<Record<ThemeArtRole, ThemeArtLayer[]>>;
 
-const url = (w: number, h: number, vw: number, vh: number, body: string) =>
+const url = (w: number, h: number, vw: number, vh: number, body: string, vy = 0) =>
   `url("data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${vw} ${vh}' preserveAspectRatio='none'>${body}</svg>`,
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 ${vy} ${vw} ${vh}' preserveAspectRatio='none'>${body}</svg>`,
   )}")`;
+
+/**
+ * How to cut a layer down to a band of its own rows (slide points, `top` to `bottom`), drawn at the
+ * same scale: the part of the art a panel leaves showing (decision 41 A, `cropArt`).
+ */
+const CROPS = new WeakMap<ThemeArtLayer, (top: number, bottom: number) => ThemeArtLayer>();
 
 /** An inline SVG drawn at a box. `vw`/`vh` default to the box, so the body is in slide points. */
 function svg(
@@ -31,24 +38,59 @@ function svg(
   view: [number, number] = [w, h],
 ): ThemeArtLayer {
   const [vw, vh] = view;
-  return {
+  const flip = `<g transform='matrix(-1 0 0 1 ${vw} 0)'>${body}</g>`;
+  const layer: ThemeArtLayer = {
     image: url(w, h, vw, vh, body),
-    flipped: url(w, h, vw, vh, `<g transform='matrix(-1 0 0 1 ${vw} 0)'>${body}</g>`),
+    flipped: url(w, h, vw, vh, flip),
     x,
     y,
     w,
     h,
   };
+  CROPS.set(layer, (top, bottom) => {
+    const k = vh / h;
+    const [vy, ch] = [(top - y) * k, (bottom - top) * k];
+    const cut: ThemeArtLayer = {
+      image: url(w, bottom - top, vw, ch, body, vy),
+      flipped: url(w, bottom - top, vw, ch, flip, vy),
+      x,
+      y: top,
+      w,
+      h: bottom - top,
+    };
+    return cut;
+  });
+  return layer;
 }
 
 /** A flat block of colour: a band or a rule. */
-const block = (x: number, y: number, w: number, h: number, color: string): ThemeArtLayer => ({
-  image: `linear-gradient(${color}, ${color})`,
-  x,
-  y,
-  w,
-  h,
-});
+function block(x: number, y: number, w: number, h: number, color: string): ThemeArtLayer {
+  const layer = { image: `linear-gradient(${color}, ${color})`, x, y, w, h };
+  CROPS.set(layer, (top, bottom) => ({ ...layer, y: top, h: bottom - top }));
+  return layer;
+}
+
+/**
+ * The rows `top` to `bottom` of a layer, at the same scale and place, or null when the band is
+ * outside it or the layer cannot be cut (a ground texture). A mirrored layer is cut from its
+ * mirror's own source, so the cut keeps its side.
+ */
+export function cropArt(layer: ThemeArtLayer, top: number, bottom: number): ThemeArtLayer | null {
+  const t = Math.max(top, layer.y);
+  const b = Math.min(bottom, layer.y + layer.h);
+  if (b - t <= 0) return null;
+  const crop = CROPS.get(layer);
+  return crop ? crop(t, b) : null;
+}
+
+/** A layer moved (mirrored) keeps its cut: the copy remembers the source's crop, mirrored. */
+export function mirrorArt(layer: ThemeArtLayer, slideW: number): ThemeArtLayer {
+  const out = { ...layer, image: layer.flipped ?? layer.image, x: slideW - layer.x - layer.w };
+  if (layer.flipped) out.flipped = layer.image;
+  const crop = CROPS.get(layer);
+  if (crop) CROPS.set(out, (t, b) => mirrorArt(crop(t, b), slideW));
+  return out;
+}
 
 /* ------------------------------------------------------------------ Playground: sun, rainbow, clouds */
 
@@ -288,6 +330,98 @@ const NIGHT_LAB: Art = {
 };
 const BEACON: Art = { title: [block(0, 456, 960, 84, "#DCE6FA")] };
 
+/* -------------------------------------------- round 5 themes (TEACH-215 part c), Greg's look table */
+/*
+ * Only what THEMING.md's approved look table describes, in each theme's own tokens. Poster's 14px
+ * accent bar in the bleed ring is the look's accent bar (ACCENT_BAR_H, 9pt = 13.5px at 1440), so it
+ * needs no layer. Calm (by rule), Storytime (nothing described), Slate and Ember (flat, like night)
+ * have none. A ground pattern sits in the zones the layouts leave free, as Crayon's ruled lines do.
+ */
+
+const tok = TOKENS as Record<string, Record<string, string>>;
+/**
+ * Scrapbook's cover keeps its own art (the margin at 58px and the rules in its lower band; the
+ * covers lane owns it). Content slides wear the lined ground instead (`groundArt` below: round 4
+ * moved the margin to 30px and round 2 ruled the whole page), so they draw no role art.
+ */
+const scrapRules = (y: number, h: number) =>
+  svg(
+    0,
+    y,
+    960,
+    h,
+    Array.from(
+      { length: Math.floor(h / 30) },
+      (_, i) =>
+        `<rect x='0' y='${14 + i * 30}' width='960' height='1.3' fill='${tok.scrapbook?.["set-b"]}'/>`,
+    ).join(""),
+  );
+const scrapMargin = block(38, 0, 1.5, 531, tok.scrapbook?.["hl-a"] ?? "");
+const SCRAPBOOK: Art = { title: [scrapMargin, scrapRules(404, 127)] };
+
+/** Geometric: a white ground with a dot grid (the look table's 32px pitch, 21.3pt). */
+const dots = (x: number, y: number, w: number, h: number) =>
+  svg(
+    x,
+    y,
+    w,
+    h,
+    Array.from({ length: Math.floor(w / 21.3) * Math.floor(h / 21.3) }, (_, i) => {
+      const cols = Math.floor(w / 21.3);
+      const cx = 10.65 + (i % cols) * 21.3;
+      const cy = 10.65 + Math.floor(i / cols) * 21.3;
+      return `<circle cx='${cx}' cy='${cy}' r='1.1' fill='${tok.geometric?.["set-b"]}'/>`;
+    }).join(""),
+  );
+// Round 5 draws the dot grid over the whole ground: that is `groundArt` below, not role art.
+const GEOMETRIC: Art = {};
+
+/**
+ * A theme's ground texture (tokens `ground-art`): Geometric's dot grid over the whole slide, as the
+ * gold's `--ground-pattern`. It is the ground, not art: it sits under every element, so the
+ * art-collision rule (ruling 107) does not apply to it, and the "plain" art choice still removes it.
+ */
+const GROUND = new WeakSet<ThemeArtLayer>();
+const GROUND_DOTS = dots(0, 0, 960, 540);
+GROUND.add(GROUND_DOTS);
+/**
+ * Scrapbook's lined paper (round 2 themes2.css `--ground-pattern`: a 2px rule every 45px, its foot
+ * on the pitch; round 4 themes4.css `--ground-art`: the red margin line 2px wide at 30px), at 1440
+ * px / 1.5 in slide points.
+ */
+const lined = (line: string, margin: string) =>
+  svg(
+    0,
+    0,
+    960,
+    540,
+    `${Array.from(
+      { length: 18 },
+      (_, i) =>
+        `<rect x='0' y='${r2(28.667 + i * 30)}' width='960' height='1.333' fill='${line}'/>`,
+    ).join("")}<rect x='20' y='0' width='1.333' height='540' fill='${margin}'/>`,
+  );
+const r2 = (v: number) => Math.round(v * 1000) / 1000;
+const GROUND_LINED = new Map<string, ThemeArtLayer>();
+export function groundArt(theme: Theme, role?: ThemeArtRole): ThemeArtLayer | null {
+  const t = (TOKENS as Record<string, Record<string, string>>)[theme.id];
+  if (t?.["ground-art"] === "dots") return GROUND_DOTS;
+  // The lined ground is for content slides: the cover keeps its own art, unchanged.
+  if (t?.["ground-art"] !== "lined" || role === "title") return null;
+  const line = t["ground-line"] ?? t["rule"] ?? "#E3EAF2";
+  const margin = t["ground-margin"] ?? t["hl-a"] ?? "#F1B9B4";
+  const key = `${line}${margin}`;
+  let layer = GROUND_LINED.get(key);
+  if (!layer) {
+    layer = lined(line, margin);
+    GROUND.add(layer);
+    GROUND_LINED.set(key, layer);
+  }
+  return layer;
+}
+/** Whether a layer is a ground texture (never an art collision). */
+export const isGroundArt = (l: ThemeArtLayer): boolean => GROUND.has(l);
+
 export const THEME_ART: Record<string, Art> = {
   chalk: CHALK,
   playground: PLAYGROUND,
@@ -299,6 +433,8 @@ export const THEME_ART: Record<string, Art> = {
   "exam-hall": EXAM_HALL,
   "night-lab": NIGHT_LAB,
   beacon: BEACON,
+  scrapbook: SCRAPBOOK,
+  geometric: GEOMETRIC,
 };
 
 /**
@@ -308,3 +444,64 @@ export const THEME_ART: Record<string, Art> = {
  */
 export const artOf = (t: Theme): Theme["backgrounds"] =>
   "backgrounds" in t ? t.backgrounds : THEME_ART[t.id];
+
+/*
+ * Where the corner art sits per slide type (decision 41 A, Greg 20 Oct): as the approved slides
+ * draw it. The golds (theming rounds 3-5 and final, `prod-art.css`) paint every non-cover slide
+ * with the theme's `content` layers at their own places, never mirrored and never swapped for the
+ * picture motif, under every panel: where a full-bleed panel covers a layer, only the part above
+ * it (or below, for a layer standing on the foot) shows, and a layer the panel hides whole is not
+ * seen at all (Treehouse: the vine top-right above the quick check's and the myth's panels, none on
+ * the worked example). A slide is keyed by its kind, the template family a layout stamps.
+ *
+ * `role`: "content" draws the content art whatever images the slide holds; "auto" keeps ruling
+ *   107's rule (a slide with a picture wears the picture motif on the side away from it), with
+ *   `marks` not counted as pictures.
+ * `fit`: "crop" cuts a layer that meets an element back to the rows a panel leaves showing (never
+ *   over text, a picture or a card); "drop" leaves the layer out whole, as ruling 107 did.
+ * `marks`: image names that are drawn marks, not pictures: they never make a picture slide.
+ * `gold`: the approved renders the row is read from, or "gap" (no approved design: today's rule).
+ * `themes`: a per-theme row when a theme's golds place it differently (none do today).
+ */
+export type ArtPlacement = {
+  role: "content" | "auto";
+  fit: "crop" | "drop";
+  marks?: readonly string[];
+  gold: string;
+  themes?: Partial<Record<string, Omit<ArtPlacement, "themes">>>;
+};
+
+/** The rule for a slide type no gold shows: ruling 107 as before. */
+export const ART_PLACEMENT_GAP: ArtPlacement = { role: "auto", fit: "drop", gold: "gap" };
+
+export const ART_PLACEMENT: Partial<Record<SlideKind, ArtPlacement>> = {
+  // worked, steps, equation-hero: round 3-5 `worked-*`, final `steps2-*`. The gold worked example
+  // holds a drawn figure (the algebra tiles in its right panel) and still wears the content art,
+  // so this row draws it whatever the slide holds. The move arrows and check tick are marks.
+  "worked-example": {
+    role: "content",
+    fit: "crop",
+    marks: ["Move arrow", "Check tick"],
+    gold: "worked, steps2",
+  },
+  // question-set: round 3-5 `quick-*` (no picture in the gold, so a picture keeps ruling 107).
+  starter: { role: "auto", fit: "crop", gold: "quick" },
+  // hinge: round 3-5 `hinge-*` (no picture in the gold, so a picture keeps ruling 107).
+  "multiple-choice": { role: "auto", fit: "crop", gold: "hinge" },
+  // myth, stages, explain, compare, source, reasons, items-row, panel-list, split-compare: round
+  // 3-5 `myth-*`, `stages-*`, `table-*`, final `summary-*`, `venn-*`, `writing-*`. The myth's proof
+  // icons are marks; a real photo (panel-list, split-compare, a myth's proof picture) keeps the
+  // picture rule (no gold).
+  content: {
+    role: "auto",
+    fit: "crop",
+    marks: ["Proof icon"],
+    gold: "myth, stages, table, venn, summary",
+  },
+};
+
+/** The placement row a slide kind and theme read. */
+export function artPlacement(kind: SlideKind, themeId?: string): ArtPlacement {
+  const row = ART_PLACEMENT[kind] ?? ART_PLACEMENT_GAP;
+  return (themeId && row.themes?.[themeId]) || row;
+}

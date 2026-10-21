@@ -441,7 +441,29 @@ export type DrawnWriterDiagram = {
   /** "code": the writer's spec, no call; "drawer": the fallback call; "none": restage. */
   via: "code" | "drawer" | "none";
   fault: string;
+  /**
+   * TEACH-247 part ad: the drawer named the drawing a `living_body`. Its spec is never drawn: the
+   * stage shows the lesson's library model on a full slide, else a picture of the same thing.
+   */
+  body?: true;
 };
+
+/**
+ * The drawer's request schema for a labelled drawing holds `subject` required (the parse keeps it
+ * optional for stored specs). Other kinds, and the writer's own defs, are unchanged.
+ */
+export function withRequiredSubject(schema: J, kind: string): J {
+  if (kind !== "labelled-diagram") return schema;
+  const out = JSON.parse(JSON.stringify(schema)) as J;
+  const req = Array.isArray(out.required) ? (out.required as string[]) : [];
+  if (out.properties && !req.includes("subject")) out.required = [...req, "subject"];
+  return out;
+}
+
+/** True for a drawer spec that names its subject a living body (never drawn from primitives). */
+export const isLivingBodySpec = (spec: unknown): boolean =>
+  (spec as { kind?: unknown; subject?: unknown } | undefined)?.kind === "labelled-diagram" &&
+  (spec as { subject?: unknown }).subject === "living_body";
 
 /**
  * base4's drawer fallback (`services.ts` specCallsRound5): the wire schema, the request with the
@@ -453,7 +475,7 @@ async function drawerCall(
 ): Promise<{ spec?: unknown; fault: string }> {
   if (!(DIAGRAM_KINDS as readonly string[]).includes(ask.kind))
     return { fault: `no drawer for the kind ${ask.kind}` };
-  const schema = diagramJsonSchema(ask.kind as DiagramKind);
+  const schema = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -564,6 +586,11 @@ export async function drawWriterDiagram(
         };
       }
       const r = await drawerCall(ask, deps);
+      // TEACH-247 part ad: one drawer call names the subject; a living body is never rendered.
+      if (r.spec && isLivingBodySpec(r.spec)) {
+        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind });
+        return { via: "none", fault: "a living body is not drawn from shapes", body: true };
+      }
       if (r.spec) {
         // On an asking slide the drawer's spec (a retry or a library fallback included) is held to
         // the request: counters the request says are not grouped yet are one pile, never the groups

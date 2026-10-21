@@ -2,6 +2,7 @@ import { anonymousSignins } from "./anonymous-signins";
 import { accounts, sessions, users, verifications } from "./auth";
 import { bankImages } from "./bank-images";
 import { documents } from "./documents";
+import { generationDebug } from "./generation-debug";
 import { jobEvents } from "./job-events";
 import { magicLinkSends } from "./magic-link-sends";
 import { sources } from "./sources";
@@ -12,6 +13,7 @@ export { anonymousSignins } from "./anonymous-signins";
 export { accounts, authSchema, sessions, users, verifications } from "./auth";
 export { bankImages } from "./bank-images";
 export { DOCUMENTS_REQUEST_ID_INDEX, documentKind, documents } from "./documents";
+export { generationDebug } from "./generation-debug";
 export { JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX, jobEvents } from "./job-events";
 export { magicLinkSends } from "./magic-link-sends";
 export { sourceKind, sources } from "./sources";
@@ -22,7 +24,7 @@ export { workspaces } from "./workspaces";
  * invariant test checks each one has `workspace_id NOT NULL` with a FK and an index (ADR 0007).
  * **Add every new tenant table here.**
  */
-export const TENANT_TABLES = [jobEvents, documents, sources] as const;
+export const TENANT_TABLES = [jobEvents, documents, sources, generationDebug] as const;
 
 /**
  * The documented allow-list of tables without `workspace_id` (ADR 0007): the tenant root and the
@@ -56,6 +58,7 @@ export const ALL_TABLES = {
   anonymousSignins,
   magicLinkSends,
   bankImages,
+  generationDebug,
 } as const;
 
 // ---------------------------------------------------------------------------------------------

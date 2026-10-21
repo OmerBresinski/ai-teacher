@@ -1,0 +1,54 @@
+{
+  "_source": "Real lesson strings from the pilot's writer runs (CPW-BY-STAGE corpus, 18 Oct 2026), plus hand-written Spanish and maths lines. Fixed so the calibration is repeatable; change it only with the bounds.",
+  "en": [
+    "Place your hand on the centre of your chest. What can you feel beating, and where does that blood travel?",
+    "Common Misconception: Is Blood Ever Blue?",
+    "A muscular organ that pumps blood continuously.",
+    "A muscular organ that pumps blood non-stop through your body.",
+    "Compare your rates in beats per minute. Explain the change using muscles, oxygen and blood.",
+    "A muscular organ that pumps blood around the body.",
+    "For A, B and C, say: one half or one quarter.",
+    "The loss of recency after a filled delay supports separate STM and LTM stores.",
+    "To find 1/4 of 12, split 12 into 4 equal parts.",
+    "Three stores, three sets of characteristics",
+    "At the same temperature, particles have the same average kinetic energy.",
+    "The denominator tells us to split 20 into four equal groups.",
+    "Heating does not make every collision successful.",
+    "Plants need water, light, air, nutrients and room to grow.",
+    "Blood returns to the heart between its lung and body journeys.",
+    "Organs that decay quickly come out first.",
+    "Damages blood vessels and reduces oxygen carried by blood.",
+    "It travels through an artery because it leaves the heart.",
+    "How does oxygen reach the runner’s leg muscles?",
+    "Calculate the mean rate from 0–40 s. Explain why the curve becomes less steep. Optional Higher: estimate the rate at 20 s using a tangent.",
+    "A reaction produces 48 cm³ of gas in 30 s.",
+    "Recall depended on a word’s position in a list.",
+    "You hear “Maya”, attend to it, repeat it and later recall it.",
+    "Gas volume increases from 0 to 48 cm³ in 40 s.",
+    "Calculate C’s mean rate over 30 s. Compare C and D’s starting rates using their gradients.",
+    "To find ⅗ of 30, divide by 5, not by 3."
+  ],
+  "fr": [
+    "Choose by the French noun, not by who is speaking.",
+    "Un exemple — A complete description",
+    "J’ai un frère. = I have a brother.",
+    "Describe siblings: j’ai = I have; je n’ai pas de = I don’t have any.",
+    "mon + père, frère ; ma + mère, sœur",
+    "Mon + masculine noun; ma + feminine noun. Say each phrase.",
+    "With masculine nouns: père, frère.",
+    "Décris ta famille — describe your family"
+  ],
+  "es": [
+    "La fotosíntesis ocurre en los cloroplastos de las células de las hojas verdes.",
+    "¿Por qué el corazón bombea la sangre más rápido después de correr?",
+    "Los romanos construyeron calzadas, acueductos y baños públicos en toda Hispania.",
+    "Señala la opción correcta: el agua hierve a cien grados a nivel del mar."
+  ],
+  "math": [
+    "Work out 3 × 4 = 12, then 12 ÷ 3 = 4, and check that 4 − 1 = 3.",
+    "Solve 3𝑥 + 5 = 20, so 3𝑥 = 15 and 𝑥 = 5.",
+    "The area is 6 cm² and the volume is 27 cm³, so ¾ of it is about 20 cm³.",
+    "Temperature fell from 12°C to −3°C, a drop of 15 degrees.",
+    "“It’s the pupils’ turn,” she said — and they worked out 45 ÷ 9 … quickly."
+  ]
+}

@@ -1,12 +1,15 @@
 import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
 import { gridFit } from "./cards-grid-fits";
+import { coverFit } from "./cover-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
+import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
+import { fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 
 /*
  * The writer stage's pure fixes, ported from the pinned harness (TEACH-110 part b): the
@@ -20,6 +23,9 @@ export type Brief = {
   id: string;
   topic: string;
   subject: string;
+  /** The lesson's past period and fiction flag (ruling 163, B1), read by `isHistoricalLesson`. */
+  historicalPeriod?: string;
+  fictionInPeriod?: boolean;
   yearGroup: string;
   year: number;
   keyStage: Stage;
@@ -58,12 +64,13 @@ export function writerIncomplete(o: {
     return "finish_reason content-filter";
   if (o.finishReason === "error") return "finish_reason error";
   const out = nonFatalSync(
-    () => JSON.parse(o.text) as { slides?: unknown[] },
+    () => JSON.parse(o.text) as { slides?: unknown[]; close?: unknown },
     () => undefined,
   );
   if (out === undefined) return "writer JSON does not parse";
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
-  const n = Array.isArray(out?.slides) ? out.slides.length : 0;
+  // `close` is the lesson's last slide, its own field (TEACH-110 part ab).
+  const n = (Array.isArray(out?.slides) ? out.slides.length : 0) + (out?.close ? 1 : 0);
   // A small count miss (up to 2 under, or any over) ships as written and is logged (count.ts,
   // ADR 0036); more than 2 under the count, title and objectives included, is incomplete.
   if (n + 2 < o.minSlides - 2)
@@ -76,6 +83,77 @@ export function fnv(x: string) {
   let h = 0x811c9dc5;
   for (let i = 0; i < x.length; i++) h = Math.imul(h ^ x.charCodeAt(i), 0x01000193) >>> 0;
   return h;
+}
+
+/** The single-answer templates whose key is an index into the writer's own list. */
+const KEYED = new Set(["hinge", "choose", "odd-one-out"]);
+
+/**
+ * The writer writes the correct option (hinge) or card (choose, odd-one-out) first and gives no
+ * index: a counted `correct` was read from 1 but written from 0 by gpt-6.1-sol on 5 of 6 proof
+ * keys (pilot build/ANSWER-BUG.md). The key is fixed at 1 here, before `shuffleHinge` or the
+ * activity template's seeded shuffle moves it. A slide that already has `correct` (a saved or
+ * replayed writer output from before the change) keeps it, read from 1 as before.
+ */
+export function answerFirst(slide: S): S {
+  if (!KEYED.has(String(slide.template)) || slide.correct !== undefined) return slide;
+  return { ...slide, correct: 1 };
+}
+
+/**
+ * An older writer slide (counted `correct`, read from 1) in the answer-first shape: the keyed
+ * option or card moved to the front and `correct` dropped. For fixtures and replays of outputs
+ * written before the change; other slides pass through.
+ */
+export function toAnswerFirst(slide: S): S {
+  const list = slide.template === "hinge" ? "options" : "cards";
+  const items = slide[list];
+  const c = Number(slide.correct);
+  if (!KEYED.has(String(slide.template)) || !Array.isArray(items) || !Number.isInteger(c))
+    return slide;
+  const { correct: _, ...rest } = slide;
+  if (c < 1 || c > items.length) return rest;
+  return { ...rest, [list]: [items[c - 1], ...items.filter((_, i) => i !== c - 1)] };
+}
+
+/** A whole older writer output (`{ slides }`) in the answer-first shape (`toAnswerFirst`). */
+export function answerFirstMain(main: unknown): unknown {
+  const m = main as { slides?: unknown };
+  if (!m || !Array.isArray(m.slides)) return main;
+  return { ...m, slides: m.slides.map((s) => toAnswerFirst(s as S)) };
+}
+
+/** A schema whose `$defs.hinge` drops the counted `correct` (the repair schema; see keepAnswerKey). */
+export function withoutHingeKey<T extends S>(schema: T): T {
+  const defs = schema.$defs as Record<string, S> | undefined;
+  const hinge = defs?.hinge;
+  if (!defs || !hinge || !(hinge.properties as S | undefined)?.correct) return schema;
+  const { correct: _, ...props } = hinge.properties as S;
+  const required = (hinge.required as string[]).filter((k) => k !== "correct");
+  return { ...schema, $defs: { ...defs, hinge: { ...hinge, required, properties: props } } };
+}
+
+/**
+ * A repaired or restaged hinge's key, found by the answer's words: the option the pre-repair key
+ * named, matched (trimmed, case and spacing folded) in the new options. The repair's own
+ * `correct` is never used (the repair schema no longer asks for it). Returns null when the answer
+ * is gone, so the caller keeps the pre-repair slide. Other slides pass through.
+ */
+export function keepAnswerKey(before: S, after: S): S | null {
+  // A repair that turns another slide into a hinge would bring a counted key: refused.
+  if (before.template !== "hinge") return after.template === "hinge" ? null : after;
+  const b = before.options;
+  const c = Number(before.correct);
+  if (!Array.isArray(b) || !Number.isInteger(c) || c < 1 || c > b.length) return after;
+  if (after.template !== "hinge" || !Array.isArray(after.options)) return null;
+  const norm = (x: unknown) =>
+    String(x ?? "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  const want = norm(b[c - 1]);
+  const at = (after.options as unknown[]).findIndex((o) => norm(o) === want);
+  return at < 0 ? null : { ...after, correct: at + 1 };
 }
 
 /**
@@ -147,9 +225,26 @@ export const SWITCH: Record<string, string[]> = {
   hinge: [],
 };
 
+const { compare: _compare, ...kept } = SWITCH;
+/**
+ * The switches on a pilot pack (production): compare is retired there (ruling 218), so nothing
+ * switches to or from it, and a picture sequence whose captions run over may become a split.
+ * Without a pack, `SWITCH` as before.
+ */
+export const PACK_SWITCH: Record<string, string[]> = {
+  ...kept,
+  "picture-sequence": ["split-compare"],
+};
+
+/** The layouts a fit repair may give the slide: its own and those it may switch to. */
+export const switchesFor = (template: string, pack: boolean): string[] => [
+  template,
+  ...((pack ? PACK_SWITCH : SWITCH)[template] ?? []),
+];
+
 /** The layouts menu cut to the header, the slide's own layout and those it may switch to. */
-export function layoutsFor(menu: string, template: string): string {
-  const keep = new Set([template, ...(SWITCH[template] ?? [])]);
+export function layoutsFor(menu: string, template: string, pack = false): string {
+  const keep = new Set(switchesFor(template, pack));
   return menu
     .split("\n")
     .filter((l, k) => k === 0 || keep.has(/^- ([a-z-]+):/.exec(l)?.[1] ?? ""))
@@ -182,12 +277,15 @@ type FitVariant = {
   figure: boolean;
   keyCards?: boolean;
   chars: number;
+  /** The layout's own heading cap (the cover's title), over the group's `heading`. */
+  heading?: number;
   instruction?: number;
   charsNoInstruction?: number;
   stem?: number;
   keyLabel?: number;
   columnLabel?: number;
 };
+type FitLayout = { fields: string[]; variants: FitVariant[] };
 type FitGroup = {
   heading: number;
   formula: number;
@@ -211,8 +309,10 @@ const baseFit = (): Record<string, FitGroup> => {
 function extraLayouts(group: string): FitGroup["layouts"] {
   return {
     "cards-grid": gridFit(group),
+    "items-row": rowFit(group),
     "banner-text": bannerFit(group),
     hook: hookFit(group),
+    ...(coverFit(group) ? { title: coverFit(group) as FitLayout } : {}),
   };
 }
 /**
@@ -249,17 +349,34 @@ type HingeCards = { stem: number; options: Record<string, number> };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
+/** A text's words, as a reader counts them. */
+export const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+/** "1 word", "N words". */
+export const nWords = (n: number) => `${n} word${n === 1 ? "" : "s"}`;
+
 /**
- * Each text field over its measured limit, as `field: N characters, room M (K over)`. The slide's
- * way of filling its layout is matched by its item count and figure.
+ * A measured overflow restated in words (a pack's menu gives its Fits in words): the room in
+ * characters scaled by the text's own characters per word, so cutting `over` words brings it near
+ * its room. Always at least one word over.
  */
-export function charsOver(slide: unknown, stage: string): string[] {
+export function wordsOver(words: number, chars: number, room: number) {
+  const w = Math.max(1, words);
+  const fit = Math.max(0, Math.min(w - 1, Math.floor((w * room) / Math.max(1, chars))));
+  return { words: w, room: fit, over: w - fit };
+}
+
+/**
+ * Each text field over its measured limit, as `field: N characters, room M (K over)`, or on a
+ * pack run (`words`) as `field: N words, room about M (K over)`. The slide's way of filling its
+ * layout is matched by its item count and figure.
+ */
+export function charsOver(slide: unknown, stage: string, words = false): string[] {
   const s = (slide ?? {}) as S;
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return [];
-  const listKey = ["points", "questions", "options", "columns", "sequence", "grid"].find((k) =>
-    Array.isArray(s[k]),
+  const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
+    (k) => Array.isArray(s[k]),
   );
   const items = listKey ? (s[listKey] as unknown[]) : [];
   const fig = !!(s.figure ?? s.picture);
@@ -281,13 +398,22 @@ export function charsOver(slide: unknown, stage: string): string[] {
   };
   const out: string[] = [];
   let all = 0;
+  let allWords = 0;
+  const line = (field: string, n: number, w: number, cap: number) => {
+    if (!words) return `${field}: ${n} characters, room ${cap} (${n - cap} over)`;
+    const o = wordsOver(w, n, cap);
+    return `${field}: ${nWords(o.words)}, room about ${o.room} (${o.over} over)`;
+  };
   const over = (field: string, text: unknown, cap: number | undefined, counts = true) => {
     const t = typeof text === "string" ? text : "";
-    if (counts) all += t.length;
-    if (cap && t.length > cap)
-      out.push(`${field}: ${t.length} characters, room ${cap} (${t.length - cap} over)`);
+    if (counts) {
+      all += t.length;
+      allWords += wordCount(t);
+    }
+    if (cap && t.length > cap) out.push(line(field, t.length, wordCount(t), cap));
   };
-  over("heading", s.heading, F.heading, false);
+  // A layout's own title cap (the cover's three lines, `cover-fits.ts`) wins over the group's.
+  over("heading", s.heading, v.heading ?? F.heading, false);
   if (typeof s.lead === "string") over("lead", s.lead, lim.item);
   if (typeof s.instruction === "string")
     over("instruction", s.instruction, v.noInstruction ? 1 : lim.instruction);
@@ -300,19 +426,19 @@ export function charsOver(slide: unknown, stage: string): string[] {
     over(`${listKey}[${k + 1}]`, text, lim.item);
     if (typeof o.label === "string")
       over(`${listKey}[${k + 1}].label`, o.label, v.keyLabel ?? v.columnLabel, false);
+    if (typeof o.name === "string")
+      over(`${listKey}[${k + 1}].name`, o.name, v.keyLabel ?? v.columnLabel, false);
   });
   // The figure's ask, or its ask_without when the figure is not shown, is on the slide too.
-  all += Math.max(
-    0,
-    ...["figure", "picture", "diagram"].flatMap((k) => {
+  const asked = ["figure", "picture", "diagram"]
+    .flatMap((k) => {
       const f = s[k] as S | null | undefined;
-      return f && typeof f === "object" ? [str(f.ask).length, str(f.ask_without).length] : [];
-    }),
-  );
-  if (all > lim.total)
-    out.push(
-      `all the slide's text: ${all} characters, room ${lim.total} (${all - lim.total} over)`,
-    );
+      return f && typeof f === "object" ? [str(f.ask), str(f.ask_without)] : [];
+    })
+    .reduce((a, b) => (b.length > a.length ? b : a), "");
+  all += asked.length;
+  allWords += wordCount(asked);
+  if (all > lim.total) out.push(line("all the slide's text", all, allWords, lim.total));
   return out;
 }
 
@@ -377,15 +503,20 @@ export function titleOneThing(s: S): { slide: S; how?: string } {
   };
 }
 
-/** The room a slide has, in the writer's units, for a stand-alone or reroute call. */
-export function roomLine(slide: unknown, stage: string): string {
+/**
+ * The room a slide has, in the writer's units, for a stand-alone or reroute call: characters, or on
+ * a pack run (`words`, as `charsOver` and `repairTerms` take it) words as the menu shows them (one
+ * source: the heading at `wordsWithin`, a body field at `shownFor`, the comfortable room), so the
+ * room line and the menu agree. A field whose room is under one word is left out, never "1 word".
+ */
+export function roomLine(slide: unknown, stage: string, words = false): string {
   const s = { ...((slide ?? {}) as S) };
   for (const k of ["figure", "picture", "diagram"]) s[k] = null;
   const F = fitTable()[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return "";
-  const listKey = ["points", "questions", "options", "columns", "sequence", "grid"].find((k) =>
-    Array.isArray(s[k]),
+  const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
+    (k) => Array.isArray(s[k]),
   );
   const n = listKey ? (s[listKey] as unknown[]).length : 0;
   const v = L.variants
@@ -396,7 +527,18 @@ export function roomLine(slide: unknown, stage: string): string {
     .find((x) => Math.max(0, ...Object.values(x.counts)) >= n);
   const lim = v?.limit;
   if (!lim) return "";
-  return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+  if (!words)
+    return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+  const ws = writerStageOfKey(stage);
+  const template = String(s.template);
+  const parts = [
+    ["the heading", wordsWithin(F.heading, ws)],
+    ["each item", shownFor(lim.item, ws, fitNeedKey(template, "points[]"))],
+    ["all the slide's text", shownFor(lim.total, ws)],
+    ...(lim.instruction ? [["an instruction", shownFor(lim.instruction, ws)] as const] : []),
+  ] as const;
+  const kept = parts.filter(([, n]) => n >= 1).map(([f, n]) => `${f} up to ${nWords(n)}`);
+  return kept.length ? `room: ${kept.join("; ")}` : "";
 }
 
 /** Points over the room, summed over a slide's overflow faults ("overflow: x 354/328pt"). */
@@ -504,18 +646,18 @@ export function fixedFallback(
 
 /**
  * A fit fault in the repair's own units: which field and how many characters over its measured
- * room, never "about N lines". A fault no field explains keeps its slot name with the overflow
+ * room (on a pack run, `words`: how many words, as the pack's menu counts), never "about N lines". A fault no field explains keeps its slot name with the overflow
  * said as a share of the room.
  */
-export function repairTerms(fault: string, slide?: unknown, stage?: string): string {
+export function repairTerms(fault: string, slide?: unknown, stage?: string, words = false): string {
   const m = /^(overflow|clipped): (.*?)\s*(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt\b(.*)$/.exec(fault);
   if (!m) return fault;
-  const fields = slide && stage ? charsOver(slide, stage) : [];
+  const fields = slide && stage ? charsOver(slide, stage, words) : [];
   if (fields.length) return `${m[1]}: ${fields.join("; ")}`;
   const used = Number(m[3]);
   const room = Number(m[4]);
   const cut = Math.max(1, Math.ceil(((used - room) / used) * 100));
-  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} needs about ${cut}% fewer characters to fit${m[5] ?? ""}`;
+  return `${m[1]}: ${(m[2] ?? "").trim() || "the text"} needs about ${cut}% fewer ${words ? "words" : "characters"} to fit${m[5] ?? ""}`;
 }
 
 /** A repair answer is {fix, slide, to_notes}: the slide replaces the old one, to_notes joins its notes. */

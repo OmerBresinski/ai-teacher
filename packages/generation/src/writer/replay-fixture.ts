@@ -159,6 +159,7 @@ export async function replayRun(
       | "onReopen"
       | "roleStamp"
       | "onDraft"
+      | "onDraftSlide"
       | "draft"
       | "bindPictureLanded"
       | "slotFill"

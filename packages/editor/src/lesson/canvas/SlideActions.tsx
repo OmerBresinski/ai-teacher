@@ -10,7 +10,9 @@ import {
 import { ChevronDown, ChevronUp, Copy, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, type RefObject, useMemo } from "react";
 import { Panel, PanelSeparator } from "../../kit/Panel";
+import * as reducers from "../../model/reducers";
 import { AddSlidePicker } from "../AddSlidePicker";
+import { useSetAnswersSlides } from "../answers-slides";
 import { useHistory, useLesson } from "../document-context";
 import { hint } from "../keys";
 import {
@@ -63,6 +65,7 @@ export function SlideActions({
   const activeSlideId = useActiveSlideId();
   const slideCount = lesson.slides.length;
   const index = lesson.slides.findIndex((sl) => sl.id === slide.id);
+  const setAnswersSlides = useSetAnswersSlides();
 
   const avoidRefs = useMemo(
     () => [toolbarRef, tabsRef].filter((ref) => ref !== undefined),
@@ -77,6 +80,9 @@ export function SlideActions({
   if (!inline && (hidden || !frame)) return null;
   const id = slide.id;
   const deps = { history, lesson, session };
+  // Deleting the guard or an Answers slide hides them all, as "Hide answers" does (ruling 260).
+  const remove = () =>
+    slide.answersRole ? void setAnswersSlides(false) : deleteSlide(deps, id, activeSlideId);
 
   const { left, top: placedTop } = frame
     ? placeSlideActions({
@@ -88,7 +94,8 @@ export function SlideActions({
     : { left: 0, top: 0 };
   // Floating chrome never rides nearer the top than the bar plus the panel gap (72px).
   const top = Math.max(placedTop, CHROME_MIN_TOP);
-  const only = slideCount <= 1;
+  // A lesson keeps at least one of its own slides; the guard and Answers slides do not count.
+  const only = reducers.plainSlidesLeft(lesson, [slide.id]) < 1;
   // A slide too narrow for the toolbar and the full pill side by side above it (a reserved pane on
   // a small screen): the pill keeps Add and folds Duplicate and Delete into More, so it still sits
   // in the toolbar's row instead of dropping onto the slide.
@@ -132,6 +139,7 @@ export function SlideActions({
         side="bottom"
         onPick={(kind) => addSlideAfter(deps, id, kind)}
         onInsert={(slide) => insertSlideAfter(deps, id, slide)}
+        onShowAnswers={lesson.answersOff ? () => void setAnswersSlides(true) : undefined}
         trigger={
           <PillButton label="Add slide after">
             <Plus aria-hidden {...ICON} />
@@ -145,7 +153,7 @@ export function SlideActions({
           label={only ? "Delete slide. A lesson needs at least one slide" : "Delete slide"}
           tooltipLabel={only ? "A lesson needs at least one slide" : undefined}
           disabled={only}
-          onClick={() => deleteSlide(deps, id, activeSlideId)}
+          onClick={() => remove()}
         >
           <Trash2 aria-hidden {...ICON} />
         </PillButton>
@@ -167,10 +175,7 @@ export function SlideActions({
                 <Copy aria-hidden size={16} strokeWidth={1.5} />
                 Duplicate slide
               </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={only}
-                onSelect={() => deleteSlide(deps, id, activeSlideId)}
-              >
+              <DropdownMenuItem disabled={only} onSelect={() => remove()}>
                 <Trash2 aria-hidden size={16} strokeWidth={1.5} />
                 Delete slide
               </DropdownMenuItem>

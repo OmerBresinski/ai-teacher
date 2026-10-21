@@ -13,7 +13,7 @@ import fixture from "../writer/fixtures/activities/y1-animals.json" with { type:
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
 import { runWriter } from "../writer/stage";
 import { writerObjectivesCall } from "./objectives";
-import { stageOf, withQueuedWorksheet, writerBrief, writtenTitle } from "./write";
+import { slideRange, stageOf, withQueuedWorksheet, writerBrief, writtenTitle } from "./write";
 
 /*
  * Sixth-form lessons carry `ageBand: "post16"` (`deriveAgeBand`, Years 12–13). The writer used
@@ -123,7 +123,12 @@ describe("a Year 12 lesson's requests", () => {
         throw new Error("no answers in this run");
       },
     };
-    await runWriter({ brief, objectives: fixture.objectives, services });
+    // The fixture predates `close` (TEACH-110 part ab): its exit ticket is on the worksheet.
+    await runWriter({
+      brief: { ...brief, exitTicketOnSlides: false },
+      objectives: fixture.objectives,
+      services,
+    });
     const P = writerBundle();
     // Activities are on by default (TEACH-101 part e): the KS3-5 text carries the KS3-5 menu.
     expect(writer?.system).toBe(withActivityMenu(contractSystem(P.systemKS3_5), "KS3-5"));
@@ -211,5 +216,18 @@ describe("the lesson's title after the writer", () => {
   test("the heading is trimmed, its whitespace collapsed and cut to the title limit", () => {
     expect(writtenTitle(created(), "  The   heart\n")).toBe("The heart");
     expect(writtenTitle(created(), "x".repeat(120))).toHaveLength(80);
+  });
+});
+
+// Ruling 261 (TEACH-110 part ae): the writer plans near a range's low end, so the schema's maximum
+// must leave room for a split to add one or two slides; an exact count stays exact.
+describe("the slide range leaves room for splits", () => {
+  for (const slideTier of ["quick", "standard", "detailed"] as const)
+    test(`${slideTier}: a plan at the minimum may add two slides`, () => {
+      const r = slideRange({ slideTier });
+      expect(r.min + 2).toBeLessThanOrEqual(r.max);
+    });
+  test("an exact slide count is not a range", () => {
+    expect(slideRange({ slideCount: 10 })).toEqual({ min: 10, max: 10 });
   });
 });

@@ -7,12 +7,12 @@ import { RailButton } from "../../kit/Rail";
 import * as reducers from "../../model/reducers";
 import { useEditSession } from "../../model/use-edit-session";
 import { useHistory, useLesson } from "../document-context";
-import type { LessonInfoFieldsProps } from "./LessonInfoFields";
 import { languageLabel } from "./lesson-info-options";
 
 // The edit fields (and the Radix Select they use) load when the popover first opens.
-const fields = lazyLoader<LessonInfoFieldsProps>(() =>
-  import("./LessonInfoFields").then((m) => m.LessonInfoFields),
+const fields = lazyLoader(
+  () => import("./LessonInfoFields"),
+  (m) => m.LessonInfoFields,
 );
 
 export { YEAR_GROUPS } from "./lesson-info-options";

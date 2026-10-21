@@ -1,0 +1,1841 @@
+{
+  "$comment": "v4.5 (gen-v4.5.py): v4.4 + answer convention, compact JSON and short flow, set-vs-contrast by content (MENU-v4.5-NOTES.md). v4.4: v4.3 + Greg's 14 Oct rulings (split-compare a vs only; sets of 2-5 to panel-list with optional row pictures; text floor kept via caps measured at the drawn size; icon names a strict enum of the library labels; flow shape 'comparison' -> 'a contrast'). Caps: pv-integ pilot/integration 943de9fa0 packages/slides/src/templates/*-capacity.json, copied verbatim 2026-10-14 (caps measured at the drawn size after CLIP-FIX: items-row TEACH-75 u, split-compare w; panel-list row pictures v; side-by-side for reference only, the writer never names it). Word budget = min(editorial, words(comfortable cap)) at a per-stage chars per word (KS1 5.8, KS2 6.6, KS3-5 7.0). `layout-icon` is a new $def shared by items-row and panel-list items; `picture` and `diagram-side` are the writer's existing $defs. panel-list items' picture is all or none, and with pictures the panel is null and icons null (code enforces; no per-variant defs). split-compare budgets are keyed by side count and zone: '' words only, 'p' pictures or diagrams, 'q' quotes.",
+  "stages": {
+    "KS1": {
+      "$defs": {
+        "layout-icon": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "heart",
+                "blood",
+                "blood vessels",
+                "artery",
+                "vein",
+                "capillary",
+                "circulatory system",
+                "route of the blood",
+                "heart chambers",
+                "lungs collect oxygen",
+                "oxygen",
+                "carbon dioxide",
+                "nutrients",
+                "water in blood",
+                "digestion",
+                "body cells",
+                "muscles",
+                "pulse",
+                "heart rate",
+                "exercise",
+                "at rest",
+                "count for one minute",
+                "pulse results",
+                "balanced diet",
+                "salt",
+                "fatty food",
+                "smoking",
+                "alcohol",
+                "healthy heart",
+                "harm",
+                "blood pressure",
+                "plant",
+                "seed",
+                "seedling",
+                "germination",
+                "roots",
+                "stem",
+                "leaf",
+                "flower",
+                "fruit",
+                "light",
+                "water",
+                "air",
+                "nutrients (soil)",
+                "room to grow",
+                "soil",
+                "warmth",
+                "healthy plant",
+                "without water",
+                "without light",
+                "fair test",
+                "measure height",
+                "watering can",
+                "measuring cylinder",
+                "plant pot",
+                "prediction",
+                "growth over time",
+                "windowsill",
+                "bee",
+                "leaves make food",
+                "volcano",
+                "magma",
+                "lava",
+                "ash",
+                "eruption",
+                "explosive eruption",
+                "gentle eruption",
+                "shield volcano",
+                "composite volcano",
+                "magma chamber",
+                "vent",
+                "crater",
+                "layers of lava and ash",
+                "crust",
+                "mantle",
+                "earth's layers",
+                "tectonic plates",
+                "constructive boundary",
+                "destructive boundary",
+                "subduction",
+                "collision boundary",
+                "conservative boundary",
+                "oceanic plate",
+                "continental plate",
+                "mantle rock melts",
+                "cracks in the crust",
+                "new rock",
+                "volcanic island",
+                "earthquake",
+                "volcanic gas",
+                "town near a volcano",
+                "volcanic hazard",
+                "mummy",
+                "mummification",
+                "canopic jar",
+                "remove organs",
+                "organs",
+                "liver",
+                "lungs",
+                "stomach",
+                "intestines",
+                "heart left inside",
+                "remove the brain",
+                "natron",
+                "linen",
+                "coffin",
+                "embalmer",
+                "anubis",
+                "afterlife",
+                "weighing of the heart",
+                "feather of maat",
+                "amulet",
+                "death mask",
+                "tomb",
+                "pyramid",
+                "pharaoh",
+                "book of the dead",
+                "hieroglyphs",
+                "oils and resin",
+                "river nile",
+                "eye of horus",
+                "decay"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "items-row": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "accentWord", "lead", "ordered", "motif", "items"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["items-row"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 34
+            },
+            "accentWord": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lead": {
+              "type": "null"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "motif": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": ["vessel", "river", "road", "stem"]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "text", "icon"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 56
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/layout-icon"
+                  }
+                }
+              },
+              "minItems": 2,
+              "maxItems": 4
+            }
+          }
+        },
+        "panel-list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "lead", "panel", "items"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["panel-list"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 23
+            },
+            "lead": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 38
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "panel": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["picture"],
+                  "properties": {
+                    "picture": {
+                      "$ref": "#/$defs/picture"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["shares"],
+                  "properties": {
+                    "shares": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "minItems": 2,
+                      "maxItems": 4
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "text", "icon", "picture"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 108
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/layout-icon"
+                  },
+                  "picture": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/picture"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "minItems": 2,
+              "maxItems": 4
+            }
+          }
+        },
+        "split-compare": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "accentWord", "sides"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["split-compare"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 68
+            },
+            "accentWord": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sides": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title", "text", "quote", "picture"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 18
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 125
+                  },
+                  "quote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 22
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "picture": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/picture"
+                      },
+                      {
+                        "$ref": "#/$defs/diagram-side"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "KS2": {
+      "$defs": {
+        "layout-icon": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "heart",
+                "blood",
+                "blood vessels",
+                "artery",
+                "vein",
+                "capillary",
+                "circulatory system",
+                "route of the blood",
+                "heart chambers",
+                "lungs collect oxygen",
+                "oxygen",
+                "carbon dioxide",
+                "nutrients",
+                "water in blood",
+                "digestion",
+                "body cells",
+                "muscles",
+                "pulse",
+                "heart rate",
+                "exercise",
+                "at rest",
+                "count for one minute",
+                "pulse results",
+                "balanced diet",
+                "salt",
+                "fatty food",
+                "smoking",
+                "alcohol",
+                "healthy heart",
+                "harm",
+                "blood pressure",
+                "plant",
+                "seed",
+                "seedling",
+                "germination",
+                "roots",
+                "stem",
+                "leaf",
+                "flower",
+                "fruit",
+                "light",
+                "water",
+                "air",
+                "nutrients (soil)",
+                "room to grow",
+                "soil",
+                "warmth",
+                "healthy plant",
+                "without water",
+                "without light",
+                "fair test",
+                "measure height",
+                "watering can",
+                "measuring cylinder",
+                "plant pot",
+                "prediction",
+                "growth over time",
+                "windowsill",
+                "bee",
+                "leaves make food",
+                "volcano",
+                "magma",
+                "lava",
+                "ash",
+                "eruption",
+                "explosive eruption",
+                "gentle eruption",
+                "shield volcano",
+                "composite volcano",
+                "magma chamber",
+                "vent",
+                "crater",
+                "layers of lava and ash",
+                "crust",
+                "mantle",
+                "earth's layers",
+                "tectonic plates",
+                "constructive boundary",
+                "destructive boundary",
+                "subduction",
+                "collision boundary",
+                "conservative boundary",
+                "oceanic plate",
+                "continental plate",
+                "mantle rock melts",
+                "cracks in the crust",
+                "new rock",
+                "volcanic island",
+                "earthquake",
+                "volcanic gas",
+                "town near a volcano",
+                "volcanic hazard",
+                "mummy",
+                "mummification",
+                "canopic jar",
+                "remove organs",
+                "organs",
+                "liver",
+                "lungs",
+                "stomach",
+                "intestines",
+                "heart left inside",
+                "remove the brain",
+                "natron",
+                "linen",
+                "coffin",
+                "embalmer",
+                "anubis",
+                "afterlife",
+                "weighing of the heart",
+                "feather of maat",
+                "amulet",
+                "death mask",
+                "tomb",
+                "pyramid",
+                "pharaoh",
+                "book of the dead",
+                "hieroglyphs",
+                "oils and resin",
+                "river nile",
+                "eye of horus",
+                "decay"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "items-row": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "accentWord", "lead", "ordered", "motif", "items"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["items-row"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 68
+            },
+            "accentWord": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lead": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "motif": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": ["vessel", "river", "road", "stem"]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "text", "icon"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 86
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/layout-icon"
+                  }
+                }
+              },
+              "minItems": 2,
+              "maxItems": 4
+            }
+          }
+        },
+        "panel-list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "lead", "panel", "items"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["panel-list"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "lead": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 42
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "panel": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["picture"],
+                  "properties": {
+                    "picture": {
+                      "$ref": "#/$defs/picture"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["shares"],
+                  "properties": {
+                    "shares": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "minItems": 2,
+                      "maxItems": 4
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "text", "icon", "picture"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 126
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/layout-icon"
+                  },
+                  "picture": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/picture"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "minItems": 2,
+              "maxItems": 4
+            }
+          }
+        },
+        "split-compare": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "accentWord", "sides"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["split-compare"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 68
+            },
+            "accentWord": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sides": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title", "text", "quote", "picture"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 22
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 156
+                  },
+                  "quote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 22
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "picture": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/picture"
+                      },
+                      {
+                        "$ref": "#/$defs/diagram-side"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "KS3-5": {
+      "$defs": {
+        "layout-icon": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "heart",
+                "blood",
+                "blood vessels",
+                "artery",
+                "vein",
+                "capillary",
+                "circulatory system",
+                "route of the blood",
+                "heart chambers",
+                "lungs collect oxygen",
+                "oxygen",
+                "carbon dioxide",
+                "nutrients",
+                "water in blood",
+                "digestion",
+                "body cells",
+                "muscles",
+                "pulse",
+                "heart rate",
+                "exercise",
+                "at rest",
+                "count for one minute",
+                "pulse results",
+                "balanced diet",
+                "salt",
+                "fatty food",
+                "smoking",
+                "alcohol",
+                "healthy heart",
+                "harm",
+                "blood pressure",
+                "plant",
+                "seed",
+                "seedling",
+                "germination",
+                "roots",
+                "stem",
+                "leaf",
+                "flower",
+                "fruit",
+                "light",
+                "water",
+                "air",
+                "nutrients (soil)",
+                "room to grow",
+                "soil",
+                "warmth",
+                "healthy plant",
+                "without water",
+                "without light",
+                "fair test",
+                "measure height",
+                "watering can",
+                "measuring cylinder",
+                "plant pot",
+                "prediction",
+                "growth over time",
+                "windowsill",
+                "bee",
+                "leaves make food",
+                "volcano",
+                "magma",
+                "lava",
+                "ash",
+                "eruption",
+                "explosive eruption",
+                "gentle eruption",
+                "shield volcano",
+                "composite volcano",
+                "magma chamber",
+                "vent",
+                "crater",
+                "layers of lava and ash",
+                "crust",
+                "mantle",
+                "earth's layers",
+                "tectonic plates",
+                "constructive boundary",
+                "destructive boundary",
+                "subduction",
+                "collision boundary",
+                "conservative boundary",
+                "oceanic plate",
+                "continental plate",
+                "mantle rock melts",
+                "cracks in the crust",
+                "new rock",
+                "volcanic island",
+                "earthquake",
+                "volcanic gas",
+                "town near a volcano",
+                "volcanic hazard",
+                "mummy",
+                "mummification",
+                "canopic jar",
+                "remove organs",
+                "organs",
+                "liver",
+                "lungs",
+                "stomach",
+                "intestines",
+                "heart left inside",
+                "remove the brain",
+                "natron",
+                "linen",
+                "coffin",
+                "embalmer",
+                "anubis",
+                "afterlife",
+                "weighing of the heart",
+                "feather of maat",
+                "amulet",
+                "death mask",
+                "tomb",
+                "pyramid",
+                "pharaoh",
+                "book of the dead",
+                "hieroglyphs",
+                "oils and resin",
+                "river nile",
+                "eye of horus",
+                "decay"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "items-row": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "accentWord", "lead", "ordered", "motif", "items"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["items-row"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 74
+            },
+            "accentWord": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lead": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 70
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "motif": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": ["vessel", "river", "road", "stem"]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "text", "icon"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 130
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/layout-icon"
+                  }
+                }
+              },
+              "minItems": 2,
+              "maxItems": 4
+            }
+          }
+        },
+        "panel-list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "lead", "panel", "items"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["panel-list"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "lead": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 54
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "panel": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["picture"],
+                  "properties": {
+                    "picture": {
+                      "$ref": "#/$defs/picture"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["shares"],
+                  "properties": {
+                    "shares": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "minItems": 2,
+                      "maxItems": 5
+                    }
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "text", "icon", "picture"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 235
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/layout-icon"
+                  },
+                  "picture": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/picture"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "minItems": 2,
+              "maxItems": 5
+            }
+          }
+        },
+        "split-compare": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["template", "heading", "accentWord", "sides"],
+          "properties": {
+            "template": {
+              "type": "string",
+              "enum": ["split-compare"]
+            },
+            "heading": {
+              "type": "string",
+              "maxLength": 68
+            },
+            "accentWord": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sides": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title", "text", "quote", "picture"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "maxLength": 22
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "quote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 32
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "picture": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/picture"
+                      },
+                      {
+                        "$ref": "#/$defs/diagram-side"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "budgets": {
+    "KS1": {
+      "items-row": {
+        "2": 8,
+        "3": 8
+      },
+      "panel-list": {
+        "2": 8,
+        "3": 8,
+        "4": 5
+      },
+      "items-row+lead": {},
+      "panel-list+lead": {
+        "2": 8,
+        "3": 5
+      },
+      "items-row+numberedOnly": {
+        "4": 7
+      },
+      "panel-list+pictures": {
+        "2": 8,
+        "3": 8,
+        "4": 5
+      },
+      "panel-list+pictures+lead": {
+        "2": 8,
+        "3": 5
+      },
+      "leadWords": {
+        "items-row": 0,
+        "panel-list": 6,
+        "panel-list+pictures": 6
+      },
+      "split-compare": {
+        "2": 14,
+        "3": 10,
+        "2p": 11,
+        "3p": 5,
+        "2q": 8
+      },
+      "quote": {
+        "2": 3
+      },
+      "headingWords": {
+        "items-row": 4,
+        "panel-list": 3,
+        "panel-list+pictures": 3,
+        "split-compare": 4
+      },
+      "motifs": ["vessel", "river", "road", "stem"],
+      "charCaps": {
+        "items-row": {
+          "2": {
+            "heading": 34,
+            "name": 30,
+            "text": 56
+          },
+          "3": {
+            "heading": 34,
+            "name": 14,
+            "text": 48
+          }
+        },
+        "panel-list": {
+          "2": {
+            "heading": 23,
+            "name": 82,
+            "text": 108
+          },
+          "3": {
+            "heading": 23,
+            "name": 42,
+            "text": 58
+          },
+          "4": {
+            "heading": 23,
+            "name": 21,
+            "text": 30
+          }
+        },
+        "split-compare": {
+          "2": {
+            "title": 18,
+            "text": 125
+          },
+          "3": {
+            "title": 13,
+            "text": 59
+          },
+          "2p": {
+            "title": 18,
+            "text": 69
+          },
+          "3p": {
+            "title": 13,
+            "text": 29
+          },
+          "2q": {
+            "title": 18,
+            "quote": 22,
+            "text": 47
+          }
+        }
+      },
+      "charCapsLead": {
+        "items-row": {},
+        "panel-list": {
+          "2": {
+            "heading": 23,
+            "name": 66,
+            "text": 82,
+            "lead": 38
+          },
+          "3": {
+            "heading": 23,
+            "name": 21,
+            "text": 30,
+            "lead": 38
+          }
+        }
+      },
+      "charCapsNumbered": {
+        "2": {
+          "heading": 68,
+          "name": 54,
+          "text": 100
+        },
+        "3": {
+          "heading": 68,
+          "name": 40,
+          "text": 86
+        },
+        "4": {
+          "heading": 34,
+          "name": 16,
+          "text": 46
+        }
+      },
+      "charCapsNumberedLead": {},
+      "charCapsPictures": {
+        "2": {
+          "heading": 18,
+          "name": 66,
+          "text": 82
+        },
+        "3": {
+          "heading": 18,
+          "name": 42,
+          "text": 58
+        },
+        "4": {
+          "heading": 18,
+          "name": 21,
+          "text": 30
+        }
+      },
+      "charCapsPicturesLead": {
+        "2": {
+          "heading": 18,
+          "name": 58,
+          "text": 66,
+          "lead": 38
+        },
+        "3": {
+          "heading": 18,
+          "name": 21,
+          "text": 30,
+          "lead": 38
+        }
+      }
+    },
+    "KS2": {
+      "items-row": {
+        "2": 12,
+        "3": 11,
+        "4": 8
+      },
+      "panel-list": {
+        "2": 12,
+        "3": 10,
+        "4": 5
+      },
+      "items-row+lead": {
+        "2": 6,
+        "3": 6
+      },
+      "panel-list+lead": {
+        "2": 12,
+        "3": 10,
+        "4": 4
+      },
+      "items-row+numberedOnly": {},
+      "panel-list+pictures": {
+        "2": 12,
+        "3": 10,
+        "4": 4
+      },
+      "panel-list+pictures+lead": {
+        "2": 12,
+        "3": 10,
+        "4": 5
+      },
+      "leadWords": {
+        "items-row": 9,
+        "panel-list": 6,
+        "panel-list+pictures": 6
+      },
+      "split-compare": {
+        "2": 20,
+        "3": 12,
+        "2p": 15,
+        "3p": 6,
+        "2q": 12
+      },
+      "quote": {
+        "2": 3
+      },
+      "headingWords": {
+        "items-row": 5,
+        "panel-list": 4,
+        "panel-list+pictures": 3,
+        "split-compare": 8
+      },
+      "motifs": ["vessel", "river", "road", "stem"],
+      "charCaps": {
+        "items-row": {
+          "2": {
+            "heading": 68,
+            "name": 54,
+            "text": 86
+          },
+          "3": {
+            "heading": 68,
+            "name": 44,
+            "text": 78
+          },
+          "4": {
+            "heading": 34,
+            "name": 22,
+            "text": 54
+          }
+        },
+        "panel-list": {
+          "2": {
+            "heading": 30,
+            "name": 122,
+            "text": 126
+          },
+          "3": {
+            "heading": 30,
+            "name": 52,
+            "text": 70
+          },
+          "4": {
+            "heading": 30,
+            "name": 27,
+            "text": 35
+          }
+        },
+        "split-compare": {
+          "2": {
+            "title": 22,
+            "text": 156
+          },
+          "3": {
+            "title": 22,
+            "text": 80
+          },
+          "2p": {
+            "title": 22,
+            "text": 101
+          },
+          "3p": {
+            "title": 22,
+            "text": 41
+          },
+          "2q": {
+            "title": 22,
+            "quote": 22,
+            "text": 80
+          }
+        }
+      },
+      "charCapsLead": {
+        "items-row": {
+          "2": {
+            "heading": 34,
+            "name": 20,
+            "text": 44,
+            "lead": 64
+          },
+          "3": {
+            "heading": 34,
+            "name": 16,
+            "text": 40,
+            "lead": 64
+          }
+        },
+        "panel-list": {
+          "2": {
+            "heading": 30,
+            "name": 88,
+            "text": 132,
+            "lead": 42
+          },
+          "3": {
+            "heading": 30,
+            "name": 48,
+            "text": 66,
+            "lead": 42
+          },
+          "4": {
+            "heading": 30,
+            "name": 21,
+            "text": 30,
+            "lead": 42
+          }
+        }
+      },
+      "charCapsNumbered": {
+        "2": {
+          "heading": 68,
+          "name": 86,
+          "text": 118
+        },
+        "3": {
+          "heading": 68,
+          "name": 74,
+          "text": 98
+        },
+        "4": {
+          "heading": 68,
+          "name": 40,
+          "text": 68
+        }
+      },
+      "charCapsNumberedLead": {
+        "2": {
+          "heading": 68,
+          "name": 58,
+          "text": 86,
+          "lead": 64
+        },
+        "3": {
+          "heading": 68,
+          "name": 44,
+          "text": 78,
+          "lead": 64
+        }
+      },
+      "charCapsPictures": {
+        "2": {
+          "heading": 23,
+          "name": 88,
+          "text": 96
+        },
+        "3": {
+          "heading": 23,
+          "name": 52,
+          "text": 70
+        },
+        "4": {
+          "heading": 23,
+          "name": 27,
+          "text": 30
+        }
+      },
+      "charCapsPicturesLead": {
+        "2": {
+          "heading": 23,
+          "name": 70,
+          "text": 119,
+          "lead": 42
+        },
+        "3": {
+          "heading": 23,
+          "name": 48,
+          "text": 70,
+          "lead": 42
+        },
+        "4": {
+          "heading": 23,
+          "name": 21,
+          "text": 35,
+          "lead": 42
+        }
+      }
+    },
+    "KS3-5": {
+      "items-row": {
+        "2": 12,
+        "3": 12,
+        "4": 10
+      },
+      "panel-list": {
+        "2": 12,
+        "3": 12,
+        "4": 10,
+        "5": 6
+      },
+      "items-row+lead": {
+        "2": 12,
+        "3": 10,
+        "4": 7
+      },
+      "panel-list+lead": {
+        "2": 12,
+        "3": 11,
+        "4": 6,
+        "5": 6
+      },
+      "items-row+numberedOnly": {},
+      "panel-list+pictures": {
+        "2": 12,
+        "3": 12,
+        "4": 10,
+        "5": 6
+      },
+      "panel-list+pictures+lead": {
+        "2": 12,
+        "3": 11,
+        "4": 6,
+        "5": 6
+      },
+      "leadWords": {
+        "items-row": 10,
+        "panel-list": 6,
+        "panel-list+pictures": 7
+      },
+      "split-compare": {
+        "2": 20,
+        "3": 13,
+        "2p": 20,
+        "3p": 10,
+        "2q": 16,
+        "3q": 5
+      },
+      "quote": {
+        "2": 4,
+        "3": 4
+      },
+      "headingWords": {
+        "items-row": 9,
+        "panel-list": 4,
+        "panel-list+pictures": 3,
+        "split-compare": 9
+      },
+      "motifs": ["vessel", "river", "road", "stem"],
+      "charCaps": {
+        "items-row": {
+          "2": {
+            "heading": 74,
+            "name": 86,
+            "text": 130
+          },
+          "3": {
+            "heading": 74,
+            "name": 76,
+            "text": 110
+          },
+          "4": {
+            "heading": 74,
+            "name": 38,
+            "text": 80
+          }
+        },
+        "panel-list": {
+          "2": {
+            "heading": 30,
+            "name": 179,
+            "text": 235
+          },
+          "3": {
+            "heading": 30,
+            "name": 88,
+            "text": 122
+          },
+          "4": {
+            "heading": 30,
+            "name": 58,
+            "text": 82
+          },
+          "5": {
+            "heading": 30,
+            "name": 30,
+            "text": 42
+          }
+        },
+        "split-compare": {
+          "2": {
+            "title": 22,
+            "text": 255
+          },
+          "3": {
+            "title": 22,
+            "text": 125
+          },
+          "2p": {
+            "title": 22,
+            "text": 160
+          },
+          "3p": {
+            "title": 22,
+            "text": 74
+          },
+          "2q": {
+            "title": 22,
+            "quote": 32,
+            "text": 125
+          },
+          "3q": {
+            "title": 22,
+            "quote": 29,
+            "text": 37
+          }
+        }
+      },
+      "charCapsLead": {
+        "items-row": {
+          "2": {
+            "heading": 74,
+            "name": 64,
+            "text": 106,
+            "lead": 70
+          },
+          "3": {
+            "heading": 74,
+            "name": 58,
+            "text": 92,
+            "lead": 70
+          },
+          "4": {
+            "heading": 40,
+            "name": 24,
+            "text": 62,
+            "lead": 70
+          }
+        },
+        "panel-list": {
+          "2": {
+            "heading": 30,
+            "name": 142,
+            "text": 193,
+            "lead": 48
+          },
+          "3": {
+            "heading": 30,
+            "name": 58,
+            "text": 82,
+            "lead": 48
+          },
+          "4": {
+            "heading": 30,
+            "name": 30,
+            "text": 42,
+            "lead": 48
+          },
+          "5": {
+            "heading": 30,
+            "name": 30,
+            "text": 42,
+            "lead": 48
+          }
+        }
+      },
+      "charCapsNumbered": {
+        "2": {
+          "heading": 74,
+          "name": 124,
+          "text": 182
+        },
+        "3": {
+          "heading": 74,
+          "name": 112,
+          "text": 150
+        },
+        "4": {
+          "heading": 74,
+          "name": 70,
+          "text": 106
+        }
+      },
+      "charCapsNumberedLead": {
+        "2": {
+          "heading": 74,
+          "name": 104,
+          "text": 154,
+          "lead": 70
+        },
+        "3": {
+          "heading": 74,
+          "name": 98,
+          "text": 128,
+          "lead": 70
+        },
+        "4": {
+          "heading": 74,
+          "name": 54,
+          "text": 94,
+          "lead": 70
+        }
+      },
+      "charCapsPictures": {
+        "2": {
+          "heading": 23,
+          "name": 126,
+          "text": 179
+        },
+        "3": {
+          "heading": 23,
+          "name": 88,
+          "text": 122
+        },
+        "4": {
+          "heading": 23,
+          "name": 58,
+          "text": 76
+        },
+        "5": {
+          "heading": 23,
+          "name": 30,
+          "text": 42
+        }
+      },
+      "charCapsPicturesLead": {
+        "2": {
+          "heading": 23,
+          "name": 108,
+          "text": 142,
+          "lead": 54
+        },
+        "3": {
+          "heading": 23,
+          "name": 58,
+          "text": 82,
+          "lead": 54
+        },
+        "4": {
+          "heading": 23,
+          "name": 30,
+          "text": 42,
+          "lead": 54
+        },
+        "5": {
+          "heading": 23,
+          "name": 30,
+          "text": 42,
+          "lead": 54
+        }
+      }
+    }
+  },
+  "retired": ["compare", "cards-grid"],
+  "flowShapes": [
+    "recall",
+    "hook",
+    "one big idea",
+    "sequence",
+    "a contrast",
+    "a set of kinds or examples",
+    "parts of a whole",
+    "data",
+    "worked example",
+    "check"
+  ],
+  "flowShapeRoutes": {
+    "items-row": ["parts of a whole", "sequence"],
+    "panel-list": ["a set of kinds or examples"],
+    "split-compare": ["a contrast"]
+  },
+  "basePatches": {
+    "$comment": "Changes to the base4h writer schema (smoke-context/base4h-*.schema.json) that pilotRequest applies, as it already swaps the flow shape enum. Paths are JSON pointers into that schema. Descriptions on answer fields are convention only (safe on shared defs, e.g. a repair schema); the writer's system text adds 'correct one first' for the hinge.",
+    "/properties/flow/items/properties/look_at/properties/shows": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "up to 6 words: the thing it shows; null when kind is none"
+    },
+    "/properties/flow/items/properties/does": {
+      "type": "string",
+      "description": "up to 8 words"
+    },
+    "/$defs/hinge~options-2/properties/correct": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2,
+      "description": "the correct option's place in options, counting from 1 (the first option is 1)"
+    },
+    "/$defs/hinge~options-3/properties/correct": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "the correct option's place in options, counting from 1 (the first option is 1)"
+    },
+    "/$defs/hinge~options-4/properties/correct": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "description": "the correct option's place in options, counting from 1 (the first option is 1)"
+    },
+    "/$defs/choose/properties/correct": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "description": "the correct card's place in cards, counting from 1 (the first card is 1)"
+    },
+    "/$defs/odd-one-out/properties/correct": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "the odd card's place in cards, counting from 1 (the first card is 1)"
+    },
+    "/$defs/group-sort/properties/cards/items/properties/group": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "its group's place in groups, counting from 1 (the first group is 1)"
+    }
+  },
+  "iconNames": "stages.*.$defs.layout-icon (122 library labels, lower case; build from ICON_CONCEPTS in the product)"
+}

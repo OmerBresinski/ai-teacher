@@ -132,7 +132,8 @@ completed`, i.e. queued **or active** — then decides who writes the terminal e
 | unknown id | `{ status: "not_found" }` | — |
 
 Latency for an active job ≈ 250 ms poll + whatever the handler is awaiting before it checks
-`signal.aborted` (the `ping` job checks every 300 ms; the integration test asserts < 600 ms). A
+`signal.aborted` (the `ping` job's step wait wakes on the abort, so its share is nil and the
+integration test's 600 ms covers `cancel()`, one poll and the `cancelled` write). A
 job that was fetched between `cancel()`'s two reads (`startedOn` moved) is treated as active so
 the event is written exactly once. If the handler finishes in the same instant the cancel lands,
 `completed` may win; pg-boss's `complete` is then a no-op on the cancelled row — best effort, and

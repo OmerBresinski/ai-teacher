@@ -1,6 +1,14 @@
-import type { Id, Slide, Theme } from "@tj/domain/documents";
+import {
+  type GroupElement,
+  type Id,
+  isLayoutGroup,
+  type LayoutRef,
+  type Slide,
+  type Theme,
+} from "@tj/domain/documents";
 import { slotSideOnDrop } from "@tj/slides";
 import {
+  type ComponentProps,
   type CSSProperties,
   type MutableRefObject,
   type MouseEvent as ReactMouseEvent,
@@ -13,6 +21,7 @@ import {
   useState,
 } from "react";
 import type { ImageSearchClient } from "../../images/image-search";
+import { LazyPart, lazyLoader, RetryLoad } from "../../kit/LazyPart";
 import {
   EXPLANATION_PLACEHOLDER,
   explanationLane,
@@ -66,6 +75,7 @@ import {
 import { HoverOutline } from "./HoverOutline";
 import { boxesOf, type ElementBox, hitsBox, marqueeHits } from "./hit-test";
 import { ImageCreditBadge } from "./ImageCreditBadge";
+import type LayoutCanvasControlsPart from "./LayoutCanvasControls";
 import { type DiagramStep, ModelStepper } from "./ModelStepper";
 import {
   AngleLabel,
@@ -75,6 +85,15 @@ import {
   VISUALLY_HIDDEN,
 } from "./overlays";
 import { SelectionFrame } from "./SelectionFrame";
+
+/** An adaptive layout's on-canvas add, delete and over-limit marks: brings the template code. */
+/** The on-canvas layout controls (TEACH-205 part b), loaded with the first layout selected. */
+const layoutCanvasControls = lazyLoader<ComponentProps<typeof LayoutCanvasControlsPart>>(() =>
+  import("./LayoutCanvasControls").then((m) => m.default),
+);
+
+import { layoutChildBox, layoutGroupOfChild, layoutTextAt } from "./layout-children";
+import { useLayoutDetachNotice } from "./use-layout-detach-notice";
 import { useModelStepping } from "./use-model-stepping";
 
 /*
@@ -159,6 +178,7 @@ export function SelectionLayer({
   scaleRef.current = scale;
 
   const history = useHistory();
+  useLayoutDetachNotice(slide);
   /** The slide as it stood when the gesture began: pointer moves never write it. */
   const slideRef = useRef(slide);
   slideRef.current = slide;
@@ -294,9 +314,9 @@ export function SelectionLayer({
     (ids: Id[]) =>
       ids.flatMap((id) => {
         const b = byId.get(id);
-        return b ? [startBoxOf(b)] : [];
+        return b ? [startBoxOf(b, theme)] : [];
       }),
-    [byId],
+    [byId, theme],
   );
 
   const rebuildTargets = useCallback(
@@ -365,7 +385,7 @@ export function SelectionLayer({
           });
           if (els.length === copies.length && els.length > 0) {
             g.ids = copies;
-            g.boxes = boxesOf(els).map(startBoxOf);
+            g.boxes = boxesOf(els).map((b) => startBoxOf(b));
             g.bounds = boundsOfBoxes(g.boxes);
             actions.select(copies);
           }
@@ -657,7 +677,7 @@ export function SelectionLayer({
       const box = explanationLayout({
         slide,
         theme,
-        text: explanationText(slide.question) || EXPLANATION_PLACEHOLDER,
+        text: explanationText(slide) || EXPLANATION_PLACEHOLDER,
       });
       // The card is anchored by its bottom and may have grown taller than the ruler predicted, so
       // the *rendered* box is the hit target where there is one.
@@ -681,6 +701,13 @@ export function SelectionLayer({
     // A picture opens in crop mode (TEACH-153).
     if (hit.el.type === "image") {
       actions.enterCrop(hit.el);
+      return;
+    }
+    // A layout's words are typed on the slide (TEACH-205 part b): into the bound text under the
+    // pointer; the group stays the selection, so its add/delete controls stay in view.
+    const inLayout = layoutTextAt(hit.el, at);
+    if (inLayout) {
+      actions.setEditingText(inLayout.id);
       return;
     }
     // SPEC §7 scopes this to shape-*with-label*; a hairline rule must not drop into a text editor.
@@ -775,7 +802,11 @@ export function SelectionLayer({
   // While a text editor is mounted, the stage catcher opens a hole over that element so every
   // pointer event inside it reaches Tiptap. The "Why?" panel grows and shrinks under the caret, so
   // its hole is the whole lane it may occupy rather than the box it happens to fill this frame.
-  const editingBox = editingTextId ? byId.get(editingTextId) : undefined;
+  const editingBox = editingTextId
+    ? (byId.get(editingTextId) ?? layoutChildBox(boxes, editingTextId))
+    : undefined;
+  /** The layout group whose words are being typed into, if any. */
+  const typingIn = layoutGroupOfChild(boxes, editingTextId);
   const hole = editingBox
     ? rotatedBounds(editingBox.rect, editingBox.rotation)
     : editingExplanation === slide.id && showingAnswer
@@ -894,12 +925,38 @@ export function SelectionLayer({
           rotation={first.rotation}
           scale={scale}
           locked={first.locked}
-          handles={editingTextId !== first.id && !gestureOn}
+          handles={editingTextId !== first.id && typingIn?.id !== first.id && !gestureOn}
           coarsePointer={coarse}
           onHandleDown={onHandleDown}
           onRotateDown={onRotateDown}
         />
       ) : null}
+
+      {(() => {
+        // The layout being worked on: selected, or having its words typed into on the slide.
+        const on = selected.length === 1 && first && isLayoutGroup(first.el) ? first : typingIn;
+        if (!on || gestureOn || cropping || !isLayoutGroup(on.el)) return null;
+        return (
+          <LazyPart
+            loader={layoutCanvasControls}
+            props={{
+              slideId: slide.id,
+              group: on.el as GroupElement & { layout: LayoutRef },
+              scale,
+              toSlide,
+              onEditText: (id: string) => actions.setEditingText(id),
+              onPointerFocus: focusStage,
+            }}
+            fallback={null}
+            failed={(retry) => (
+              <RetryLoad
+                className="pointer-events-auto absolute top-2 left-2 bg-surface px-2 py-1"
+                onRetry={retry}
+              />
+            )}
+          />
+        );
+      })()}
 
       {selected.length === 1 &&
       first &&

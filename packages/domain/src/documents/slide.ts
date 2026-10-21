@@ -1,8 +1,16 @@
 import { z } from "zod";
+import {
+  type DirStamp,
+  DirStampSchema,
+  type ElementRtl,
+  ElementRtlSchema,
+  LanguageTagSchema,
+} from "./direction";
 import { type FigureRef, FigureRefSchema } from "./figure";
 import { type Provenance, provenanceFields } from "./generated-from";
+import { type LayoutRef, LayoutRefSchema } from "./layout-ref";
 import { isLinkableHref } from "./links";
-import { type RichDoc, RichDocSchema } from "./rich-text";
+import { type RichDoc, RichDocSchema, richDocMaxStrikeStep } from "./rich-text";
 
 /*
  * Slides and their elements (ADR 0021). Units are logical points: a slide is 960x540 (the
@@ -80,7 +88,46 @@ export type Slide = {
    * layout space; the editor shows it beside the canvas, and present and export never do.
    */
   diagram?: { instruction: string };
+  /**
+   * A layout the teacher turned into free boxes ("Free layout", TEACH-205 part b): the group it
+   * was, without its children. Turning Free layout off re-lays it from here, keeping the words
+   * typed into its freed boxes (each still carries its `<id>:<path>` id).
+   */
+  freeLayout?: FreeLayout;
+  /**
+   * End-of-deck answers (UX ruling 240, TEACH-191 part b): `guard` is the pupil-safe "Answers on
+   * the next slide" slide, `answers` an Answers (n of N) slide behind it. Present stops at the guard
+   * unless the teacher turns "Show answers to class" on.
+   */
+  answersRole?: AnswersRole;
+  /**
+   * Which way the slide's geometry is laid out (TEACH-75 part z): "rtl" once it has been mirrored
+   * for a right-to-left lesson, absent for left to right. The lesson's language decides which it
+   * should be (`dirOf`); a slide is mirrored only when its stamp differs.
+   */
+  dir?: DirStamp;
 };
+
+/** A freed adaptive layout's group, kept so the teacher can turn Free layout off again. */
+export type FreeLayout = {
+  id: Id;
+  name?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  layout: LayoutRef;
+};
+
+export type AnswersRole = "guard" | "answers";
+/** The "Teacher only" pill's element name on an Answers slide: drawn for the teacher, never projected. */
+export const TEACHER_ONLY_MARK = "answers:teacher-only";
+
+/** A slide as the class sees it: an Answers slide's "Teacher only" pill is never projected. */
+export function projected(slide: Slide): Slide {
+  if (slide.answersRole !== "answers") return slide;
+  return { ...slide, elements: slide.elements.filter((e) => e.name !== TEACHER_ONLY_MARK) };
+}
 
 /* ------------------------------------------------------------------ */
 /* Question data                                                       */
@@ -93,13 +140,23 @@ export type QuestionData =
       options: { id: Id; correct: boolean }[];
       multi?: boolean;
       explanation?: string;
+      /** One click fades every wrong option and marks the right one (the hinge, TEACH-256 part b). */
+      oneStep?: boolean;
     }
   | { type: "matching"; pairs: { id: Id; leftElementId: Id; rightElementId: Id }[] }
   /** Words to pictures. `labelId` is the word that belongs under `imageId`, wherever it sits now. */
   | { type: "image-match"; pairs: { id: Id; imageId: Id; labelId: Id }[] }
   | { type: "fill-gap"; gaps: { id: Id; answer: string; alternatives?: string[] }[] }
   | { type: "sort"; order: Id[] } // element ids in the correct order
-  | { type: "open-response"; modelAnswer?: string };
+  | {
+      type: "open-response";
+      modelAnswer?: string;
+      /**
+       * Each numbered answer's working, kept apart from the answer: `working[i]` belongs to line i
+       * of `modelAnswer` ("" for none). The end Answers ledger draws it in its own column.
+       */
+      working?: string[];
+    };
 
 /* ------------------------------------------------------------------ */
 /* Elements                                                            */
@@ -127,6 +184,12 @@ type ElementBase = {
   reveal?: "fade" | "rise" | "none";
   /** Shared across slides for the 'morph' transition. */
   morphKey?: string;
+  /**
+   * The element's exception to the right-to-left mirror (TEACH-75 part z): `keep` moves the box
+   * and changes nothing inside it (maths, code, figures); `flip` draws a directional glyph flipped.
+   * Absent: the element's type decides.
+   */
+  rtl?: ElementRtl;
 } & Provenance;
 
 export type TextPreset = "title" | "subtitle" | "heading" | "body" | "small" | "caption";
@@ -135,16 +198,29 @@ export type TextStyle = {
   preset: TextPreset;
   /** Overrides. Absent = inherit from theme for the preset. */
   fontFamily?: string;
+  /** Tracking in em (`"0.1em"`); absent = the preset's own (a title's theme tracking, a caption's 0.08em). */
+  letterSpacing?: string;
   fontSize?: number;
   lineHeight?: number;
   fontWeight?: number;
   color?: string;
   align?: "left" | "center" | "right";
   valign?: "top" | "middle" | "bottom";
+  /**
+   * BCP-47 language of the text when it differs from the lesson's (TEACH-75 part z): Arabic words
+   * on an English slide. Absent: the lesson's language.
+   */
+  lang?: string;
   /** Grow height to fit content (default true for new text). */
   autoHeight?: boolean;
   /** Shrink font to fit the box when content overflows. */
   autoFit?: boolean;
+  /**
+   * `fontSize` is a size the layout took from its own age table (UX ruling 21 A, the approved
+   * golds' sizes), drawn as given rather than snapped to the key stage's type scale. Only layout
+   * recipes set it, and they keep their own floors.
+   */
+  fixedSize?: boolean;
   padding?: number;
   background?: string;
   radius?: number;
@@ -208,9 +284,24 @@ export type ImageElement = ElementBase & {
    * box changes shape keeps it in view (TEACH-153).
    */
   focal?: { x: number; y: number };
+  /**
+   * Picture-fit facts (TEACH-25 part b, ruling 217), written when the picture is placed. `subject`:
+   * the box round what the picture shows, as fractions of the picture; found in code only on a
+   * plain backdrop (never by saliency). `backdrop`: which edges are a plain backdrop (an axis whose
+   * two edges are plain may be extended by edge-stretch) and its colour. `kind`: an object on a
+   * backdrop or a scene; a scene is never extended. Absent means unknown: the busy-scene rule.
+   */
+  subject?: { x: number; y: number; w: number; h: number };
+  backdrop?: {
+    plain: { top: boolean; right: boolean; bottom: boolean; left: boolean };
+    colour: string;
+  };
+  kind?: "object" | "scene";
   /** Non-destructive adjustments layered over `src` (TEACH-153); `src` itself is never rewritten. */
   imageTransform?: ImageTransform;
   radius?: number;
+  /** The picture cut to a shape (Geometric's hexagon cover, TEACH-215 part c). */
+  mask?: "hexagon";
   /** Attribution for a searched image: "Title by Creator, CC BY 2.0". */
   credit?: string;
   /** The page the searched image came from, linked beside the credit. */
@@ -223,6 +314,12 @@ export type ImageElement = ElementBase & {
    * `data-s` groups; every other surface shows the last build.
    */
   builds?: number;
+  /**
+   * Builds on rows (TEACH-205 part c, W-d4): the slide step that shows build 1, so build *i* shows
+   * with the row revealed at step `buildFrom + i - 1` (a worked example draws step *i* of its
+   * model with line *i*). Absent: the builds play after the element reveals, as before.
+   */
+  buildFrom?: number;
   /**
    * What a drawn diagram or a library model was drawn from (TEACH-97 part h), so the settings
    * panel can redraw it in place. Absent on photos, on teacher pictures and on diagrams saved
@@ -270,7 +367,11 @@ export type ShapeKind =
   | "diamond"
   | "star"
   | "speech"
-  | "pill";
+  | "pill"
+  /** A theme's mark shapes (TEACH-215 part c): flat-topped hexagon, octagon, two cut corners. */
+  | "hexagon"
+  | "octagon"
+  | "notch";
 
 export type ShapeElement = ElementBase & {
   type: "shape";
@@ -279,6 +380,11 @@ export type ShapeElement = ElementBase & {
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
+  /**
+   * A hard offset block under the shape (Poster's 8pt ink block, TEACH-215 part c): the same
+   * shape in `color`, moved by x/y. PPTX writes it as a blur-free outer shadow.
+   */
+  shadow?: { x: number; y: number; color: string };
   /** Optional centred label. */
   doc?: RichDoc;
   textStyle?: Partial<TextStyle>;
@@ -311,6 +417,8 @@ export type PathElement = ElementBase & {
   stroke?: string;
   strokeWidth?: number;
   dash?: "solid" | "dashed" | "dotted";
+  /** The gap between dots or dashes, as a multiple of `strokeWidth` (default 2.2). */
+  dashGap?: number;
   arrowStart?: boolean;
   arrowEnd?: boolean;
 };
@@ -374,6 +482,13 @@ export type GroupElement = ElementBase & {
   alt?: string;
   /** The Figure template and values the group was drawn from, when it is a Figure. */
   figure?: FigureRef;
+  /**
+   * The adaptive template and input the group was laid out from (TEACH-205 part b): the editor
+   * re-lays the group from it when an item is edited, added or removed. Ungrouping drops it.
+   */
+  layout?: LayoutRef;
+  /** A `layout` group's direction stamp, in its own frame, as `Slide.dir` (TEACH-75 part z). */
+  dir?: DirStamp;
 };
 
 export type SlideElement =
@@ -409,6 +524,7 @@ const elementBase = {
   revealStep: z.number().optional(),
   reveal: z.enum(["fade", "rise", "none"]).optional(),
   morphKey: z.string().optional(),
+  rtl: ElementRtlSchema.optional(),
   // F06 / F07 provenance (ADR 0025 §2). Declared here because `z.object` strips unknown keys.
   ...provenanceFields,
 };
@@ -425,14 +541,20 @@ export const TextPresetSchema = z.enum([
 export const TextStyleSchema = z.object({
   preset: TextPresetSchema,
   fontFamily: z.string().optional(),
+  letterSpacing: z
+    .string()
+    .regex(/^-?(0|0?\.\d{1,3})em$/)
+    .optional(),
   fontSize: z.number().optional(),
   lineHeight: z.number().optional(),
   fontWeight: z.number().optional(),
   color: z.string().optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   valign: z.enum(["top", "middle", "bottom"]).optional(),
+  lang: LanguageTagSchema.optional(),
   autoHeight: z.boolean().optional(),
   autoFit: z.boolean().optional(),
+  fixedSize: z.boolean().optional(),
   padding: z.number().optional(),
   background: z.string().optional(),
   radius: z.number().optional(),
@@ -447,6 +569,9 @@ export const ShapeKindSchema = z.enum([
   "star",
   "speech",
   "pill",
+  "hexagon",
+  "octagon",
+  "notch",
 ]);
 
 const TextElementSchema = z.object({
@@ -546,6 +671,26 @@ const ImageElementSchema = z.object({
   fit: z.enum(["cover", "contain"]),
   crop: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
   focal: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).optional(),
+  subject: z
+    .object({
+      x: z.number().min(0).max(1),
+      y: z.number().min(0).max(1),
+      w: z.number().min(0).max(1),
+      h: z.number().min(0).max(1),
+    })
+    .optional(),
+  backdrop: z
+    .object({
+      plain: z.object({
+        top: z.boolean(),
+        right: z.boolean(),
+        bottom: z.boolean(),
+        left: z.boolean(),
+      }),
+      colour: z.string().max(32),
+    })
+    .optional(),
+  kind: z.enum(["object", "scene"]).optional(),
   imageTransform: z
     .object({
       straighten: z.number().min(-45).max(45).optional(),
@@ -555,6 +700,7 @@ const ImageElementSchema = z.object({
     })
     .optional(),
   radius: z.number().optional(),
+  mask: z.enum(["hexagon"]).optional(),
   credit: z.string().optional(),
   // The credit line renders as an anchor in the image toolbar, and an imported lesson is
   // untrusted JSON: a `javascript:` address here would be a click away from running. Same check
@@ -563,6 +709,7 @@ const ImageElementSchema = z.object({
   creditUrl: z.string().refine(isLinkableHref, "creditUrl must be an http(s) address").optional(),
   source: PhotoSourceSchema.optional(),
   builds: z.number().int().min(0).max(32).optional(),
+  buildFrom: z.number().int().min(0).max(64).optional(),
   // A source that does not parse (oversize, unknown kind) is dropped, never the slide: the drawing
   // in `src` still shows, and only the settings panel goes without it.
   diagram: DiagramSourceSchema.optional().catch(undefined),
@@ -576,6 +723,13 @@ const ShapeElementSchema = z.object({
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   radius: z.number().optional(),
+  shadow: z
+    .object({
+      x: z.number().min(-16).max(16),
+      y: z.number().min(-16).max(16),
+      color: z.string().max(32),
+    })
+    .optional(),
   doc: RichDocSchema.optional(),
   textStyle: TextStyleSchema.partial().optional(),
 });
@@ -602,6 +756,7 @@ const PathElementSchema = z.object({
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   dash: z.enum(["solid", "dashed", "dotted"]).optional(),
+  dashGap: z.number().positive().optional(),
   arrowStart: z.boolean().optional(),
   arrowEnd: z.boolean().optional(),
 });
@@ -660,6 +815,8 @@ const GroupElementSchema = z.object({
   },
   alt: z.string().optional(),
   figure: FigureRefSchema.optional(),
+  layout: LayoutRefSchema.optional(),
+  dir: DirStampSchema.optional(),
 });
 
 export const SlideElementSchema: z.ZodType<SlideElement> = z.discriminatedUnion("type", [
@@ -692,6 +849,7 @@ export const QuestionDataSchema = z.discriminatedUnion("type", [
     options: z.array(z.object({ id: z.string(), correct: z.boolean() })),
     multi: z.boolean().optional(),
     explanation: z.string().optional(),
+    oneStep: z.boolean().optional(),
   }),
   z.object({
     type: z.literal("matching"),
@@ -714,7 +872,11 @@ export const QuestionDataSchema = z.discriminatedUnion("type", [
     ),
   }),
   z.object({ type: z.literal("sort"), order: z.array(z.string()) }),
-  z.object({ type: z.literal("open-response"), modelAnswer: z.string().optional() }),
+  z.object({
+    type: z.literal("open-response"),
+    modelAnswer: z.string().optional(),
+    working: z.array(z.string()).optional(),
+  }),
 ]);
 
 export const SlideKindSchema = z.enum([
@@ -761,6 +923,19 @@ export const SlideSchema = z
     transition: z.enum(["none", "fade", "push", "morph"]).optional(),
     question: QuestionDataSchema.optional(),
     diagram: z.object({ instruction: z.string().max(400) }).optional(),
+    freeLayout: z
+      .object({
+        id: z.string(),
+        name: z.string().optional(),
+        x: z.number(),
+        y: z.number(),
+        w: z.number(),
+        h: z.number(),
+        layout: LayoutRefSchema,
+      })
+      .optional(),
+    answersRole: z.enum(["guard", "answers"]).optional(),
+    dir: DirStampSchema.optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential
@@ -861,6 +1036,10 @@ export function slideStepCount(slide: Slide): number {
   const walk = (els: SlideElement[]) => {
     for (const el of els) {
       if (el.revealStep && el.revealStep > max) max = el.revealStep;
+      // A diagram on rows ends at its last build; a myth strike shows on its own step (part c).
+      const bound = rowBound(el);
+      if (bound) max = Math.max(max, rowBuildEnd(bound));
+      if (el.type === "text") max = Math.max(max, richDocMaxStrikeStep(el.doc));
       if (el.type === "group") walk(el.children);
     }
   };
@@ -871,12 +1050,24 @@ export function slideStepCount(slide: Slide): number {
   return max + diagramBuildSteps(slide) + answerRevealSteps(slide);
 }
 
-/** The most builds any drawn diagram on the slide has (they play together, one per Next). */
+/** A drawn diagram whose builds ride slide rows (`buildFrom`, TEACH-205 part c). */
+const rowBound = (el: SlideElement): ImageElement | undefined =>
+  el.type === "image" && el.buildFrom !== undefined && (el.builds ?? 0) > 0 ? el : undefined;
+
+/** The step that shows a row-bound diagram's last build. */
+const rowBuildEnd = (el: ImageElement): number =>
+  (el.buildFrom ?? 0) + Math.floor(el.builds ?? 0) - 1;
+
+/**
+ * The most builds any drawn diagram on the slide plays after the element reveals (they play
+ * together, one per Next). A diagram on rows (`buildFrom`) plays with its rows and is not counted.
+ */
 export function diagramBuildSteps(slide: Slide): number {
   let max = 0;
   const walk = (els: SlideElement[]) => {
     for (const el of els) {
-      if (el.type === "image" && el.builds && el.builds > max) max = Math.floor(el.builds);
+      if (el.type === "image" && el.builds && el.builds > max && !rowBound(el))
+        max = Math.floor(el.builds);
       if (el.type === "group") walk(el.children);
     }
   };
@@ -885,10 +1076,17 @@ export function diagramBuildSteps(slide: Slide): number {
 }
 
 /**
- * Which build a drawn diagram shows at `step`: 0 while the element reveals run, then one more
- * per step, held at the last build once the answer reveal starts.
+ * Which build a drawn diagram shows at `step`. Pass the diagram as `element` when it may ride
+ * rows: with `buildFrom`, build *i* shows at step `buildFrom + i - 1` (0 before, held at the last).
+ * Otherwise (and without `element`): 0 while the element reveals run, then one more per step,
+ * held at the last build once the answer reveal starts.
  */
-export function diagramBuildAt(slide: Slide, step: number): number {
+export function diagramBuildAt(slide: Slide, step: number, element?: SlideElement): number {
+  const bound = element && rowBound(element);
+  if (bound) {
+    const total = Math.floor(bound.builds ?? 0);
+    return Math.max(0, Math.min(total, step - (bound.buildFrom ?? 0) + 1));
+  }
   const total = diagramBuildSteps(slide);
   if (total === 0) return 0;
   const start = slideStepCount(slide) - answerRevealSteps(slide) - total;
@@ -904,7 +1102,8 @@ export function diagramBuildAt(slide: Slide, step: number): number {
 export function answerRevealSteps(slide: Slide): number {
   if (!hasRevealableAnswer(slide)) return 0;
   const q = slide.question;
-  if (q?.type === "multiple-choice") return q.options.filter((o) => !o.correct).length + 1;
+  if (q?.type === "multiple-choice")
+    return q.oneStep ? 1 : q.options.filter((o) => !o.correct).length + 1;
   if (q?.type === "true-false") return Math.max(1, countOptions(slide.elements));
   return 1;
 }
@@ -940,6 +1139,95 @@ function countOptions(els: SlideElement[]): number {
 export function hasRevealableAnswer(slide: Slide): boolean {
   const q = slide.question;
   if (!q) return false;
-  if (q.type === "open-response") return !!q.modelAnswer?.trim();
+  if (q.type === "open-response")
+    return !!q.modelAnswer?.trim() && !revealsOwnAnswers(slide) && !answersOffSlide(slide);
   return true;
+}
+
+/**
+ * Whether the slide's model answer lives only on the end-of-deck Answers slides: a practice slide
+ * (kind `open-response`) or the exit ticket. The slide is the pupils' brief and nothing builds on
+ * it (ruling 231, practice-exit gold "Reveal states: none"), so no surface draws the answer on it.
+ * The answer stays on the question for the Answers slides, the drawer, the worksheet and the key.
+ */
+export function answersOffSlide(slide: Pick<Slide, "kind" | "question">): boolean {
+  return (
+    slide.question?.type === "open-response" &&
+    (slide.kind === "open-response" || slide.kind === "exit-ticket")
+  );
+}
+
+/**
+ * An open response's answer key as one text, each answer followed by its working after " — "
+ * (the stored fields keep them apart): what the answer drawer edits, the answer reveal, the
+ * PowerPoint key and plain text. Untrimmed, so the drawer keeps what the teacher is typing.
+ */
+export function answerKeyText(q: { modelAnswer?: string; working?: string[] }): string {
+  const lines = (q.modelAnswer ?? "").split("\n");
+  const work = q.working ?? [];
+  return lines
+    .map((l, i) => {
+      const w = work[i];
+      return w?.trim() && l.trim() ? `${l} — ${w}` : l;
+    })
+    .join("\n");
+}
+
+/** A short answer (bold in the end Answers ledger, with optional working) is at most this many words. */
+export const SHORT_ANSWER_WORDS = 4;
+/** A working line: digits and an operator or "=", e.g. "16 ÷ 2 = 8; 8 ÷ 2 = 4". */
+const isCalculation = (s: string) => /\d/.test(s) && /[=÷×+−*/]/.test(s);
+const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+/**
+ * One answer line read as answer and working (the inverse of `answerKeyText`'s join): what follows
+ * " — " is the working when the answer before it is short (at most `SHORT_ANSWER_WORDS` words,
+ * 40 characters, after any "1." number) or when it is a calculation. Anything else is all answer.
+ */
+export function splitWorkingLine(line: string): { answer: string; working?: string } {
+  const m = /^(\s*\d+[.)]\s*)?(.+?)\s+[—–]\s+(.+)$/.exec(line);
+  if (!m) return { answer: line };
+  const head = m[2] as string;
+  const tail = m[3] as string;
+  const short = head.trim().length <= 40 && wordCount(head) <= SHORT_ANSWER_WORDS;
+  if (!short && !isCalculation(tail)) return { answer: line };
+  return { answer: `${m[1] ?? ""}${head}`, working: tail };
+}
+
+/**
+ * The answer drawer's joined text back into the question's fields, line by line, so each working
+ * stays with its own answer when lines are deleted or reordered (`answerKeyText` joins them).
+ */
+export function answerKeyFields(text: string): { modelAnswer: string; working?: string[] } {
+  const lines = text.split("\n").map(splitWorkingLine);
+  const working = lines.map((l) => l.working ?? "");
+  return {
+    modelAnswer: lines.map((l) => l.answer).join("\n"),
+    ...(working.some((w) => w.trim()) ? { working } : {}),
+  };
+}
+
+/**
+ * Whether the slide reveals an open response's answers itself, one element step per given answer
+ * (the quick check, TEACH-101 part g): its model answer stays on the question for the worksheet,
+ * the answer drawer and the PowerPoint key, and Present adds no extra step to show it again.
+ */
+export function revealsOwnAnswers(slide: Pick<Slide, "question" | "elements">): boolean {
+  const q = slide.question;
+  if (q?.type !== "open-response" || !q.modelAnswer?.trim()) return false;
+  // A blank answer is a "n. …" line in a numbered list (`listAnswers`): it has no step of its own.
+  const lines = q.modelAnswer
+    .trim()
+    .split("\n")
+    .filter((l) => l.trim() && !/^\d+\.\s*…$/.test(l.trim())).length;
+  const steps = new Set<number>();
+  const walk = (els: SlideElement[]) => {
+    for (const el of els) {
+      if (el.revealStep && el.revealStep > 0) steps.add(el.revealStep);
+      if (el.type === "group") walk(el.children);
+    }
+  };
+  walk(slide.elements);
+  // One answer counts: a single-answer set reveals it at its one step and Present adds none.
+  return lines >= 1 && steps.size === lines && Math.max(...steps) === lines;
 }

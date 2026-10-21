@@ -1,0 +1,68 @@
+{
+  "early": {
+    "title": {
+      "cap": 5,
+      "hardMax": 5
+    },
+    "claim": {
+      "cap": 12,
+      "hardMax": 15
+    },
+    "fact": {
+      "cap": 13,
+      "hardMax": 13
+    },
+    "factPicture": {
+      "cap": 9,
+      "hardMax": 9
+    },
+    "proof": {
+      "cap": 13,
+      "hardMax": 13
+    }
+  },
+  "primary": {
+    "title": {
+      "cap": 5,
+      "hardMax": 5
+    },
+    "claim": {
+      "cap": 12,
+      "hardMax": 16
+    },
+    "fact": {
+      "cap": 18,
+      "hardMax": 18
+    },
+    "factPicture": {
+      "cap": 9,
+      "hardMax": 9
+    },
+    "proof": {
+      "cap": 14,
+      "hardMax": 16
+    }
+  },
+  "secondary": {
+    "title": {
+      "cap": 6,
+      "hardMax": 6
+    },
+    "claim": {
+      "cap": 12,
+      "hardMax": 25
+    },
+    "fact": {
+      "cap": 18,
+      "hardMax": 36
+    },
+    "factPicture": {
+      "cap": 14,
+      "hardMax": 16
+    },
+    "proof": {
+      "cap": 14,
+      "hardMax": 40
+    }
+  }
+}

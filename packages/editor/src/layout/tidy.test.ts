@@ -10,6 +10,7 @@ import {
 } from "@tj/domain/documents";
 import { generatedFrom } from "@tj/domain/documents/fixtures";
 import { BODY_Y, materialiseSlide, measureHeadless, SAFE, SAFE_BOTTOM } from "@tj/slides";
+import { layoutGroup } from "@tj/slides/relayout";
 import { docFromText, newLesson, newSlide } from "../model/factories";
 import { getTheme } from "../model/themes";
 import { docToPlainText } from "../text/static";
@@ -980,5 +981,32 @@ describe("fills continuations and splits worked examples (TEACH-18)", () => {
     expect(carried.reveal).toBe("rise");
     expect(cont?.elements.some((e) => e.name === CONTINUED_LABEL)).toBe(true);
     expect(reflowSlide(cont, getTheme(freud.themeId), measure).overflow).toEqual([]);
+  });
+});
+
+describe("tidySlide leaves an adaptive layout to its template (TEACH-205 part b)", () => {
+  test("a LayoutRef group is unchanged and stays on its slide, whatever Tidy does around it", () => {
+    const lesson = newLesson("Tidy", "splash");
+    const first = lesson.slides[0];
+    if (!first) throw new Error("seed");
+    const ref = {
+      template: "cards-grid" as const,
+      input: {
+        heading: "Parts of a plant",
+        // Past what the grid holds: the template reports it over, Tidy must still not touch it.
+        grid: ["Roots", "Stem", "Leaves"].map((label) => ({ label, text: "word ".repeat(90) })),
+      },
+    };
+    const group = layoutGroup(ref, theme, "ks2", "g1");
+    const long = "A paragraph the teacher typed that runs on and on. ".repeat(30);
+    first.elements = [group, text("t", 420, 40, long)];
+    const { lesson: out, outcome } = tidySlide(lesson, first.id, measureHeadless(theme), {
+      split: true,
+    });
+    // Tidy did work on the slide (the teacher's paragraph), and none of it on the layout.
+    expect(outcome.changed).toBe(true);
+    const g = out.slides.flatMap((s) => s.elements).find((e) => e.id === "g1");
+    expect(g).toEqual(group);
+    expect(out.slides[0]?.elements.some((e) => e.id === "g1")).toBe(true);
   });
 });

@@ -1,0 +1,181 @@
+{
+  "items-row": {
+    "slide": {
+      "template": "items-row",
+      "heading": "Three types of blood vessel",
+      "accentWord": "blood vessel",
+      "lead": null,
+      "ordered": true,
+      "motif": "vessel",
+      "items": [
+        {
+          "name": "Arteries",
+          "text": "Carry blood away from the heart.",
+          "icon": null
+        },
+        {
+          "name": "Capillaries",
+          "text": "Tiny, thin-walled vessels where substances pass between blood and cells.",
+          "icon": null
+        },
+        {
+          "name": "Veins",
+          "text": "Carry blood back towards the heart.",
+          "icon": null
+        }
+      ]
+    },
+    "flow": [
+      {
+        "slide": 5,
+        "does": "Explain the different jobs of three vessel types; 6 minutes.",
+        "shape": "sequence",
+        "look_at": {
+          "kind": "diagram",
+          "shows": "Arteries leading to capillaries and then veins."
+        },
+        "teaches": [1, 2]
+      }
+    ]
+  },
+  "panel-list": {
+    "slide": {
+      "template": "panel-list",
+      "heading": "Compare rock properties",
+      "lead": "A property describes a rock.",
+      "panel": {
+        "picture": {
+          "shows": "Rock specimens beside a magnifying glass, a hand feeling a surface and a coin making a scratch test",
+          "must_see": ["magnifying glass", "hand touching rock", "coin scratch test"],
+          "subject": "generic"
+        }
+      },
+      "items": [
+        {
+          "name": "Appearance",
+          "text": "Look for colours, layers, crystals and grains.",
+          "icon": "eye"
+        },
+        {
+          "name": "Texture",
+          "text": "Feel whether the surface is rough or smooth.",
+          "icon": "hand"
+        },
+        {
+          "name": "Hardness",
+          "text": "Harder rocks are more difficult to scratch.",
+          "icon": "coin"
+        }
+      ]
+    },
+    "flow": [
+      {
+        "slide": 7,
+        "does": "Introduce simple ways to compare rocks",
+        "shape": "a set of kinds or examples",
+        "look_at": {
+          "kind": "picture",
+          "shows": "Rock samples being observed, touched and tested for scratching"
+        },
+        "teaches": [2]
+      }
+    ]
+  },
+  "split-compare-3": {
+    "slide": {
+      "template": "split-compare",
+      "heading": "Three types of blood vessel",
+      "accentWord": null,
+      "sides": [
+        {
+          "title": "Arteries",
+          "text": "Carry blood away from the heart.",
+          "quote": null,
+          "picture": {
+            "kind": "labelled-diagram",
+            "shows": "A thick-walled artery with a flow arrow directed away from a small heart symbol",
+            "labels": ["Thick wall", "Away"]
+          }
+        },
+        {
+          "title": "Capillaries",
+          "text": "Exchange substances through very thin walls.",
+          "quote": null,
+          "picture": {
+            "kind": "labelled-diagram",
+            "shows": "A fine capillary beside body cells, with arrows crossing its thin wall in both directions",
+            "labels": ["Thin wall", "Body cells"]
+          }
+        },
+        {
+          "title": "Veins",
+          "text": "Carry blood towards the heart.",
+          "quote": null,
+          "picture": {
+            "kind": "labelled-diagram",
+            "shows": "A vein with an internal valve and a flow arrow directed towards a small heart symbol",
+            "labels": ["Valve", "Towards"]
+          }
+        }
+      ]
+    },
+    "flow": [
+      {
+        "slide": 6,
+        "does": "Distinguish arteries, capillaries and veins",
+        "shape": "comparison",
+        "look_at": {
+          "kind": "diagram",
+          "shows": "Vessel structure and flow direction for each vessel type"
+        },
+        "teaches": [1]
+      }
+    ]
+  },
+  "split-compare-2": {
+    "slide": {
+      "template": "split-compare",
+      "heading": "Lava flow shapes the volcano",
+      "accentWord": "Lava flow",
+      "sides": [
+        {
+          "title": "Shield",
+          "text": "Runny lava travels far, building broad, gentle slopes. Gas escapes easily; eruptions are usually less explosive.",
+          "quote": null,
+          "picture": {
+            "shows": "A shield volcano in profile with broad gentle slopes and a long thin lava flow",
+            "must_see": ["broad volcanic base", "gentle slopes", "long lava flow"],
+            "subject": "generic"
+          }
+        },
+        {
+          "title": "Composite",
+          "text": "Thicker lava travels less far, building steep slopes. Trapped gas makes eruptions more explosive; ash adds layers.",
+          "quote": null,
+          "picture": {
+            "shows": "A composite volcano in profile with steep slopes, short thick lava flows and an ash plume",
+            "must_see": [
+              "steep volcanic slopes",
+              "short lava flow",
+              "ash plume",
+              "alternating internal layers"
+            ],
+            "subject": "generic"
+          }
+        }
+      ]
+    },
+    "flow": [
+      {
+        "slide": 7,
+        "does": "Link lava flow, volcano shape and eruption style; 7 minutes.",
+        "shape": "comparison",
+        "look_at": {
+          "kind": "picture",
+          "shows": "A broad shield volcano beside a steep composite volcano, with contrasting lava flows."
+        },
+        "teaches": [3]
+      }
+    ]
+  }
+}

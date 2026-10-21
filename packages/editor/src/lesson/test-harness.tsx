@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Lesson, ShapeElement } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { newLesson, uid } from "../model/factories";
+import { loadLayoutEditing } from "../model/layout-editing";
 import { LessonEditor, type LessonEditorProps } from "./LessonEditor";
 
 /*
@@ -104,6 +105,7 @@ export const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(()
  */
 export async function loadTextEditor(): Promise<void> {
   await Promise.all([
+    loadLayoutEditing(),
     import("../slide/elements/EditableText"),
     import("../slide/elements/TextEditor"),
   ]);

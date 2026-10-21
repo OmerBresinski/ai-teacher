@@ -1,5 +1,13 @@
 import type { Db, Sql } from "@tj/db";
-import type { JobId, JobName, JobPayloads, JobProgress, JobResult, WorkspaceId } from "@tj/domain";
+import type {
+  JobId,
+  JobName,
+  JobPayloads,
+  JobProgress,
+  JobResult,
+  SlideDraftPayload,
+  WorkspaceId,
+} from "@tj/domain";
 import type { PgBoss } from "pg-boss";
 import type { Logger } from "pino";
 
@@ -51,6 +59,13 @@ export interface JobContext<K extends JobName, D = unknown> {
    * event.
    */
   progress: (percent?: number, message?: string, extra?: ProgressExtra) => Promise<void>;
+  /**
+   * Live writing (ADR 0039): stream a `slide-draft` event, the slide being written as it stands.
+   * Fire and forget: throttled to one burst per 200 ms (the newest draft per slide wins, a
+   * `final` draft is never replaced by a words draft), best effort, and every draft of the job
+   * is pruned from `job_events` when the handler settles. Optional so test contexts may omit it.
+   */
+  draft?: (draft: SlideDraftPayload) => void;
   /** Child logger with `jobId`, `workspaceId`, `job` bound. Never log payload/content bodies. */
   logger: Logger;
   /** App-owned dependencies supplied at worker boot; never import app modules from `@tj/jobs`. */
@@ -62,6 +77,17 @@ export interface JobContext<K extends JobName, D = unknown> {
    * releases the lock. Hand-built test contexts may leave it out: `undefined` reads as `true`.
    */
   attemptsLeft?: boolean;
+  /** This attempt's number, from 0 (pg-boss `retryCount`). `runJob` always sets it. */
+  attempt?: number;
+  /**
+   * Runs `hook` once this attempt is settled: after its terminal event (or its retry notice) is
+   * written, or after the attempt failed to write one. A handler releases its generating lock
+   * here (TEACH-202 part j), so a client that sees the lock gone can always find the terminal
+   * event; releasing it first let a page read an unlocked row while it still waited for the
+   * outcome. `runJob` always sets it; hand-built test contexts may leave it out, and a handler then
+   * runs the work itself.
+   */
+  afterSettle?: (hook: () => Promise<void>) => void;
 }
 
 /** The optional fields of a `progress` event beyond `percent` and `message`. */

@@ -21,8 +21,8 @@ import {
 import pino from "pino";
 import { cancel } from "./enqueue";
 import type { emitJobEvent } from "./events";
-import type { BossJob } from "./run-job";
-import { dispositionForTerminal, runJob } from "./run-job";
+import type { BossJob, JobFailureReport } from "./run-job";
+import { dispositionForTerminal, lessonIdOf, runJob } from "./run-job";
 import { defineJob, type JobRegistry, type JobsContext, NonRetryableError } from "./types";
 
 const t = await withTestDb();
@@ -134,9 +134,11 @@ describeDb("runJob dependencies", () => {
           throw error;
         }),
       };
+      const reports: JobFailureReport[] = [];
       const outcome = await runJob({ boss, db: unsafeDb, sql }, "lesson.cascade", registry, job, {
         deps: undefined,
         logger,
+        onFailure: (report) => reports.push(report),
         ...(mode === "infrastructure"
           ? {
               emit: async () => {
@@ -157,6 +159,23 @@ describeDb("runJob dependencies", () => {
       const events = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 10 });
       expect(JSON.stringify({ outcome, events, lines })).not.toContain(marker);
       expect(lines.join("")).toContain(jobId);
+      // ADR 0041: the error tracker hears of every failed attempt, with the raw error and ids.
+      const expected = {
+        retry: { kind: "handler", willRetry: true, attempt: 0 },
+        terminal: { kind: "handler", willRetry: false, attempt: 1 },
+        "non-retryable": { kind: "handler", willRetry: false, attempt: 0 },
+        infrastructure: { kind: "infrastructure", willRetry: true, attempt: 0 },
+      }[mode as "retry"];
+      if (expected) {
+        expect(reports).toHaveLength(1);
+        expect(reports[0]).toMatchObject({
+          ...expected,
+          job: "lesson.cascade",
+          jobId,
+          workspaceId,
+        });
+        expect(reports[0]?.error).toBe(error);
+      } else expect(reports).toHaveLength(0);
       if (mode === "retry")
         expect(events.at(-1)?.payload).toMatchObject({
           type: "progress",
@@ -169,6 +188,28 @@ describeDb("runJob dependencies", () => {
         });
     },
   );
+
+  test("every line of a lesson job carries its lessonId, and the handler sees its attempt", async () => {
+    const lines: string[] = [];
+    const logger = pino({ level: "trace" }, { write: (line) => void lines.push(line) });
+    const jobId = newId<JobId>();
+    let attempt: number | undefined;
+    const registry = {
+      ...stubs,
+      "lesson.cascade": defineJob("lesson.cascade", async (ctx) => {
+        attempt = ctx.attempt;
+        ctx.logger.info("inside the handler");
+      }),
+    };
+    await runJob({ boss, db: unsafeDb, sql }, "lesson.cascade", registry, cascadeJob(jobId), {
+      deps: undefined,
+      logger,
+    });
+    expect(attempt).toBe(0);
+    const parsed = lines.map((l) => JSON.parse(l) as { lessonId?: string; msg?: string });
+    expect(parsed.map((l) => l.msg)).toContain("inside the handler");
+    for (const line of parsed) expect(line.lessonId).toBe(lessonId);
+  });
 
   test("a handler's return value rides on the completed event as `result` (ADR 0025 §19)", async () => {
     const result: JobResult = { job: "lesson.cascade", proposals: [], flagged: [] };
@@ -410,6 +451,85 @@ describeDb("runJob dependencies", () => {
     const events = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 10 });
     expect(events.map((e) => e.type)).toEqual(["started", "completed"]);
   });
+
+  describe("slide drafts (ADR 0039)", () => {
+    const slide = { id: "s3", kind: "content" as const, elements: [], notes: "" };
+    const draft = (index: number) => ({ index, slideId: `s${index + 1}`, slide });
+    const types = async (jobId: JobId) =>
+      (await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 500 })).map((r) => r.type);
+    const run = async (jobId: JobId, mode: "complete" | "fail" | "retry" | "cancel") => {
+      let cancelled = false;
+      const ctx: JobsContext = {
+        boss: {
+          findJobs: async () => (cancelled ? [{ state: "cancelled" }] : []),
+        } as unknown as JobsContext["boss"],
+        db: unsafeDb,
+        sql,
+      };
+      const registry = {
+        ...stubs,
+        "lesson.cascade": defineJob("lesson.cascade", async ({ draft: send }) => {
+          for (let i = 2; i < 6; i++) send?.(draft(i));
+          await new Promise((r) => setTimeout(r, 30));
+          if (mode === "fail") throw new NonRetryableError("no");
+          if (mode === "retry") throw new Error("again");
+          if (mode === "cancel") cancelled = true;
+        }),
+      } satisfies JobRegistry;
+      return runJob(ctx, "lesson.cascade", registry, cascadeJob(jobId), {
+        deps: undefined,
+        logger: quiet,
+        draftMinIntervalMs: 0,
+      });
+    };
+
+    test.each(["complete", "fail", "retry", "cancel"] as const)(
+      "a %s attempt leaves no draft rows and keeps every other event",
+      async (mode) => {
+        const jobId = newId<JobId>();
+        const other = newId<JobId>();
+        // Another job's draft is never touched by this job's prune.
+        await insertJobEvent(unsafeDb, {
+          type: "slide-draft",
+          jobId: other,
+          workspaceId,
+          at: new Date().toISOString(),
+          draft: draft(2),
+        });
+        await run(jobId, mode);
+        const left = await types(jobId);
+        expect(left).not.toContain("slide-draft");
+        expect(left[0]).toBe("started");
+        if (mode !== "retry")
+          expect(["completed", "failed", "cancelled"]).toContain(left.at(-1) ?? "");
+        expect(await types(other)).toEqual(["slide-draft"]);
+      },
+    );
+
+    test("drafts a crashed attempt left behind go when the job starts again", async () => {
+      const jobId = newId<JobId>();
+      await insertJobEvent(unsafeDb, {
+        type: "slide-draft",
+        jobId,
+        workspaceId,
+        at: new Date().toISOString(),
+        draft: draft(4),
+      });
+      await insertJobEvent(unsafeDb, {
+        type: "started",
+        jobId,
+        workspaceId,
+        at: new Date().toISOString(),
+      });
+      // The attempt is stopped before it drafts anything: the old row is gone at its start.
+      const ctx: JobsContext = { boss, db: unsafeDb, sql };
+      await runJob(ctx, "lesson.cascade", stubs, cascadeJob(jobId), {
+        deps: undefined,
+        logger: quiet,
+      });
+      expect(await types(jobId)).not.toContain("slide-draft");
+    });
+  });
 });
 
 describe("dispositionForTerminal", () => {
@@ -462,5 +582,14 @@ describe("dispositionForTerminal", () => {
     expect(() => dispositionForTerminal(jobId, row({ type: "started", ...base }))).toThrow(
       "not a terminal event type",
     );
+  });
+});
+
+describe("lessonIdOf", () => {
+  test("reads a string lessonId off an unvalidated payload, else undefined", () => {
+    expect(lessonIdOf({ lessonId: "abc" })).toBe("abc");
+    expect(lessonIdOf({ lessonId: 7 })).toBeUndefined();
+    expect(lessonIdOf(null)).toBeUndefined();
+    expect(lessonIdOf("x")).toBeUndefined();
   });
 });

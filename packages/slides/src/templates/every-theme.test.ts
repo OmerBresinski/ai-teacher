@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateId, type TemplateInput } from "./index";
+import { REGISTERED } from "./registered";
 import { templateSamples } from "./samples";
 
 /*
@@ -27,6 +28,23 @@ const ALL: TemplateId[] = [
   "practice",
   "exit-ticket",
   "equation-hero",
+  "panel-list",
+  "split-compare",
+  "items-row",
+  // TEACH-17 part b (C1).
+  "worked",
+  // TEACH-75 part ac (C4).
+  "stages",
+  // TEACH-239 part b (C7).
+  "figure",
+  // TEACH-75 part ab (C2).
+  "source",
+  // TEACH-75 part ad (C5).
+  "reasons",
+  // TEACH-75 part ag (G1).
+  "myth",
+  // TEACH-106 part b: every layout registered in `registered.ts`.
+  ...(Object.keys(REGISTERED) as TemplateId[]),
 ];
 
 type Sized = {
@@ -47,9 +65,9 @@ const sizes = (els: readonly unknown[]): { name: string; size: number }[] =>
   ]);
 
 describe("every writer template on every theme", () => {
-  test("the samples cover all 16 templates and there are 9 themes", () => {
+  test("the samples cover all 17 templates and there are 9 themes", () => {
     expect(templateSamples().map((s) => s.template)).toEqual(ALL);
-    expect(THEMES).toHaveLength(9);
+    expect(THEMES).toHaveLength(16); // the round 5 sixteen (TEACH-215 part c, 16 Oct 2026)
   });
 
   for (const theme of THEMES)
@@ -61,8 +79,11 @@ describe("every writer template on every theme", () => {
           for (const o of r.over) faults.push(`${input.template} over: ${o}`);
           for (const d of r.diagram ?? []) faults.push(`${input.template} diagram: ${d}`);
           if (!r.slide.elements.length) faults.push(`${input.template}: empty slide`);
+          // A number badge is a label at the gold's badge size (TEACH-215 part j), not reading
+          // text: it holds the caption floor.
           for (const { name, size } of sizes(r.slide.elements))
-            if (size < MIN_FONT_SIZE.body) faults.push(`${input.template} ${name} ${size}`);
+            if (size < (name === "surface:badge" ? MIN_FONT_SIZE.caption : MIN_FONT_SIZE.body))
+              faults.push(`${input.template} ${name} ${size}`);
         }
         expect(faults).toEqual([]);
       });
@@ -133,5 +154,37 @@ describe("never throws", () => {
           expect(Array.isArray(r.slide.elements)).toBe(true);
           expect(Array.isArray(r.over)).toBe(true);
         }
+    });
+});
+
+// TEACH-75 part af (C8): a step with its library model, on every theme and stage.
+describe("steps with a model on every theme", () => {
+  const svg = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" class="slide tk theme-primary" viewBox="0 0 990 450"><g><rect width="90" height="90"/><text x="9" y="40">Sand</text></g></svg>',
+  )}`;
+  const input: TemplateInput = {
+    template: "steps",
+    heading: "Filter",
+    step: { n: 2, do: "Pour the mixture through filter paper.", see: "Water drips through." },
+    figure: { drawn: { src: svg, aspect: 2.2, bare: true } },
+  };
+  for (const stage of ["ks1", "ks2", "ks3"] as Stage[])
+    test(`${stage}: nothing over, every stored size its role's at the stage, none under the floor`, () => {
+      for (const theme of THEMES) {
+        const r = layoutTemplate(input, theme, stage);
+        expect(r.over).toEqual([]);
+        for (const e of r.slide.elements as {
+          type: string;
+          style?: { fontSize?: number; preset?: "body" | "heading" | "small" };
+        }[]) {
+          const size = e.style?.fontSize;
+          if (e.type !== "text" || size === undefined) continue;
+          expect(size).toBeGreaterThanOrEqual(MIN_FONT_SIZE.body);
+          const style = { ...e.style, preset: e.style?.preset ?? ("body" as const) };
+          expect(resolveTextStyle(style as never, atKeyStage(theme, stage), "body").fontSize).toBe(
+            size,
+          );
+        }
+      }
     });
 });

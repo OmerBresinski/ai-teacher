@@ -70,6 +70,31 @@ function markSpec(spec: Record<string, unknown>, mark: string): Record<string, u
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * A topic carrying this phrase holds its lesson's review (TEACH-202 part j): every slide is
+ * written, then the generate job's `evaluate` call waits until the job is cancelled. A spec that
+ * clicks Stop after the slides arrive would otherwise race the paced run, which finishes about two
+ * seconds after its first slide; a cancel that lands after the job completed rightly reports
+ * `completed`, so the spec failed whenever CI was slow to deliver the click.
+ */
+export const FAKE_HOLD_TOPIC = "held at review";
+/** How long a held review waits for its cancel before answering, so no job is stuck forever. */
+export const FAKE_HOLD_MAX_MS = 60_000;
+
+/** Resolves when `signal` aborts or `maxMs` passes, whichever is first. */
+function waitForAbort(signal: AbortSignal | undefined, maxMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, maxMs);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+}
+
 const OUTLINE_INDICES_BY_COUNT = {
   6: [0, 1, 2, 4, 7, 9],
   8: [0, 1, 2, 4, 5, 6, 7, 9],
@@ -87,7 +112,8 @@ function pipelineAnswer(
   selectedOutlineByJob: Map<string, readonly number[]>,
 ): string {
   const version = call.context?.promptVersion ?? "";
-  if (version.startsWith("check-input")) return JSON.stringify({ findings: [] });
+  if (version.startsWith("check-input"))
+    return JSON.stringify({ findings: [], historical_period: null, fiction_in_period: false });
   if (version.startsWith("plan-skeleton")) {
     const requested = Number(/outline has exactly (\d+) slides/.exec(call.promptText)?.[1] ?? 10);
     const indices = OUTLINE_INDICES_BY_COUNT[requested as keyof typeof OUTLINE_INDICES_BY_COUNT];
@@ -191,12 +217,17 @@ export function writerReplayAnswer(call: FakeCall, replay: WriterReplay): FakeRe
 
 export function createPerJobFakeAi(
   env: Pick<Env, "AI_FAKE_DELAY_MS"> & Partial<Pick<Env, "AI_FAKE_WRITER_REPLAY">>,
+  opts: { holdMaxMs?: number } = {},
 ): ConfiguredAi {
   const replay = env.AI_FAKE_WRITER_REPLAY
     ? loadWriterReplay(env.AI_FAKE_WRITER_REPLAY)
     : undefined;
   const byJob = new Map<string, ConfiguredAi>();
   const selectedOutlineByJob = new Map<string, readonly number[]>();
+  // Lessons whose topic asked for a held review (`FAKE_HOLD_TOPIC`): the topic is in the plan
+  // job's prompts, the review is in the generate job, and both carry the lesson id.
+  const heldLessons = new Set<string>();
+  const holdMaxMs = opts.holdMaxMs ?? FAKE_HOLD_MAX_MS;
   const delay = env.AI_FAKE_DELAY_MS;
   const proposal: FakeScriptEntry = async (call) => {
     if (delay > 0) await sleep(delay);
@@ -216,6 +247,18 @@ export function createPerJobFakeAi(
               fallback: async (call) => {
                 const replayed = replay && writerReplayAnswer(call, replay);
                 if (replayed) return replayed;
+                const lessonId = call.context?.lessonId;
+                if (lessonId && call.promptText.includes(FAKE_HOLD_TOPIC))
+                  heldLessons.add(lessonId);
+                if (
+                  lessonId &&
+                  heldLessons.has(lessonId) &&
+                  call.context?.promptVersion?.startsWith("evaluate")
+                ) {
+                  await waitForAbort(call.abortSignal, holdMaxMs);
+                  // Cancelled (or given up on): a later run of this lesson is not held.
+                  heldLessons.delete(lessonId);
+                }
                 if (delay > 0) await sleep(delay);
                 return pipelineAnswer(call, selectedOutlineByJob);
               },

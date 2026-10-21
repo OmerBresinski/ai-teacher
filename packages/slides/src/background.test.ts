@@ -92,9 +92,11 @@ describe("theme art per slide role (UX ruling 107)", () => {
   test("the role mapping: title, content and picture, with the picture's side", () => {
     const t = getTheme("playground");
     expect(slideArtRole(laidOut("title", t, "stack"))).toEqual({ role: "title" });
+    // A theme's cover composition sets every picture variant in it (TEACH-215 part g: Playground's
+    // photo bleeds over the right half), as Geometric's hexagon does.
     expect(slideArtRole(laidOut("title", t, "photo-band"))).toEqual({
       role: "picture",
-      side: "full",
+      side: "right",
     });
     expect(slideArtRole(laidOut("title", t, "split"))).toEqual({ role: "picture", side: "right" });
     expect(slideArtRole(laidOut("image-text", t, "photo-left"))).toEqual({
@@ -176,7 +178,16 @@ describe("theme art per slide role (UX ruling 107)", () => {
       expect(themeArt(t, "content")).toEqual([]);
       expect(themeArt(t, "picture")).toEqual([]);
     }
-    for (const t of THEMES) expect(hasArtVariants(t)).toBe(true);
+    // The round 5 themes (TEACH-215 part c, 16 Oct 2026): art only where Greg's look table
+    // describes it; Poster's bar is the look's accent bar, the rest are flat.
+    // Geometric's dot grid is its ground (`groundArt`, under every element), not role art.
+    // Scrapbook keeps its cover art; its content slides wear the lined ground (TEACH-215 part k).
+    const flat = ["poster", "storytime", "calm", "dark-slate", "dark-ember", "geometric"];
+    for (const t of THEMES.filter((x) => !x.v2 && !flat.includes(x.id)))
+      expect(hasArtVariants(t)).toBe(true);
+    for (const id of flat) expect(hasArtVariants(getTheme(id))).toBe(false);
+    // Theme v2 is the golds' plain paper (TEACH-152 part b): no art on any role.
+    expect(hasArtVariants(getTheme("paper"))).toBe(false);
   });
 
   test("slideBackground: role art, the override, and the slide's own colour or image", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { canonicalArrows } from "@tj/slides/arrow";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
 import { slideRoles } from "./role";
 
@@ -29,6 +30,10 @@ import { slideRoles } from "./role";
  *    a "Do now" starter (register prod-11);
  *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
  *    (ruling 198, register layout-06).
+ *
+ * One since (TEACH-230 part b): practice and exit-ticket slides are the "work alone" layouts, a
+ * grid or a ticket of badged tasks, so they keep their heading and kind and are not compared
+ * element by element with the lab's numbered list.
  */
 /** Each deck slide's role from the run's writer slides (title and objectives first). */
 const rolesOf = (b: string) => {
@@ -70,10 +75,48 @@ const headingOf = (els: El[]) => {
 };
 
 const DIR = join(import.meta.dir, "fixtures/replay");
+/** The themes whose cover TEACH-215 part g recomposed (every round 5 theme but Geometric). */
+const COMPOSED = new Set([
+  "paper",
+  "poster",
+  "treehouse",
+  "reading-room",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
+/** Photo-right and Beacon covers: no question on the picture cover (Greg's call 36, part g). */
+const NO_QUESTION = new Set([
+  "treehouse",
+  "reading-room",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+]);
+const themeOf = (b: string): string =>
+  (JSON.parse(readFileSync(join(DIR, b, "brief.json"), "utf8")) as { theme?: string }).theme ?? "";
 const LESSONS = readdirSync(DIR).sort();
+const SVG_URL = "data:image/svg+xml;charset=utf-8,";
 const stable = (e: El) => {
   // `diagram` (TEACH-97 part h): what a drawing was drawn from; the lab's elements predate it.
   const { id: _i, source: _s, style: _t, period: _p, diagram: _d, ...rest } = e;
+  // Line arrows are drawn by the arrow primitive since TEACH-75 part x: compare each arrow by its
+  // tip, and the rest of the drawing byte for byte.
+  if (rest.name === "Diagram" && typeof rest.src === "string" && rest.src.startsWith(SVG_URL))
+    rest.src = canonicalArrows(decodeURIComponent(rest.src.slice(SVG_URL.length)));
   // A list marker's numeral is laid at master's badge sizes (TEACH-110 part a), not the lab's.
   if (rest.name === "Marker" && rest.textStyle) {
     const { fontSize: _f, ...ts } = rest.textStyle as El;
@@ -116,6 +159,27 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(photos).toHaveLength(4);
         return;
       }
+      // TEACH-256 part b: the hinge is re-laid to the v13 gold (question as title, cards on a sand
+      // stage), so the lab's saved hinge is not its geometry; its answer cards are still drawn.
+      if (s.kind === "multiple-choice" && want.kind === "multiple-choice") {
+        expect(got.some((e) => e.name === "Option")).toBe(true);
+        return;
+      }
+      // TEACH-215 part g (19 Oct 2026): the cover (slide 0) on a theme whose round 5 composition
+      // changed it (every theme but Geometric) is set on the theme's own ground, so the lab's
+      // saved cover is not its geometry or ground; its title, picture and question still are.
+      if (i === 0 && s.kind === "title" && want.kind === "title" && COMPOSED.has(themeOf(b))) {
+        const has = (els: El[], name: string) => els.some((e) => e.name === name);
+        expect({ i, title: has(got, "Title") }).toEqual({ i, title: true });
+        expect({ i, photo: has(got, "Photo") }).toEqual({ i, photo: has(want.elements, "Photo") });
+        // Greg's call 36: a photo-right or Beacon picture cover draws no question.
+        const drops = NO_QUESTION.has(themeOf(b)) && has(got, "Photo");
+        expect({ i, q: has(got, "Subtitle") }).toEqual({
+          i,
+          q: has(want.elements, "Subtitle") && !drops,
+        });
+        return;
+      }
       if (OBJECTIVE_KEPT[b]?.includes(i)) {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         return;
@@ -123,6 +187,11 @@ describe.each(LESSONS)("replay %s", (b) => {
       if (DRAWN_NOW[b]?.includes(i)) {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(true);
         expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        return;
+      }
+      if (got.some((e) => e.name === "surface:badge" && !("icon" in e))) {
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        expect(got.some((e) => e.name === "Task")).toBe(true);
         return;
       }
       if (UNSHOWN[b]?.includes(i)) {
@@ -160,6 +229,60 @@ describe.each(LESSONS)("replay %s", (b) => {
             at: `s${i + 1} #${k}`,
             el: stable(w),
           });
+          continue;
+        }
+        // Ruling 21 A (TEACH-215 part e): the cover's title and question take the gold's sizes
+        // (`coverType`), so their boxes' heights, and the stack's top, are not the lab's; every
+        // other field still is. The title stands above the question, and both on the slide.
+        if (want.kind === "title" && (w.name === "Title" || w.name === "Subtitle")) {
+          const { y: _y, h: _h, w: ew, ...rest } = stable(e);
+          const { y: _wy, h: _wh, w: ww, ...wantRest } = stable(w);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          // Ruling 25 A: the column only widens (it takes what the smaller picture frees).
+          expect({ at: `s${i + 1} #${k}`, wider: Number(ew) >= Number(ww) }).toEqual({
+            at: `s${i + 1} #${k}`,
+            wider: true,
+          });
+          const box = (name: string) => {
+            const x = got.find((g) => g.name === name);
+            return x ? { name, y: Number(x.y), h: Number(x.h) } : undefined;
+          };
+          const title = box("Title");
+          const sub = box("Subtitle");
+          for (const b of [title, sub])
+            if (b)
+              expect({ at: `s${i + 1} ${b.name}`, y: b.y >= 0, foot: b.y + b.h <= 540 }).toEqual({
+                at: `s${i + 1} ${b.name}`,
+                y: true,
+                foot: true,
+              });
+          if (title && sub)
+            expect({ at: `s${i + 1}`, above: title.y + title.h <= sub.y }).toEqual({
+              at: `s${i + 1}`,
+              above: true,
+            });
+          continue;
+        }
+        // Ruling 25 A (Greg 18 Oct): the cover's picture is 10% smaller than the lab's, on the
+        // same right edge and centred on the same line; everything else about it is the lab's.
+        if (want.kind === "title" && w.type === "image" && w.name === "Photo") {
+          const { x, y, w: ew, h: eh, ...rest } = stable(e);
+          const { x: wx, y: wy, w: ww, h: wh, ...wantRest } = stable(w);
+          const n = (v: unknown) => Number(v);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          expect({
+            at: `s${i + 1} #${k}`,
+            w: Math.abs(n(ew) - n(ww) * 0.9) <= 2,
+            h: Math.abs(n(eh) - n(wh) * 0.9) <= 2,
+            right: n(x) + n(ew) === n(wx) + n(ww),
+            middle: Math.abs(n(y) + n(eh) / 2 - (n(wy) + n(wh) / 2)) <= 1,
+          }).toEqual({ at: `s${i + 1} #${k}`, w: true, h: true, right: true, middle: true });
           continue;
         }
         if (ranged && w.type === "image" && w.name === "Photo") {

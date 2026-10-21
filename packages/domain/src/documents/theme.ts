@@ -103,6 +103,98 @@ export type Theme = {
    * Absent parts are the defaults: a tinted pill tag and a round dot bullet.
    */
   ornament?: ThemeOrnament;
+  /**
+   * The theme v2 block (UX rulings 211, 212): the extra colour roles, accent families and age
+   * profiles the v2 layouts read. Absent on the v1 themes; "is v2" is `theme.v2 !== undefined`.
+   * Layout code reads it through `v2Profile` and `v2Colors` in `@tj/slides`, never inline.
+   */
+  v2?: ThemeV2;
+};
+
+/** The three v2 age profiles: EYFS and KS1 read early, KS2 primary, KS3 to post-16 secondary. */
+export type AgeProfileKey = "early" | "primary" | "secondary";
+
+/**
+ * One accent family: a deck picks one and everything else stays neutral. `soft` is the connector
+ * band and the first split field's base, `wash` the number discs, `deep` the title panel and the
+ * deep heading, `shadow` the medal shadow's hue.
+ */
+export type ThemeV2Accent = {
+  accent: string;
+  soft: string;
+  wash: string;
+  deep: string;
+  shadow: string;
+  /** The icon library's colour slots that follow the accent (T6). Primary is `accent`, tint `wash`. */
+  icon: { primaryDark: string; secondary: string; secondaryDark: string };
+};
+
+/** Neutrals an age profile may retune (the early profile's warmer paper and deeper ink). */
+export type ThemeV2Neutrals = {
+  background: string;
+  ink: string;
+  muted: string;
+  rule: string;
+  sand: string;
+};
+
+/** Sizes in slide points (960x540, like `Theme.sizes`); ratios are unitless. */
+export type ThemeV2AgeProfile = {
+  /** Font keys (`FontKey` in `@tj/slides`). Each theme picks its own per age (ruling 212). */
+  fonts: { display: string; body: string; quote: string };
+  quoteStyle: "italic" | "normal";
+  displayWeight: number;
+  bodyWeight: number;
+  /** CSS word-spacing for display text: secondary's Schibsted is narrow at display sizes. */
+  wordSpace: string;
+  tracking: { title: string; name: string };
+  lineHeights: { title: number; body: number };
+  sizes: {
+    title: number;
+    titlePanel: number;
+    name: number;
+    body: number;
+    quote: number;
+    badge: number;
+  };
+  /** Fit never goes below these. */
+  floors: { body: number; name: number; label: number };
+  /** "Comfortable" needs body and names at or above these. */
+  comfort: { body: number; name: number };
+  /** The white icon medal at 2-3 items, and the size under which it stops reading as the hero. */
+  medal: number;
+  medalMin: number;
+  /** A row's icon disc, the icon's share of it, and the ink number badge. */
+  disc: number;
+  discIcon: number;
+  badge: number;
+  /** The category colour ring round an icon's white face. */
+  iconRing: number;
+  radius: { picture: number; bubble: number; tail: number; card: number };
+  /** Connector band width and wave depth, as ratios of the medal. */
+  band: number;
+  wave: number;
+  strokes: { dot: number; line: number };
+  /** Neutrals this age retunes; the rest come from the theme. */
+  colors?: Partial<ThemeV2Neutrals>;
+};
+
+export type ThemeV2 = {
+  colors: {
+    onDeep: string;
+    sand: string;
+    rule: string;
+    /** Six colours only ever behind icons (rings round a white face), never on text. */
+    category: readonly [string, string, string, string, string, string];
+    /** The road motif's warm grey, never the accent. */
+    road: string;
+  };
+  /** Accent families by name; `defaultAccent` is the one a deck takes when it names none. */
+  accents: Record<string, ThemeV2Accent>;
+  defaultAccent: string;
+  /** The age profiles this theme serves (ruling 212); a stage outside them reads the nearest. */
+  supports: readonly AgeProfileKey[];
+  ages: Partial<Record<AgeProfileKey, ThemeV2AgeProfile>>;
 };
 
 export type ThemeArtRole = "title" | "content" | "picture";

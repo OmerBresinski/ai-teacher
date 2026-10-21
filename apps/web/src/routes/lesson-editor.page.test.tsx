@@ -28,9 +28,13 @@ const actualUi = await import("@tj/ui");
 const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
 
-const { LessonEditorPage } = await import("./lesson-editor.page");
-const { GENERATION_CANCELLED_MESSAGE, GENERATION_FAILED_MESSAGE, REFETCH_DEBOUNCE_MS } =
-  await import("@/components/generating-lesson");
+const { LessonEditorPage, holdsFitStamp, onlyFitStampDiffers } = await import(
+  "./lesson-editor.page"
+);
+const { REFETCH_DEBOUNCE_MS } = await import("@/components/generating-lesson");
+const { FAILED_NOTICE, STOPPED_NOTICE, TRY_AGAIN_LABEL } = await import(
+  "@/components/generating-lesson/StoppedNotice"
+);
 const { SINGLETON_RETRY_MS, STILL_GENERATING_MESSAGE } = await import("@/hooks/use-proposal-jobs");
 const { RELOAD_LABEL } = await import("@/hooks/use-save-with-conflict-toast");
 const { SIGN_IN_TO_EDIT, SIGN_IN_TO_EXPORT } = await import("@/components/sign-in/sign-in-copy");
@@ -77,6 +81,7 @@ function renderPage(
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const DOCUMENT_KEY = ["library", "document", "demo-water-cycle"];
+const META_KEY = ["library", "document-meta", "demo-water-cycle"];
 /** Every `invalidateQueries` on the working copy (not the meta or the lists). */
 const documentInvalidations = (spy: ReturnType<typeof mock>) =>
   spy.mock.calls.filter(
@@ -375,14 +380,17 @@ describe("LessonEditorPage", () => {
     expect(documentInvalidations(spy)).toBe(1);
   });
 
-  it("row 3: a failed job shows the error and Back to library, keeps the slides and never mounts the editor", async () => {
+  it("UX-A: a failed job keeps the teacher in the editor with the slides, a plain line and Try again", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const stored = fakeApi.get("demo-water-cycle");
+    if (!stored) throw new Error("fake api has no demo lesson");
+    const slides = (stored.body as Lesson).slides.length;
     renderPage();
-    const banner = await screen.findByTestId("generating-shell");
+    await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
-    // The api releases the lock on the terminal event; the view must not hand over regardless.
+    // The api releases the lock on the terminal event.
     fakeApi.setGenerating("demo-water-cycle", null);
     act(() =>
       source.emit(
@@ -391,27 +399,111 @@ describe("LessonEditorPage", () => {
         "1",
       ),
     );
-    expect(banner).toHaveTextContent(GENERATION_FAILED_MESSAGE);
-    expect(banner).toHaveTextContent("The model timed out.");
-    expect(banner).toHaveAttribute("data-state", "failed");
-    fireEvent.click(within(banner).getByRole("button", { name: "Back to library" }));
-    expect(navigate).toHaveBeenCalledWith({ to: "/" });
-    // The partial deck is still on screen, read-only: the viewer's slide list, no rename.
-    expect(document.querySelector("[data-slide-frame], [data-slide-id]")).not.toBeNull();
-    await wait(50);
-    expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
+    // The editor, not a read-only view: rename is there, every slide is in the strip.
+    expect(
+      await screen.findByRole("button", { name: "Rename lesson" }, { timeout: 5000 }),
+    ).toBeVisible();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
+    expect(document.querySelectorAll("[data-navigator-thumb]").length).toBe(slides);
+    const line = await waitFor(() => {
+      const el = document.querySelector("[data-stopped-notice]");
+      if (!el) throw new Error("no notice yet");
+      return el as HTMLElement;
+    });
+    expect(line).toHaveAttribute("data-stopped-notice", "failed");
+    expect(line).toHaveTextContent(FAILED_NOTICE);
+    // Try again asks for the rest: one resume, and the page follows the new job.
+    fakeApi.nextProposalJobId = "01a06a15-1849-7000-ac6a-c07e27fe3999";
+    fireEvent.click(within(line).getByRole("button", { name: TRY_AGAIN_LABEL }));
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.filter(
+          (r) => r.method === "POST" && r.path === "/lessons/demo-water-cycle/resume",
+        ),
+      ).toHaveLength(1),
+    );
+    await waitFor(() => expect(document.querySelector("[data-stopped-notice]")).toBeNull());
+    // The page follows the new job: its Stop is back.
+    expect(await screen.findByRole("button", { name: "Stop" })).toBeVisible();
   });
 
-  it("a cancelled job says so", async () => {
+  it("UX-A: a cancelled job keeps the editor and says stopped, with nothing more to do", async () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderPage();
+    await screen.findByTestId("generating-shell");
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    fakeApi.setGenerating("demo-water-cycle", null);
+    act(() => source.emit("cancelled", jobEvent("cancelled"), "1"));
+    expect(
+      await screen.findByRole("button", { name: "Rename lesson" }, { timeout: 5000 }),
+    ).toBeVisible();
+    const line = await waitFor(() => {
+      const el = document.querySelector("[data-stopped-notice]");
+      if (!el) throw new Error("no notice yet");
+      return el as HTMLElement;
+    });
+    expect(line).toHaveAttribute("data-stopped-notice", "cancelled");
+    expect(line).toHaveTextContent(STOPPED_NOTICE);
+    expect(within(line).queryByRole("button", { name: TRY_AGAIN_LABEL })).toBeNull();
+    fireEvent.click(within(line).getByRole("button", { name: "Dismiss" }));
+    expect(document.querySelector("[data-stopped-notice]")).toBeNull();
+    // Back still leaves the way it always did.
+    expect(screen.getByRole("button", { name: "Rename lesson" })).toBeVisible();
+  });
+
+  it("a lock released before the cancelled event arrives keeps the generating view and says stopped", async () => {
+    // TEACH-202 part j: the body and the job's events reach the page on two channels, so a
+    // refetch can show the lock gone before `cancelled` arrives. The view must wait for it.
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const { queryClient } = renderPage();
     const banner = await screen.findByTestId("generating-shell");
     const source = FakeEventSource.latest;
     act(() => source.open());
-    act(() => source.emit("cancelled", jobEvent("cancelled"), "1"));
-    expect(banner).toHaveTextContent(GENERATION_CANCELLED_MESSAGE);
-    expect(within(banner).getByRole("button", { name: "Back to library" })).toBeVisible();
+    fakeApi.setGenerating("demo-water-cycle", null);
+    act(() =>
+      source.emit(
+        "progress",
+        jobEvent("progress", {
+          progress: { percent: 90, documentUpdatedAt: "2026-09-04T10:00:05.000Z" },
+        }),
+        "1",
+      ),
+    );
+    // The page now holds the unlocked row: the view is still there, still following the job.
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<{ generatingJobId: string | null }>(META_KEY)?.generatingJobId,
+      ).toBeNull(),
+    );
+    expect(screen.getByTestId("generating-shell")).toBe(banner);
+    act(() => source.emit("cancelled", jobEvent("cancelled"), "2"));
+    // It learnt how the job ended: the editor opens on what was written and says it stopped.
+    await waitFor(() =>
+      expect(document.querySelector("[data-stopped-notice]")).toHaveAttribute(
+        "data-stopped-notice",
+        "cancelled",
+      ),
+    );
+  });
+
+  it("a completed job opens the editor even when the hand-over read fails", async () => {
+    installFakeEventSource();
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    renderPage();
+    await screen.findByTestId("generating-shell");
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    fakeApi.setGenerating("demo-water-cycle", null);
+    fakeApi.failNext(
+      (r) => r.method === "GET" && r.path === "/documents/demo-water-cycle",
+      () => new Response("down", { status: 503 }),
+    );
+    act(() => source.emit("completed", jobEvent("completed"), "1"));
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
   });
 
   it("row 4: Stop posts one cancel for the job", async () => {
@@ -810,6 +902,9 @@ describe("LessonEditorPage", () => {
 
 // TEACH-245: a signed-out visitor's anonymous session (`/me` with `isAnonymous: true`).
 describe("LessonEditorPage, signed out (anonymous session)", () => {
+  // The first render loads the session, the lesson and the page chunk: about 0.8 s on CI, too close
+  // to Testing Library's 1 s default (it failed at 1.08 s on #606 and #607).
+  const FIRST_LOAD = { timeout: 3_000 };
   const ANONYMOUS_ME = {
     user: { id: "anon-1", email: "temp@anon-1.com", name: "Anonymous", isAnonymous: true },
     workspaceId: WORKSPACE_ID,
@@ -839,7 +934,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderAs(ANONYMOUS_ME);
-    const banner = await screen.findByTestId("generating-shell");
+    const banner = await screen.findByTestId("generating-shell", {}, FIRST_LOAD);
     expect(within(banner).getByRole("button", { name: SIGN_IN_TO_EDIT })).toBeVisible();
     // Export is the sign-in sheet's door, never the export menu (ruling 109).
     expect(within(banner).getByRole("button", { name: "Export" })).toHaveAttribute(
@@ -852,7 +947,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     search = { export: "1" };
     try {
       renderAs(TEACHER_ME);
-      expect(await screen.findByRole("dialog", { name: "Export" })).toBeVisible();
+      expect(await screen.findByRole("dialog", { name: "Export" }, FIRST_LOAD)).toBeVisible();
       await waitFor(() =>
         expect(navigate).toHaveBeenCalledWith(
           expect.objectContaining({ to: "/l/$lessonId", search: {}, replace: true }),
@@ -865,7 +960,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
 
   it("Export opens the sign-in sheet for export, and nothing is written (ruling 127)", async () => {
     renderAs(ANONYMOUS_ME);
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }, FIRST_LOAD));
     expect(await screen.findByRole("dialog", { name: SIGN_IN_TO_EXPORT })).toBeVisible();
     expect(writes()).toEqual([]);
   });
@@ -876,7 +971,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
       const el = document.querySelector("[data-lesson-viewer]");
       if (!el) throw new Error("no viewer yet");
       return el as HTMLElement;
-    });
+    }, FIRST_LOAD);
     expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
     expect(screen.queryByRole("listbox", { name: "Slides" })).toBeNull();
     expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute(
@@ -896,7 +991,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
 
   it("row 3: the action and a double-click on the slide open the sign-in sheet over the lesson", async () => {
     renderAs(ANONYMOUS_ME);
-    fireEvent.click(await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }));
+    fireEvent.click(await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }, FIRST_LOAD));
     const sheet = await screen.findByRole("dialog", { name: SIGN_IN_TO_EDIT });
     expect(within(sheet).getByRole("button", { name: "Continue with Google" })).toBeVisible();
     expect(within(sheet).getByLabelText("Email address")).toBeVisible();
@@ -917,7 +1012,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
 
   it("row 7: no worksheet, facts or regenerate entry points and no api calls for them", async () => {
     renderAs(ANONYMOUS_ME);
-    await screen.findByRole("button", { name: SIGN_IN_TO_EDIT });
+    await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }, FIRST_LOAD);
     for (const name of [/Worksheet/, /Facts/i, /Regenerate/i, "Theme"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
@@ -931,10 +1026,108 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
       JSON.stringify({ lessonId: "demo-water-cycle", topic: "The water cycle", at: Date.now() }),
     );
     renderAs(TEACHER_ME);
-    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Rename lesson" }, FIRST_LOAD)).toBeVisible();
     expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
     expect(screen.queryByRole("button", { name: SIGN_IN_TO_EDIT })).toBeNull();
     // The lesson opened for its owner: the claim went through, nothing is left to offer again.
     await waitFor(() => expect(localStorage.getItem("tj:preview-lesson")).toBeNull());
+  });
+});
+
+describe("LessonEditorPage, the answer drawer's working (end Answers column)", () => {
+  beforeEach(() => {
+    lessonId = "demo-water-cycle";
+    cleanup();
+    fakeApi.reset();
+  });
+
+  it("edits show as 'answer — working' and save each working in step with its answer", async () => {
+    const body = fakeApi.loadDocument("demo-water-cycle") as Lesson;
+    const first = body.slides[0] as Lesson["slides"][number];
+    const SENTENCE = "Halving both halves makes four equal groups, so one is a quarter.";
+    first.question = {
+      type: "open-response",
+      modelAnswer: `1. 10 crayons\n2. 6 beads\n3. ${SENTENCE}`,
+      working: ["20 ÷ 2 = 10", "24 ÷ 4 = 6", ""],
+    };
+    lessonId = fakeApi.insertLesson(body).id;
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Answer" }));
+    const box = (await screen.findByRole("textbox", {
+      name: "Model answer",
+    })) as HTMLTextAreaElement;
+    // The teacher sees the joined text, as before the working had its own field.
+    expect(box.value).toBe(`1. 10 crayons — 20 ÷ 2 = 10\n2. 6 beads — 24 ÷ 4 = 6\n3. ${SENTENCE}`);
+    // Edit line 2, delete line 1, move line 3 to the top.
+    fireEvent.change(box, { target: { value: `3. ${SENTENCE}\n2. 6 red beads — 24 ÷ 4 = 6` } });
+    fireEvent.blur(box);
+    await waitFor(() => expect(screen.getByText("Saved")).toBeVisible(), { timeout: 3_000 });
+    const put = fakeApi.requests.filter((r) => r.method === "PUT");
+    expect(put.length).toBeGreaterThan(0);
+    const saved = fakeApi.loadDocument(lessonId) as Lesson;
+    expect(saved.slides[0]?.question).toEqual({
+      type: "open-response",
+      modelAnswer: `3. ${SENTENCE}\n2. 6 red beads`,
+      working: ["", "24 ÷ 4 = 6"],
+    });
+  });
+});
+
+describe("onlyFitStampDiffers (UX-A)", () => {
+  const row = generatedLesson();
+  it("the editor's fit stamp alone is not the teacher's change, whatever the key order", () => {
+    const reordered = JSON.parse(JSON.stringify({ fitVersion: 3, ...row })) as Lesson;
+    expect(onlyFitStampDiffers({ ...reordered, fitVersion: 3 }, { ...row, fitVersion: 0 })).toBe(
+      true,
+    );
+  });
+  it("any other change still counts, so a real edit is always written", () => {
+    expect(
+      onlyFitStampDiffers({ ...row, fitVersion: 3, title: "Edited" }, { ...row, fitVersion: 0 }),
+    ).toBe(false);
+    const slides = structuredClone(row.slides);
+    const first = slides[0]?.elements[0];
+    if (first) first.x += 1;
+    expect(onlyFitStampDiffers({ ...row, slides, fitVersion: 3 }, { ...row, fitVersion: 0 })).toBe(
+      false,
+    );
+    expect(onlyFitStampDiffers({ ...row, fitVersion: 0 }, { ...row, fitVersion: 0 })).toBe(false);
+  });
+});
+
+describe("holdsFitStamp (UX-A)", () => {
+  const row = generatedLesson();
+  const stamped = { ...row, fitVersion: 3 };
+  const stored = { ...row, fitVersion: 0 };
+  it("waits while the job still holds the lesson", () => {
+    expect(holdsFitStamp(stamped, stored, "job-1", "job-1")).toBe(true);
+  });
+  it("saves as usual once the job has let go, or under another job's lock", () => {
+    expect(holdsFitStamp(stamped, stored, null, "job-1")).toBe(false);
+    expect(holdsFitStamp(stamped, stored, undefined, "job-1")).toBe(false);
+    expect(holdsFitStamp(stamped, stored, "job-2", "job-1")).toBe(false);
+  });
+  it("never holds a real edit", () => {
+    expect(holdsFitStamp({ ...stamped, title: "Edited" }, stored, "job-1", "job-1")).toBe(false);
+  });
+});
+
+describe("the budget-stop notice (UX-A)", () => {
+  it("says the budget is spent and offers no Try again", async () => {
+    const { StoppedNotice, BUDGET_NOTICE } = await import(
+      "@/components/generating-lesson/StoppedNotice"
+    );
+    const { container } = render(
+      <TooltipProvider>
+        <StoppedNotice outcome="failed" budget onTryAgain={() => {}} onDismiss={() => {}} />
+      </TooltipProvider>,
+    );
+    const line = container.querySelector("[data-stopped-notice]") as HTMLElement;
+    expect(line).toHaveAttribute("data-stopped-notice", "budget");
+    expect(line).toHaveTextContent(BUDGET_NOTICE);
+    expect(line.textContent).toContain(
+      "This lesson reached its writing limit, so it stopped early. The slides written so far are here to edit.",
+    );
+    expect(within(line).queryByRole("button", { name: TRY_AGAIN_LABEL })).toBeNull();
   });
 });

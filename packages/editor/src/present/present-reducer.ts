@@ -48,13 +48,31 @@ export type PresentState = {
   /** When the presenter started; the notes panel counts up from here. */
   sessionStartedAt: number;
 
+  /**
+   * End-of-deck answers (UX ruling 240): which slides are Answers slides (teacher-facing), and
+   * whether the teacher has chosen to show them to the class. Off for every new session, so a
+   * deck reopened next lesson is safe again.
+   */
+  teacherOnly: boolean[];
+  showAnswers: boolean;
+  /** "Next" was pressed on the guard with answers off: the teacher's screen says why it stopped. */
+  answersHeld: boolean;
+
   /** The pill collapsed to just the slide counter. Manual only — idle auto-hide is a separate
       fade and never touches this. */
   pillCollapsed: boolean;
 };
 
 export type PresentAction =
-  | { type: "setDeck"; slideIds: Id[]; steps: number[]; startIndex?: number }
+  | {
+      type: "setDeck";
+      slideIds: Id[];
+      steps: number[];
+      startIndex?: number;
+      /** Per slide: an Answers slide the class only sees once "Show answers to class" is on. */
+      teacherOnly?: boolean[];
+    }
+  | { type: "setShowAnswers"; on: boolean }
   | { type: "startSession"; at: number }
   | { type: "next" }
   | { type: "prev" }
@@ -101,8 +119,22 @@ export const initialPresentState = (at = Date.now()): PresentState => ({
   notesOpen: false,
   shortcutsOpen: false,
   sessionStartedAt: at,
+  teacherOnly: [],
+  showAnswers: false,
+  answersHeld: false,
   pillCollapsed: false,
 });
+
+/** The class may not be taken to slide `i`: an Answers slide while answers are off. */
+export const heldBack = (s: PresentState, i: number): boolean =>
+  !s.showAnswers && (s.teacherOnly[i] ?? false);
+
+/** The last slide the class can reach (the guard, when answers are off). */
+const lastShown = (s: PresentState): number => {
+  let i = s.steps.length - 1;
+  while (i > 0 && heldBack(s, i)) i--;
+  return i;
+};
 
 const reach = (s: PresentState, index: number): number => Math.max(s.reachedIndex, index);
 
@@ -128,19 +160,24 @@ export function presentReducer(s: PresentState, action: PresentAction): PresentS
     /* ---------------- navigation ---------------- */
     case "setDeck": {
       const { slideIds, steps, startIndex } = action;
+      const teacherOnly = action.teacherOnly ?? slideIds.map(() => false);
       const same =
         s.slideIds.length === slideIds.length && s.slideIds.every((id, i) => id === slideIds[i]);
       if (same) {
         // An edit elsewhere can take reveal steps off the current slide while it is on screen;
         // the step has to come back inside the new count or a question slide would stay answered.
         const max = steps[s.index] ?? 0;
-        return s.step > max ? { ...s, steps, step: max } : { ...s, steps };
+        return s.step > max
+          ? { ...s, steps, teacherOnly, step: max }
+          : { ...s, steps, teacherOnly };
       }
       const index = Math.min(Math.max(startIndex ?? 0, 0), Math.max(slideIds.length - 1, 0));
       return {
         ...s,
         slideIds,
         steps,
+        teacherOnly,
+        answersHeld: false,
         index,
         step: 0,
         ended: false,
@@ -155,6 +192,10 @@ export function presentReducer(s: PresentState, action: PresentAction): PresentS
       if (s.ended || s.steps.length === 0) return s;
       if (s.step < (s.steps[s.index] ?? 0)) {
         return { ...s, step: s.step + 1, direction: 1, blackout: "none" };
+      }
+      // Answer slides are skipped, not blanked: "next" on the guard stays put, never "end of show".
+      if (s.index < s.steps.length - 1 && heldBack(s, s.index + 1)) {
+        return s.answersHeld ? s : { ...s, answersHeld: true };
       }
       if (s.index < s.steps.length - 1) {
         const index = s.index + 1;
@@ -172,6 +213,7 @@ export function presentReducer(s: PresentState, action: PresentAction): PresentS
     case "prev": {
       if (s.ended) return { ...s, ended: false, blackout: "none" };
       if (s.step > 0) return { ...s, step: s.step - 1, direction: -1, blackout: "none" };
+      if (s.answersHeld) return { ...s, answersHeld: false };
       if (s.index > 0) {
         return {
           ...s,
@@ -186,6 +228,7 @@ export function presentReducer(s: PresentState, action: PresentAction): PresentS
     case "goTo": {
       if (s.steps.length === 0) return s;
       const to = Math.min(Math.max(action.index, 0), s.steps.length - 1);
+      if (heldBack(s, to)) return s.answersHeld ? s : { ...s, answersHeld: true };
       return {
         ...s,
         index: to,
@@ -194,12 +237,19 @@ export function presentReducer(s: PresentState, action: PresentAction): PresentS
         ended: false,
         blackout: "none",
         reachedIndex: reach(s, to),
+        answersHeld: false,
       };
     }
     case "first":
       return presentReducer(s, { type: "goTo", index: 0 });
     case "last":
-      return presentReducer(s, { type: "goTo", index: s.steps.length - 1 });
+      return presentReducer(s, { type: "goTo", index: lastShown(s) });
+    case "setShowAnswers": {
+      // Turning answers off while one is projected takes the class back to the guard.
+      const off = { ...s, showAnswers: action.on, answersHeld: false };
+      if (action.on || !heldBack(off, s.index)) return off;
+      return { ...off, index: lastShown(off), step: 0, direction: -1 };
+    }
     case "restart":
       return { ...s, index: 0, step: 0, ended: false, direction: 1, blackout: "none" };
 

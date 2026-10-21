@@ -276,6 +276,8 @@ function buildApp({
   // The plan routes (ADR 0029 item 7): a re-plan and a confirmation each start a pipeline job.
   app.use("/lessons/:id/plan", rateLimitByWorkspace(aiLimiter));
   app.use("/lessons/:id/generate", rateLimitByWorkspace(aiLimiter));
+  // Try again after a failed generation (UX-A) starts the same pipeline job as a confirmation.
+  app.use("/lessons/:id/resume", rateLimitByWorkspace(aiLimiter));
   // The worksheet request (ADR 0030 item 8) starts a job with one model call; the listing under
   // `/lessons/:id/worksheets` makes none and is not limited.
   app.use("/lessons/:id/worksheet", rateLimitByWorkspace(aiLimiter));

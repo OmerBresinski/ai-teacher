@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SaveRefusedError } from "@tj/editor/autosave";
+import { SaveDeferredError, SaveRefusedError } from "@tj/editor/autosave";
 import { toast } from "@tj/ui";
 import { useCallback } from "react";
 import { type LibraryDocument, libraryMutations, libraryQueries } from "@/lib/library";
@@ -23,13 +23,39 @@ export function useSaveWithConflictToast(
    * instead of the toast.
    */
   onStale?: () => Promise<LibraryDocument | undefined>,
+  /**
+   * Live writing (ADR 0039): the job this editor is following (this lesson's own stream), while it
+   * holds the lock and for a short while after it ends; `undefined` otherwise. While it is set, a
+   * `409` whose lock is that job's, or no lock at all, is the job's own writing racing the
+   * editor's: the save is deferred (`SaveDeferredError`) and tried again, never toasted.
+   */
+  ownJob?: () => string | undefined,
 ): (document: LibraryDocument) => Promise<void> {
   const queryClient = useQueryClient();
   const { mutateAsync: save } = useMutation(libraryMutations.autosaveDocument(queryClient));
+  /** The job holding the lesson's lock, as this editor last read the row. */
+  const lockedBy = useCallback(
+    (): string | undefined =>
+      queryClient.getQueryData(libraryQueries.documentMeta(documentId).queryKey)?.generatingJobId ??
+      undefined,
+    [queryClient, documentId],
+  );
   return useCallback(
     async (document: LibraryDocument) => {
-      const refuse = (error: unknown): never => {
+      const refuse = async (error: unknown): Promise<never> => {
         if (error instanceof ApiError && error.status === 409) {
+          // Live writing (ADR 0039): a filling lesson's editor opens before any slide is done, and
+          // a save then is refused as `generating` by design; the next save after a slide is done
+          // carries the whole document, so the refusal is not the teacher's to see.
+          // A filling lesson's editor saves while the job writes the row about once a second: on
+          // a slow link every save meets a newer row. Under this editor's own job (or just after
+          // it, before the row settles) that is not the teacher's conflict: the change stays in
+          // the editor, each folded row re-offers it, and the save is retried until it lands.
+          // Another job's lock (another tab, a regenerate) keeps its toast.
+          const own = ownJob?.();
+          const lock = lockedBy();
+          if (own !== undefined && (lock === undefined || lock === own))
+            throw new SaveDeferredError(error.message, { cause: error });
           const stale = error.reason === "stale";
           toast(error.message, {
             duration: stale ? Number.POSITIVE_INFINITY : undefined,
@@ -64,13 +90,13 @@ export function useSaveWithConflictToast(
               await save(merged);
               return;
             } catch (retryError) {
-              refuse(retryError);
+              await refuse(retryError);
             }
           }
         }
-        refuse(error);
+        await refuse(error);
       }
     },
-    [save, queryClient, documentId, onStale],
+    [save, queryClient, documentId, onStale, ownJob, lockedBy],
   );
 }

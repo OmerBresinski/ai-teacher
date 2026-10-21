@@ -1,4 +1,5 @@
 import {
+  JOB_EPHEMERAL_EVENT_TYPES,
   JOB_TERMINAL_EVENT_TYPES,
   type JobEvent,
   JobEventSchema,
@@ -128,6 +129,30 @@ export async function hasQueuedJobEvent(ws: WorkspaceDb, jobId: JobId): Promise<
     )
     .limit(1);
   return rows.length > 0;
+}
+
+/**
+ * Delete a finished job's ephemeral events (`JOB_EPHEMERAL_EVENT_TYPES`, ADR 0039): the slide
+ * drafts a running job streams are its only rows that are not part of its record. The one
+ * exception to "rows are immutable"; returns how many rows went. An SSE stream that was about to
+ * re-read one simply never sees it (the stream reads rows after its cursor, never by id).
+ */
+export async function pruneEphemeralJobEvents(
+  db: ScopableDb,
+  { workspaceId, jobId }: { workspaceId: WorkspaceId; jobId: JobId },
+): Promise<number> {
+  return pruneEphemeralEventsOf(forWorkspace(db, workspaceId), jobId);
+}
+
+/** `pruneEphemeralJobEvents` inside a workspace scope (the stale-lock release path uses it). */
+export async function pruneEphemeralEventsOf(ws: WorkspaceDb, jobId: JobId): Promise<number> {
+  const rows = await ws
+    .delete(
+      jobEvents,
+      and(eq(jobEvents.jobId, jobId), inArray(jobEvents.type, [...JOB_EPHEMERAL_EVENT_TYPES])),
+    )
+    .returning({ id: jobEvents.id });
+  return rows.length;
 }
 
 /**

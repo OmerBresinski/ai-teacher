@@ -1,4 +1,5 @@
 import { BudgetReservationError, UnestimableCallError } from "@tj/ai";
+import type { DebugSink } from "../debug";
 import { BudgetExceeded } from "../types";
 /*
  * The model calls the writer stage makes, as an interface the stage is handed: one streamed
@@ -52,6 +53,24 @@ export function isBudgetRefusal(e: unknown): boolean {
 }
 
 /**
+ * The budget refused one call before it ran (`BudgetReservationError`, `UnestimableCallError`), at
+ * any depth of `cause`, and nothing says the lesson's spend is over its cap (`BudgetExceeded`). The
+ * refusal reserves a call's worst case against the calls still in flight, so it can come while the
+ * lesson has spent a fraction of its cap. Nothing was spent on the refused call.
+ */
+export function isReservationRefusal(e: unknown): boolean {
+  let reserved = false;
+  for (let x: unknown = e, i = 0; x !== undefined && x !== null && i < 10; i++) {
+    if (x instanceof BudgetExceeded) return false;
+    if (x instanceof BudgetReservationError || x instanceof UnestimableCallError) reserved = true;
+    const cause = (x as { cause?: unknown }).cause;
+    if (cause === x) break;
+    x = cause;
+  }
+  return reserved;
+}
+
+/**
  * The one way the writer, picture and diagram paths recover from an error: a fatal one (budget,
  * abort; `isFatal`) is rethrown so the job stops, any other goes to `onError`, whose value is
  * returned. A bare `catch` in those modules is a test failure (`non-fatal.test.ts`).
@@ -99,7 +118,9 @@ export type ChatReq = {
   /** Pictures (data URLs) sent after the user text, in order, at low detail (the set judge). */
   images?: string[];
 };
-export type ChatResult = { out?: unknown; usd: number; ms: number };
+/** Token counts of one call, when the provider reported them (the debug record's `call` rows). */
+export type CallTokens = { input: number; output: number };
+export type ChatResult = { out?: unknown; usd: number; ms: number; tokens?: CallTokens };
 
 export type WriterReq = {
   model: string;
@@ -116,6 +137,7 @@ export type WriterResult = {
   usd: number;
   ms: number;
   firstTokenMs?: number;
+  tokens?: CallTokens;
 };
 
 export interface WriterServices {
@@ -125,4 +147,9 @@ export interface WriterServices {
   writer(req: WriterReq, onDelta: (delta: string) => void): Promise<WriterResult>;
   /** A structured event for the stage's log (ids and counts, never content in production). */
   log(event: object): void;
+  /**
+   * The lesson's debug record (`../debug`): content the log never carries. Fire and forget;
+   * absent (tests, lab replays), nothing is recorded.
+   */
+  debug?: DebugSink;
 }

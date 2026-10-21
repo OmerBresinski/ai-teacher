@@ -158,7 +158,9 @@ describe("REGISTER diagrams-13: cycle link labels run off both edges (d52 T5 y6 
 
   // The loop's arrows are straight (L); the ring's are bowed (Q).
   const bowed = (svg: string) => (svg.match(/ Q[\d.]/g) ?? []).length;
-  const straight = (svg: string) => (svg.match(/<path d="M[\d.,]+ L[\d.,]+"/g) ?? []).length;
+  // a straight cycle arrow: the arrow primitive's shaft, one line segment (TEACH-75 part x)
+  const straight = (svg: string) =>
+    (svg.match(/class="ashaft" d="M-?[\d.]+ -?[\d.]+ L-?[\d.]+ -?[\d.]+"/g) ?? []).length;
   const links = (nodes: string[], label?: string) =>
     nodes.map((_, i) => ({ from: i, to: (i + 1) % nodes.length, ...(label ? { label } : {}) }));
   const nodes = fig.nodes as string[];

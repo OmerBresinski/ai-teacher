@@ -294,6 +294,27 @@ describe("SlideSchema referential integrity", () => {
       false,
     );
   });
+
+  test("an image carries its picture-fit facts, all optional (TEACH-25 part b)", () => {
+    const image = (extra: Record<string, unknown>): unknown => ({
+      ...titleSlide(),
+      elements: [
+        { id: "i", type: "image", x: 0, y: 0, w: 1, h: 1, src: "a.png", fit: "cover", ...extra },
+      ],
+    });
+    const full = image({
+      subject: { x: 0.348, y: 0.152, w: 0.281, h: 0.676 },
+      backdrop: { plain: { top: true, right: true, bottom: true, left: true }, colour: "#f4f1ea" },
+      kind: "object",
+    });
+    expect(SlideSchema.parse(JSON.parse(JSON.stringify(full))) as unknown).toEqual(full);
+    expect(SlideSchema.parse(image({})) as unknown).toEqual(image({}));
+    expect(SlideSchema.safeParse(image({ kind: "scene" })).success).toBe(true);
+    expect(SlideSchema.safeParse(image({ kind: "diagram" })).success).toBe(false);
+    expect(SlideSchema.safeParse(image({ subject: { x: 0, y: 0, w: 1.5, h: 1 } })).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("image source (Images project, Decision 5)", () => {
@@ -424,6 +445,19 @@ describe("path element (ADR 0032)", () => {
     expect(parsed).toEqual(input as never);
     expect(parsed.version).toBe(1);
     expect(SlideSchema.safeParse(input.slides[0]).success).toBe(true);
+  });
+
+  test("a dotted path keeps its dash gap; a gap of zero or less is rejected", () => {
+    const pts = [
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+    ];
+    const slide = (dashGap: number) => ({
+      ...withPath(pts).slides[0],
+      elements: [{ ...path(pts), dash: "dotted", dashGap }],
+    });
+    expect(SlideSchema.safeParse(slide(4.4)).success).toBe(true);
+    expect(SlideSchema.safeParse(slide(0)).success).toBe(false);
   });
 
   test("a path with a single point is rejected at its points", () => {

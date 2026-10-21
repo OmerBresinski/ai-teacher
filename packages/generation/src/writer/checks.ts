@@ -19,6 +19,25 @@ const label = (e: SlideElement) => {
   const t = plain((e as { doc?: unknown }).doc).trim();
   return t ? `"${t.slice(0, 30)}"` : (e.name ?? e.type);
 };
+/** A shape that holds words as a card does (a key card, an option, a claim card, a choice chip). */
+const CARD = /\b(card|option|chip)\b/i;
+/**
+ * Text or a card past the slide's edge (Greg 71 A, 20 Oct), one line each: what splits onto a
+ * continuation and, when it cannot, is flagged. Pictures, panels and full-bleed `surface:` grounds
+ * are drawn to or past the edge by design and never count.
+ */
+export function offSlide(elements: readonly SlideElement[]): string[] {
+  return elements
+    .filter(
+      (e) =>
+        (e.type === "text" ||
+          (e.type === "shape" &&
+            CARD.test(e.name ?? "") &&
+            !(e.name ?? "").startsWith("surface:"))) &&
+        (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1),
+    )
+    .map((e) => `off-slide: ${label(e)}`);
+}
 /** A picture that is really there: an image with a real source (not an open slot or a failed find). */
 const realPicture = (e: SlideElement) =>
   e.type === "image" &&

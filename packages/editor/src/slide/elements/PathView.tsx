@@ -2,9 +2,10 @@ import type { PathElement } from "@tj/domain/documents";
 import { pathData, pathEnds, pathSegments } from "@tj/slides";
 import type { ElementViewProps } from "./kit";
 
-const DASH = (kind: PathElement["dash"], w: number): string | undefined => {
-  if (kind === "dashed") return `${w * 3} ${w * 2.2}`;
-  if (kind === "dotted") return `0.001 ${w * 2.2}`;
+/** The gap is `dashGap` x the stroke width (2.2 when unset). */
+export const DASH = (kind: PathElement["dash"], w: number, gap = 2.2): string | undefined => {
+  if (kind === "dashed") return `${w * 3} ${w * gap}`;
+  if (kind === "dotted") return `0.001 ${w * gap}`;
   return undefined;
 };
 
@@ -41,7 +42,7 @@ export function PathView({ element, theme }: ElementViewProps<PathElement>) {
         strokeWidth={sw}
         strokeLinejoin="round"
         strokeLinecap={element.dash === "dotted" ? "round" : "butt"}
-        strokeDasharray={DASH(element.dash, sw)}
+        strokeDasharray={DASH(element.dash, sw, element.dashGap)}
       />
       {ends && element.arrowEnd ? <polygon points={head(ends.end)} fill={stroke} /> : null}
       {ends && element.arrowStart ? <polygon points={head(ends.start)} fill={stroke} /> : null}

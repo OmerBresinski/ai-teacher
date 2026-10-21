@@ -1,8 +1,9 @@
 import { bannerCaps } from "./banner-text-fits";
 import { type WriterBundle, writerBundle } from "./bundle";
 import { gridCaps } from "./cards-grid-fits";
-import { freeformLabels, teachesSchema, writerCaps } from "./contract";
+import { ANSWER_FIRST, freeformLabels, teachesSchema, writerCaps } from "./contract";
 import { hookCap } from "./hook-fits";
+import { ITEMS_ROW_MAX, rowCaps } from "./items-row-fits";
 
 /*
  * The lesson writer's strict output schema, built in code (TEACH-110 part b). The base shape is
@@ -313,6 +314,36 @@ function withCardsGrid(schema: J, stage: WriterStage): J {
 }
 
 /**
+ * Items row (TEACH-75 part u): 2-4 named parts or stages on a connecting line, each a name, one
+ * line and an icon label the slides' icon library draws (or null). Live, with no off switch (Greg,
+ * 12 Oct 2026); every older output still parses. Caps from the renderer's measured table.
+ */
+function withItemsRow(schema: J, stage: WriterStage): J {
+  const caps = rowCaps(stage);
+  const defs = schema.$defs as Record<string, J>;
+  defs["items-row"] = obj({
+    template: { type: "string", enum: ["items-row"] },
+    heading: S(),
+    accentWord: NUL(capped(40)),
+    lead: NUL(capped(caps.lead)),
+    ordered: { type: "boolean" },
+    items: arr(
+      obj({
+        name: capped(caps.name),
+        text: capped(caps.text),
+        icon: NUL({ type: "string", pattern: "^[a-z][a-z -]{0,22}$" }),
+      }),
+      2,
+      ITEMS_ROW_MAX,
+    ),
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("items-row")] };
+  return schema;
+}
+
+/**
  * Banner text (UX ruling 203, Chalkie layout parity P4; TEACH-75 part k): a picture as a
  * full-width strip across the top or the bottom of the slide, with a heading, a lead and 0-3
  * labelled bullets. Added to the slide menu as one more teaching layout; every older output still
@@ -396,6 +427,7 @@ export function writerSchema(
   if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
   if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
   if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
+  withItemsRow(s, stage);
   if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s, stage);
   if (opts.hook ?? HOOK_DEFAULT) withHook(s, stage);
   const defs = s.$defs as Record<string, J>;
@@ -403,6 +435,9 @@ export function writerSchema(
     const m = /^dg-(.+)-(side|full)$/.exec(name);
     if (m) defs[name] = writerCaps(def, m[1] as string, stage, m[2] as "side" | "full");
   }
+  // Answer first: the hinge's correct option is its first; no counted key (ANSWER-BUG.md).
+  const hinge = defs.hinge;
+  if (hinge) defs.hinge = answerFirstDef(hinge, "options", ANSWER_FIRST.options);
   const free = defs["diagram-freeform"];
   if (free)
     defs["diagram-freeform"] = {
@@ -419,6 +454,19 @@ export function writerSchema(
     };
   }
   return s;
+}
+
+/**
+ * A single-answer def without its counted `correct`: the answer is the first item of `list`,
+ * which says so in its description (the writer's def only; the repair schema is pinned apart).
+ */
+export function answerFirstDef(def: J, list: string, description: string): J {
+  const { correct: _, ...props } = def.properties as Record<string, J>;
+  return {
+    ...def,
+    required: (def.required as string[]).filter((k) => k !== "correct"),
+    properties: { ...props, [list]: { ...(props[list] as J), description } },
+  };
 }
 
 /** The schema as the pinned file holds it (one-space indent, trailing newline). */

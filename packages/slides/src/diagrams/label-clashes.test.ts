@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import v1 from "../fixtures/themes-v1.json";
 import { atKeyStage, getTheme, THEMES } from "../themes";
 import DRAWER from "./drawer-specs.fixture.json";
 import { labelClashes } from "./geometry";
@@ -40,7 +41,10 @@ describe("REGISTER diagrams-02: labels on drawer drawings read clear", () => {
   });
   test("label clashes on shipped drawings never grow past the ceiling", () => {
     const bad: string[] = [];
-    for (const theme of THEMES.filter((_, i) => i % 3 === 0))
+    // The v1 sweep the ceiling was counted on; theme v2 (TEACH-152 part b) is outside the ratchet.
+    // Sampled from master's v1 order, so the picker's new order (TEACH-215 part c, 16 Oct 2026)
+    // does not change which themes the ceiling counts.
+    for (const theme of v1.catalogue.filter((_, i) => i % 3 === 0).map((t) => getTheme(t.id)))
       for (const ks of ["ks1", "ks2", "ks3", "ks4"]) {
         const t = atKeyStage(theme, ks);
         for (const [name, spec] of corpus)

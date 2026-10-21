@@ -78,9 +78,13 @@ const ZONE = { x: GRID.left, w: GRID.right - GRID.left };
 const DMAX = 140; // one object's cell at most: big enough to read from the back of the room
 const PILE = { y: 128, h: 112 };
 const TOP = 120, BOT = 556; // the stage between the title and the sentence row
+// a division's whole steps down a line under its sentence (WHOLE_DY): the row rises so that line ends by the
+// last content line (GRID.bottom 640), never past the foot. The stage above gives up only STAGE_GIVE of it
+// (the row's own gap above takes the rest), so common shapes keep theirs: 2 groups of 6 stays 2 rows of 3
+const WHOLE_DY = 54, EQ_RISE = 616 + WHOLE_DY - GRID.bottom, STAGE_GIVE = 16;
 function lay(P) {
   const M = nums(P); const { G, S, R, N } = M;
-  const top = M.sharing ? PILE.y + PILE.h + 20 : TOP, bot = BOT, H = bot - top;
+  const top = M.sharing ? PILE.y + PILE.h + 20 : TOP, bot = M.div ? BOT - STAGE_GIVE : BOT, H = bot - top;
   const out = { d: 0, groups: [], pile: [], left: null, top, bot, turn: null };
   if (M.array) {
     // one array, laid out once. Row totals sit at the row ends; a turn spins the same array a quarter turn
@@ -274,15 +278,15 @@ export function notes(P) {
 }
 
 /* ------------------------------------------------------------------ render */
-const EQ_Y = 616, EQ_CLS = ['ts-big', 'ts-num', 'ts-label', 'ts-small'];
-function eqRow(root, list, b, focusFirst, cOf = () => null, start = 0) {
+const EQ_Y = 616, eqY = (M) => (M.div ? EQ_Y - EQ_RISE : EQ_Y), EQ_CLS = ['ts-big', 'ts-num', 'ts-label', 'ts-small'];
+function eqRow(root, list, b, focusFirst, cOf = () => null, start = 0, y = EQ_Y) {
   // the sentences sit in one row, centred on the final width; each appears with its own build
   // (start: never larger than a line already shown in the same place, so the row keeps one size)
   const gap = 64; let cls = EQ_CLS[start], ws;
   for (const c of EQ_CLS.slice(start)) { cls = c; ws = list.map(e => measure(root, e.parts.join(''), c)); if (ws.reduce((a, z) => a + z, 0) + gap * (list.length - 1) <= ZONE.w) break; }
   let x = 640 - (ws.reduce((a, z) => a + z, 0) + gap * (list.length - 1)) / 2;
   return list.map((e, i) => {
-    const t = computed(T(root, x, EQ_Y, '', cls, { fill: 'var(--ink)', s: b[e.k], cls: 'rise', delay: e.k === 'facts' ? 250 * i : 0, c: cOf(e, i) }), e.path);
+    const t = computed(T(root, x, y, '', cls, { fill: 'var(--ink)', s: b[e.k], cls: 'rise', delay: e.k === 'facts' ? 250 * i : 0, c: cOf(e, i) }), e.path);
     h('tspan', { text: e.parts[0] }, t); h('tspan', { text: e.parts[1], fill: i === 0 && focusFirst ? 'var(--focus-text)' : 'var(--ink)' }, t);
     x += ws[i] + gap; return t;
   });
@@ -357,7 +361,7 @@ function renderGroups(root, P, ctx) {
     const room = L.left ? ZONE.x + ZONE.w - ax : ZONE.x + ZONE.w - (box.x + box.w + 20), right = L.left || room >= 220;
     // where the lines may run: under the slot, down to the sentence row; beside an array's short row, from that row down
     // (the rows above are full); beside the sharing pile, within the strip between the title and the rings
-    const lastMax = under || L.left ? EQ_Y - 56 : L.top - 26;
+    const lastMax = under || L.left ? eqY(M) - 56 : L.top - 26;
     // under the slot: never above the running totals' line, so the words cannot reach up beside the last group's ring
     const firstMin = under ? Math.max(box.y + box.h + 34, L.left.labAt[1] + 10) : L.left ? L.left.labAt[1] + 14 : PILE.y + 30;
     let LC, lh, nw, maxW, tb, fMin = firstMin;
@@ -386,14 +390,16 @@ function renderGroups(root, P, ctx) {
   // row until a sentence takes its place. In a multiplication the whole is the answer: it leaves as the groups form,
   // and is marked as saying the answer (data-ans), so a question slide never restores it before the reveal
   const firstEq = M.add ? b.add : b.sentence;
-  computed(T(root, 640, EQ_Y, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kObj, hide: M.div ? firstEq : (kMove ?? firstEq), cls: 'rise', 'data-ans': M.div ? null : '1' }), M.array ? 'size' : 'groups');
+  computed(T(root, 640, eqY(M), pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kObj, hide: M.div ? firstEq : (kMove ?? firstEq), cls: 'rise', 'data-ans': M.div ? null : '1' }), M.array ? 'size' : 'groups');
+  // v2: a division keeps its whole to the end: when the sentence takes the row, the whole steps down under it
+  if (M.div && firstEq != null) computed(T(root, 640, eqY(M) + WHOLE_DY, pl(N, ...M.noun), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: firstEq, cls: 'rise' }), M.array ? 'size' : 'groups');
   if (M.add) {
     // repeated addition first, on its own centred line; it leaves when the multiplication takes its place
     const ap = addParts(M); eqCls = EQ_CLS.find(c => measure(root, ap.join(''), c) <= ZONE.w) || EQ_CLS[EQ_CLS.length - 1];
-    const t = computed(T(root, 640 - measure(root, ap.join(''), eqCls) / 2, EQ_Y, '', eqCls, { fill: 'var(--ink)', s: b.add, hide: b.sentence, cls: 'rise' }), 'groups');
+    const t = computed(T(root, 640 - measure(root, ap.join(''), eqCls) / 2, eqY(M), '', eqCls, { fill: 'var(--ink)', s: b.add, hide: b.sentence, cls: 'rise' }), 'groups');
     h('tspan', { text: ap[0] }, t); h('tspan', { text: ap[1], fill: 'var(--focus-text)' }, t);
   }
-  const row = eqRow(root, EQ, b, true, e => M.turn && e.k === 'sentence' ? `${b.turn}-${b.turn + 1}:soft` : null, eqCls ? EQ_CLS.indexOf(eqCls) : 0);
+  const row = eqRow(root, EQ, b, true, e => M.turn && e.k === 'sentence' ? `${b.turn}-${b.turn + 1}:soft` : null, eqCls ? EQ_CLS.indexOf(eqCls) : 0, eqY(M));
   // the first sentence sits centred until the next sentence arrives, then slides into its place in the row
   const kNext = EQ.length > 1 ? b[EQ[1].k] : null, eqG = kNext != null ? h('g', {}, root) : null, eqDx = eqG ? 640 - (+row[0].getAttribute('x') + measure(root, EQ[0].parts.join(''), row[0].getAttribute('class').split(' ').find(c => c.startsWith('ts-'))) / 2) : 0;
   if (eqG) eqG.appendChild(row[0]);

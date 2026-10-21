@@ -187,7 +187,13 @@ describe("the compiled writer request, base4g against base4f-p123", () => {
         throw new Error("no answers in this run");
       },
     };
-    await runWriter({ brief: writerBrief(l), objectives: fixture.objectives, services, bundle });
+    await runWriter({
+      // The fixture predates `close` (TEACH-110 part ab): its exit ticket is on the worksheet.
+      brief: { ...writerBrief(l), exitTicketOnSlides: false },
+      objectives: fixture.objectives,
+      services,
+      bundle,
+    });
     if (!writer) throw new Error("no writer call");
     return writer;
   };
@@ -229,7 +235,8 @@ describe("the compiled writer request, base4g against base4f-p123", () => {
         },
       };
       const out = await runWriter({
-        brief: writerBrief(l),
+        // The fixture predates `close` (TEACH-110 part ab): its exit ticket is on the worksheet.
+        brief: { ...writerBrief(l), exitTicketOnSlides: false },
         objectives: fixture.objectives,
         services,
         bundle,

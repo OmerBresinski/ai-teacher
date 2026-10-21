@@ -232,6 +232,25 @@ describe("library mutations", () => {
     expect(blank.kind).toBe("worksheet");
   });
 
+  it("a new lesson's cover is the theme's cover with its picture slot open (decision 75)", async () => {
+    const queryClient = newClient();
+    await run(libraryMutations.createDocument(queryClient), {
+      kind: "lesson",
+      title: "Volcanoes",
+      themeId: "poster",
+      yearGroup: "Year 4",
+      subject: "Science",
+    });
+    const body = lastRequest()?.body as {
+      body: { slides: { kind: string; elements: { type: string }[] }[] };
+    };
+    const cover = body.body.slides[0];
+    expect(cover?.kind).toBe("title");
+    expect(cover?.elements.filter((e) => e.type === "image")).toHaveLength(1);
+    expect(JSON.stringify(cover)).toContain("Year 4 · Science");
+    expect(JSON.stringify(cover)).not.toContain("Add the class and the date");
+  });
+
   it("importDocument posts the parsed body under its kind and takes the server's id (TEACH-110)", async () => {
     const queryClient = newClient();
     const lesson = fakeApi.loadDocument("demo-water-cycle");

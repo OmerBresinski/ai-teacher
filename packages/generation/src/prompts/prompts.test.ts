@@ -199,8 +199,8 @@ export const SAMPLE_INPUTS: Record<PromptName, unknown> = {
 
 const PINNED: Record<PromptName, { version: string; hash: string }> = {
   "check-input": {
-    version: "check-input.v4",
-    hash: "a4f3ff2d86262252006017bc4176e8d7a384fdeeaa87982b32c66a6044c8db69",
+    version: "check-input.v5",
+    hash: "3501159838b742ee11926b1d72ed07464995ef300b5d54a4740e0bcacbc95e3b",
   },
   "plan-skeleton": {
     version: "plan-skeleton.v22",

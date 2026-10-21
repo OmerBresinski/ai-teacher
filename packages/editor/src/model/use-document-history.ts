@@ -6,7 +6,14 @@
 
 import type { QueryFunction, QueryKey } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import {
+  hasLayouts,
+  loadLayoutEditing,
+  onLayoutEditingLoaded,
+  settleLayoutGroups,
+  takePendingSettle,
+} from "./layout-editing";
 import { HISTORY_LIMIT, type History, type ReducerOf, useHistory } from "./use-history";
 
 export { HISTORY_LIMIT };
@@ -61,7 +68,22 @@ export function useDocumentHistory<TData = unknown>({
     onChange,
     isDocument: isLessonData,
     documentOf: lessonOf,
+    settle: settleLayoutGroups,
   });
+  const withLayouts = history.document ? hasLayouts(history.document) : false;
+  useEffect(() => {
+    if (withLayouts) loadLayoutEditing().catch(() => undefined);
+  }, [withLayouts]);
+  // Edits made before the layout chunk arrived are settled as soon as it does (one undo step).
+  const { dispatch } = history;
+  useEffect(() => {
+    const settleOwed = () => {
+      const fix = takePendingSettle();
+      if (fix) dispatch(fix);
+    };
+    settleOwed();
+    return onLayoutEditingLoaded(settleOwed);
+  }, [dispatch]);
   // `history` is already memoised on its parts; this only renames `document` → `lesson`.
   return useMemo(() => {
     const { document: lesson, ...rest } = history;

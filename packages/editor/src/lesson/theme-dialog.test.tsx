@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
+import { loadLayoutKit } from "../model/layout-kit";
 import { demoLibrary } from "../model/starter";
 import { THEMES } from "../model/themes";
+import { lessonPicks } from "../theme-picker/samples";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
 import { renderEditor } from "./test-harness";
 
@@ -14,13 +16,19 @@ import { renderEditor } from "./test-harness";
 afterEach(cleanup);
 
 describe("ThemeDialog", () => {
+  // Done waits for the template code before its final re-fit (TEACH-191 part d); load it up front
+  // so these tests time the undo step and the save, not the first import.
+  beforeAll(async () => {
+    await loadLayoutKit();
+  });
+
   test("Theme → Playground sets lesson.themeId, the tile is checked, Done closes as one undo step and one save", async () => {
     const { read, onSave } = renderEditor();
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     const dialog = await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
-    // Every catalogue theme, once (nine since Chalk & Cream was retired, ruling 202).
-    expect(tiles).toHaveLength(9);
+    // Every catalogue theme, once: the round 5 sixteen (TEACH-215 part c, 17 Oct 2026).
+    expect(tiles).toHaveLength(16);
     const paper = tiles.find((t) => t.getAttribute("data-theme-tile") === "playground");
     if (!paper) throw new Error("no playground tile");
     fireEvent.click(paper);
@@ -127,13 +135,24 @@ describe("where the theme lives (ruling 123)", () => {
     );
   });
 
-  test("each tile is the lesson's own title slide", async () => {
-    renderEditor();
+  test("the picker draws each theme's own slides with the lesson's title (decision 34)", async () => {
+    const { read } = renderEditor();
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
     expect(tiles).toHaveLength(THEMES.length);
-    for (const tile of tiles) expect(tile.querySelector("[data-slide-root]")).not.toBeNull();
+    // Tiles draw lazily as they scroll in; the large preview draws the chosen theme once the
+    // template code has loaded.
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
+    expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
+    // "See your lesson in this theme": the lesson's own cover and its most visual slides, never
+    // the sample lesson (review 20 Oct: a water cycle lesson showed lambs and chicks).
+    const picks = lessonPicks(read());
+    if (!picks) throw new Error("lesson has slides");
+    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(1 + picks.layouts.length);
+    expect(spot.textContent).not.toContain("Animals and their young");
+    expect(spot.textContent).not.toContain("Lambs and ewes");
   });
 });
 
@@ -171,6 +190,37 @@ describe("while the lesson is being made (ruling 123)", () => {
     );
   }
 
+  test("an empty lesson opens the picker on the topic-free sample with its title, no throw", async () => {
+    const empty = { ...lesson, slides: [] };
+    render(<GeneratingThemeDialog open lesson={empty} onChange={() => {}} onClose={() => {}} />);
+    await screen.findByRole("dialog", { name: "Theme" });
+    expect(screen.getAllByRole("radio")).toHaveLength(THEMES.length);
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
+    expect(spot.textContent).toContain(lesson.title);
+    expect(spot.textContent).toContain("Key words");
+  });
+
+  test("opening the picker and hovering every theme never changes the lesson", async () => {
+    const shown = displayInTheme(lesson, lesson.themeId);
+    const before = structuredClone(shown);
+    render(<GeneratingThemeDialog open lesson={shown} onChange={() => {}} onClose={() => {}} />);
+    await screen.findByRole("dialog", { name: "Theme" });
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    for (const tile of screen.getAllByRole("radio")) {
+      fireEvent.pointerEnter(tile);
+      fireEvent.mouseEnter(tile);
+      fireEvent.focus(tile);
+    }
+    const last = THEMES[THEMES.length - 1];
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-theme-spotlight]")?.getAttribute("data-theme-spotlight"),
+      ).toBe(last?.id),
+    );
+    expect(shown).toEqual(before);
+  });
+
   test("a tile re-themes live, Done keeps it, Cancel goes back to the opening theme", async () => {
     const changes: string[] = [];
     render(<Harness onChange={(id) => changes.push(id)} />);
@@ -179,14 +229,14 @@ describe("while the lesson is being made (ruling 123)", () => {
       .getAttribute("data-theme-callout");
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     let dialog = await screen.findByRole("dialog", { name: "Theme" });
-    const nightLab = () =>
-      screen.getAllByRole("radio").find((t) => t.getAttribute("data-theme-tile") === "night-lab");
-    fireEvent.click(nightLab() as HTMLElement);
-    expect(nightLab()).toHaveAttribute("aria-checked", "true");
+    const slate = () =>
+      screen.getAllByRole("radio").find((t) => t.getAttribute("data-theme-tile") === "dark-slate");
+    fireEvent.click(slate() as HTMLElement);
+    expect(slate()).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     const callout = screen.getByRole("button", { name: /^Theme:/ });
-    expect(callout).toHaveAttribute("data-theme-callout", "night-lab");
+    expect(callout).toHaveAttribute("data-theme-callout", "dark-slate");
 
     fireEvent.click(callout);
     dialog = await screen.findByRole("dialog", { name: "Theme" });
@@ -198,9 +248,9 @@ describe("while the lesson is being made (ruling 123)", () => {
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: /^Theme:/ })).toHaveAttribute(
       "data-theme-callout",
-      "night-lab",
+      "dark-slate",
     );
-    expect(changes).toEqual(["night-lab", opening ?? "", "night-lab"]);
+    expect(changes).toEqual(["dark-slate", opening ?? "", "dark-slate"]);
   });
 });
 

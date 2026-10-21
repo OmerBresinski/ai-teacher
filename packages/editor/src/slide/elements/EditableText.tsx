@@ -13,7 +13,7 @@ const TextEditor = lazy(() => import("./TextEditor"));
  * (`editingTextId`) and the auto-height measurement, and hands over to Tiptap only for the
  * element actually being typed into.
  */
-export function EditableText({ element, theme, slideId }: ElementViewProps<TextElement>) {
+export function EditableText({ element, theme, slideId, step }: ElementViewProps<TextElement>) {
   const editing = useEditingState().editingTextId === element.id;
   const r = resolveTextStyle(element.style, theme);
 
@@ -32,6 +32,7 @@ export function EditableText({ element, theme, slideId }: ElementViewProps<TextE
       element={element}
       theme={theme}
       mode="edit"
+      step={step}
       bodyRef={ref}
       overflowing={overflowing}
     />

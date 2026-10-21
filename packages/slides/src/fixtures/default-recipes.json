@@ -12193,7 +12193,7 @@
         "y": 104,
         "w": 67,
         "h": 4,
-        "fill": "#2C5A4D",
+        "fill": "#1F5A45",
         "name": "Accent rule"
       },
       {
@@ -12314,7 +12314,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -12422,7 +12422,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -12557,7 +12557,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -12584,7 +12584,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2C5A4D",
+          "color": "#1F5A45",
           "fontWeight": 600
         }
       },
@@ -12623,7 +12623,7 @@
         "y": 249,
         "w": 413,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -12650,7 +12650,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2C5A4D",
+          "color": "#1F5A45",
           "fontWeight": 600
         }
       },
@@ -12705,7 +12705,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2C5A4D",
+          "color": "#1F5A45",
           "fontWeight": 600
         }
       },
@@ -12744,7 +12744,7 @@
         "y": 249,
         "w": 413,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -12771,7 +12771,7 @@
         "style": {
           "preset": "body",
           "autoHeight": true,
-          "color": "#2C5A4D",
+          "color": "#1F5A45",
           "fontWeight": 600
         }
       },
@@ -12840,7 +12840,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -13254,7 +13254,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -13291,7 +13291,7 @@
         "y": 210,
         "w": 844,
         "h": 277,
-        "fill": "#FFFCF6",
+        "fill": "#FFFFFF",
         "radius": 6,
         "name": "Working card"
       },
@@ -13429,7 +13429,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -13552,8 +13552,8 @@
         "y": 140,
         "w": 844,
         "h": 278,
-        "fill": "#FFFCF6",
-        "stroke": "#2C5A4D",
+        "fill": "#FFFFFF",
+        "stroke": "#1F5A45",
         "strokeWidth": 2.5,
         "name": "Speech bubble"
       },
@@ -14438,8 +14438,8 @@
         "y": 161,
         "w": 844,
         "h": 195,
-        "fill": "#FFFCF6",
-        "stroke": "#2C5A4D",
+        "fill": "#FFFFFF",
+        "stroke": "#1F5A45",
         "strokeWidth": 2.5,
         "radius": 6,
         "name": "Prompt card"
@@ -14513,7 +14513,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -14648,7 +14648,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {
@@ -14699,7 +14699,7 @@
         "y": 112,
         "w": 844,
         "h": 1,
-        "fill": "#DDD3C1",
+        "fill": "#D9D9D2",
         "name": "Rule"
       },
       {

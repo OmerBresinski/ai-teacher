@@ -1,0 +1,323 @@
+{
+  "id": "s9",
+  "kind": "multiple-choice",
+  "notes": "Running\nTake about 5 minutes. Pupils choose the fair plan independently, then explain their choice to a partner. Check that they can identify what changes and what stays the same.\n\nAnswers\nA: Different water amounts; same light, plants, soil and pots.\n\nMisconceptions\nThe plan with different water and different light changes two factors, so pupils cannot tell which caused a growth difference. The plan with the same water but different light tests light, not water. Explain that only water amount should change; keep other conditions the same.\n\nBackground\nA fair test changes one factor at a time. The factor deliberately changed is the independent variable; the measured outcome here is plant growth.",
+  "elements": [
+    {
+      "h": 365,
+      "w": 960,
+      "x": 0,
+      "y": 175,
+      "id": "d-s9-surface_field-b-0",
+      "fill": "#DDF0F8",
+      "name": "surface:field-b",
+      "type": "shape",
+      "shape": "rounded",
+      "locked": true,
+      "radius": 39,
+      "authoredBy": "ai"
+    },
+    {
+      "h": 108,
+      "w": 832,
+      "x": 64,
+      "y": 46,
+      "id": "d-s9-Heading-0",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Which plan fairly tests how water amount affects growth?",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "Heading",
+      "type": "text",
+      "style": {
+        "preset": "heading",
+        "padding": 0,
+        "fontSize": 48,
+        "autoHeight": true,
+        "fontWeight": 600,
+        "lineHeight": 1.12
+      },
+      "authoredBy": "ai"
+    },
+    {
+      "h": 71,
+      "w": 832,
+      "x": 64,
+      "y": 230,
+      "id": "d-s9-Option-0",
+      "fill": "#FFFFFF",
+      "name": "Option",
+      "type": "shape",
+      "shape": "rounded",
+      "radius": 39,
+      "stroke": "#BFE1F0",
+      "authoredBy": "ai",
+      "strokeWidth": 2
+    },
+    {
+      "h": 43,
+      "w": 43,
+      "x": 83,
+      "y": 244,
+      "id": "d-s9-Hinge_key-0",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "A",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "fill": "#10252F",
+      "name": "Hinge key",
+      "type": "shape",
+      "shape": "rounded",
+      "radius": 10,
+      "textStyle": {
+        "align": "center",
+        "color": "#FFFFFF",
+        "preset": "heading",
+        "valign": "middle",
+        "padding": 0,
+        "fontSize": 29,
+        "fontWeight": 700
+      },
+      "authoredBy": "ai"
+    },
+    {
+      "h": 31,
+      "w": 685,
+      "x": 145,
+      "y": 250,
+      "id": "d-s9-Option_text-0",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Different water amounts; same light, plants, soil and pots.",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "Option text",
+      "type": "text",
+      "style": {
+        "color": "#10252F",
+        "preset": "body",
+        "padding": 0,
+        "fontSize": 25,
+        "autoHeight": true,
+        "fontWeight": 500,
+        "lineHeight": 1.24
+      },
+      "authoredBy": "ai"
+    },
+    {
+      "h": 71,
+      "w": 832,
+      "x": 64,
+      "y": 314,
+      "id": "d-s9-Option-1",
+      "fill": "#FFFFFF",
+      "name": "Option",
+      "type": "shape",
+      "shape": "rounded",
+      "radius": 39,
+      "stroke": "#BFE1F0",
+      "authoredBy": "ai",
+      "strokeWidth": 2
+    },
+    {
+      "h": 43,
+      "w": 43,
+      "x": 83,
+      "y": 328,
+      "id": "d-s9-Hinge_key-1",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "B",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "fill": "#10252F",
+      "name": "Hinge key",
+      "type": "shape",
+      "shape": "rounded",
+      "radius": 10,
+      "textStyle": {
+        "align": "center",
+        "color": "#FFFFFF",
+        "preset": "heading",
+        "valign": "middle",
+        "padding": 0,
+        "fontSize": 29,
+        "fontWeight": 700
+      },
+      "authoredBy": "ai"
+    },
+    {
+      "h": 31,
+      "w": 685,
+      "x": 145,
+      "y": 334,
+      "id": "d-s9-Option_text-1",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Different water amounts and different amounts of light.",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "Option text",
+      "type": "text",
+      "style": {
+        "color": "#10252F",
+        "preset": "body",
+        "padding": 0,
+        "fontSize": 25,
+        "autoHeight": true,
+        "fontWeight": 500,
+        "lineHeight": 1.24
+      },
+      "authoredBy": "ai"
+    },
+    {
+      "h": 71,
+      "w": 832,
+      "x": 64,
+      "y": 398,
+      "id": "d-s9-Option-2",
+      "fill": "#FFFFFF",
+      "name": "Option",
+      "type": "shape",
+      "shape": "rounded",
+      "radius": 39,
+      "stroke": "#BFE1F0",
+      "authoredBy": "ai",
+      "strokeWidth": 2
+    },
+    {
+      "h": 43,
+      "w": 43,
+      "x": 83,
+      "y": 412,
+      "id": "d-s9-Hinge_key-2",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "C",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "fill": "#10252F",
+      "name": "Hinge key",
+      "type": "shape",
+      "shape": "rounded",
+      "radius": 10,
+      "textStyle": {
+        "align": "center",
+        "color": "#FFFFFF",
+        "preset": "heading",
+        "valign": "middle",
+        "padding": 0,
+        "fontSize": 29,
+        "fontWeight": 700
+      },
+      "authoredBy": "ai"
+    },
+    {
+      "h": 31,
+      "w": 685,
+      "x": 145,
+      "y": 418,
+      "id": "d-s9-Option_text-2",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Same water amount; different amounts of light.",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      },
+      "name": "Option text",
+      "type": "text",
+      "style": {
+        "color": "#10252F",
+        "preset": "body",
+        "padding": 0,
+        "fontSize": 25,
+        "autoHeight": true,
+        "fontWeight": 500,
+        "lineHeight": 1.24
+      },
+      "authoredBy": "ai"
+    }
+  ],
+  "question": {
+    "type": "multiple-choice",
+    "oneStep": true,
+    "options": [
+      {
+        "id": "d-s9-Option-0",
+        "correct": true
+      },
+      {
+        "id": "d-s9-Option-1",
+        "correct": false
+      },
+      {
+        "id": "d-s9-Option-2",
+        "correct": false
+      }
+    ]
+  }
+}

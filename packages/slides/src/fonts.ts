@@ -24,6 +24,8 @@ export const FONT_STACKS = {
   nunito: "var(--font-nunito), Verdana, sans-serif",
   outfit: 'var(--font-outfit), "Helvetica Neue", sans-serif',
   geist: 'var(--font-geist), ui-sans-serif, -apple-system, "Segoe UI", sans-serif',
+  // Theme v2's early profile (TEACH-152 part b): infant a and g. Comic Sans MS keeps them, +1% wide.
+  andika: 'var(--font-andika), "Comic Sans MS", sans-serif',
 } as const;
 
 export type FontKey = keyof typeof FONT_STACKS;
@@ -45,4 +47,5 @@ export const FONT_LABELS: Record<FontKey, string> = {
   nunito: "Nunito",
   outfit: "Outfit",
   geist: "Geist",
+  andika: "Andika",
 };

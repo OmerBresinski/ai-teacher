@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { StorageAdapter, WorkspaceId } from "@tj/domain";
 import type { BankRequest } from "@tj/generation";
-import { decodePng, encodePng, type ImageGenerator } from "@tj/images";
+import { decodePng, encodePng, type ImageGenerator, retryLine } from "@tj/images";
 import {
   createDailyImageCap,
   createGeneratingBank,
@@ -49,6 +49,24 @@ const req: BankRequest = {
 const signal = new AbortController().signal;
 
 describe("the generating bank", () => {
+  test("a retry's prompt carries why the last try failed; the first carries nothing extra", async () => {
+    const { generator, calls } = fakeGenerator();
+    const bank = createGeneratingBank({
+      generator,
+      cap: createDailyImageCap({ capUsd: 5 }),
+      save: async () => ({ id: "g1", src: "/files/w/images/g1.png" }),
+      logger,
+    });
+    await bank.generate(req, false, signal);
+    await bank.generate(req, false, signal, { reason: "judge", why: "no farmyard in view" });
+    await bank.generate(req, false, signal, { reason: "refused-safety" });
+    expect(calls[0]?.prompt).not.toContain("turned down");
+    expect(calls[1]?.prompt.split("\n").at(-1)).toBe(
+      retryLine({ reason: "judge", why: "no farmyard in view" }),
+    );
+    expect(calls[2]?.prompt.split("\n").at(-1)).toBe(retryLine({ reason: "refused-safety" }));
+    expect(new Set(calls.map((c) => c.prompt)).size).toBe(3);
+  });
   test("generates at the size nearest the slot, stores it whole, and the judge sees those bytes", async () => {
     const { generator, calls } = fakeGenerator();
     const saved: Uint8Array[] = [];

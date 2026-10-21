@@ -1,8 +1,10 @@
 import type { OptionElement } from "@tj/domain/documents";
-import { Check } from "lucide-react";
+import { badgeGlyph, crossPolygon, tickPolygon } from "@tj/slides";
 import { lazy, type ReactNode, Suspense } from "react";
 import { docToPlainText } from "../../text/static";
 import {
+  badgeGlyphType,
+  badgeGlyphVars,
   type ElementViewProps,
   optionChipLabel,
   optionState,
@@ -21,6 +23,10 @@ const EditableLabel = lazy(() => import("./EditableLabel"));
 const PAD = 24;
 const CHIP = 34;
 const CHIP_GAP = 19;
+const CHIP_FONT = 19;
+const TICK = tickPolygon(2.6 * 1.2)
+  .map((p) => p.join(","))
+  .join(" ");
 const TICK_LANE = 44;
 /** The corner badge and its inset from the card's top-right corner. */
 const BADGE = 32;
@@ -103,6 +109,7 @@ export function OptionView({
         <span
           aria-hidden
           style={{
+            position: "relative",
             flex: `0 0 ${CHIP}px`,
             width: CHIP,
             height: CHIP,
@@ -117,12 +124,12 @@ export function OptionView({
             color: correct ? correctColor : theme.colors.accent,
             fontFamily: theme.fonts.title,
             fontWeight: 700,
-            fontSize: 19,
+            fontSize: CHIP_FONT,
             lineHeight: 1,
             letterSpacing: 0,
           }}
         >
-          {label}
+          <ChipGlyph label={label} theme={theme} />
         </span>
       ) : null}
 
@@ -156,7 +163,10 @@ export function OptionView({
               color: theme.colors.surface,
             }}
           >
-            <Check size={20} strokeWidth={2.6} />
+            {/* The tick drawn centred on its box (`tickPolygon`); lucide's sits 0.5 of 24 high. */}
+            <svg width={20} height={20} viewBox="0 0 24 24" aria-hidden focusable="false">
+              <polygon points={TICK} fill="currentColor" />
+            </svg>
           </span>
         </span>
       ) : null}
@@ -183,5 +193,49 @@ function wrongRank(id: string, question: ElementViewProps["question"]): number {
   return Math.max(
     0,
     question.options.filter((o) => !o.correct).findIndex((o) => o.id === id),
+  );
+}
+
+/** The marks a true/false chip may carry, drawn as outlines centred on their own box. */
+const DRAWN: Record<string, "tick" | "cross"> = {
+  "✓": "tick",
+  "✔": "tick",
+  "✗": "cross",
+  "✕": "cross",
+  "✘": "cross",
+};
+
+/**
+ * A chip's letter, centred on its cap height (`badgeGlyph`); a tick or cross is drawn, since a
+ * fallback font's ✓ or ✗ has no metrics to centre it by.
+ */
+function ChipGlyph({
+  label,
+  theme,
+}: {
+  label: string;
+  theme: ElementViewProps<OptionElement>["theme"];
+}) {
+  const drawn = DRAWN[label.trim()];
+  if (drawn) {
+    const pts = (drawn === "tick" ? tickPolygon(3) : crossPolygon(3))
+      .map((p) => p.join(","))
+      .join(" ");
+    return (
+      <svg width={20} height={20} viewBox="0 0 24 24" aria-hidden focusable="false">
+        <polygon points={pts} fill="currentColor" />
+      </svg>
+    );
+  }
+  const g = badgeGlyph(label, theme.fonts.title, CHIP_FONT);
+  return g ? (
+    <span
+      className="tj-badge-glyph"
+      style={{ ...badgeGlyphType({}, CHIP_FONT), ...badgeGlyphVars(g) }}
+    >
+      {label}
+    </span>
+  ) : (
+    <span>{label}</span>
   );
 }

@@ -8,6 +8,7 @@ import {
   type TextElement,
   type Theme,
 } from "@tj/domain/documents";
+import { CALLOUT_ICONS } from "./callout-icons";
 import { uid } from "./factories";
 import type { Rect } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
@@ -25,7 +26,6 @@ import {
   text,
 } from "./layouts";
 import { SAFE_BOTTOM } from "./metrics";
-import { CALLOUT_ICONS } from "./point-kinds";
 import { isBackdrop, isFootBand, stepDownSize } from "./reflow";
 import { countLines } from "./text-measure";
 import { resolveFontSize } from "./text-style";

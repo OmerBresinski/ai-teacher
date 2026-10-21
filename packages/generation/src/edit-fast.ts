@@ -1,5 +1,6 @@
 import { type Budget, type CreatedAi, createBudget } from "@tj/ai";
 import {
+  answerKeyText,
   type Lesson,
   plainTextOf,
   type RichDoc,
@@ -366,8 +367,9 @@ function answersOf(slide: Slide): { answers: string[]; answerIds: Set<string> } 
     };
   }
   if (q?.type === "fill-gap") return { answers: q.gaps.map((g) => g.answer), answerIds: new Set() };
+  // The answer with its working, as one key (the working gives the answer away as much).
   if (q?.type === "open-response" && q.modelAnswer)
-    return { answers: [q.modelAnswer], answerIds: new Set() };
+    return { answers: [answerKeyText(q).trim()], answerIds: new Set() };
   return { answers: [], answerIds: new Set() };
 }
 

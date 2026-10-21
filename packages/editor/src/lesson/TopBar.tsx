@@ -27,7 +27,9 @@ import * as reducers from "../model/reducers";
 import type { Autosave } from "../model/use-autosave";
 import { enterPresentFullscreen } from "../present/use-fullscreen";
 import { useHistory, useLesson } from "./document-context";
+import { useProposals } from "./proposals-context";
 import { ThemeCallout } from "./ThemeDialog";
+import { type TeacherEdits, useTeacherEdited } from "./teacher-edits";
 import { useMobileEditor } from "./use-mobile-editor";
 
 /*
@@ -64,6 +66,8 @@ export type TopBarProps = {
    * one Worksheet entry (ruling 186); it replaces the built-in Worksheet button when given.
    */
   worksheetsSlot?: ReactNode;
+  /** The teacher's own changes (UX audit J3): while a job fills the lesson, the save status waits for one. */
+  teacherEdits?: TeacherEdits;
 };
 
 /** Below 1180px Facts and Worksheet show as icons (names kept for screen readers), so Present and
@@ -81,10 +85,15 @@ export function TopBar({
   factsOpen = false,
   autosave,
   worksheetsSlot,
+  teacherEdits,
 }: TopBarProps) {
   const lesson = useLesson();
   const mobile = useMobileEditor();
   const { dispatch, undo, redo, canUndo, canRedo } = useHistory();
+  // A lesson the job is still writing and the teacher has not touched: no save status (UX audit J3).
+  const filling = useProposals().writingSlideIds !== undefined;
+  const edited = useTeacherEdited(teacherEdits);
+  const saveQuiet = filling && !edited;
   const worksheetId = lesson.artefacts?.worksheetId;
 
   const present = async () => {
@@ -152,10 +161,12 @@ export function TopBar({
           <IconButton label="Redo" disabled={!canRedo} onClick={redo}>
             <Redo2 aria-hidden size={16} strokeWidth={1.5} />
           </IconButton>
-          <SaveIndicator autosave={autosave} />
+          <SaveIndicator autosave={autosave} quiet={saveQuiet} />
         </AppBarGroup>
 
-        <AppBarGroup className="ml-auto gap-2">
+        {/* Greg 20 Oct (64 C): the filling job's Stop sits first, before Theme, so when it goes at
+            Ready nothing in the right-aligned group moves and no gap is left. */}
+        <AppBarGroup className="ml-auto gap-2 [&>[data-filling-stop]]:-order-1">
           {/* Ruling 123: the selected theme, named, stays in the bar and never folds into ⋯. */}
           {onOpenTheme ? (
             <ThemeCallout themeId={lesson.themeId} onClick={onOpenTheme} className="shrink-0" />
@@ -213,8 +224,8 @@ export function TopBar({
         />
       </AppBarGroup>
 
-      <AppBarGroup className="ml-auto gap-2">
-        <SaveIndicator autosave={autosave} />
+      <AppBarGroup className="ml-auto gap-2 [&>[data-filling-stop]]:-order-1">
+        <SaveIndicator autosave={autosave} quiet={saveQuiet} />
         {/* Ruling 123: the theme callout is visible on a phone too. */}
         {onOpenTheme ? (
           <ThemeCallout
