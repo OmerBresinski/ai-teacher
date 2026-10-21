@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, jest, mock } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
@@ -595,16 +595,21 @@ describe("LessonEditorPage", () => {
       // The cascade's coalescing window and the two autosaves are product timers (COALESCE_MS,
       // AUTOSAVE_MS): on fake timers the test steps over them instead of waiting 2.6 s of real
       // time, which a loaded CI runner pushed past the 5 s budget. Testing Library's `waitFor`
-      // advances fake timers only when it sees a `jest` global, which bun does not define.
-      const g = globalThis as { jest?: typeof jest };
-      g.jest = jest;
+      // advances fake timers only when it sees a `jest` global, which bun does not define. The
+      // real clock comes back in `afterEach` below, not in a `finally`.
+      (globalThis as { jest?: typeof jest }).jest = jest;
       jest.useFakeTimers();
-      try {
-        await row6();
-      } finally {
-        jest.useRealTimers();
-        delete g.jest;
-      }
+      await row6();
+      // 15 s, not bun's 5 s default: the render alone is slow under turbo's parallel suites.
+    }, 15_000);
+
+    // When bun times a test out it abandons the test's promise, so a `finally` inside it never
+    // runs; a fake clock left on then stalls every later test and hook in the process for its
+    // full timeout (CI's test job hit its 25-minute limit with @tj/web unfinished). `afterEach`
+    // still runs after a timeout. Both calls are no-ops when no test faked the clock.
+    afterEach(() => {
+      jest.useRealTimers();
+      delete (globalThis as { jest?: typeof jest }).jest;
     });
 
     const row6 = async () => {
