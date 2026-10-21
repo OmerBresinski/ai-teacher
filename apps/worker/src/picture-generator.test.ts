@@ -5,6 +5,7 @@ import { decodePng, encodePng, type ImageGenerator, retryLine } from "@tj/images
 import {
   createDailyImageCap,
   createGeneratingBank,
+  measureFrame,
   removePicture,
   savePicture,
 } from "./picture-generator";
@@ -122,6 +123,19 @@ describe("the generating bank", () => {
     expect(made?.frame?.edges.top).toBe(1);
     expect(made?.frame?.ms).toBeGreaterThanOrEqual(0);
     expect(logs.find((l) => l.msg === "picture generated")?.obj).toMatchObject({ frameCut: true });
+  });
+  test("FRAME-CUT yields to the event loop before its synchronous scan", async () => {
+    const order: string[] = [];
+    const p = measureFrame(picture(), () => {
+      order.push("scan");
+      return { plain: true, cut: false, bleed: 0, edges: { top: 0, right: 0, bottom: 0, left: 0 } };
+    });
+    // Nothing is scanned in the caller's turn; work queued in that turn runs first.
+    order.push("caller");
+    queueMicrotask(() => order.push("microtask"));
+    const out = await p;
+    expect(order).toEqual(["caller", "microtask", "scan"]);
+    expect(out?.ms).toBeGreaterThanOrEqual(0);
   });
   test("the cap starts again each UTC day", () => {
     let now = new Date("2026-10-08T23:59:00Z");

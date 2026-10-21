@@ -67,6 +67,7 @@ import {
 import {
   keyStageOf,
   lessonSubjectOf,
+  type PictureKind,
   pictureKindOf,
   sourceKindOf,
   traceProps,
@@ -712,12 +713,20 @@ export async function findDirected(args: {
   // One line per picture (codes and counts only, ADR 0015), the same shape as a set frame's, so a
   // paid eval can count empty photos and why. `reason` is the last failure, also on a placed
   // picture that needed a retry.
-  const pictureKind = pictureKindOf({
-    text: req.imagePrompt ?? req.text,
-    named: direction?.named,
-    draw: Boolean(req.draw),
-  });
-  const trace = traceProps(out.trace, out.photo?.src, pictureKind);
+  // Tracing never touches the picture: a throw here records no kind and no trace, nothing else.
+  let pictureKind: PictureKind | undefined;
+  let trace: ReturnType<typeof traceProps> | undefined;
+  try {
+    pictureKind = pictureKindOf({
+      text: req.imagePrompt ?? req.text,
+      named: direction?.named,
+      draw: Boolean(req.draw),
+    });
+    trace = traceProps(out.trace, out.photo?.src, pictureKind);
+  } catch {
+    pictureKind = undefined;
+    trace = undefined;
+  }
   deps.logger.info(
     {
       stage: "illustrate",
@@ -740,7 +749,7 @@ export async function findDirected(args: {
       library: out.trace.library,
       stock: out.trace.stock,
       latencyMs: out.ms,
-      ...trace,
+      ...(trace ?? {}),
     },
     "picture outcome",
   );
@@ -759,7 +768,7 @@ export async function findDirected(args: {
     tries: out.trace.attempts,
     library: out.trace.library ?? null,
     stock: out.trace.stock ?? null,
-    costUsd: trace.pictureCostUsd,
+    costUsd: trace?.pictureCostUsd,
   });
   const style = (out.photo as MadePicture | undefined)?.style;
   args.onOutcome?.({

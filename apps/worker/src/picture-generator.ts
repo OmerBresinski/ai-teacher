@@ -118,6 +118,21 @@ export function removePicture(storage: StorageAdapter, workspaceId: WorkspaceId)
 }
 
 /**
+ * FRAME-CUT, measure only: `frameCut` of PNG bytes and how long it took. The decode and edge scan
+ * are synchronous (about 70 ms, up to 230 ms), so it yields first: other jobs and pg-boss's timers
+ * get a turn before the event loop is held. Undefined when the bytes do not decode.
+ */
+export async function measureFrame(
+  bytes: Uint8Array,
+  measure: typeof frameCutOf = frameCutOf,
+): Promise<(NonNullable<ReturnType<typeof frameCutOf>> & { ms: number }) | undefined> {
+  await new Promise((resolve) => setImmediate(resolve));
+  const t0 = performance.now();
+  const cut = measure(bytes);
+  return cut ? { ...cut, ms: performance.now() - t0 } : undefined;
+}
+
+/**
  * The director's bank for one lesson job: a count is drawn in code (free, never capped); any other
  * generation runs at the size nearest the slot's shape under the daily cap and is stored whole, with
  * its own aspect: the slide shows it at that shape (or trims only background, `placePhoto`), so the
@@ -183,9 +198,8 @@ export function createGeneratingBank(opts: {
       // FRAME-CUT, measure only (21 Oct 2026): how far the subject runs off the frame, recorded on
       // the picture's trace and outcome event; nothing is redrawn on it. A decode failure is no
       // measure, never a failed picture.
-      const f0 = performance.now();
-      const cut = out.mime === "image/png" ? frameCutOf(out.bytes) : undefined;
-      const frame = cut ? { ...cut, ms: performance.now() - f0 } : undefined;
+      const frame =
+        out.mime === "image/png" ? await measureFrame(out.bytes).catch(() => undefined) : undefined;
       const saved = await opts.save(out.bytes, out.mime);
       // The picture's own shape (the model returns the size asked; the header is the fact).
       const [sw, sh] = size.split("x").map(Number) as [number, number];
