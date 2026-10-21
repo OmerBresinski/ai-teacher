@@ -88,6 +88,8 @@ export interface CreateFakeAiOptions {
   fallback?: FakeScriptEntry | undefined;
   modelIds?: Partial<Record<ModelClassType, string>> | undefined;
   logger?: pino.Logger | undefined;
+  /** The real client's per-call metadata hook (`CreateAiOptions.onCall`, ADR 0041). */
+  onCall?: CreateAiOptions["onCall"];
   error?: unknown;
   /** The same per-call route the real client takes (the writer's route, TEACH-110 part b). */
   route?: CreateAiOptions["route"];
@@ -201,6 +203,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     modelIds,
     logger,
     ...(options.route ? { route: options.route } : {}),
+    ...(options.onCall ? { onCall: options.onCall } : {}),
     createModel: (modelClass, modelId, context) =>
       new MockLanguageModelV4({
         provider: "bedrock",

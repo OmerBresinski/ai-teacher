@@ -40,6 +40,7 @@ export {
   type BossJob,
   CANCEL_POLL_INTERVAL_MS,
   dispositionForTerminal,
+  type JobFailureReport,
   type RunJobOptions,
   type RunJobOutcome,
   runJob,

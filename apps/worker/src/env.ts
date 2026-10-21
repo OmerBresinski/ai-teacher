@@ -76,6 +76,14 @@ export const EnvSchema = z
      * Needs `OPENAI_API_KEY` (the request embeddings); without it the library stays off.
      */
     PICTURE_LIBRARY_REUSE: z.enum(["off", "on"]).default("off"),
+    // --- Observability (ADR 0041) ------------------------------------------------------------
+    /**
+     * PostHog project API key (`phc_…`): job errors and model-call metrics, metadata only. Unset
+     * or blank: nothing is sent (dev, tests and CI).
+     */
+    POSTHOG_API_KEY: optionalString,
+    /** PostHog ingestion host. Unset: `https://eu.i.posthog.com` (EU cloud, ADR 0041). */
+    POSTHOG_HOST: optionalString.pipe(z.url({ protocol: /^https?$/ }).optional()),
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),

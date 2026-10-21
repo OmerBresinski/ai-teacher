@@ -26,6 +26,7 @@ import {
   scriptedPipelineAi,
   scriptedPipelineAiWithInserted,
 } from "./testing";
+import type { GenerationSummary } from "./types";
 import { STAGE_ORDER, StageFailure } from "./types";
 import { fitOf, resumeFrom, runLessonPipeline } from "./workflow";
 
@@ -587,6 +588,29 @@ describe("runLessonPipeline", () => {
     expect(ai.calls.some((c) => c.context?.stage === "evaluate")).toBe(false);
     // The last checkpoint is still the plan, so there is no fit block over its two slides.
     expect(summary.generation.fit).toBeUndefined();
+  });
+
+  test("onSummary receives the summary line's fields, and a throwing one is only logged", async () => {
+    const { lines, logger } = memoryLogger();
+    const ai = scriptedPipelineAiWithInserted(SLIDES_INDEX + 2, ["not json", "still not json"]);
+    const received: GenerationSummary[] = [];
+    const deps = {
+      ...recordingDeps(ai, { logger }),
+      onSummary: (s: GenerationSummary) => void received.push(s),
+    };
+    await runLessonPipeline({ lesson: sampleBriefLesson() }, deps).catch(() => undefined);
+    const summary = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "generation summary");
+    expect(received).toHaveLength(1);
+    expect(JSON.parse(JSON.stringify(received[0]))).toEqual(summary.generation);
+
+    const throwing = {
+      ...recordingDeps(scriptedPipelineAi(), { logger }),
+      onSummary: () => {
+        throw new Error("reporter down");
+      },
+    };
+    await runLessonPipeline({ lesson: sampleBriefLesson() }, throwing);
+    expect(lines.some((l) => l.includes("generation summary reporter failed"))).toBe(true);
   });
 
   test("a failed run's summary counts the findings of the last persisted checkpoint", async () => {

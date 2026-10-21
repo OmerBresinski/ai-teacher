@@ -1,4 +1,4 @@
-import type { AiCallContext, Budget, CreatedAi } from "@tj/ai";
+import type { AiCallContext, Budget, BudgetTotals, CreatedAi } from "@tj/ai";
 import type {
   Finding,
   GenerationStage,
@@ -215,7 +215,28 @@ export interface PipelineDeps {
    * never read back. Absent (tests, lab), nothing is recorded and the run is unchanged.
    */
   debug?: DebugSink;
+  /**
+   * Receives the `generation summary` line's fields once per run, whatever the outcome (ADR 0041:
+   * the worker's PostHog lesson event). Counts, costs and durations only, never content. A throw
+   * is logged and swallowed.
+   */
+  onSummary?: (summary: GenerationSummary) => void;
 }
+
+/** The `generation summary` line (ADR 0025 §16): one per pipeline run, never content. */
+export type GenerationSummary = BudgetTotals & {
+  lessonId: string | undefined;
+  jobId: string | undefined;
+  outcome: "success" | "failed";
+  planner: string;
+  stages: string[];
+  findings: { error: number; warning: number };
+  images: ImageCounts;
+  durationMs: number;
+  readableMs?: number;
+  checkedMs?: number;
+  fit?: unknown;
+};
 
 /**
  * What flows between stages: the lesson, the run's options and the in-process Verify hand-off.

@@ -21,7 +21,8 @@ import {
   runAnonymousCleanup,
   runGenerationDebugCleanup,
 } from "./jobs";
-import { createLogger } from "./logger";
+import { createLogger, type LogTap } from "./logger";
+import { createWorkerObservability, lessonIdOf, reportJobFailure } from "./observability";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
 const SHUTDOWN_GRACE_MS = 25_000;
@@ -29,7 +30,25 @@ const SHUTDOWN_GRACE_MS = 25_000;
 const POLLING_INTERVAL_SECONDS = 0.5;
 
 const env = parseEnv();
-const logger = createLogger(env);
+// ADR 0041: every job log line is also offered to PostHog as a `gen_*` event (metadata only).
+let logTap: LogTap | undefined;
+const logger = createLogger(env, undefined, (bindings, record, msg) =>
+  logTap?.(bindings, record, msg),
+);
+// ADR 0041: PostHog (EU) error tracking and model-call metrics; a no-op without POSTHOG_API_KEY.
+const observability = createWorkerObservability(env, logger);
+if (observability.enabled) logTap = observability.captureLogLine;
+if (observability.enabled) {
+  // A crash still crashes (exit 1, as before); it is reported first, scrubbed, within the flush
+  // timeout. Registered only with a key, so dev and tests keep the runtime's own behaviour.
+  const crash = (source: string) => (error: unknown) => {
+    logger.fatal({ err: safeError(error), source }, "worker crashed");
+    observability.captureException(error, source);
+    void observability.shutdown().finally(() => process.exit(1));
+  };
+  process.on("uncaughtException", crash("uncaughtException"));
+  process.on("unhandledRejection", crash("unhandledRejection"));
+}
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
 // The debug record's own pool (Greg, 20 Oct): one connection, so a debug batch never holds a
@@ -37,7 +56,10 @@ const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
 const debugPool = createDb(env.DATABASE_URL, { max: 1 });
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
-const deps = { ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb), jobs: ctx };
+const deps = {
+  ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability),
+  jobs: ctx,
+};
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));
@@ -63,17 +85,40 @@ for (const name of Object.values(JobName)) {
     async (jobs) => {
       const results = [];
       for (const job of jobs as BossJob[]) {
+        const data = job.data as { jobId?: unknown; workspaceId?: unknown } | null;
+        const endScope =
+          typeof data?.jobId === "string"
+            ? observability.beginJob(data.jobId, {
+                job: name,
+                workspaceId: typeof data.workspaceId === "string" ? data.workspaceId : undefined,
+                lessonId: lessonIdOf(job.data),
+                capUsd: name === "lesson.worksheet" ? deps.worksheetCapUsd : deps.caps.capUsd,
+              })
+            : undefined;
+        if (typeof data?.jobId === "string") {
+          // Queue wait: from the enqueue to this pick-up (and, on a retry, from the re-queue).
+          observability.captureJobEvent(data.jobId, "gen_job", {
+            status: "picked",
+            attempt: job.retryCount,
+            queueWaitMs: Date.now() - new Date(job.createdOn).getTime(),
+          });
+        }
         const run = runJob(ctx, name, registry, job, {
           shutdown: shutdown.signal,
           logger,
           deps,
           failureMessage: publicJobFailure,
+          onFailure: (report) => reportJobFailure(observability, report),
         });
         active.set(job.id, run);
         try {
           results.push(await run);
         } finally {
           active.delete(job.id);
+          endScope?.();
+          // Sends this job's events now, in the background: never awaited, so a slow PostHog
+          // never holds the job's slot (ADR 0041).
+          void observability.flush();
         }
       }
       return results;
@@ -191,6 +236,8 @@ async function stop(signal: string): Promise<void> {
   }
   bossState = "stopped";
   server.stop(true);
+  // Whatever is still queued for PostHog, bounded by its flush timeout (ADR 0041).
+  await observability.shutdown();
   await close();
   await debugPool.close();
   logger.info("worker exited cleanly");
