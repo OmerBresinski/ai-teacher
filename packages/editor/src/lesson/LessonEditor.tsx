@@ -682,6 +682,7 @@ export function LessonEditor({
                               {mobile ? (
                                 <MobileLessonEditor
                                   initialSlideId={initialSlideId}
+                                  followId={follow.following ? follow.target : undefined}
                                   canvas={{
                                     slide,
                                     theme,

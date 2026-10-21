@@ -301,18 +301,26 @@ const RUSH_MS = 30;
  * Types a draft's new words out at a steady pace (`STEP_MS` a step), a word a step, never more than
  * three; with reduced motion it shows each draft's words at once. Returns the words to show.
  */
-function useTypewriter(target: number, key: string, reduced: boolean, rush = false): number {
+function useTypewriter(
+  target: number,
+  key: string,
+  reduced: boolean,
+  rush = false,
+  /** Words already on screen for a slide new to the typewriter (the first-slides reveal's count). */
+  start?: number,
+): number {
   const [shown, setShown] = useState(target);
   const ref = useRef({ shown: target, key });
   /** Words already typed per slide: a slide seen again (its draft back after a gap) resumes. */
   const typed = useRef(new Map<string, number>([[key, target]]));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `start` only seeds a slide new to the typewriter (read when `key` changes); it never restarts the typing.
   useEffect(() => {
     const s = ref.current;
     if (s.key) typed.current.set(s.key, s.shown);
     // A new slide starts from its first draft's words, never from another slide's count.
     if (s.key !== key) {
       s.key = key;
-      s.shown = reduced ? target : (typed.current.get(key) ?? Math.min(target, 1));
+      s.shown = reduced ? target : (typed.current.get(key) ?? Math.min(target, start ?? 1));
       setShown(s.shown);
     }
     if (reduced || s.shown >= target) {
@@ -480,14 +488,19 @@ export function LiveSlide({
   const draft = (writing || holding) && slideId ? store?.get(slideId) : undefined;
   if (draft && writing) was.current.words = wordCount(draft.slide);
   const target = draft ? wordCount(draft.slide) : 0;
-  const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced, holding);
+  // The first two slides of a new lesson type out from their saved copy (first-slides-reveal.ts).
+  const paced = useRevealed(reveal, writing && !draft && !reduced ? slideId : undefined);
+  // A draft that takes over from that reveal carries on from the words already typed, never from
+  // the first word again (review of UX-C: slides 1-2 typed twice on the phone).
+  const pacedWas = useRef<{ id?: string; words: number }>({ words: 0 });
+  if (paced !== undefined) pacedWas.current = { id: slideId, words: paced };
+  const start = pacedWas.current.id === slideId ? pacedWas.current.words : undefined;
+  const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced, holding, start);
   // Kept while the draft is off screen, so a released hold never flips back on.
   if (draft) typedNow.current = words;
   const host = useRef<HTMLDivElement | null>(null);
   // A writing slide with nothing on it yet and no draft: its outline, until its layout arrives.
   const waiting = writing && !draft && slide !== undefined && isPlannedBlank(slide);
-  // The first two slides of a new lesson type out from their saved copy (first-slides-reveal.ts).
-  const paced = useRevealed(reveal, writing && !draft && !reduced ? slideId : undefined);
   const shown = !draft
     ? waiting && slide
       ? { slide: skeletonSlide(slide) }
@@ -500,7 +513,12 @@ export function LiveSlide({
   const at = (draft || paced !== undefined) && !reduced && "at" in shown ? shown.at : undefined;
   // A card or line that joins a slide already on screen slides in gently; a slide's first draft
   // shows at once (fading it in would read as a blank canvas when the view moves on).
-  const joined = useRef<{ slide?: string; ids: Set<string> }>({ ids: new Set() });
+  // A box the next draft moves glides from where it stood by a transform (FLIP), never by animating
+  // its left/top/size, so the settling is not a layout shift (UX audit, 20 Oct: CLS at 1440).
+  const joined = useRef<{ slide?: string; ids: Set<string>; at: Map<string, [number, number]> }>({
+    ids: new Set(),
+    at: new Map(),
+  });
   useLayoutEffect(() => {
     const root = host.current;
     if (!root) return;
@@ -508,10 +526,19 @@ export function LiveSlide({
     if (seen.slide !== slideId) {
       seen.slide = slideId;
       seen.ids = new Set();
+      seen.at = new Map();
     }
     const first = seen.ids.size === 0;
     for (const el of root.querySelectorAll<HTMLElement>('[data-element-id^="d-"]')) {
       const id = el.dataset.elementId ?? "";
+      const was = seen.at.get(id);
+      const now: [number, number] = [el.offsetLeft, el.offsetTop];
+      seen.at.set(id, now);
+      if (was && !reduced && (was[0] !== now[0] || was[1] !== now[1]))
+        el.animate?.(
+          [{ translate: `${was[0] - now[0]}px ${was[1] - now[1]}px` }, { translate: "0 0" }],
+          { duration: 220, easing: "ease" },
+        );
       if (seen.ids.has(id)) continue;
       seen.ids.add(id);
       if (!first && !reduced)
