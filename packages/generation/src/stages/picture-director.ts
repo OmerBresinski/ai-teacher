@@ -13,6 +13,7 @@ import { type CallStructuredOptions, callStructured } from "../call";
 import { recordDebug } from "../debug";
 import { isHistoricalLesson, type PeriodFields } from "../period";
 import {
+  DIRECTOR_FRAMES_WHOLE,
   lessonLine,
   PICTURE_DIRECTOR_VERSION,
   type PictureDirection,
@@ -20,7 +21,10 @@ import {
   PictureDirectorSchema,
   pictureDirectorPrompt,
 } from "../prompts/picture-director";
-import { PICTURE_DIRECTOR_BATCH_VERSION } from "../prompts/picture-director-batch";
+import {
+  BATCH_DIRECTOR_FRAMES_WHOLE,
+  PICTURE_DIRECTOR_BATCH_VERSION,
+} from "../prompts/picture-director-batch";
 import type { PictureMaker, PipelineDeps } from "../types";
 import { compoundSubjects, libraryKind } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
@@ -33,6 +37,7 @@ import {
 } from "../writer/services";
 import {
   type DirectedPlacer,
+  failedChecks,
   judgeMadeDirected,
   type PlacedPhoto,
   pickDirectedPhoto,
@@ -42,6 +47,7 @@ import {
   type BankRequest,
   findPicture,
   historyPolicy,
+  type JudgeCheck,
   type MadePicture,
   mustShowOf,
   type PictureBank,
@@ -58,6 +64,14 @@ import {
   setIsGenerated,
   setLookFor,
 } from "./picture-set";
+import {
+  keyStageOf,
+  lessonSubjectOf,
+  type PictureKind,
+  pictureKindOf,
+  sourceKindOf,
+  traceProps,
+} from "./picture-trace";
 
 export type DirectorDeps = CallStructuredOptions<PictureDirectorInput, PictureDirection>["deps"];
 
@@ -543,7 +557,7 @@ export async function findDirected(args: {
     brief: ImageBrief,
     picture: MadePicture,
     reuse?: boolean,
-    onWhy?: (why: string) => void,
+    onWhy?: (why: string, failed?: readonly JudgeCheck[]) => void,
   ) => Promise<boolean>;
   deps: DirectorDeps;
   /** C7: race stock against generation after this long (`findPicture`); absent, one then the other. */
@@ -607,9 +621,31 @@ export async function findDirected(args: {
       { ask: ask.subject, mustShow: b.mustShow ?? [], direction: direction ?? null, ...extra },
       args.index,
     );
+  /** A slot the director routed away from the ladder still has its outcome line (it was silent). */
+  const emptyOutcome = (reason: string, via = "none") =>
+    deps.logger.info(
+      {
+        stage: "illustrate",
+        ev: "picture-outcome",
+        kind: "single",
+        slideIndex: args.index,
+        // `none`: the director wanted no picture (or failed); `drawer`: handed to the code drawer.
+        outcome: via === "drawer" ? "drawer" : "none",
+        via,
+        attempts: 0,
+        reason,
+        director: direction?.route ?? "failed",
+        sourceKind: via === "drawer" ? "drawn" : "none",
+        lessonSubject: lessonSubjectOf(lesson.subject),
+        keyStage: keyStageOf(lesson.yearGroup),
+        promptVersion: args.direct ? PICTURE_DIRECTOR_BATCH_VERSION : PICTURE_DIRECTOR_VERSION,
+      },
+      "picture outcome",
+    );
   if (plan.kind === "none") {
     debugPicture({ plan: "none", outcome: "none" });
     log({ plan: "none" });
+    emptyOutcome(direction ? "director-none" : "director-failed");
     args.onOutcome?.({
       director: direction?.route ?? "failed",
       via: "none",
@@ -621,6 +657,7 @@ export async function findDirected(args: {
   if (plan.kind === "drawing") {
     debugPicture({ plan: "drawing", diagram: plan.diagram, outcome: "drawer" });
     log({ plan: "drawing", diagram: plan.diagram });
+    emptyOutcome("director-code", "drawer");
     args.onOutcome?.({
       director: "code",
       via: "drawer",
@@ -676,6 +713,20 @@ export async function findDirected(args: {
   // One line per picture (codes and counts only, ADR 0015), the same shape as a set frame's, so a
   // paid eval can count empty photos and why. `reason` is the last failure, also on a placed
   // picture that needed a retry.
+  // Tracing never touches the picture: a throw here records no kind and no trace, nothing else.
+  const traced = nonFatalSync(
+    () => {
+      const kind: PictureKind = pictureKindOf({
+        text: req.imagePrompt ?? req.text,
+        named: direction?.named,
+        draw: Boolean(req.draw),
+      });
+      return { kind, props: traceProps(out.trace, out.photo?.src, kind) };
+    },
+    () => undefined,
+  );
+  const pictureKind = traced?.kind;
+  const trace = traced?.props;
   deps.logger.info(
     {
       stage: "illustrate",
@@ -685,7 +736,20 @@ export async function findDirected(args: {
       outcome: out.photo ? "placed" : "empty",
       via: out.via,
       attempts: out.attempts,
-      ...(out.reason ? { reason: out.reason } : out.photo ? {} : { reason: emptyReason }),
+      reason: out.reason ?? (out.photo ? undefined : emptyReason),
+      // Picture tracing (21 Oct 2026, `docs/observability.md` "Lesson pictures"): codes and numbers.
+      director: direction?.route ?? "failed",
+      route: req.route,
+      sourceKind: sourceKindOf(out.via, out.photo as MadePicture | undefined),
+      pictureKind,
+      lessonSubject: lessonSubjectOf(lesson.subject),
+      keyStage: keyStageOf(lesson.yearGroup),
+      promptVersion: args.direct ? PICTURE_DIRECTOR_BATCH_VERSION : PICTURE_DIRECTOR_VERSION,
+      framingClause: args.direct ? BATCH_DIRECTOR_FRAMES_WHOLE : DIRECTOR_FRAMES_WHOLE,
+      library: out.trace.library,
+      stock: out.trace.stock,
+      latencyMs: out.ms,
+      ...(trace ?? {}),
     },
     "picture outcome",
   );
@@ -698,7 +762,13 @@ export async function findDirected(args: {
     attempts: out.attempts,
     ms: out.ms,
     ...(out.reason ? { failure: out.reason } : out.photo ? {} : { reason: emptyReason }),
-    ...(out.photo ? { chosen: out.photo.source } : {}),
+    ...(out.photo ? { chosen: out.photo.source, src: out.photo.src } : {}),
+    // Every try in full (ids, judge reasons, costs, frame measure): the debug record only.
+    pictureKind,
+    tries: out.trace.attempts,
+    library: out.trace.library ?? null,
+    stock: out.trace.stock ?? null,
+    costUsd: trace?.pictureCostUsd,
   });
   const style = (out.photo as MadePicture | undefined)?.style;
   args.onOutcome?.({
@@ -882,7 +952,13 @@ export async function placeWriterPicture(args: {
       whenNonFatal((error: unknown) => {
         if (deps.signal.aborted) throw deps.signal.reason;
         deps.logger.info(
-          { stage: "illustrate", slideIndex: ask.index, err: error },
+          {
+            stage: "illustrate",
+            ev: "stock-failed",
+            slideIndex: ask.index,
+            errorType: safeError(error).type,
+            err: error,
+          },
           "stock failed",
         );
         return { outcome: "empty" as const };
@@ -896,6 +972,23 @@ export async function placeWriterPicture(args: {
         const map = await stock({ ...b, specific: true });
         if (map) {
           args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
+          deps.logger.info(
+            {
+              stage: "illustrate",
+              ev: "picture-outcome",
+              kind: "single",
+              slideIndex: ask.index,
+              outcome: "placed",
+              via: "fetched",
+              attempts: 0,
+              director: "map-first",
+              route: "real",
+              sourceKind: sourceKindOf("fetched", map),
+              lessonSubject: lessonSubjectOf(lesson.subject),
+              keyStage: keyStageOf(lesson.yearGroup),
+            },
+            "picture outcome",
+          );
           return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
         }
       }
@@ -925,7 +1018,7 @@ export async function placeWriterPicture(args: {
                 deps,
                 dataUrl: made.dataUrl,
                 ...(reuse !== undefined ? { reuse } : {}),
-                ...(onWhy ? { onVerdict: (v) => v.why && onWhy(v.why) } : {}),
+                ...(onWhy ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v)) } : {}),
               })
             : Promise.resolve(false),
         deps,
@@ -939,8 +1032,22 @@ export async function placeWriterPicture(args: {
     },
     (error) => {
       if (deps.signal.aborted) throw deps.signal.reason;
+      // The slot ends with no outcome line of its own: say so, with the error's type only.
       deps.logger.info(
-        { stage: "illustrate", slideIndex: ask.index, err: error },
+        {
+          stage: "illustrate",
+          ev: "picture-outcome",
+          kind: "single",
+          slideIndex: ask.index,
+          outcome: "failed",
+          via: "none",
+          reason: "error",
+          errorType: safeError(error).type,
+          sourceKind: "none",
+          lessonSubject: lessonSubjectOf(lesson.subject),
+          keyStage: keyStageOf(lesson.yearGroup),
+          err: error,
+        },
         "picture failed",
       );
       return undefined;
