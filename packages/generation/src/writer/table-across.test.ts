@@ -86,6 +86,8 @@ describe("a table too big for the side slot goes across before it is continued",
     expect(rows).toEqual((plants.figure as { rows: string[][] }).rows.map((x) => x[0]));
     // The whole table fits one full-width slide: no "(continued)" chain of one-row slides.
     expect(r.rest).toHaveLength(1);
+    // Nothing was continued: the table's own slide keeps the slide's heading.
+    expect(r.rest[0]?.heading).toBe("A fair water test");
   });
 
   test("where a row fits across under the words (KS3), the first part keeps its words and draws across", () => {
@@ -130,6 +132,22 @@ describe("a table too big for the side slot goes across before it is continued",
     const n = (p: S) => (p.figure as { rows: unknown[] }).rows.length;
     expect(n(r.first)).toBe(Math.max(...r.rest.map(n)));
     expect(diagramOf(r.first, layAt(ks3))?.w ?? 0).toBeGreaterThan(G.panel.w);
+  });
+
+  test("the table's own slide after the words takes the table's title, drawn once", () => {
+    const titled = { ...plants, figure: { ...(plants.figure as S), title: "Our two plants" } };
+    const r = continueTable(titled, fits("visual-text"));
+    expect(r?.first.template).toBe("explain");
+    expect(r?.rest[0]?.heading).toBe("Our two plants");
+    expect((r?.rest[0]?.figure as S | undefined)?.title).toBeUndefined();
+  });
+
+  test("rows carried on from a table on the slide before are headed (continued)", () => {
+    const ks3 = at("KS3");
+    const r = continueTable(plants, fitsAt(ks3)("visual-text"));
+    expect(r?.first.figure).toBeDefined();
+    expect(r?.rest.length).toBeGreaterThan(0);
+    for (const p of r?.rest ?? []) expect(p.heading).toBe("A fair water test (continued)");
   });
 
   test("a side-panel drawing of the moved first part is refused", () => {

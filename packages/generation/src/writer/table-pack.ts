@@ -66,6 +66,11 @@ export function readingRows(t: Table): { rows: string[][]; pairs: boolean } {
   return { rows: [...left, ...right], pairs: true };
 }
 
+function untitled(t: Table): Table {
+  const { title: _t, ...rest } = t;
+  return rest as Table;
+}
+
 /**
  * A slide's table spread over as many slides as it needs. `fits(slide, first)` says whether a
  * candidate slide lays out with its table whole (`first`: the slide itself, else a continuation).
@@ -75,7 +80,8 @@ export function readingRows(t: Table): { rows: string[][]; pairs: boolean } {
  * picture-and-words slide goes across the slide (its points as key cards, ruling 194) so its first
  * part holds as many rows as a continuation. Continuation slides are big visuals headed
  * "<heading> (continued)". A picture-and-words slide whose table holds no row across the slide
- * keeps its words on its own slide (explain) and the whole table continues, full width, after it.
+ * keeps its words on its own slide (explain) and the table follows, full width, on a slide headed
+ * with the table's title (else the slide's heading); only later parts are "(continued)".
  * Undefined when even one entry cannot fit.
  */
 export function continueTable(
@@ -100,11 +106,18 @@ export function continueTable(
   const words: S | undefined =
     slide.template === "visual-text" ? { ...plain, template: "explain" } : undefined;
   let wordsFirst = false;
-  const cont = (t: Table): S => ({
+  // The table's own first slide after a words-only slide continues nothing: it takes the table's
+  // title, else the slide's heading, as a split keeps its heading (#597). Only a slide whose rows
+  // carry on from a table on the slide before is headed "(continued)".
+  const title = typeof f.title === "string" && f.title.trim() ? f.title.trim() : undefined;
+  const cont = (t: Table, opens = false): S => ({
     template: "big-visual",
-    heading: `${String(slide.heading ?? "")} (continued)`,
+    heading: opens
+      ? (title ?? String(slide.heading ?? ""))
+      : `${String(slide.heading ?? "")} (continued)`,
     lead: null,
-    figure: t,
+    // A title that became the heading is not drawn twice (`noHeadingTitle`).
+    figure: opens && title ? untitled(t) : t,
   });
   // Bounded search: a slide holds at most MAX_ROWS drawn rows (the drawer's own table limit), so
   // at most twice that many entries when packed; the longest run that fits is found by bisection
@@ -118,7 +131,7 @@ export function continueTable(
     const own = !parts.length && !wordsFirst;
     const ok = (k: number) => {
       const t = chunk(list.slice(at, at + k));
-      return fits(own ? { ...top, figure: t } : cont(t), own);
+      return fits(own ? { ...top, figure: t } : cont(t, wordsFirst && !parts.length), own);
     };
     let lo = 0;
     let hi = Math.min(most, list.length - at);
@@ -147,10 +160,10 @@ export function continueTable(
     even.push(chunk(after.slice(at2, at2 + share)));
     at2 += share;
   }
-  const balanced = even.every((t) => fits(cont(t), false)) ? even : tail;
+  const balanced = even.every((t, k) => fits(cont(t, wordsFirst && !k), false)) ? even : tail;
   return {
     first: head ? { ...top, figure: head } : (words as S),
-    rest: balanced.map(cont),
+    rest: balanced.map((t, k) => cont(t, wordsFirst && !k)),
   };
 }
 
