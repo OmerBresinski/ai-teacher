@@ -170,6 +170,7 @@ describe("worker observability (ADR 0041)", () => {
       [obs.LESSON_SUBJECTS, gen.LESSON_SUBJECTS],
       [obs.KEY_STAGES, gen.KEY_STAGES],
     ] as const;
-    for (const [sent, logged] of pairs) expect([...sent].sort()).toEqual([...logged].sort());
+    for (const [sent, logged] of pairs)
+      expect<string[]>([...sent].sort()).toEqual([...logged].sort());
   });
 });
