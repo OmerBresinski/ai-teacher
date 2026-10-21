@@ -167,9 +167,16 @@ export async function checkParams(
   // never clamped: a clamp would draw a different number from the one the slide asked for.
   const bounds = boundsRefusals(fillSchema(m.params), own);
   if (bounds.length) return { refusals: bounds, warnings: [] };
+  // a stored lesson's editor-only switches (a teacher set them) survive a pass back through here
+  const kept: J = {};
+  const props = (m.params.properties ?? {}) as J;
+  for (const key of editorOnly(m.params)) {
+    const v = (out as J)[key];
+    if (v !== undefined && typeof v === (props[key] as J)?.type) kept[key] = v;
+  }
   const params = k.withDefaults(
     m.params,
-    intent === undefined ? own : { ...own, ...panelsOff(id, own, intent) },
+    intent === undefined ? { ...own, ...kept } : { ...own, ...kept, ...panelsOff(id, own, intent) },
   );
   const missing = missingDrawingParams(id, own, params);
   if (missing.length) return { refusals: missing, warnings: [] };

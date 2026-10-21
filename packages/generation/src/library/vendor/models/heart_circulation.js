@@ -70,7 +70,8 @@ export const presets = [
 function model(P) {
   const dbl = P.detail !== 'simple', run = P.exercise === 'running';
   const pulse = run || !!P.showPulse;
-  const carries = CARRY.filter(k => P.carries && P.carries[k]);
+  // the simple loop is for Year 2, where oxygen is not taught: it never lists oxygen among what blood carries
+  const carries = CARRY.filter(k => P.carries && P.carries[k] && (dbl || k !== 'oxygen'));
   const rest = (P.pulse && P.pulse.rest) ?? 85, active = (P.pulse && P.pulse.active) ?? 150;
   const L = id => txt(P, 'label:' + id, DEF[id]);
   // the gas labels and the heart's sides are drawn on the double loop only (the simple loop has no lungs)
