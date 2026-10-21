@@ -160,7 +160,7 @@ import {
 import { writerStageOfKey } from "./shown-cap";
 import { slideStates } from "./slide-states";
 import { slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
-import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
+import { continueTable, drawable, renumberSlideRefs, tableDrawn } from "./table-pack";
 import { withWaveCLibrary } from "./wave-c";
 
 /*
@@ -1039,11 +1039,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         plan,
         visual: () => ({ status: "diagram", spec: drawable(t) }),
       });
-      return (
-        !m.over.length &&
-        !m.diagram?.length &&
-        m.slide.elements.some((e) => e.type === "image" && e.name === "Diagram")
-      );
+      return tableDrawn(sl, first, m);
     });
     if (!tc) {
       tableRest.delete(idx);
