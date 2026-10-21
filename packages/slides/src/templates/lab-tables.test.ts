@@ -33,6 +33,12 @@ type Cat = {
 const LAB = catalogue as Cat;
 const FULL = process.env.LAB_FULL === "1";
 
+// TEACH-230 part b: practice and exit-ticket cells in catalogue.json are re-pinned to the "work
+// alone" layouts (measureTemplate at this commit); the lab's cells were the old numbered list.
+// Ruling 21 A (TEACH-215 part e): the title cells are re-pinned to the cover's gold sizes
+// (`coverType`: an 82 px title stepping to 56 px, in the gold's three lines), measureTemplate at
+// this commit. "with picture" is the whole column's room; the writer's cover caps (the question in
+// two lines) are `cover-capacity.json`, which the writer's fit table reads instead.
 describe("capacities equal the lab's pinned tables (spot check)", () => {
   const cells = TEMPLATE_DOCS.flatMap((doc) =>
     STAGES.flatMap(({ key, stage, theme }) =>
@@ -43,7 +49,11 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
         return { doc, v, key, stage, theme, value: lab?.maxCharsPerItem ?? -1 };
       }),
     ),
-  ).filter((c) => c.value >= 2 && c.value <= 238);
+  )
+    // The hinge was re-laid to the v13 gold (TEACH-256 part b): its caps are its own measured
+    // table (`hinge-capacity.json`, proven in hinge.test.ts), no longer the lab's.
+    .filter((c) => c.doc.id !== "hinge")
+    .filter((c) => c.value >= 2 && c.value <= 238);
   // Every k-th cell: about 20, spread over templates and stages.
   const k = Math.max(1, Math.floor(cells.length / 20));
   const picked = cells.filter((_, i) => i % k === 0);
@@ -55,7 +65,12 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
     expect(picked.length).toBeGreaterThanOrEqual(18);
   });
 
-  for (const { doc, v, key, stage, theme, value } of picked)
+  // The re-pinned work-alone cells are always checked, not only when the spread picks them.
+  const work = cells.filter((c) => c.doc.id === "practice" || c.doc.id === "exit-ticket");
+  for (const { doc, v, key, stage, theme, value } of [
+    ...picked,
+    ...work.filter((c) => !picked.includes(c)),
+  ])
     test(`${doc.id} ${key} "${v.label}": fits at ${value}, over at ${value + 2}`, () => {
       const over = (n: number) =>
         layoutTemplate(inputFor(doc, v, n), getTheme(theme), stage as Stage, { fullSize: true })

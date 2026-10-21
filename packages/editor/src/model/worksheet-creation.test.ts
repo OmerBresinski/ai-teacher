@@ -20,7 +20,7 @@ import { recipeById, WORKSHEET_RECIPES } from "./worksheet-recipes";
 const lesson = {
   id: "lesson-1",
   title: "The water cycle",
-  themeId: "chalk",
+  themeId: "splash",
   subject: "Science",
   yearGroup: "Year 4",
   facts: DEMO_LESSON_FACTS,
@@ -104,7 +104,7 @@ describe("worksheetFromRecipe", () => {
     // The first objective in the pupil's form (TEACH-198).
     expect(sheet.header.subtitle).toBe("I can name the four stages of the water cycle in order.");
     expect(sheet.lessonId).toBe("lesson-1");
-    expect(sheet.themeId).toBe("chalk");
+    expect(sheet.themeId).toBe("splash");
     expect(sheet.subject).toBe("Science");
     expect(sheet.yearGroup).toBe("Year 4");
     // The instruction, three questions, the answer box and the placeholder, numbered as they print.

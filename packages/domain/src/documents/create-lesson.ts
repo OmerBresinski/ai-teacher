@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema, DEFAULT_SLIDE_COUNT } from "./brief";
+import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema, DEFAULT_SLIDE_TIER } from "./brief";
 import { guarded } from "./identifier-guard";
 import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
 import { FactIdSchema } from "./lesson-facts";
-import { DEFAULT_THEME_ID } from "./theme";
+import { fallbackThemeFor } from "./theme";
 import { PRACTICE_MINUTES_OPTIONS, type RecipeId } from "./worksheet";
 
 /*
@@ -62,6 +62,7 @@ export const PlanLessonSchema = z.strictObject({
     topic: true,
     classContext: true,
     slideCount: true,
+    slideTier: true,
     level: true,
   }).extend({ durationMin: DurationMinSchema.optional() }),
   yearGroup: YearGroupSchema.optional(),
@@ -94,7 +95,11 @@ export const GenerateLessonSchema = z.strictObject({
     // (TDD T4), not the 400 a malformed body gets.
     .max(MAX_CONFIRMED_OBJECTIVES),
   slideCount: BriefSchema.shape.slideCount,
+  slideTier: BriefSchema.shape.slideTier,
   durationMin: DurationMinSchema.optional(),
+  // Ruling 201: whether a worksheet is queued with this confirm; without one the exit ticket
+  // goes on the last slide.
+  worksheet: BriefSchema.shape.worksheet,
   // Ruling 116: the lesson's starting theme (last used, else the class default) travels with the confirm.
   themeId: z.string().optional(),
 });
@@ -177,8 +182,8 @@ export function defaultDurationMin(ageBand: AgeBand | undefined): number {
 
 /**
  * The empty lesson the brief becomes: canonical Lesson fields from the request, `ageBand` derived
- * from the year group when not given, `durationMin` defaulted by key stage, `slideCount` to
- * `DEFAULT_SLIDE_COUNT`, `title` from the topic.
+ * from the year group when not given, `durationMin` defaulted by key stage, `slideTier` to
+ * `DEFAULT_SLIDE_TIER` unless an exact `slideCount` was sent (ruling 164), `title` from the topic.
  * Pure, so `POST /lessons`, the brief screen and the Studio entry all apply the same defaults.
  */
 export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date): Lesson {
@@ -189,7 +194,9 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     version: 1,
     id: lessonId,
     title: input.brief.topic.trim().slice(0, LESSON_TITLE_MAX),
-    themeId: input.themeId ?? DEFAULT_THEME_ID,
+    // Ruling 202: the teacher's theme wins; else the key stage fallback until the planner picks.
+    themeId: input.themeId ?? fallbackThemeFor(ageBand),
+    ...(input.themeId !== undefined ? { themeChosen: true } : {}),
     slides: [],
     createdAt: at,
     updatedAt: at,
@@ -201,7 +208,9 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     brief: {
       ...input.brief,
       durationMin,
-      slideCount: input.brief.slideCount ?? DEFAULT_SLIDE_COUNT,
+      ...(input.brief.slideCount === undefined
+        ? { slideTier: input.brief.slideTier ?? DEFAULT_SLIDE_TIER }
+        : {}),
     },
   });
 }

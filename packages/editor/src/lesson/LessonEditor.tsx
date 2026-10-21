@@ -29,6 +29,7 @@ import { createMeasurer } from "../layout/measure";
 import { rethemeFromReducer } from "../layout/retheme";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
+import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import * as reducers from "../model/reducers";
 import { renderTheme } from "../model/themes";
 import { useAutosave } from "../model/use-autosave";
@@ -46,9 +47,12 @@ import { EditChatPane, EditChatProvider } from "./edit-chat/EditChatPane";
 import { type EditChatApi, EditChatContext } from "./edit-chat/edit-chat-context";
 import { readPaneOpen, writePaneOpen } from "./edit-chat/thread";
 import { FactsPanel } from "./FactsPanel";
+import { useFirstSlidesReveal, useRevealCurrent } from "./first-slides-reveal";
+import { FollowMarkContext } from "./follow-mark";
 import { HelpDialog } from "./HelpDialog";
 import { InsertRail } from "./InsertRail";
 import { isInTextField, matchesBinding } from "./keys";
+import { type DraftStore, LiveSlide, useDraftLead } from "./live-draft";
 import { MobileLessonEditor } from "./MobileLessonEditor";
 import { Navigator } from "./Navigator";
 import { NO_PROPOSALS, type ProposalsApi, ProposalsContext } from "./proposals-context";
@@ -58,6 +62,7 @@ import { SidePaneDock, usePaneWidth } from "./SidePaneDock";
 import { paneMode as shellPaneMode } from "./shell-layout";
 import { ThemeDialog } from "./ThemeDialog";
 import { TopBar } from "./TopBar";
+import { createTeacherEdits } from "./teacher-edits";
 import { CANVAS_ROOT_SELECTOR } from "./transform/gesture-state";
 import {
   EditorSessionProvider,
@@ -65,6 +70,7 @@ import {
   resolveActiveSlide,
   useEditorSessionState,
 } from "./use-editor-session";
+import { useFollowWriting } from "./use-follow-writing";
 import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
 
@@ -138,6 +144,12 @@ export type LessonEditorProps = {
    * marked "Writing". Every other slide is the teacher's to edit while the lesson fills.
    */
   writingSlideIds?: ReadonlySet<Id>;
+  /**
+   * Live writing (ADR 0039): the generating job's slide drafts. A slide still being written shows
+   * its newest draft, typed out, in place of its saved copy; the saved copy always wins once the
+   * slide is done. Drafts never enter the document, its history or a save.
+   */
+  drafts?: DraftStore;
   editorRef?: Ref<LessonEditorHandle>;
   /**
    * The slide to open on (TEACH-252: the one the teacher was looking at while the lesson
@@ -201,6 +213,7 @@ export function LessonEditor({
   busySlideIds,
   proposalsBusy = false,
   writingSlideIds,
+  drafts,
   editorRef,
   initialSlideId,
   worksheetsSlot,
@@ -209,10 +222,21 @@ export function LessonEditor({
   const mobile = useMobileEditor();
   const paneW = usePaneWidth();
   const autosave = useAutosave(onSave);
+  // Every change through the history is the teacher's, except the fit migration's bookkeeping
+  // (`systemWrite`); a job's merged write reaches the autosave directly (`receiveGenerated`).
+  const teacherEdits = useMemo(() => createTeacherEdits(), []);
+  const systemWrite = useRef(false);
+  const onHistoryChange = useCallback(
+    (doc: Lesson) => {
+      if (!systemWrite.current) teacherEdits.mark();
+      autosave.onChange(doc);
+    },
+    [autosave, teacherEdits],
+  );
   const { lesson, ...history } = useDocumentHistory({
     queryKey,
     queryFn,
-    onChange: autosave.onChange,
+    onChange: onHistoryChange,
   });
   // The residual findings (ADR 0025 §12), derived at the autosave cadence rather than per edit.
   const residuals = useComputedResidualFindings(lesson, worksheet, autosave);
@@ -263,10 +287,10 @@ export function LessonEditor({
   const factsAvailable =
     Boolean(lesson?.facts) &&
     (onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined);
-  const hasPane =
-    !mobile && (chatAvailable || factsAvailable || sidePane !== undefined || Boolean(companion));
-  const paneOpen =
-    !mobile && (Boolean(sidePane?.open) || Boolean(companion) || editChat.open || factsOpen);
+  // The generation companion takes no column (UX audit J1): it waits in the canvas's right margin,
+  // so the slide sits where it will stay from the first slide to Ready and after.
+  const hasPane = !mobile && (chatAvailable || factsAvailable || sidePane !== undefined);
+  const paneOpen = !mobile && (Boolean(sidePane?.open) || editChat.open || factsOpen);
   const proposalsEnabled =
     onFactsChanged !== undefined || onRegenerate !== undefined || onPromptEdit !== undefined;
   // `null` until the linked worksheet is here: its block refs are part of what `addFact` must skip.
@@ -275,6 +299,21 @@ export function LessonEditor({
       lesson?.artefacts?.worksheetId && !worksheet ? null : reducers.worksheetFactRefs(worksheet),
     [lesson?.artefacts?.worksheetId, worksheet],
   );
+  const lead = useDraftLead(drafts);
+  // A new lesson's title and objectives type out while the writer plans (presentation only).
+  const reveal = useFirstSlidesReveal({
+    lessonId,
+    slides: lesson?.slides,
+    writingSlideIds,
+    leadIndex: lead === undefined ? -1 : (lesson?.slides.findIndex((s) => s.id === lead) ?? -1),
+  });
+  const revealing = useRevealCurrent(reveal);
+  // The slide being written now: the streaming slide, while the job still owns it.
+  const writingNowId = lead !== undefined && writingSlideIds?.has(lead) ? lead : undefined;
+  // Greg 20 Oct (62 C): the companion waits in the margin only until the first slide has words,
+  // then leaves for good (latched: a later gap between drafts never brings it back).
+  const [companionGone, setCompanionGone] = useState(false);
+  if (!companionGone && lead !== undefined) setCompanionGone(true);
   const proposals = useMemo<ProposalsApi>(
     () =>
       proposalsEnabled
@@ -286,12 +325,18 @@ export function LessonEditor({
             busy: proposalsBusy,
             reservedFactIds,
             writingSlideIds,
+            writingNowId,
+            drafts,
+            reveal,
           }
         : writingSlideIds
-          ? { ...NO_PROPOSALS, writingSlideIds }
+          ? { ...NO_PROPOSALS, writingSlideIds, writingNowId, drafts, reveal }
           : NO_PROPOSALS,
     [
       writingSlideIds,
+      writingNowId,
+      drafts,
+      reveal,
       proposalsEnabled,
       onFactsChanged,
       onRegenerate,
@@ -397,9 +442,10 @@ export function LessonEditor({
     const h = historyRef.current;
     return {
       lesson: current,
-      dispatch: h.dispatch as FitMigrationDeps["dispatch"],
+      dispatch: ((...args: Parameters<typeof h.dispatch>) =>
+        asSystem(systemWrite, () => h.dispatch(...args))) as FitMigrationDeps["dispatch"],
       beginTransaction: h.beginTransaction,
-      endTransaction: h.endTransaction,
+      endTransaction: (token?: number) => asSystem(systemWrite, () => h.endTransaction(token)),
       rollbackTransaction: h.rollbackTransaction,
       isIdle: () => {
         const s = session.read();
@@ -466,16 +512,21 @@ export function LessonEditor({
       undo: () => historyRef.current.undo(),
       goToSlide: (slideId) => session.actions.setActiveSlide(slideId),
       retheme: (themeId) => {
-        const h = historyRef.current;
-        const current = lessonRef.current;
-        if (!current || current.themeId === themeId) return;
-        h.flushTransactions();
-        h.dispatch(
-          rethemeFromReducer,
-          current,
-          themeId,
-          createMeasurer(renderTheme(current, themeId)),
-        );
+        const run = () => {
+          const h = historyRef.current;
+          const current = lessonRef.current;
+          if (!current || current.themeId === themeId) return;
+          h.flushTransactions();
+          h.dispatch(
+            rethemeFromReducer,
+            current,
+            themeId,
+            createMeasurer(renderTheme(current, themeId)),
+          );
+        };
+        // Adaptive layouts re-lay in the new theme's faces: their template code first, once.
+        if (layoutKit()) run();
+        else void loadLayoutKit().then(run, run);
       },
     }),
     [session, autosave],
@@ -483,6 +534,37 @@ export function LessonEditor({
 
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
+  const follow = useFollowWriting({
+    lead,
+    revealing,
+    slides: lesson?.slides,
+    writingSlideIds,
+    activeSlideId: session.state.activeSlideId,
+    setActiveSlide: session.actions.setActiveSlide,
+    startFollowing: initialSlideId === undefined,
+    canvasFocused,
+  });
+
+  // UX audit J1: the slide the teacher watched being written turns editable at the hand-over, and
+  // its toolbar, actions and tabs would open by themselves. They wait for the teacher: a click or
+  // focus on the canvas, or another slide opened.
+  const shownWriting = !!slide && !!writingSlideIds?.has(slide.id);
+  const [watched, setWatched] = useState<{ id?: Id; writing: boolean; quiet: boolean }>({
+    writing: false,
+    quiet: false,
+  });
+  if (watched.id !== slide?.id || watched.writing !== shownWriting) {
+    setWatched({
+      id: slide?.id,
+      writing: shownWriting,
+      quiet: watched.id === slide?.id && (watched.quiet || (watched.writing && !shownWriting)),
+    });
+  }
+  const quietControls = watched.quiet && watched.id === slide?.id;
+  const wake = useCallback(() => setWatched((w) => (w.quiet ? { ...w, quiet: false } : w)), []);
+  useEffect(() => {
+    if (canvasFocused) wake();
+  }, [canvasFocused, wake]);
 
   /** Add an element to the active slide and select it — TeachDeck's `insertElement`. */
   const insert = useCallback(
@@ -554,156 +636,196 @@ export function LessonEditor({
             <EditingStateContext.Provider value={editingState}>
               <ActiveEditorProvider>
                 <ResidualFindingsContext.Provider value={residuals}>
-                  <ProposalsContext.Provider value={proposals}>
-                    <EditChatContext.Provider value={editChat}>
-                      <EditChatProvider
-                        lessonId={lessonId}
-                        userId={userId}
-                        open={editChat.open}
-                        onClose={editChat.toggle}
-                      >
-                        <div
-                          className="flex h-dvh flex-col overflow-hidden bg-background"
-                          data-lesson-editor={lessonId}
+                  <FollowMarkContext.Provider value={follow.mark}>
+                    <ProposalsContext.Provider value={proposals}>
+                      <EditChatContext.Provider value={editChat}>
+                        <EditChatProvider
+                          lessonId={lessonId}
+                          userId={userId}
+                          open={editChat.open}
+                          onClose={editChat.toggle}
                         >
-                          <TopBar
-                            onBack={onBack}
-                            onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
-                            onOpenTheme={() => setThemeOpen(true)}
-                            exportSlot={exportSlot}
-                            onOpenWorksheet={onOpenWorksheet}
-                            onNewWorksheet={onNewWorksheet}
-                            onToggleFacts={
-                              proposalsEnabled && lesson.facts
-                                ? () =>
-                                    setFactsOpen((open) => {
-                                      // One pane in the right slot: Facts swaps with the chat.
-                                      if (!open && chatOpen) {
-                                        setChatOpen(false);
-                                        writePaneOpen(false);
-                                      }
-                                      return !open;
-                                    })
-                                : undefined
-                            }
-                            factsOpen={factsOpen}
-                            autosave={autosave}
-                            worksheetsSlot={worksheetsSlot}
-                          />
-                          <SaveFailedBar autosave={autosave} />
-                          {mobile && companion ? (
-                            <aside data-editor-companion="mobile">{companion}</aside>
-                          ) : null}
-                          <div className="relative flex min-h-0 flex-1">
-                            {mobile ? (
-                              <MobileLessonEditor
-                                initialSlideId={initialSlideId}
-                                canvas={{
-                                  slide,
-                                  theme,
-                                  onFocusChange: setCanvasFocused,
-                                  onScaleChange,
-                                  onInsert: insert,
-                                  images,
-                                  lessonId,
-                                }}
-                                insert={{
-                                  onInsert: insert,
-                                  onHelp: () => setHelpOpen(true),
-                                  images,
-                                }}
-                              />
-                            ) : (
-                              <>
-                                <InsertRail
-                                  minimal
-                                  onInsert={insert}
-                                  onHelp={() => setHelpOpen(true)}
-                                  images={images}
+                          <div
+                            className="flex h-dvh flex-col overflow-hidden bg-background"
+                            data-lesson-editor={lessonId}
+                          >
+                            <TopBar
+                              teacherEdits={teacherEdits}
+                              onBack={onBack}
+                              onPresent={() => onPresent(lesson.slides.indexOf(slide) + 1)}
+                              onOpenTheme={() => setThemeOpen(true)}
+                              exportSlot={exportSlot}
+                              onOpenWorksheet={onOpenWorksheet}
+                              onNewWorksheet={onNewWorksheet}
+                              onToggleFacts={
+                                proposalsEnabled && lesson.facts
+                                  ? () =>
+                                      setFactsOpen((open) => {
+                                        // One pane in the right slot: Facts swaps with the chat.
+                                        if (!open && chatOpen) {
+                                          setChatOpen(false);
+                                          writePaneOpen(false);
+                                        }
+                                        return !open;
+                                      })
+                                  : undefined
+                              }
+                              factsOpen={factsOpen}
+                              autosave={autosave}
+                              worksheetsSlot={worksheetsSlot}
+                            />
+                            <SaveFailedBar autosave={autosave} />
+                            {mobile && companion ? (
+                              <aside data-editor-companion="mobile">{companion}</aside>
+                            ) : null}
+                            <div className="relative flex min-h-0 flex-1">
+                              {mobile ? (
+                                <MobileLessonEditor
+                                  initialSlideId={initialSlideId}
+                                  canvas={{
+                                    slide,
+                                    theme,
+                                    onFocusChange: setCanvasFocused,
+                                    onScaleChange,
+                                    onInsert: insert,
+                                    images,
+                                    lessonId,
+                                  }}
+                                  insert={{
+                                    onInsert: insert,
+                                    onHelp: () => setHelpOpen(true),
+                                    images,
+                                  }}
                                 />
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                  <div ref={setBubbleHost} className="relative flex min-h-0 flex-1">
-                                    {slide && writingSlideIds?.has(slide.id) ? (
-                                      <WritingOverlay />
-                                    ) : null}
-                                    {/* Always wrapped, so the canvas never remounts when a slide's state turns. */}
+                              ) : (
+                                <>
+                                  <InsertRail
+                                    minimal
+                                    onInsert={insert}
+                                    onHelp={() => setHelpOpen(true)}
+                                    images={images}
+                                  />
+                                  <div className="flex min-w-0 flex-1 flex-col">
                                     <div
-                                      className="contents"
-                                      inert={!!slide && !!writingSlideIds?.has(slide.id)}
+                                      ref={setBubbleHost}
+                                      className="relative flex min-h-0 flex-1"
+                                      onPointerDownCapture={quietControls ? wake : undefined}
                                     >
-                                      <Canvas
-                                        readOnly={writingSlideIds?.has(slide.id) ?? false}
-                                        slide={slide}
-                                        theme={theme}
-                                        onFocusChange={setCanvasFocused}
-                                        onScaleChange={onScaleChange}
-                                        onInsert={insert}
-                                        images={images}
-                                        lessonId={lessonId}
-                                        bubble={!(chatAvailable && editChat.open)}
-                                        fitInset={hasPane && paneMode === "docked" ? paneW : 0}
-                                        clearRight={paneOpen ? paneW : 0}
-                                      />
+                                      {/* One live region for the whole fill, mounted across slide changes, so moving
+                                          between slides never drops an announcement. */}
+                                      {writingSlideIds ? (
+                                        <span
+                                          role="status"
+                                          aria-atomic="true"
+                                          data-writing-status
+                                          className="sr-only"
+                                        >
+                                          {slide && writingSlideIds.has(slide.id)
+                                            ? writingText(lesson.slides, slide.id, writingNowId)
+                                            : ""}
+                                        </span>
+                                      ) : null}
+                                      {slide && writingSlideIds?.has(slide.id) ? (
+                                        <WritingOverlay
+                                          text={writingText(lesson.slides, slide.id, writingNowId)}
+                                        />
+                                      ) : null}
+                                      {companion && !companionGone ? (
+                                        <div
+                                          data-editor-companion="desktop"
+                                          aria-hidden
+                                          className="pointer-events-none absolute right-2 bottom-14 z-0"
+                                          style={{ width: paneMode === "docked" ? 160 : 120 }}
+                                        >
+                                          {companion}
+                                        </div>
+                                      ) : null}
+                                      {follow.target && !follow.following ? (
+                                        <FollowWritingChip onFollow={follow.resume} />
+                                      ) : null}
+                                      {/* Always wrapped, so the canvas never remounts when a slide's state turns. */}
+                                      <div
+                                        className="contents"
+                                        inert={!!slide && !!writingSlideIds?.has(slide.id)}
+                                      >
+                                        <LiveSlide
+                                          store={drafts}
+                                          slideId={slide?.id}
+                                          slide={slide}
+                                          writing={!!slide && !!writingSlideIds?.has(slide.id)}
+                                          reveal={reveal}
+                                          render={(shown, live) => (
+                                            <Canvas
+                                              readOnly={
+                                                live || (writingSlideIds?.has(slide.id) ?? false)
+                                              }
+                                              controls={!quietControls}
+                                              slide={shown ?? slide}
+                                              theme={theme}
+                                              onFocusChange={setCanvasFocused}
+                                              onScaleChange={onScaleChange}
+                                              onInsert={insert}
+                                              images={images}
+                                              lessonId={lessonId}
+                                              bubble={!(chatAvailable && editChat.open)}
+                                              fitInset={
+                                                hasPane && paneMode === "docked" ? paneW : 0
+                                              }
+                                              clearRight={paneOpen ? paneW : 0}
+                                            />
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                    {/* Docked, the filmstrip makes room for the open pane; overlay, the pane lies over it. */}
+                                    <div
+                                      className="transition-[padding] duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
+                                      style={{
+                                        paddingRight: paneOpen && paneMode === "docked" ? paneW : 0,
+                                      }}
+                                    >
+                                      <Navigator strip />
                                     </div>
                                   </div>
-                                  {/* Docked, the filmstrip makes room for the open pane; overlay, the pane lies over it. */}
-                                  <div
-                                    className="transition-[padding] duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
-                                    style={{
-                                      paddingRight: paneOpen && paneMode === "docked" ? paneW : 0,
-                                    }}
-                                  >
-                                    <Navigator strip />
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                            {!mobile && companion ? (
-                              <SidePaneDock
-                                open
-                                label="Dayback"
-                                mode={paneMode}
-                                data-editor-companion="desktop"
-                              >
-                                {companion}
-                              </SidePaneDock>
-                            ) : null}
-                            {factsOpen ? (
-                              <FactsPanel
-                                onClose={() => setFactsOpen(false)}
-                                pane={mobile ? undefined : { mode: paneMode, width: paneW }}
-                              />
-                            ) : null}
-                            {!mobile && sidePane ? (
-                              <SidePaneDock
-                                open={sidePane.open}
-                                label={sidePane.label}
-                                mode={paneMode}
-                              >
-                                {sidePane.content}
-                              </SidePaneDock>
-                            ) : null}
-                            {/* The pane stays mounted: closed, it is the bubble (the way in), and a request in
+                                </>
+                              )}
+                              {factsOpen ? (
+                                <FactsPanel
+                                  onClose={() => setFactsOpen(false)}
+                                  pane={mobile ? undefined : { mode: paneMode, width: paneW }}
+                                />
+                              ) : null}
+                              {!mobile && sidePane ? (
+                                <SidePaneDock
+                                  open={sidePane.open}
+                                  label={sidePane.label}
+                                  mode={paneMode}
+                                >
+                                  {sidePane.content}
+                                </SidePaneDock>
+                              ) : null}
+                              {/* The pane stays mounted: closed, it is the bubble (the way in), and a request in
                               flight carries on (TEACH-97). It sits in layout A's right pane slot. */}
-                            {chatAvailable ? (
-                              <EditChatPane
-                                open={editChat.open}
-                                onReopen={editChat.openAndFocus}
-                                focusTick={chatFocusTick}
-                                bubbleHost={bubbleHost}
-                                bubbleHidden={factsOpen}
-                                paneMode={paneMode}
-                                paneWidth={paneW}
-                              />
-                            ) : null}
+                              {chatAvailable ? (
+                                <EditChatPane
+                                  open={editChat.open}
+                                  onReopen={editChat.openAndFocus}
+                                  focusTick={chatFocusTick}
+                                  bubbleHost={bubbleHost}
+                                  bubbleHidden={factsOpen}
+                                  paneMode={paneMode}
+                                  paneWidth={paneW}
+                                />
+                              ) : null}
+                            </div>
+                            <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+                            <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
+                            {proposalsEnabled ? <RegenerateDialog /> : null}
                           </div>
-                          <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-                          <ThemeDialog open={themeOpen} onClose={() => setThemeOpen(false)} />
-                          {proposalsEnabled ? <RegenerateDialog /> : null}
-                        </div>
-                      </EditChatProvider>
-                    </EditChatContext.Provider>
-                  </ProposalsContext.Provider>
+                        </EditChatProvider>
+                      </EditChatContext.Provider>
+                    </ProposalsContext.Provider>
+                  </FollowMarkContext.Provider>
                 </ResidualFindingsContext.Provider>
               </ActiveEditorProvider>
             </EditingStateContext.Provider>
@@ -714,11 +836,57 @@ export function LessonEditor({
   );
 }
 
+/** Runs the editor's own bookkeeping: history changes inside are not the teacher's. */
+function asSystem<T>(flag: { current: boolean }, run: () => T): T {
+  flag.current = true;
+  try {
+    return run();
+  } finally {
+    flag.current = false;
+  }
+}
+
+/**
+ * Live writing P1 (TEACH-202 part e): the teacher left the slide being written; one click follows
+ * it again. The shell's "Newest slide" (TEACH-252) in the editor's words. Bottom left: the docked
+ * side pane covers the canvas's right edge.
+ */
+function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
+  return (
+    <button
+      type="button"
+      data-follow-writing
+      onClick={onFollow}
+      className="absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      <span
+        aria-hidden
+        className="block size-2 rounded-full bg-primary motion-safe:animate-pulse"
+      />
+      Follow writing
+    </button>
+  );
+}
+
 /**
  * Over a slide the generating job is still writing (UX ruling 189): the slide shows, nothing on it
  * can be picked, and a pill says why.
  */
-function WritingOverlay() {
+/**
+ * UX audit J4: what the writer is doing now, so a slide waiting its turn (or the objectives, held
+ * until the end) never reads as stuck on itself.
+ */
+function writingText(slides: readonly { id: Id }[], slideId: Id, writingNowId: Id | undefined) {
+  const now = writingNowId === undefined ? -1 : slides.findIndex((s) => s.id === writingNowId);
+  return writingNowId === slideId
+    ? "Writing this slide…"
+    : now >= 0
+      ? `Writing slide ${now + 1} of ${slides.length}…`
+      : "Planning the slides…";
+}
+
+/** The visible pill; the editor's one `data-writing-status` live region announces it. */
+function WritingOverlay({ text }: { text: string }) {
   return (
     <div
       data-slide-writing-overlay
@@ -726,11 +894,11 @@ function WritingOverlay() {
       onPointerDownCapture={(e) => e.stopPropagation()}
     >
       <span
-        role="status"
+        aria-hidden
         className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm"
       >
         <span aria-hidden className="block size-2 animate-pulse rounded-full bg-primary" />
-        Writing this slide… you can edit it as soon as it is done
+        {text}
       </span>
     </div>
   );

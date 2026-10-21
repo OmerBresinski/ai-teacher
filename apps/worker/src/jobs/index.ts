@@ -24,3 +24,8 @@ export {
   ANONYMOUS_CLEANUP_QUEUE,
   runAnonymousCleanup,
 } from "./anonymous-cleanup";
+export {
+  GENERATION_DEBUG_CLEANUP_CRON,
+  GENERATION_DEBUG_CLEANUP_QUEUE,
+  runGenerationDebugCleanup,
+} from "./generation-debug-cleanup";

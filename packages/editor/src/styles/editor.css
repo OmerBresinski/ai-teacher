@@ -6,3 +6,42 @@
 @import "./fonts-playful.css";
 @import "./slide.css";
 @import "./present.css";
+
+/*
+ * Live writing (TEACH-202 part f): within a slide's fixed structure, a draft's boxes settle into
+ * their new size and place (`LiveSlide` fades in a card or line that joins). Only draft elements
+ * (`d-…` ids) move: the saved copy that takes over at the hand-over lands where the last draft
+ * stood, so nothing animates then.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  [data-live-slide] [data-element-id^="d-"] {
+    transition:
+      left 220ms ease,
+      top 220ms ease,
+      width 220ms ease,
+      height 220ms ease;
+  }
+}
+
+/*
+ * A planned slide's outline (live writing, TEACH-202 part f amended 20 Oct 2026): its bars breathe
+ * slowly, so the outline reads as a slide on its way rather than a broken, empty one. Opacity only
+ * (no layout); still under reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  [data-element-id^="skeleton-"] {
+    animation: tj-outline-breathe 1.8s ease-in-out infinite;
+  }
+}
+@keyframes tj-outline-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* While a layout is selected its own on-canvas controls mark over-long words (outline, chip and a
+   badge outside the box that the frame cannot clip, TEACH-205 part b), so the text box's own mark
+   steps aside; unselected, the box's mark (outside its corner) is the only sign. */
+body:has([data-layout-controls]) [data-layout-frame] [data-overflow-glyph] {
+  display: none !important; /* over the glyph's inline display */
+}

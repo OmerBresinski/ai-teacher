@@ -41,6 +41,12 @@ export type HistoryOptions<D, R, TData = unknown> = {
   isDocument: (data: unknown) => data is D;
   /** The next document out of a reducer result. */
   documentOf: (result: R) => D;
+  /**
+   * Settles an edit before it is written, in the same undo step (the lesson editor's
+   * `syncLayoutGroups`: a teacher edit inside a layout group writes through or detaches it).
+   * Not run for silent reducers, which are measurements, not edits.
+   */
+  settle?: (before: D, after: D) => D;
 };
 
 export type History<D, R> = {
@@ -88,6 +94,7 @@ export function useHistory<D, R, TData = unknown>({
   onChange,
   isDocument,
   documentOf,
+  settle,
 }: HistoryOptions<D, R, TData>): History<D, R> {
   const queryClient = useQueryClient();
   const { data: document } = useQuery({
@@ -117,6 +124,8 @@ export function useHistory<D, R, TData = unknown>({
   isDocumentRef.current = isDocument;
   const documentOfRef = useRef(documentOf);
   documentOfRef.current = documentOf;
+  const settleRef = useRef(settle);
+  settleRef.current = settle;
 
   const read = useCallback((): D | undefined => {
     const data = queryClient.getQueryData(keyRef.current);
@@ -153,8 +162,10 @@ export function useHistory<D, R, TData = unknown>({
       const current = read();
       if (!current) return undefined;
       const result = reducer(current, ...args) as ReturnType<F>;
-      const next = documentOfRef.current(result);
-      if (next === current) return result;
+      const made = documentOfRef.current(result);
+      if (made === current) return result;
+      const settle = settleRef.current;
+      const next = settle && !isSilentReducer(reducer) ? settle(current, made) : made;
       const inTransaction = txStack.current.length > 0;
       if (!inTransaction && !isSilentReducer(reducer)) record(current);
       write(next);

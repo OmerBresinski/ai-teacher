@@ -43,7 +43,7 @@ export const meta = {
   id: "hist_map",
   name: "Historical map",
   kind: "info",
-  version: 1,
+  version: 2,
   subjects: ["History", "Geography"],
   years: ["Y2", "Y3", "Y4", "Y5", "Y6"],
   teaches:
@@ -1065,6 +1065,42 @@ function placer(bounds, obstacles, onLand, frame, routeSegs = [], leaders0 = [])
 
 /* ------------------------------------------------------------------ render */
 const fx = (q) => q[0].toFixed(1) + " " + q[1].toFixed(1);
+// Coast points closer to the line than THIN slide units are dropped (Douglas-Peucker), and specks
+// smaller than SPECK units are not drawn: a world map keeps its shape at a fraction of the bytes,
+// and a zoomed-in map, whose points sit several units apart, keeps nearly all of them.
+const THIN = 0.8,
+  SPECK = 2;
+function thinRing(ring) {
+  const xs = ring.map((q) => q[0]),
+    ys = ring.map((q) => q[1]);
+  if (Math.max(...xs) - Math.min(...xs) < SPECK && Math.max(...ys) - Math.min(...ys) < SPECK)
+    return null;
+  const keep = new Uint8Array(ring.length);
+  keep[0] = keep[ring.length - 1] = 1;
+  const stack = [[0, ring.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    const [ax, ay] = ring[a],
+      [bx, by] = ring[b];
+    const L = Math.hypot(bx - ax, by - ay);
+    let far = -1,
+      dmax = THIN;
+    for (let i = a + 1; i < b; i++) {
+      const [px, py] = ring[i];
+      const dd = L ? Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / L : Math.hypot(px - ax, py - ay);
+      if (dd > dmax) {
+        dmax = dd;
+        far = i;
+      }
+    }
+    if (far > 0) {
+      keep[far] = 1;
+      stack.push([a, far], [far, b]);
+    }
+  }
+  const out = ring.filter((_, i) => keep[i]);
+  return out.length >= 3 ? out : null;
+}
 const straightD = (ring) => "M" + ring.map(fx).join(" L") + " Z";
 // coastlines as smooth curves through the kit's own points (Catmull-Rom): the same places, no corners
 function smoothD(ring) {
@@ -1105,21 +1141,38 @@ const COAST_DETAIL = [
 // When the summary key can't hold every word beside the map, the map is drawn smaller and the slide laid out again.
 const RETRY = {};
 export function render(root, P, ctx) {
-  const fs = [1, 0.82, 0.68];
-  for (const f of fs) {
+  // First a narrow card column (more of the drawing for the map), kept only if every card fits at
+  // its normal size; then the usual column, then a smaller map.
+  const tries = [
+    [1, true],
+    [1, false],
+    [0.82, false],
+    [0.68, false],
+  ];
+  for (const [i, [f, narrow]] of tries.entries()) {
     const mark = root.childNodes.length,
       warns = [];
     const c2 = Object.create(ctx);
     c2.warn = (m) => warns.push(m);
-    const out = renderAt(root, P, c2, f, f === fs[fs.length - 1]);
+    const out = renderAt(root, P, c2, f, i === tries.length - 1, narrow);
     if (out !== RETRY) {
       warns.forEach((m) => ctx.warn(m));
+      dropLayoutLand(root);
       return out;
     }
     while (root.childNodes.length > mark) root.lastChild.remove();
   }
 }
-function renderAt(root, P, ctx, f, last) {
+// The whole land drawn once more, hidden, only so labels could be kept on land while the slide was
+// laid out; and the land clip when no area uses it. Neither is seen, so neither is stored.
+function dropLayoutLand(root) {
+  for (const el of [...root.querySelectorAll('path[visibility="hidden"]')]) el.remove();
+  for (const cp of [...root.querySelectorAll('clipPath[id$="-land"]')]) {
+    const used = root.querySelector(`[clip-path="url(#${cp.getAttribute("id")})"]`);
+    if (!used) cp.remove();
+  }
+}
+function renderAt(root, P, ctx, f, last, narrow) {
   const { M } = plan(P);
   const b = ctx.b,
     N = ctx.N;
@@ -1140,7 +1193,8 @@ function renderAt(root, P, ctx, f, last) {
     // the Strait of Dover in finer detail (Folkestone, Dover, South Foreland; Boulogne, Cap Gris-Nez, Calais)
     for (const [kit, fine] of COAST_DETAIL)
       landD = landD.replace(fx(proj(kit)), fine.map((q) => fx(proj(q))).join(" L"));
-    const rings = clipRings(landD, R);
+    // Thinned to what the slide can show (TEACH-247 part x): the world view drew 2.3 MB of coast.
+    const rings = clipRings(landD, R).map(thinRing).filter(Boolean);
     const dAll = rings.map(smoothD).join(" ");
     // one element per ring: drawn as a single path, the browser left holes in the zoomed-in continent
     for (const r of rings)
@@ -1257,7 +1311,16 @@ function renderAt(root, P, ctx, f, last) {
   const spanText = `${M.dl(M.from)} to ${M.dl(M.to)}`;
   const spanW = measure(root, spanText, "ts-small", { cls: "strong" });
   // the span sits beside the title; a long title pushes it to the line below, right-aligned above the map
-  if (GRID.left + titleW + 48 + spanW <= GRID.right) {
+  // Beside a column map the span heads the card column (TEACH-247 part x): at the slide's right
+  // edge it widened the cropped drawing, so the map took a third of the slot.
+  const spanX = columnMap ? F.x + F.w + 76 : GRID.right - spanW;
+  if (columnMap && !P.title) {
+    computed(
+      T(root, spanX, GRID.titleY, spanText, "ts-small", { cls: "strong", s: bi("map") }),
+      "dateRange.from",
+    );
+    obstacles.push({ x: spanX, y: 50, w: spanW, h: 40 });
+  } else if (GRID.left + titleW + 48 + spanW <= GRID.right) {
     computed(
       T(root, GRID.right, GRID.titleY, spanText, "ts-small", {
         "text-anchor": "end",
@@ -1419,7 +1482,8 @@ function renderAt(root, P, ctx, f, last) {
   /* callout cards: journeys, events, areas and the borders key. Each shows at its own build (no ghosts)
      and again in the summary. Beside a narrow map they sit in a column, joined by a leader line only. */
   const colX = F.x + F.w + 76,
-    MW0 = column ? Math.min(520, GRID.right - colX - 34) : 340,
+    // a narrower column (cards wrap to a second line) leaves the map more of the drawing's width
+    MW0 = column ? Math.min(narrow ? 400 : 520, GRID.right - colX - 34) : 340,
     maxW = MW0;
   // a size may carry its own width (the two-column key)
   // every wording in a card is a measured text block: it wraps, then shrinks, and the card grows to hold it.
@@ -2076,6 +2140,7 @@ function renderAt(root, P, ctx, f, last) {
       order.sort((p, q) => p.k - q.k || p.ay - q.ay);
       tier = [0, 2].find(stack);
     } // without leaders the column reads in date order
+    if (narrow && tier !== 0) return RETRY;
     if (tier != null) for (const c of cards) c.S = V2(c, tier);
     else {
       // still too many: the summary becomes one key beside the map (rows at the minimum size, each with its colour bar);

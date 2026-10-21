@@ -1,9 +1,10 @@
-import type { AiCallContext, Budget, CreatedAi } from "@tj/ai";
+import type { AiCallContext, Budget, BudgetTotals, CreatedAi } from "@tj/ai";
 import type {
   Finding,
   GenerationStage,
   Lesson,
   LessonFacts,
+  Slide,
   SourceLocator,
   SourceRef,
   Worksheet,
@@ -11,6 +12,7 @@ import type {
 import type { ImageGenerator, ImageSize, PhotoResult, StoredPhoto } from "@tj/images";
 import type { Logger } from "pino";
 import type { ReasoningEffort } from "./call";
+import type { DebugSink } from "./debug";
 import type { VerifyCorrection } from "./specs";
 import type { PictureBank } from "./stages/photo-bank";
 
@@ -160,6 +162,24 @@ export interface PipelineDeps {
     documentUpdatedAt?: string,
   ) => Promise<void>;
   context: PipelineContext;
+  /**
+   * Live writing (ADR 0039, TEACH-202 part f): the slide the writer is writing, laid out as it
+   * stands (`slide-draft` job events). Fire and forget; absent, no drafts are laid. A draft never
+   * reaches the lesson: the persisted slide always wins.
+   */
+  onDraft?: (draft: {
+    index: number;
+    slideId: string;
+    slide: Pick<Slide, "id" | "kind" | "elements"> &
+      Partial<Pick<Slide, "background" | "question" | "notes">>;
+    final?: boolean;
+  }) => void;
+  /**
+   * Ruling 201: whether a worksheet job was actually created for this lesson. The confirm's
+   * `brief.worksheet` is only the teacher's intent; the write stage asks this before it decides
+   * where the exit ticket goes. Absent (tests, scripts), the brief's flag stands.
+   */
+  worksheetQueued?: () => Promise<boolean>;
   /** Pexels + bucket behind illustrate; absent → the step logs and returns the state. */
   images?: PhotoPlacer;
   /**
@@ -190,7 +210,33 @@ export interface PipelineDeps {
    * `budget`, which stages charge the same way). Created by illustrate when absent.
    */
   imageCounts?: ImageCounts;
+  /**
+   * The lesson's debug record (`./debug`, Greg 20 Oct 2026): fire and forget, never awaited,
+   * never read back. Absent (tests, lab), nothing is recorded and the run is unchanged.
+   */
+  debug?: DebugSink;
+  /**
+   * Receives the `generation summary` line's fields once per run, whatever the outcome (ADR 0041:
+   * the worker's PostHog lesson event). Counts, costs and durations only, never content. A throw
+   * is logged and swallowed.
+   */
+  onSummary?: (summary: GenerationSummary) => void;
 }
+
+/** The `generation summary` line (ADR 0025 §16): one per pipeline run, never content. */
+export type GenerationSummary = BudgetTotals & {
+  lessonId: string | undefined;
+  jobId: string | undefined;
+  outcome: "success" | "failed";
+  planner: string;
+  stages: string[];
+  findings: { error: number; warning: number };
+  images: ImageCounts;
+  durationMs: number;
+  readableMs?: number;
+  checkedMs?: number;
+  fit?: unknown;
+};
 
 /**
  * What flows between stages: the lesson, the run's options and the in-process Verify hand-off.

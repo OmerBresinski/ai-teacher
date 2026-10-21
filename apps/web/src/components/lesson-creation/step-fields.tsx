@@ -1,4 +1,4 @@
-import { SLIDE_COUNTS } from "@tj/domain/documents";
+import { SLIDE_TIER_RANGES, SLIDE_TIERS, type SlideTier } from "@tj/domain/documents";
 import {
   Button,
   Label,
@@ -15,6 +15,17 @@ import {
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Field } from "@/components/brief/field";
+
+/** Ruling 164: the teacher picks a length tier; the writer picks the count inside it. */
+const TIER_NAMES: Record<SlideTier, string> = {
+  quick: "Quick",
+  standard: "Standard",
+  detailed: "Detailed",
+};
+export const SLIDE_TIER_OPTIONS = SLIDE_TIERS.map((tier) => ({
+  value: tier,
+  label: `${TIER_NAMES[tier]}, ${SLIDE_TIER_RANGES[tier].min}–${SLIDE_TIER_RANGES[tier].max} slides`,
+}));
 
 export function ChoiceField({
   label,
@@ -211,17 +222,17 @@ export function ObjectivesStep({
   brief,
   objectives,
   onChange,
-  slideCount,
-  onSlideCount,
+  slideTier,
+  onSlideTier,
   onBack,
   onGenerate,
 }: {
   brief: IntakeBrief;
   objectives: ObjectiveDraft[];
   onChange: (objectives: ObjectiveDraft[]) => void;
-  slideCount: string;
+  slideTier: SlideTier;
   duration?: string;
-  onSlideCount: (value: string) => void;
+  onSlideTier: (value: SlideTier) => void;
   onDuration?: (value: string) => void;
   onBack: () => void;
   onGenerate: () => void;
@@ -284,12 +295,9 @@ export function ObjectivesStep({
           <ChoiceField
             compact
             label="Slides"
-            value={slideCount}
-            onChange={onSlideCount}
-            options={SLIDE_COUNTS.map((value) => ({
-              value: String(value),
-              label: `${value} slides, including title`,
-            }))}
+            value={slideTier}
+            onChange={(value) => onSlideTier(value as SlideTier)}
+            options={SLIDE_TIER_OPTIONS}
           />
         </div>
         <div className="creation-actions">

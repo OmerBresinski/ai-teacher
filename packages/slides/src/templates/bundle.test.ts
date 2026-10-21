@@ -43,7 +43,14 @@ describe("@tj/slides/templates", () => {
   const NODE_ONLY = ["./templates/pupil-words"];
   const BROWSER = Object.entries(pkg.exports)
     .filter(([k]) => !NODE_ONLY.includes(k))
-    .map(([, v]) => `${import.meta.dir}/../../${v}`);
+    // A subpath pattern (`./templates/*-capacity.json`, TEACH-106 part b) stands for each file it
+    // matches.
+    .flatMap(([, v]) =>
+      String(v).includes("*")
+        ? [...new Bun.Glob(String(v)).scanSync(`${import.meta.dir}/../..`)]
+        : [String(v)],
+    )
+    .map((v) => `${import.meta.dir}/../../${v}`);
   const MARKERS = [
     '"node:fs"',
     "writeFileSync",

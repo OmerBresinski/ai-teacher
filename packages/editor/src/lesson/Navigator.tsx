@@ -20,7 +20,7 @@ import {
   IconButton,
 } from "@tj/ui";
 import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSlideLint } from "../layout/use-slide-lint";
 import { SLIDE_KIND_LABELS } from "../model/layouts";
 import * as reducers from "../model/reducers";
@@ -28,8 +28,11 @@ import { renderTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
 import { AddSlidePicker } from "./AddSlidePicker";
+import { SHOW_ANSWERS_LABEL, touchesAnswers, useSetAnswersSlides } from "./answers-slides";
 import { useHistory, useLesson } from "./document-context";
+import { FollowMarkContext, teacherBusy } from "./follow-mark";
 import { hint } from "./keys";
+import { useWritingPicture } from "./live-draft";
 import { useProposals } from "./proposals-context";
 import { useResidualFindings } from "./residual-findings";
 import { SlideBadge } from "./SlideBadge";
@@ -107,9 +110,10 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   const session = useSessionActions();
   const activeSlideId = useActiveSlideId();
   const { clipboardSlide } = useSessionUi();
+  const setAnswersSlides = useSetAnswersSlides();
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
   const { bySlide: residuals } = useResidualFindings();
-  const { busySlideIds, onRegenerate, writingSlideIds } = useProposals();
+  const { busySlideIds, onRegenerate, writingSlideIds, writingNowId } = useProposals();
 
   const compactChrome = useCompactChrome();
   const [preferredMode, setMode] = useState<Mode>(readMode);
@@ -203,8 +207,28 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
   // Whether keyboard focus is inside the rail. Kept as a ref rather than read off
   // `document.activeElement`: a row that a delete unmounts takes focus to the body without a blur.
   const focusWithin = useRef(false);
+  const markContext = useContext(FollowMarkContext);
+  const followMark = useRef(markContext);
+  followMark.current = markContext;
   useEffect(() => {
     const i = activeId ? indexRef.current.get(activeId) : undefined;
+    // Live writing P1 (TEACH-202 part e): a slide the follow opened scrolls into view only while
+    // the teacher is not busy, and never takes focus.
+    if (activeId && followMark.current?.current === activeId) {
+      // Live writing (TEACH-202 part f): the strip glides forward to centre the slide being
+      // written, and never scrolls back.
+      const v = virtualizerRef.current;
+      const to = i !== undefined ? v.getOffsetForIndex(i, "center")?.[0] : undefined;
+      const el = v.scrollElement as HTMLElement | null;
+      if (to !== undefined && el && !teacherBusy() && to > (v.scrollOffset ?? 0)) {
+        const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        el.scrollTo({
+          [v.options.horizontal ? "left" : "top"]: to,
+          behavior: still ? "auto" : "smooth",
+        });
+      }
+      return;
+    }
     if (i !== undefined) virtualizerRef.current.scrollToIndex(i, { align: "auto" });
     // Focus follows the tab stop: while the rail holds focus and the open slide changes (arrows,
     // Home/End, a delete, a menu action), the new row takes it. A row the virtualiser has yet to
@@ -266,17 +290,31 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
     if (made) setPicked({ ids: [made], forActive: made });
   };
 
-  const remove = () => {
-    if (list.length <= ids.length) return;
+  const remove = async () => {
+    // A lesson keeps at least one of its own slides; the guard and Answers slides do not count.
+    if (reducers.plainSlidesLeft(lesson, ids) < 1) return;
     const firstIdx = Math.min(...ids.map((id) => index.get(id) ?? 0));
-    history.beginTransaction();
     let next = lesson;
-    for (const id of ids) next = history.dispatch(reducers.deleteSlide, id) ?? next;
-    history.endTransaction();
+    if (touchesAnswers(lesson, ids)) {
+      // Deleting the guard or an Answers slide hides them all, as "Hide answers" does (ruling
+      // 260), so they are kept and "Show answers slides" brings them back. The hide runs on the
+      // lesson as it is after the layout code loads, and this rail moves only if it changed.
+      const plain = ids.filter((id) => !lesson.slides.find((s) => s.id === id)?.answersRole);
+      const hidden = await setAnswersSlides(false, plain);
+      if (!hidden) return;
+      next = hidden;
+    } else {
+      history.beginTransaction();
+      for (const id of ids) next = history.dispatch(reducers.deleteSlide, id) ?? next;
+      history.endTransaction();
+    }
     // The rail lands on the survivor at the first removed position (or the new last slide).
     const survivor = next.slides[Math.min(firstIdx, next.slides.length - 1)];
     if (next !== lesson && survivor) choose([survivor.id], survivor.id);
   };
+
+  // While answers are hidden, the Add slide picker offers them back (ruling 260).
+  const showAnswers = lesson.answersOff ? () => void setAnswersSlides(true) : undefined;
 
   const addAfterCurrent = (kind: SlideKind) => {
     const made = addSlideAfter(deps, activeId, kind);
@@ -497,6 +535,15 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
               </DropdownMenuItem>
             </>
           ) : null}
+          {lesson.answersOff ? (
+            <>
+              <DropdownMenuSeparator />
+              {/* The way back for hidden Answers slides (ruling 260): they are not in the rail. */}
+              <DropdownMenuItem data-show-answers onSelect={() => void setAnswersSlides(true)}>
+                {SHOW_ANSWERS_LABEL}
+              </DropdownMenuItem>
+            </>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => nudgeSlides(-1)}>Move up</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => nudgeSlides(1)}>Move down</DropdownMenuItem>
@@ -519,6 +566,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
       facts={lesson.facts}
       onPick={addAfterCurrent}
       onInsert={insertAfterCurrent}
+      onShowAnswers={showAnswers}
       side="top"
       trigger={
         label ? (
@@ -572,6 +620,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
               residuals={residuals.get(slide.id)}
               busy={busySlideIds.has(slide.id)}
               writing={writingSlideIds?.has(slide.id) ?? false}
+              writingNow={writingNowId === slide.id}
               onPointerDown={onRowPointerDown}
               onPointerMove={onRowPointerMove}
               onPointerUp={onRowPointerUp}
@@ -755,6 +804,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
                   residuals={residuals.get(slide.id)}
                   busy={busySlideIds.has(slide.id)}
                   writing={writingSlideIds?.has(slide.id) ?? false}
+                  writingNow={writingNowId === slide.id}
                   onPointerDown={onRowPointerDown}
                   onPointerMove={onRowPointerMove}
                   onPointerUp={onRowPointerUp}
@@ -789,6 +839,7 @@ export function Navigator({ strip = false }: { strip?: boolean } = {}) {
           facts={lesson.facts}
           onPick={addAfterCurrent}
           onInsert={insertAfterCurrent}
+          onShowAnswers={showAnswers}
           side="top"
           trigger={
             <Button variant="ghost" size="sm" className="h-6 flex-1 justify-start px-1.5">
@@ -833,6 +884,7 @@ const NavigatorRow = memo(function NavigatorRow({
   residuals,
   busy,
   writing = false,
+  writingNow = false,
   ...handlers
 }: {
   slide: Slide;
@@ -849,11 +901,16 @@ const NavigatorRow = memo(function NavigatorRow({
   busy: boolean;
   /** The generating job is still writing this slide (ADR 0037): selectable, read-only. */
   writing?: boolean;
+  /** The slide the writer is writing now: the one thumbnail marked "Writing…" (UX audit J5). */
+  writingNow?: boolean;
   onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
+  // A slide being written shows its newest draft, as the canvas does (UX audit J6); a planned one
+  // its outline, and a new lesson's first two slides type out in step with the canvas.
+  const pictured = useWritingPicture(slide);
   const hasNotes = !!slide.notes?.trim();
   const hasSteps = slideStepCount(slide) > 0;
   // Text fitting engine: a slide whose boxes collide, or whose text has been pushed off the slide,
@@ -941,16 +998,24 @@ const NavigatorRow = memo(function NavigatorRow({
         }}
       >
         <SlideScaler zoom={geometry.thumbW / SLIDE_W}>
-          <SlideView slide={slide} theme={theme} mode="thumb" />
+          <SlideView slide={pictured} theme={theme} mode="thumb" />
         </SlideScaler>
+        {/* Every slide the job still owns keeps the marker (read-only, ADR 0037); only the one being
+            written says so, as a chip under its words rather than a veil over them (UX audit J5). */}
         {writing && !busy ? (
-          <span
-            data-slide-writing
-            role="status"
-            className="absolute inset-0 flex items-center justify-center gap-1.5 bg-background/70 font-medium text-foreground text-meta"
-          >
-            <span aria-hidden className="block size-1.5 animate-pulse rounded-full bg-primary" />
-            Writing…
+          <span data-slide-writing className="pointer-events-none absolute inset-0">
+            {writingNow ? (
+              <span
+                data-slide-writing-now
+                className="absolute bottom-1 left-1 flex items-center gap-1 rounded-full border border-border bg-background px-1.5 py-0.5 font-medium text-[10px] text-foreground leading-none shadow-sm"
+              >
+                <span
+                  aria-hidden
+                  className="block size-1.5 rounded-full bg-primary motion-safe:animate-pulse"
+                />
+                Writing…
+              </span>
+            ) : null}
           </span>
         ) : null}
         {busy ? (

@@ -2,8 +2,11 @@ import {
   type RichDoc,
   type RichNode,
   safeCssColor,
+  safeHighlightSlot,
   safeLinkHref,
   safeLinkRel,
+  safeRunFont,
+  safeStrikeStep,
   safeTextAlign,
 } from "@tj/domain/documents";
 
@@ -44,7 +47,10 @@ type Mark = NonNullable<RichNode["marks"]>[number];
 /**
  * Tiptap wraps marks outermost-first in this order — the mark *schema* order, which is the
  * StarterKit's registration order (link, bold, italic, strike, code, …) followed by the extensions
- * `baseExtensions` adds after it (underline, textStyle).
+ * `baseExtensions` adds after it (underline, textStyle). Kept as stored lessons have always
+ * serialised it, so old coloured bold stays byte-identical (TEACH-205 part c review): a run with
+ * both bold and a textStyle is `<strong><span …>`, where the live editor would nest the span
+ * outside. Only the textStyle span's new data attributes are new bytes.
  */
 const MARK_ORDER = ["link", "bold", "italic", "strike", "code", "underline", "textStyle"];
 
@@ -80,9 +86,17 @@ function markTag(mark: Mark): [open: string, close: string] {
     case "code":
       return ["<code>", "</code>"];
     case "textStyle": {
-      // Tiptap emits the span even with no colour set.
+      // Tiptap emits the span even with no colour set; the run attributes follow the colour in
+      // extension order (`run-style.ts`, TEACH-205 part c), as data attributes only.
       const color = safeCssColor(attrs.color);
-      return [color ? `<span style="color: ${escapeAttr(color)};">` : "<span>", "</span>"];
+      const parts = color ? [`style="color: ${escapeAttr(color)};"`] : [];
+      const font = safeRunFont(attrs.font);
+      if (font) parts.push(`data-font="${font}"`);
+      const slot = safeHighlightSlot(attrs.highlight);
+      if (slot !== null) parts.push(`data-hl="${slot}"`);
+      const strike = safeStrikeStep(attrs.strikeStep);
+      if (strike !== null) parts.push(`data-strike="${strike}"`);
+      return [parts.length ? `<span ${parts.join(" ")}>` : "<span>", "</span>"];
     }
     case "link": {
       const open = linkOpenTag(attrs);

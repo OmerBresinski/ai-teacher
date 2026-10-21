@@ -1,0 +1,272 @@
+{
+  "early": [
+    {
+      "n": 3,
+      "vis": "icons",
+      "name": {
+        "cap": 14,
+        "hardMax": 15
+      },
+      "line": {
+        "cap": 56,
+        "hardMax": 92
+      }
+    },
+    {
+      "n": 3,
+      "vis": "pictures",
+      "name": {
+        "cap": 12,
+        "hardMax": 13
+      },
+      "line": {
+        "cap": 50,
+        "hardMax": 78
+      }
+    },
+    {
+      "n": 4,
+      "vis": "icons",
+      "name": {
+        "cap": 9,
+        "hardMax": 11
+      },
+      "line": {
+        "cap": 40,
+        "hardMax": 68
+      }
+    },
+    {
+      "n": 4,
+      "vis": "pictures",
+      "name": {
+        "cap": 7,
+        "hardMax": 8
+      },
+      "line": {
+        "cap": 28,
+        "hardMax": 46
+      }
+    },
+    {
+      "n": 5,
+      "vis": "icons",
+      "name": {
+        "cap": 8,
+        "hardMax": 9
+      },
+      "line": {
+        "cap": 28,
+        "hardMax": 54
+      }
+    },
+    {
+      "n": 5,
+      "vis": "pictures",
+      "name": {
+        "cap": 6,
+        "hardMax": 6
+      },
+      "line": {
+        "cap": 20,
+        "hardMax": 44
+      }
+    }
+  ],
+  "primary": [
+    {
+      "n": 3,
+      "vis": "icons",
+      "name": {
+        "cap": 15,
+        "hardMax": 15
+      },
+      "line": {
+        "cap": 92,
+        "hardMax": 116
+      }
+    },
+    {
+      "n": 3,
+      "vis": "pictures",
+      "name": {
+        "cap": 15,
+        "hardMax": 15
+      },
+      "line": {
+        "cap": 78,
+        "hardMax": 98
+      }
+    },
+    {
+      "n": 4,
+      "vis": "icons",
+      "name": {
+        "cap": 12,
+        "hardMax": 13
+      },
+      "line": {
+        "cap": 68,
+        "hardMax": 86
+      }
+    },
+    {
+      "n": 4,
+      "vis": "pictures",
+      "name": {
+        "cap": 9,
+        "hardMax": 9
+      },
+      "line": {
+        "cap": 48,
+        "hardMax": 62
+      }
+    },
+    {
+      "n": 5,
+      "vis": "icons",
+      "name": {
+        "cap": 10,
+        "hardMax": 10
+      },
+      "line": {
+        "cap": 54,
+        "hardMax": 86
+      }
+    },
+    {
+      "n": 5,
+      "vis": "pictures",
+      "name": {
+        "cap": 7,
+        "hardMax": 7
+      },
+      "line": {
+        "cap": 36,
+        "hardMax": 54
+      }
+    },
+    {
+      "n": 6,
+      "vis": "icons",
+      "name": {
+        "cap": 8,
+        "hardMax": 8
+      },
+      "line": {
+        "cap": 36,
+        "hardMax": 62
+      }
+    },
+    {
+      "n": 6,
+      "vis": "pictures",
+      "name": {
+        "cap": 6,
+        "hardMax": 6
+      },
+      "line": {
+        "cap": 24,
+        "hardMax": 48
+      }
+    }
+  ],
+  "secondary": [
+    {
+      "n": 3,
+      "vis": "icons",
+      "name": {
+        "cap": 15,
+        "hardMax": 15
+      },
+      "line": {
+        "cap": 92,
+        "hardMax": 110
+      }
+    },
+    {
+      "n": 3,
+      "vis": "pictures",
+      "name": {
+        "cap": 15,
+        "hardMax": 15
+      },
+      "line": {
+        "cap": 78,
+        "hardMax": 98
+      }
+    },
+    {
+      "n": 4,
+      "vis": "icons",
+      "name": {
+        "cap": 13,
+        "hardMax": 13
+      },
+      "line": {
+        "cap": 62,
+        "hardMax": 80
+      }
+    },
+    {
+      "n": 4,
+      "vis": "pictures",
+      "name": {
+        "cap": 10,
+        "hardMax": 10
+      },
+      "line": {
+        "cap": 46,
+        "hardMax": 54
+      }
+    },
+    {
+      "n": 5,
+      "vis": "icons",
+      "name": {
+        "cap": 11,
+        "hardMax": 11
+      },
+      "line": {
+        "cap": 54,
+        "hardMax": 84
+      }
+    },
+    {
+      "n": 5,
+      "vis": "pictures",
+      "name": {
+        "cap": 8,
+        "hardMax": 8
+      },
+      "line": {
+        "cap": 36,
+        "hardMax": 54
+      }
+    },
+    {
+      "n": 6,
+      "vis": "icons",
+      "name": {
+        "cap": 9,
+        "hardMax": 9
+      },
+      "line": {
+        "cap": 36,
+        "hardMax": 62
+      }
+    },
+    {
+      "n": 6,
+      "vis": "pictures",
+      "name": {
+        "cap": 6,
+        "hardMax": 6
+      },
+      "line": {
+        "cap": 24,
+        "hardMax": 48
+      }
+    }
+  ]
+}

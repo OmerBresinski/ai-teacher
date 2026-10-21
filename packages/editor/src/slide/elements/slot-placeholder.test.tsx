@@ -5,7 +5,7 @@ import { SlotPlaceholder } from "./SlotPlaceholder";
 
 /* A photo brief or a diagram instruction runs to 400 characters: the box holds what fits. */
 describe("a long brief in a slot placeholder", () => {
-  const theme = getTheme("chalk");
+  const theme = getTheme("splash");
   const text =
     `Photo: ${"Roman legionaries in formation with shields and armour, ".repeat(7)}`.slice(0, 400);
 

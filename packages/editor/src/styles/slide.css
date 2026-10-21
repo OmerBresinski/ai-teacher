@@ -35,6 +35,51 @@
   margin: 0 0 0.35em;
 }
 
+/*
+ * Run attributes (TEACH-205 part c; `@tj/domain` rich-text `textStyle`).
+ * - `data-font="quote"`: the theme's quote face (`--td-font-quote`, set by `SlideView`).
+ * - `data-hl="n"`: colour slot n's wash behind the run, one piece per line (`clone`); the theme's
+ *   `--cat-n-fill` once it has one (A8), Paper's r5 fill until then (`HIGHLIGHT_FALLBACK_FILLS`).
+ * - `data-strike="n"`: the myth strike (ruling 238): an accent line 0.075em thick, centred 0.25em
+ *   above the baseline (an offset underline, not the font's strikeout). `data-strike-hidden` is set
+ *   while the slide is before step n (`StaticText`).
+ */
+[data-font="quote"] {
+  font-family: var(--td-font-quote, inherit);
+  font-style: var(--td-quote-style, normal);
+}
+/* `data-font="math"`: a maths variable in the theme's maths face (`--td-font-math`, `SlideView`). */
+[data-font="math"] {
+  font-family: var(--td-font-math, var(--td-font-quote, inherit));
+  font-style: var(--td-math-style, var(--td-quote-style, normal));
+}
+[data-hl] {
+  padding: 0.04em 0.14em;
+  margin: 0 -0.14em;
+  border-radius: 5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  background: var(--cat-1-fill, #f4d0d3);
+}
+[data-hl="2"] {
+  background: var(--cat-2-fill, #adc0d6);
+}
+[data-hl="3"] {
+  background: var(--cat-3-fill, #f8e3bc);
+}
+[data-hl="4"] {
+  background: var(--cat-4-fill, #a8cfcd);
+}
+[data-strike] {
+  text-decoration: underline var(--td-accent) 0.075em;
+  /* From the baseline: the line's top edge sits 0.25em + half its thickness above it. */
+  text-underline-offset: -0.2875em;
+  text-decoration-skip-ink: none;
+}
+[data-strike-hidden] {
+  text-decoration: none;
+}
+
 .td-rt ul,
 .td-rt ol {
   margin: 0 0 0.35em;
@@ -416,5 +461,32 @@
   [data-slide-root] .td-match-line {
     /* biome-ignore lint/complexity/noImportantStyles: `no-anim` must win over every keyframe below */
     animation: none !important;
+  }
+}
+
+/*
+ * A badge's numeral or letter (`badgeGlyph` in @tj/slides; Greg, 20 Oct 2026): centred on its
+ * cap height (x-height for lower case), not its line box. Where the browser trims a line box
+ * to a band (`text-box`), the trimmed box is what the flex shell centres; elsewhere the metric
+ * shift moves it. `--glyph-x` is the glyph's own ink offset (a "1" leans on its flag).
+ */
+.tj-badge-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max-content;
+  white-space: nowrap;
+  transform-origin: 0 0;
+  transform: scale(calc(1 / var(--glyph-k, 1))) translate(-50%, -50%)
+    translate(var(--glyph-x, 0px), var(--glyph-y, 0px));
+}
+@supports (text-box: trim-both cap alphabetic) {
+  .tj-badge-glyph {
+    transform: scale(calc(1 / var(--glyph-k, 1))) translate(-50%, -50%)
+      translate(var(--glyph-x, 0px), var(--glyph-trim-y, 0px));
+  }
+  .tj-badge-glyph,
+  .tj-badge-glyph * {
+    text-box: trim-both var(--glyph-edge, cap alphabetic);
   }
 }

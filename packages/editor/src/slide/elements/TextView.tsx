@@ -1,5 +1,5 @@
 import type { TextElement, Theme } from "@tj/domain/documents";
-import { HEADING_NAME } from "@tj/slides";
+import { fittedFontSize, HEADING_NAME } from "@tj/slides";
 import { TriangleAlert } from "lucide-react";
 import { type CSSProperties, lazy, type ReactNode, type Ref, Suspense } from "react";
 import {
@@ -46,7 +46,7 @@ export function TextShell({
   children: ReactNode;
   style?: CSSProperties;
 }) {
-  return (
+  const shell = (
     <div
       style={{
         position: "relative",
@@ -63,19 +63,37 @@ export function TextShell({
       }}
     >
       {children}
-      {overflowing && mode === "edit" ? <OverflowGlyph theme={theme} /> : null}
     </div>
+  );
+  // The mark sits outside the box's bottom-right corner, never on the words (Greg, 14 Oct 2026:
+  // it covered the last letter). A sibling of the clipped box, so its overflow rule cannot hide it.
+  return overflowing && mode === "edit" ? (
+    <>
+      {shell}
+      <OverflowGlyph theme={theme} outside />
+    </>
+  ) : (
+    shell
   );
 }
 
-export function OverflowGlyph({ theme, title }: { theme: Theme; title?: string }) {
+export function OverflowGlyph({
+  theme,
+  title,
+  outside,
+}: {
+  theme: Theme;
+  title?: string;
+  /** Beside the box's bottom-right corner (a text box), not inside it. */
+  outside?: boolean;
+}) {
   return (
     <span
       title={title ?? "Text does not fit this fixed-height box"}
+      data-overflow-glyph=""
       style={{
         position: "absolute",
-        right: 2,
-        bottom: 2,
+        ...(outside ? { left: "calc(100% + 4px)", bottom: 0 } : { right: 2, bottom: 2 }),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -95,7 +113,7 @@ export function OverflowGlyph({ theme, title }: { theme: Theme; title?: string }
 
 export function TextView(props: ElementViewProps<TextElement>) {
   const { element, theme, mode } = props;
-  const staticView = <StaticText element={element} theme={theme} mode={mode} />;
+  const staticView = <StaticText element={element} theme={theme} mode={mode} step={props.step} />;
   if (mode !== "edit") return staticView;
   return (
     <Suspense fallback={staticView}>
@@ -111,19 +129,27 @@ export function StaticText({
   mode,
   bodyRef,
   overflowing,
+  step,
 }: {
   element: TextElement;
   theme: Theme;
   mode: SlideMode;
+  /** The slide's reveal step, for a myth strike that shows on a later one. */
+  step?: number;
   bodyRef?: Ref<HTMLDivElement>;
   overflowing?: boolean;
 }) {
-  const r = resolveTextStyle(element.style, theme);
+  const resolved = resolveTextStyle(element.style, theme);
+  // A fixed-height box whose words outgrew it (a teacher's edit to a title sized to its words)
+  // is drawn at the size that fits, never clipped (TEACH-75 part o).
+  const fitted = fittedFontSize(element, theme);
+  const r = fitted === undefined ? resolved : { ...resolved, fontSize: fitted };
   return (
     <TextShell r={r} mode={mode} overflowing={overflowing} theme={theme}>
       <div ref={bodyRef} style={{ width: "100%", flex: "0 0 auto" }}>
         <RichText
           doc={element.doc}
+          step={step}
           style={
             element.name === HEADING_NAME ? { ...textTypeCss(r), ...BALANCED } : textTypeCss(r)
           }

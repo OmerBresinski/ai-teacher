@@ -11,7 +11,7 @@ import { arcD, rightAngleMark } from '../kit/batch-C.js';
 import { clockFace } from '../kit/batch-B.js';
 
 export const meta = {
-  id: 'angles_turns', name: 'Angles and turns', kind: 'info', version: 1,
+  id: 'angles_turns', name: 'Angles and turns', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'An angle is an amount of turn: quarter and half turns, right, acute, obtuse and reflex angles, measuring with a protractor, and angles on a line or round a point.',
@@ -288,11 +288,19 @@ export function render(root, P, ctx) {
     // later ghosts: where each earlier turn ended
     rays.slice(1, -1).forEach((a, i) => { ghost(gRay, a, Lr - 10, { s: b[`turn:${i + 1}`] }); segs.push([...V, ...pt(a, Lr)]); });
     segs.push([...V, ...pt(rays[rays.length - 1], Lr)]);
-    const arr = h('g', { s: sk, cls: 'rise' }, gRay); const inner = h('g', {}, arr); const hs = ctx.tk.head * 1.5 * 1.3;
-    h('line', { x1: V[0], y1: V[1], x2: V[0] + Lr - hs * .7, y2: V[1], stroke: 'var(--ink)', 'stroke-width': SW, 'stroke-linecap': 'round' }, inner);
-    h('path', { d: headD(V[0] + Lr, V[1], 0, hs), fill: 'var(--ink)' }, inner);
-    h('circle', { cx: V[0], cy: V[1], r: 15, fill: 'var(--ink)' }, arr);
-    mover = a => inner.setAttribute('transform', `rotate(${-a} ${V[0]} ${V[1]})`);
+    // one arrow per stage: the start arrow, then the arrow where each turn ends. Each one replaces the last,
+    // so no frame shows where the arrow will end before it has turned
+    const hs = ctx.tk.head * 1.5 * 1.3, arrows = rays.map((a, j) => {
+      const arr = h('g', { s: j ? b[`turn:${j - 1}`] : sk, hide: j < items.length ? b[`turn:${j}`] : null, cls: j ? null : 'rise' }, gRay); const inner = h('g', {}, arr);
+      h('line', { x1: V[0], y1: V[1], x2: V[0] + Lr - hs * .7, y2: V[1], stroke: 'var(--ink)', 'stroke-width': SW, 'stroke-linecap': 'round' }, inner);
+      h('path', { d: headD(V[0] + Lr, V[1], 0, hs), fill: 'var(--ink)' }, inner);
+      inner.setAttribute('transform', `rotate(${-a} ${V[0]} ${V[1]})`);
+      return inner;
+    });
+    h('circle', { cx: V[0], cy: V[1], r: 15, fill: 'var(--ink)', s: sk }, gRay);
+    // live motion: the arrow of the stage being played turns from where the last one stopped
+    mover = (a, pr) => { const i = pr.findIndex(u => u > 0 && u < 1);
+      arrows.forEach((el, q) => el.setAttribute('transform', `rotate(${-(i >= 0 && q === i + 1 ? a : rays[q])} ${V[0]} ${V[1]})`)); };
     // the start label sits beside the tip of the start line, on the side away from the turn
     const sl = txt(P, 'label:start', 'start');
     // a long edit wraps (then shrinks) in the free room beside the start line, never off the slide:
@@ -300,7 +308,7 @@ export function render(root, P, ctx) {
     const QR0 = Lr * .9;
     const inGround = bx => { for (let x = bx.x; x <= bx.x + bx.w; x += 8) for (let y = bx.y; y <= bx.y + bx.h; y += 8) { const dx = x - V[0], dy = V[1] - y, r = Math.hypot(dx, dy); if (r > QR0 + 6) continue; const an = ((Math.atan2(dy, dx) / R) + 360) % 360; if (QUADS.includes(Math.floor(an / 90) % 4)) return true; } return false; };
     const tmpS = h('g', {}, root);
-    const lab = { cls: 'halo', s: b['turn:0'] };
+    const lab = { cls: 'halo', s: sk };
     const measureAt = (x, y, anchor, maxW, maxLines, grow) => {
       const t = textBlock(tmpS, 0, 0, sl, { cls: 'ts-h3', maxW, maxLines, lh: 38, anchor, a: Object.assign({}, lab, QUIET) }); t.el.remove();
       if (t.lines[t.lines.length - 1].endsWith('…') && !sl.endsWith('…')) return null;
@@ -335,7 +343,7 @@ export function render(root, P, ctx) {
     mover = a => F.set(0, (90 - a) / 6);
   }
   if (c === 'protractor') {
-    const TB = 36, RN = PR - TB - 32, ARM = RN - 54; // tick band, numeral ring, and the arm stops inside the numerals
+    const TB = 36, RN = PR - TB - 32, RN2 = RN - 50, ARM = RN2 - 40; // tick band, numeral ring, and the arm stops inside the numerals
     const g = h('g', { s: sk, cls: 'rise' }, gBody);
     // a flat plastic protractor: a straight base edge and a printed scale band, no shadow
     h('rect', { x: V[0] - PR, y: V[1], width: 2 * PR, height: 16, fill: 'var(--panel)', stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-hair)' }, g);
@@ -351,7 +359,9 @@ export function render(root, P, ctx) {
       return sg; };
     scale({ s: sk, cls: 'rise' });
     const hi = scale({ s: b.size }); hi.querySelectorAll('text').forEach(t => { t.style.fill = 'var(--focus-text)'; });
-    // the other scale is left as ticks only, so no numeral is doubled
+    // the other scale, small and quiet inside the first: it reads from 0 at the far end, the slip the fact warns about
+    const sg2 = h('g', { s: sk, cls: 'rise' }, gLab);
+    for (let t = 0; t <= 180; t += 30) { const [x, y] = pt(clamp(t, 10, 170), RN2); computed(T(sg2, x, y + 10, String(180 - val(t)), 'ts-small', { 'text-anchor': 'middle', fill: 'var(--ink-3)', cls: 'halo-paper' }), 'angles.0.size'); }
     // the zero the reading starts from, ringed in the fact step
     if (has('fact')) { const [zx, zy] = pt(dir > 0 ? 8 : 172, RN); h('circle', { cx: zx, cy: zy, r: 32, fill: 'none', stroke: 'var(--focus)', 'stroke-width': SWA, s: b.fact, cls: 'pop' }, gLab); }
     rayLine(gRay, M.a0, 0, Lr, { s: sk, cls: 'rise' }); segs.push([...V, ...pt(M.a0, Lr)]);
@@ -363,7 +373,8 @@ export function render(root, P, ctx) {
   }
   if (c === 'line' || c === 'point') {
     const g = h('g', { s: sk, cls: 'rise' }, gRay);
-    if (c === 'line') { rayLine(g, 0, 0, Lr); rayLine(g, 180, 0, Lr); segs.push([...pt(0, Lr), ...pt(180, Lr)]); }
+    if (c === 'line') { rayLine(g, 0, 0, Lr); rayLine(g, 180, 0, Lr); segs.push([...pt(0, Lr), ...pt(180, Lr)]);
+      T(g, V[0] + dir * (Lr - 10), V[1] + 46, 'straight line', 'ts-h3', Object.assign({ 'text-anchor': dir > 0 ? 'end' : 'start' }, QUIET)); }
     else { rayLine(g, M.a0, 0, Lr); segs.push([...V, ...pt(M.a0, Lr)]); }
     h('circle', { cx: V[0], cy: V[1], r: 11, fill: 'var(--ink)' }, g);
     // each angle's new ray turns out from the last one (the final angle closes on a ray already drawn)
@@ -416,7 +427,7 @@ export function render(root, P, ctx) {
     block(g, F.say, 'ts-label', 36, Object.assign({ fill: F.eq.length ? 'var(--ink-2)' : 'var(--ink)' }, at), ed('text.label:fact'), 5);
     F.eq.forEach((e, j) => block(g, e, 'ts-h3', 40, Object.assign({ fill: j < F.eq.length - 1 ? 'var(--ink)' : M.miss ? 'var(--compare-text)' : 'var(--focus-text)' }, at), comp(M.whole && M.known.length ? `angles.${M.known[0].i}.size` : p0)));
   }
-  secs.forEach((sc, j) => { if (j < secs.length - 1) { const nx = b[secs[j + 1].key]; sc.g.setAttribute('data-c', [nx < N ? `${nx}-${N}:off` : null, `${N}:soft`].filter(Boolean).join(',')); } });
+  secs.forEach((sc, j) => { if (j < secs.length - 1) { const nx = b[secs[j + 1].key]; sc.g.setAttribute('data-c', `${nx}:soft`); } });
   tmp.remove();
   const tot = rows.reduce((s, r) => s + r.h, 0), top0 = GRID.top + 30, bot0 = GRID.bottom - 10;
   if (tot > bot0 - top0) ctx.warn(`The reading panel needs ${tot | 0} units of height; there are ${bot0 - top0}.`);
@@ -424,7 +435,7 @@ export function render(root, P, ctx) {
   /* ---------------- motion: each part turns in its own step */
   const prog = (k, u) => items.map((a, i) => { const bk = b[partKey(i)]; return k > bk ? 1 : k === bk ? u : 0; });
   const at = pr => {
-    if (mover) { let a = M.a0; if (c === 'protractor') a += dir * items[0].size * pr[0]; else items.forEach((it, i) => { a += dir * it.size * pr[i]; }); mover(a); }
+    if (mover) { let a = M.a0; if (c === 'protractor') a += dir * items[0].size * pr[0]; else items.forEach((it, i) => { a += dir * it.size * pr[i]; }); mover(a, pr); }
     for (const s of sweepers) s.set(pr[s.i]);
   };
   const dur = {}; steps.forEach(s => { if (/^(turn|angle):/.test(s.key)) { const a = items[+s.key.split(':')[1]]; dur[s.key] = clamp(900 + a.size * 3, 1000, 1900); } });

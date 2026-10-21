@@ -139,7 +139,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
       body: stamp(
         now,
         waterCycle,
-        meta("demo-water-cycle", "The water cycle", "chalk", "Science", "Year 4", 1),
+        meta("demo-water-cycle", "The water cycle", "splash", "Science", "Year 4", 1),
       ),
     },
     {
@@ -154,7 +154,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
     lesson(now, meta("roman-roads", "Roman roads", "reading-room", "History", "Year 4", 12), 2),
     lesson(
       now,
-      meta("roman-army", "Life in the Roman army", "night-lab", "History", "Year 4", 30),
+      meta("roman-army", "Life in the Roman army", "dark-slate", "History", "Year 4", 30),
       1,
     ),
     lesson(now, meta("roman-empire", "The Roman Empire", "beacon", "History", "Year 4", 72)),
@@ -164,7 +164,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
     ),
     lesson(
       now,
-      meta("plant-parts", "Parts of a flowering plant", "chalk", "Science", "Year 3", 216),
+      meta("plant-parts", "Parts of a flowering plant", "splash", "Science", "Year 3", 216),
       1,
     ),
     lesson(
@@ -176,7 +176,10 @@ export function demoWorkspace(now: Date): DemoDocument[] {
       meta("rivers", "How rivers shape the land", "exam-hall", "Geography", "Year 5", 600),
       2,
     ),
-    staleLesson(now, meta("electricity", "Simple circuits", "night-lab", "Science", "Year 6", 960)),
+    staleLesson(
+      now,
+      meta("electricity", "Simple circuits", "dark-slate", "Science", "Year 6", 960),
+    ),
     worksheet(
       now,
       meta("fraction-practice", "Fractions practice", "playground", "Maths", "Year 4", 48),
@@ -190,7 +193,7 @@ export function demoWorkspace(now: Date): DemoDocument[] {
     ),
     worksheet(
       now,
-      meta("plant-labels", "Label a flowering plant", "chalk", "Science", "Year 3", 480),
+      meta("plant-labels", "Label a flowering plant", "splash", "Science", "Year 3", 480),
       plantLabelsWorksheet(),
     ),
     worksheet(

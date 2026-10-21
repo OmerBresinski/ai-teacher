@@ -1,0 +1,53 @@
+0.886  same      An ice cube beside a glass of liquid water | A single ice cube next to a glass of water
+0.883  same      24 identical counters arranged in four equal group | Twenty-four counters in four groups of six on a sc
+0.874  same      The cast-iron arch of the Iron Bridge over the Riv | Ironbridge: the iron arch bridge across the Severn
+0.870  near      24 identical counters arranged in four equal group | 12 counters arranged in three equal groups of four
+0.859  same      A theatre production of The Tempest showing Prospe | Prospero with his staff on stage in a production o
+0.827  same      A frog sitting on a lily pad in a pond | A green frog resting on a lily pad
+0.790  same      German children playing with bundles of worthless  | Children in 1923 Germany playing with stacks of ba
+0.787  same      An adult brown hen beside a very young yellow chic | A hen standing next to her small yellow chick
+0.780  same      Marble chips reacting with dilute hydrochloric aci | A conical flask of hydrochloric acid with marble c
+0.695  same      An adult dog and its puppy sitting side by side | A grown dog beside a puppy, both whole bodies visi
+0.674  same      A black-and-white cow beside its calf in a field | An adult cow standing next to a young calf on gras
+0.654  near      A frog sitting on a lily pad in a pond | Frogspawn floating in a pond
+0.650  near      A Year 1 child pouring water between two jugs | A Year 6 pupil measuring water with a measuring cy
+0.640  near      A black-and-white cow beside its calf in a field | A sheep beside a young lamb in a field
+0.581  near      A theatre production of The Tempest showing Prospe | A theatre production of Macbeth showing the three 
+0.578  near      The cast-iron arch of the Iron Bridge over the Riv | The Clifton Suspension Bridge over the Avon Gorge
+0.576  near      An adult dog and its puppy sitting side by side | An adult cat beside a small kitten
+0.490  near      Marble chips reacting with dilute hydrochloric aci | Magnesium ribbon fizzing in a test tube of acid
+0.474  near      German children playing with banknotes during the  | French soldiers occupying the Ruhr in 1923
+0.471  near      An adult brown hen beside a very young yellow chic | A duck with her ducklings on a pond
+0.455  near      The north gate ruins at Housesteads Roman Fort | A stretch of Hadrian's Wall on the crags
+0.333  near      An ice cube beside a glass of liquid water | Steam rising from a boiling kettle
+0.169  different A meander of the River Severn from above | A cat beside a kitten
+0.138  different An ice cube beside a glass of liquid water | Prospero holding a staff on stage
+0.134  different The Iron Bridge over the River Severn | A hen beside a chick
+0.134  different A flooded river bursting its banks in a storm | A market stall weighing apples on scales
+0.115  different A Year 1 child pouring water between two jugs | Roman soldiers marching
+0.087  different A black-and-white cow beside its calf | The Globe Theatre stage and yard
+0.065  different The Colosseum hypogeum in Rome | A kettle steaming up a kitchen window
+0.056  different 24 identical counters on a classroom table | A volcano erupting at night
+0.045  different A frog sitting on a lily pad | German banknotes from 1923
+0.044  different An adult dog and its puppy sitting side by side | Marble chips reacting with acid in a flask
+
+threshold  reused  same  precision  recall
+0.600      12      10    0.83       1.00
+0.625      12      10    0.83       1.00
+0.650      11      10    0.91       1.00
+0.675       9       9    1.00       0.90
+0.700       8       8    1.00       0.80
+0.725       8       8    1.00       0.80
+0.750       8       8    1.00       0.80
+0.775       8       8    1.00       0.80
+0.800       5       5    1.00       0.50
+0.825       5       5    1.00       0.50
+0.850       4       4    1.00       0.40
+0.875       2       2    1.00       0.20
+0.900       0       0    1.00       0.00
+0.925       0       0    1.00       0.00
+0.950       0       0    1.00       0.00
+
+REUSE_THRESHOLD in code: 0.77 (numbers must agree)
+
+embedding cost $0.000011

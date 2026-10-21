@@ -1,8 +1,18 @@
 /** Bar models: one to four bars cut into parts, drawn to one scale, with totals as braces. */
-import { answerPart, part } from "./builds";
-import type { BarModel } from "./schema";
+
+import type { Theme } from "@tj/domain/documents";
+import { answerPart, buildsOn, PASSING_HIDDEN, part } from "./builds";
+import {
+  type BarModel,
+  type BarPanel,
+  type BarPanelInput,
+  BarPanelSchema,
+  barPanelGuard,
+} from "./schema";
 import { look, WEIGHT } from "./style";
-import { type Ctx, hBrace, n, text, textWidth, vBrace } from "./svg";
+import { type Ctx, context, type DrawnText, hBrace, n, num, text, textWidth, vBrace } from "./svg";
+
+export { barPanelGuard, EQUATION_MAX_A } from "./schema";
 
 /** The widest a row's name may be, as a share of the drawing, beside its bar. */
 const LABEL_SIDE_MAX = 0.2;
@@ -10,6 +20,7 @@ const LABEL_SIDE_MAX = 0.2;
 const BAR_H_MAX = 5;
 
 export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string {
+  if (s0.panel) return drawPanel(s0.panel, x, w, h);
   const { c, fs } = x;
   const gap = fs * 0.6;
   // dd-diagrams2: a row name that only repeats the bar's total ("40" beside a bar totalled "40")
@@ -169,4 +180,381 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
       answerPart(part(s.bars.length, out.slice(total).join(""))),
     );
   return out.join("");
+}
+
+// ─── panel models (TEACH-75 part y) ──────────────────────────────────────────────────────────
+
+/**
+ * The builds a panel model shows, in order: one per working line it pictures. Percent: 10%, the
+ * tens (when there are more than one), half a tenth (when p ends in 5), then the total (when
+ * there was more than one step). Equation: the whole, take b from both, share into a parts, check.
+ */
+export function barPanelFrames(p: BarPanelInput): string[] {
+  if (p.model === "equation") return ["whole", "take", "share", "check"];
+  const t = Math.floor(p.percent / 10);
+  const half = p.percent % 10 === 5;
+  const out = t >= 1 ? ["unit"] : [];
+  if (t > 1) out.push("tens");
+  if (half) out.push("half");
+  if (out.length > 1 && half) out.push("total");
+  return out;
+}
+
+/**
+ * A worked example's panel as a full bar-model spec, or the guard's result when the numbers are
+ * not ones the panel draws exactly (the caller then shows its working as text only).
+ */
+export function barPanelSpec(
+  panel: BarPanelInput,
+  alt: string,
+): { ok: true; spec: BarModel } | { ok: false; reason: string } {
+  const g = barPanelGuard(panel);
+  if (!g.ok) return g;
+  const p = BarPanelSchema.parse(panel);
+  // `bars` mirror the picture for every reader that is not the panel drawer (capacity, alt).
+  const bars =
+    p.model === "percent"
+      ? [
+          {
+            parts: Array.from({ length: 10 }, () => ({ value: 1 })),
+            total: num(p.amount),
+          },
+        ]
+      : [
+          {
+            parts: [
+              ...Array.from({ length: p.a }, () => ({
+                value: (p.c - p.b) / p.a,
+                label: p.unknown,
+              })),
+              { value: p.b, label: num(p.b) },
+            ],
+          },
+          { parts: [{ value: p.c, label: num(p.c) }] },
+        ];
+  return { ok: true, spec: { kind: "bar-model", alt, bars, panel: p } as BarModel };
+}
+
+/**
+ * Frame layers as one drawing. Under `withBuilds` each earlier frame shows only in its own build
+ * (`data-f`, hidden by the drawing's own style everywhere else) and the last frame is the last
+ * build; every other render (editor, PDF, PPTX) shows the last frame alone. Frames never show
+ * together, so the fit probe reads the last frame with the drawing and checks each earlier frame
+ * on its own against the drawing's still marks.
+ */
+function frames(x: Ctx, count: number, draw: (x: Ctx, k: number) => string): string {
+  const last = count - 1;
+  const still = x.rec ? [...x.rec] : [];
+  const early: string[] = [];
+  for (let k = 0; k < last; k++) {
+    if (!x.rec) {
+      if (buildsOn()) early.push(`<g data-f="${k}">${draw(x, k)}</g>`);
+      continue;
+    }
+    const rec: DrawnText[] = [];
+    draw({ ...x, rec }, k);
+    frameFaults(x, still, rec);
+  }
+  const end = draw(x, last);
+  if (!buildsOn() || last < 1) return end;
+  return `<g class="slide"><style>${PASSING_HIDDEN}</style>${early.join("")}${part(last, end)}</g>`;
+}
+
+/** An earlier frame's labels that overlap each other or the still marks (as `diagramFaults` reads). */
+function frameFaults(x: Ctx, still: DrawnText[], rec: DrawnText[]) {
+  const area = (b: DrawnText) => Math.max(1, (b.x1 - b.x0) * (b.y1 - b.y0));
+  const over = (a: DrawnText, b: DrawnText) =>
+    Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) *
+    Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  rec.forEach((a, i) => {
+    for (const b of [...still, ...rec.slice(i + 1)])
+      if (over(a, b) > 0.15 * Math.min(area(a), area(b)))
+        x.faults?.push(`the labels "${a.text}" and "${b.text}" overlap`);
+  });
+}
+
+/** The label size a panel sets: grown with its box, never under the drawing's own (the age floor). */
+const panelFs = (x: Ctx, w: number, h: number) =>
+  Math.max(x.fs, Math.min(x.fs * 1.4, w / 11, h / 7));
+
+/** "lead" in ink then "value" in the accent, as one label centred at (cx, y) and kept inside 0..w. */
+function valueLabel(
+  x: Ctx,
+  cx: number,
+  y: number,
+  lead: string,
+  value: string,
+  fs: number,
+  w: number,
+  colour: string,
+): string {
+  const lw = textWidth(lead, x, fs, 600) + fs * 0.3;
+  const vw = textWidth(value, x, fs, 700);
+  const total = lw + vw;
+  const x0 = Math.max(2, Math.min(w - total - 2, cx - total / 2));
+  return (
+    text(x, x0, y, [lead], { anchor: "start", fs, weight: 600 }) +
+    text(x, x0 + lw, y, [value], { anchor: "start", fs, weight: 700, fill: colour })
+  );
+}
+
+/**
+ * The narrowest box (slide points, at `h` tall) in which a panel draws every number at or above
+ * the age floor, measured: its x cells take the width their value needs at the floor. A caller
+ * whose box is narrower reports the panel over (or shows the working as text only).
+ */
+export function barPanelMinWidth(panel: BarPanelInput, theme: Theme, h = 440): number | undefined {
+  if (!barPanelGuard(panel).ok) return undefined;
+  const p = BarPanelSchema.parse(panel);
+  for (let w = PANEL_MIN.w; w <= 960; w += 4) {
+    const faults: string[] = [];
+    // The drawer's own box: the zone less its inset each side (index.ts DRAW_INSET).
+    drawPanel(p, { ...context(theme, w, h), rec: [], faults }, w - 8, h);
+    if (faults.length === 0) return w;
+  }
+  return undefined;
+}
+
+/** The smallest box a panel model draws into (a worked example's panel, ruling 155). */
+export const PANEL_MIN = { w: 270, h: 180 } as const;
+
+function drawPanel(p: BarPanel, x: Ctx, w: number, h: number): string {
+  // Under its smallest box a panel is a fault, so a zoom never draws it small and scales it up.
+  if (w < PANEL_MIN.w || h < PANEL_MIN.h)
+    x.faults?.push(`the panel is smaller than ${PANEL_MIN.w}×${PANEL_MIN.h}`);
+  return p.model === "percent" ? drawPercent(p, x, w, h) : drawEquation(p, x, w, h);
+}
+
+/** p% of an amount by tenths (W-d2): the whole bracketed above, one brace and one label per build. */
+function drawPercent(p: Extract<BarPanel, { model: "percent" }>, x: Ctx, w: number, h: number) {
+  const { c } = x;
+  const L = panelFs(x, w, h);
+  const bx = 2;
+  const bw = w - 4;
+  const cw = bw / 10;
+  const wholeH = L * 1.5;
+  const braceD = L * 0.9;
+  const labH = L * 1.5;
+  const bh = Math.max(L * 2, Math.min(h - wholeH - braceD - labH - L * 0.9, w * 0.3, L * 4.2));
+  const used = wholeH + L * 0.5 + bh + L * 0.4 + braceD + labH;
+  if (used > h + 2) x.faults?.push("the percent bar runs off the foot of the drawing");
+  const top = Math.max(0, (h - used) / 2) + wholeH + L * 0.5;
+  const t = Math.floor(p.percent / 10);
+  const half = p.percent % 10 === 5;
+  // The whole, bracketed above: it never changes.
+  const wy = top - L * 1.1;
+  const amount = num(p.amount);
+  const aw = textWidth(amount, x, L, 700) / 2 + L * 0.5;
+  const tick = L * 0.45;
+  let still = `<path d="M${n(bx)},${n(wy + tick)} L${n(bx)},${n(wy)} L${n(bx + bw / 2 - aw)},${n(wy)} M${n(bx + bw / 2 + aw)},${n(wy)} L${n(bx + bw)},${n(wy)} L${n(bx + bw)},${n(wy + tick)}" fill="none" stroke="${c.ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  still += text(x, bx + bw / 2, wy, [amount], { fs: L, weight: 700 });
+  still += `<rect x="${n(bx)}" y="${n(top)}" width="${n(bw)}" height="${n(bh)}" fill="${c.surface}"/>`;
+  const lines = Array.from(
+    { length: 9 },
+    (_, i) =>
+      `<line x1="${n(bx + (i + 1) * cw)}" x2="${n(bx + (i + 1) * cw)}" y1="${n(top)}" y2="${n(top + bh)}" stroke="${c.ink}" stroke-width="1.5" stroke-opacity="0.35"/>`,
+  ).join("");
+  const outline = `<rect x="${n(bx)}" y="${n(top)}" width="${n(bw)}" height="${n(bh)}" rx="6" fill="none" stroke="${c.ink}" stroke-width="2"/>`;
+  const spans: Record<string, [number, number, number]> = {
+    unit: [0, 1, 10],
+    tens: [0, t, 10 * t],
+    half: [t, t + 0.5, 5],
+    total: [0, t + (half ? 0.5 : 0), p.percent],
+  };
+  const keys = barPanelFrames(p);
+  const layer = (x: Ctx, k: number) => {
+    const key = keys[k] as string;
+    const [s0, s1, pc] = spans[key] ?? [0, 1, 10];
+    const shade = key === "unit" ? 1 : t;
+    const halfOn = key === "half" || key === "total";
+    // The last brace is the answer: in the accent.
+    const fin = k === keys.length - 1;
+    let g = shade
+      ? `<rect x="${n(bx)}" y="${n(top)}" width="${n(shade * cw)}" height="${n(bh)}" fill="${c.tint}"/>`
+      : "";
+    if (halfOn)
+      g += `<rect x="${n(bx + t * cw)}" y="${n(top)}" width="${n(cw / 2)}" height="${n(bh)}" fill="${c.accent}"/>`;
+    g += lines + outline;
+    if (key === "total")
+      g += `<rect x="${n(bx - 3)}" y="${n(top - 3)}" width="${n(s1 * cw + 6)}" height="${n(bh + 6)}" rx="8" fill="none" stroke="${c.ink}" stroke-width="3"/>`;
+    const x1 = bx + s0 * cw + 2;
+    const x2 = bx + s1 * cw - 2;
+    const by = top + bh + L * 0.4;
+    const col = fin ? c.accent : c.ink;
+    // A narrow span (half a tenth) takes a bracket with a short tip, so it reads as a brace,
+    // not a fork; a wider one the curly brace.
+    const d = braceD * 0.75;
+    if (x2 - x1 < L * 1.6) {
+      const r = Math.min(4, (x2 - x1) / 4);
+      const m = (x1 + x2) / 2;
+      const ym = by + d * 0.5;
+      g += `<path d="M${n(x1)},${n(by)} Q${n(x1)},${n(ym)} ${n(x1 + r)},${n(ym)} L${n(x2 - r)},${n(ym)} Q${n(x2)},${n(ym)} ${n(x2)},${n(by)} M${n(m)},${n(ym)} L${n(m)},${n(by + d)}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    } else g += hBrace(x1, x2, by, -d, col, 2.5);
+    g += valueLabel(
+      x,
+      (x1 + x2) / 2,
+      by + d + labH / 2,
+      `${num(pc)}% =`,
+      num((p.amount * pc) / 100),
+      fin ? L * 1.1 : L,
+      w,
+      c.accent,
+    );
+    return g;
+  };
+  return still + frames(x, keys.length, layer);
+}
+
+/**
+ * The unknown's face: a math italic. No theme names a maths face yet, so this fallback stack
+ * stands in until the fonts part (TEACH-75 part aa, A7) owns `--font-math`.
+ */
+const MATH_FAMILY =
+  "'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'STIX Two Text', 'Times New Roman', serif";
+
+/** One gold pixel (1440 wide) in the drawing's units (slide points). */
+const PX = 2 / 3;
+
+/** ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale. */
+function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: number, h: number) {
+  const { c } = x;
+  const L = panelFs(x, w, h);
+  // A theme's tile span (Geometric's gold: the bars 368 of the 480px panel) centres the bars.
+  const span = x.tile?.span;
+  const bx = span ? (w * (1 - span)) / 2 : 2;
+  const bw = span ? w * span : w - 4;
+  const bh = Math.max(L * 2, Math.min((h - L * 2.8) / 2, w * 0.24, L * 3.6));
+  const gap = Math.max(L * 1.1, Math.min(bh * 0.45, h - 2 * bh - L * 1.4));
+  const used = bh * 2 + gap;
+  if (used > h + 2) x.faults?.push("the equation bars run off the foot of the drawing");
+  const top = Math.max(L * 1.1, (h - used) / 2);
+  const bot = top + bh + gap;
+  const xv = (p.c - p.b) / p.a;
+  const bLabel = num(p.b);
+  const cut = x.tile?.gap ?? Math.max(2, look().gap * x.fs);
+  const numW = x.tile?.weight ?? 600;
+  // Neutral: b takes a fixed share (or the room its number needs); the x cells share the rest
+  // equally, whatever x is. A theme's even cells give b an x cell's width (the gold's row of four
+  // equal tiles), still the same whatever x is.
+  const cells = (size: number) => {
+    const share = x.tile?.even ? p.a + 1 : p.a + 2;
+    const bW = Math.max(bw / share, textWidth(bLabel, x, size, numW) + L * 0.6);
+    const xw = (bw - bW) / p.a;
+    return { bW, xw, inner: xw - cut - x.minFs * 0.2 };
+  };
+  // The numbers a step over the labels, smaller in narrow x cells, never under the age floor.
+  let big = L * 1.15;
+  while (big > x.minFs && textWidth(num(xv), x, big, 700) > cells(big).inner)
+    big = Math.max(x.minFs, big - 0.5);
+  const { bW, xw, inner } = cells(big);
+  const xEnd = bx + p.a * xw;
+  // The letter a step over the numbers when the cell has room for it.
+  const letterFs = Math.max(big, Math.min(big * 1.2, inner / textWidth(p.unknown, x, 1, 500)));
+  const need = Math.max(textWidth(num(xv), x, big, 700), textWidth(p.unknown, x, letterFs, 500));
+  // Measured at the floor: a value that cannot stand in its cell (a 3-digit x in six cells) is
+  // reported over, never drawn past its cell; `barPanelMinWidth` gives the box it needs.
+  if (need > inner) x.faults?.push(`the ${p.unknown} cells are too narrow for "${num(xv)}"`);
+  // Each cell a block of its own (the gold): its fill, then a thin ink outline with a small
+  // radius, drawn as two shapes so the flat finish keeps the outline.
+  // A theme's own tile (Geometric: rx 10px, a 3px ink line, the wash) over the drawing's default.
+  const rx = x.tile?.radius ?? 5;
+  const lw = x.tile?.line ?? 2;
+  // A theme's own line width is set as a style, so the stroke ladder (`laddered`) keeps it.
+  const lwAttr =
+    x.tile?.line !== undefined ? `style="stroke-width:${n(lw)}"` : `stroke-width="${n(lw)}"`;
+  const cell = (cx: number, cy: number, cw: number, fill: string) => {
+    const box = `x="${n(cx + cut / 2)}" y="${n(cy)}" width="${n(cw - cut)}" height="${n(bh)}" rx="${n(rx)}"`;
+    return `<rect ${box} fill="${fill}"/><rect ${box} fill="none" stroke="${c.ink}" ${lwAttr}/>`;
+  };
+  const ghost = (cx: number, cy: number, cw: number) =>
+    `<rect x="${n(cx + cut / 2 + 2)}" y="${n(cy + 2)}" width="${n(cw - cut - 4)}" height="${n(bh - 4)}" rx="6" fill="none" stroke="${c.muted}" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.6"/>`;
+  const letter = (x: Ctx, cx: number, cy: number, fs: number, fill = c.ink) =>
+    text(x, cx, cy, [p.unknown], {
+      fs,
+      weight: 500,
+      fill,
+      family: x.tile?.math ?? MATH_FAMILY,
+    }).replace("<text ", '<text font-style="italic" ');
+  const mid = (y: number) => y + bh / 2;
+  const tickMark = (tx: number, ty: number, s: number, k = 0.14) =>
+    `<path d="M${n(tx - s * 0.5)},${n(ty)} L${n(tx - s * 0.15)},${n(ty + s * 0.35)} L${n(tx + s * 0.55)},${n(ty - s * 0.4)}" fill="none" stroke="${c.accent}" ${k === 0.14 ? `stroke-width="${n(s * k)}"` : `style="stroke-width:${n(s * k)}"`} stroke-linecap="round" stroke-linejoin="round"/>`;
+  const keys = barPanelFrames(p);
+  const layer = (x: Ctx, k: number) => {
+    const key = keys[k] as string;
+    let g = "";
+    for (let i = 0; i < p.a; i++) {
+      const cx = bx + i * xw;
+      g += cell(cx, top, xw, x.tile?.fill ?? c.tint);
+      if (key === "check") {
+        // A small x tag in the cell's top-left corner (the gold), the value under it with clear
+        // space between: the value steps down (never under the floor) in a short cell.
+        const tagH = x.minFs * 1.15;
+        const vfs = Math.max(x.minFs, Math.min(big, bh - tagH - x.minFs * 0.35));
+        if (tagH + x.minFs * 0.2 + vfs > bh) x.faults?.push("the bars are too short for the check");
+        // A theme's own tile (Geometric) sets the tag and value where its gold does (worked.js:
+        // the tag's centre 22px in and 24px down, the value 6px under the cell's middle) when the
+        // two stay clear of each other.
+        const goldTag = { x: cx + 22 * PX, y: top + 24 * PX };
+        const goldVy = mid(top) + 6 * PX;
+        const gold =
+          !!x.tile &&
+          goldVy - vfs * 0.36 >= goldTag.y + x.minFs * 0.3 &&
+          goldVy + vfs * 0.36 <= top + bh;
+        g += gold
+          ? letter(x, goldTag.x, goldTag.y, x.minFs, c.muted)
+          : letter(x, cx + cut / 2 + x.minFs * 0.55, top + x.minFs * 0.7, x.minFs, c.muted);
+        const vy = gold
+          ? goldVy
+          : Math.max(mid(top) + tagH * 0.25, top + tagH + x.minFs * 0.2 + vfs * 0.5);
+        g += text(x, cx + xw / 2, Math.min(vy, top + bh - vfs * 0.55), [num(xv)], {
+          fs: vfs,
+          weight: 700,
+          fill: c.accent,
+        });
+      } else g += letter(x, cx + xw / 2, mid(top), letterFs);
+    }
+    const taken = key === "take" || key === "share";
+    if (taken)
+      g +=
+        ghost(xEnd, top, bW) +
+        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW, fill: c.muted });
+    else
+      g +=
+        cell(xEnd, top, bW, c.surface) +
+        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW });
+    if (key === "whole" || key === "check") {
+      g += cell(bx, bot, bw, c.surface);
+      const cl = num(p.c);
+      // A theme's own tile (Geometric) places the total and its tick as its gold does
+      // (worked.js: the total 24px left of the middle, a 40px tick 48px right of it).
+      const goldTick = !!x.tile && textWidth(cl, x, big, numW) / 2 - 24 * PX < 28 * PX;
+      const off = key === "check" ? (goldTick ? 24 * PX : L * 0.8) : 0;
+      g += text(x, bx + bw / 2 - off, mid(bot), [cl], { fs: big, weight: numW });
+      if (key === "check")
+        g += goldTick
+          ? tickMark(bx + bw / 2 + 48 * PX, mid(bot), 40 * PX, 0.16)
+          : tickMark(bx + bw / 2 + textWidth(cl, x, big, numW) / 2 + L * 0.4, mid(bot), L * 1.1);
+    } else {
+      if (key === "take")
+        g +=
+          cell(bx, bot, p.a * xw, c.surface) +
+          text(x, bx + (p.a * xw) / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: numW });
+      else
+        for (let i = 0; i < p.a; i++)
+          g +=
+            cell(bx + i * xw, bot, xw, c.surface) +
+            text(x, bx + i * xw + xw / 2, mid(bot), [num(xv)], {
+              fs: big,
+              weight: 700,
+              fill: c.accent,
+            });
+      g +=
+        ghost(xEnd, bot, bW) +
+        text(x, xEnd + bW / 2, mid(bot), [bLabel], { fs: big, weight: numW, fill: c.muted });
+      if (key === "take")
+        g += `<line x1="${n(xEnd)}" x2="${n(xEnd)}" y1="${n(top - L * 0.6)}" y2="${n(bot + bh + L * 0.6)}" stroke="${c.accent}" stroke-width="3" stroke-linecap="round"/>`;
+    }
+    return g;
+  };
+  return frames(x, keys.length, layer);
 }

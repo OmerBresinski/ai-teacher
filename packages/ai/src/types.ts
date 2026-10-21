@@ -20,6 +20,11 @@ export interface AiEnv {
 export interface CreateAiOptions {
   logger?: pino.Logger | undefined;
   /**
+   * Called once per model call with the same metadata as its `ai` log line (ADR 0041: the
+   * worker's PostHog `$ai_generation`). Never content. A throw is logged and swallowed.
+   */
+  onCall?: ((call: AiCallRecord) => void) | undefined;
+  /**
    * A model id to use instead of the class's configured one for this call, or `undefined` to keep
    * it. Lab and eval use only: it lets one run send a stage to a different model.
    */
@@ -62,3 +67,20 @@ export interface UnconfiguredAi {
 }
 
 export type CreatedAi = ConfiguredAi | UnconfiguredAi;
+
+/** What `CreateAiOptions.onCall` receives: one call's log fields, never content (ADR 0041). */
+export interface AiCallRecord extends AiCallContext {
+  class: ModelClass;
+  modelId: string;
+  /** The wrapped model's `provider` string (`openai.chat`, `amazon-bedrock`, …), never a key. */
+  provider: string;
+  durationMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  cachedInputTokens?: number;
+  cacheWriteInputTokens?: number;
+  costUsd: number | null;
+  finishReason: string;
+  /** The call failed (the log line is the `warn` one). */
+  isError: boolean;
+}

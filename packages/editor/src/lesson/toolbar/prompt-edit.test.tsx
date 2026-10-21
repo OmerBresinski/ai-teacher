@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import type { Lesson, SlideElement, TextElement } from "@tj/domain/documents";
 import { docFromText } from "../../model/factories";
 import { makeText } from "../../model/insert";
 import { getTheme } from "../../model/themes";
+import { preloadEditChat } from "../edit-chat/EditChatPane";
 import { EDIT_CHAT_LABEL } from "../edit-chat/edit-chat-context";
 import { PANE_OPEN_KEY } from "../edit-chat/thread";
 import type { PromptEditAnswer } from "../proposals-context";
@@ -15,6 +16,10 @@ import { PROMPT_EDIT_LABEL } from "./PromptEditControl";
  * the composer, and is absent when the app has not wired edits with a prompt.
  */
 
+// The chat thread loads as a lazy chunk (TEACH-104 part d); load it up front, as the app does
+// after first paint.
+beforeAll(preloadEditChat);
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
@@ -24,7 +29,7 @@ function textLesson(): Lesson {
   const lesson = seededLesson();
   const first = lesson.slides[0];
   if (!first) throw new Error("seed");
-  const box = { ...makeText("body", getTheme("chalk")), x: 500, y: 100, w: 300, h: 60 };
+  const box = { ...makeText("body", getTheme("splash")), x: 500, y: 100, w: 300, h: 60 };
   (box as TextElement).doc = docFromText("Water warms up and turns into a gas.");
   first.elements = [box as SlideElement];
   return lesson;

@@ -6,7 +6,9 @@
 import type { Theme } from "@tj/domain/documents";
 import { ADVANCES } from "../font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "../fonts";
+import { arrowLine } from "../paths/arrow";
 import { type KeyStage, keyStageOf, typeScale } from "../themes";
+import THEME_TOKENS from "../themes/tokens.json" with { type: "json" };
 import { headFor, STROKE, TYPE_FLOOR, WEIGHT, washes } from "./style";
 
 /** The colours a diagram draws in, all from the theme. */
@@ -45,6 +47,25 @@ export type Ctx = {
    * fills, a highlight on counters; refined (Studio and the KS3-5 themes): fine lines, flat fills.
    */
   finish?: "warm" | "refined";
+  /**
+   * A theme's own bar-model tile (tokens `tile-radius`, `tile-line`, `tile-fill`: Geometric's
+   * worked gold, rx 10px, 3px ink line, the accent wash). Absent: the drawing's defaults.
+   */
+  tile?: {
+    radius?: number;
+    line?: number;
+    fill?: string;
+    /** The gap between cells (Geometric's gold: 0, the cells share their edges). */
+    gap?: number;
+    /** The share of the drawing's width the bars take, centred (the gold's 368 of 480px panel). */
+    span?: number;
+    /** Every cell one width, b's cell as wide as an x cell: still neutral, never x to scale. */
+    even?: boolean;
+    /** The weight of the plain numbers (the b cell, the total): the gold's 500. */
+    weight?: number;
+    /** The unknown's face: the theme's maths face (Geometric: Source Serif 4 italic). */
+    math?: string;
+  };
   /** The label size in slide points: never below the type floor, 18 (the back of the room). */
   fs: number;
   /** When set, every text block drawn is recorded here (`diagramFaults` reads the geometry). */
@@ -57,6 +78,8 @@ export type Ctx = {
   arrows?: { tip: [number, number]; target: { x0: number; y0: number; x1: number; y1: number } }[];
   /** With `rec`: every leader line drawn from a label to its point (the crossing check). */
   leaders?: [number, number, number, number][];
+  /** With `rec`: the outline of each closed part a leader may end on (a labelled diagram's shapes). */
+  parts?: [number, number][][];
   /** With `rec`: each value axis's top and the largest value drawn against it. */
   axes?: { name: string; max: number; data: number }[];
 };
@@ -136,6 +159,36 @@ export function isMathLabel(s: string): boolean {
   return t.split(/\s+/).filter((w) => /^[A-Za-z]{4,}$/.test(w)).length <= 1;
 }
 
+/** A theme's bar-model tile tokens, typed; nothing when it sets none. */
+function tileOf(t: Theme): { tile?: Ctx["tile"] } {
+  const tk = (THEME_TOKENS as Record<string, Record<string, string>>)[t.id];
+  const num = (v?: string) =>
+    v && Number.isFinite(Number.parseFloat(v)) ? Number.parseFloat(v) : undefined;
+  const radius = num(tk?.["tile-radius"]);
+  const line = num(tk?.["tile-line"]);
+  const fill = /^#[0-9a-f]{6}$/i.test(tk?.["tile-fill"] ?? "") ? tk?.["tile-fill"] : undefined;
+  const gap = num(tk?.["tile-gap"]);
+  const span0 = num(tk?.["tile-span"]);
+  const span = span0 !== undefined && span0 > 0.5 && span0 <= 1 ? span0 : undefined;
+  const even = tk?.["tile-cells"] === "even";
+  const weight = num(tk?.["tile-weight"]);
+  // The theme's maths face (`text-measure.ts mathFaceOf`), by its font key.
+  const math = tk?.["math-face"] ? FONT_STACKS[tk["math-face"] as FontKey] : undefined;
+  if (radius === undefined && line === undefined && !fill) return {};
+  return {
+    tile: {
+      ...(radius !== undefined ? { radius } : {}),
+      ...(line !== undefined ? { line } : {}),
+      ...(fill ? { fill } : {}),
+      ...(gap !== undefined ? { gap: Math.max(0, gap) } : {}),
+      ...(span !== undefined ? { span } : {}),
+      ...(even ? { even } : {}),
+      ...(weight !== undefined ? { weight } : {}),
+      ...(math ? { math: family(math) } : {}),
+    },
+  };
+}
+
 export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
   const bg = t.colors.background;
   const surface = t.colors.panel ?? t.colors.surface;
@@ -154,6 +207,7 @@ export function context(t: Theme, w: number, h: number, fs?: number): Ctx {
     ...(keyStageOf(t) ? { stage: keyStageOf(t) } : {}),
     dark: !!t.dark,
     finish: WARM_THEMES.has(t.id) ? "warm" : "refined",
+    ...tileOf(t),
     body: family(t.fonts.body),
     title: family(t.fonts.title),
     stack: t.fonts.body,
@@ -331,7 +385,11 @@ export function arrowHead(
   return `<polygon points="${n(tx)},${n(ty)} ${p(size, size * 0.6)} ${p(size * 0.85, 0)} ${p(size, -size * 0.6)}" fill="${fill}"/>`;
 }
 
-/** A straight arrow from (x1, y1) to (x2, y2). */
+/**
+ * A straight arrow from (x1, y1) to its tip (x2, y2), drawn by the arrow primitive: the shaft ends
+ * at the tip, under an open chevron that shares its stroke (TEACH-75 part x). `_head` is kept for
+ * old callers and ignored: the head is sized from the stroke.
+ */
 export function arrow(
   x1: number,
   y1: number,
@@ -341,11 +399,7 @@ export function arrow(
   width: number = STROKE.line,
   _head = 0,
 ) {
-  const head = headFor(width);
-  const a = Math.atan2(y2 - y1, x2 - x1);
-  const ex = x2 - Math.cos(a) * head * 0.8;
-  const ey = y2 - Math.sin(a) * head * 0.8;
-  return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(ex)}" y2="${n(ey)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>${arrowHead(x2, y2, x1, y1, head, color, width)}`;
+  return arrowLine([x1, y1], [x2, y2], { ink: color, sw: width }).svg;
 }
 
 /** A horizontal curly brace from x1 to x2 whose ends sit at `y` and whose point is `d` above (d < 0: below). */

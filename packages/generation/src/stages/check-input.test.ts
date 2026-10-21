@@ -2,7 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Finding, Lesson } from "@tj/domain/documents";
 import { PROMPT_VERSIONS } from "../prompts";
-import { initialState, recordingDeps, sampleBriefLesson, scriptedPipelineAi } from "../testing";
+import {
+  CHECK_INPUT_CLEAR,
+  checkInputAnswer,
+  initialState,
+  recordingDeps,
+  sampleBriefLesson,
+  scriptedPipelineAi,
+} from "../testing";
 import { INPUT_CHECK_MESSAGES, InputRejected } from "../types";
 import { resumeFrom, runLessonPipeline } from "../workflow";
 import { checkInput } from "./check-input";
@@ -80,10 +87,32 @@ describe("check-input", () => {
     const warning = {
       findings: [{ check: "learner-name", severity: "warning", target: {}, message: "Hm." }],
     };
-    const ai = createFakeAi({ script: [json(warning), json({ findings: [] })], usage });
+    const ai = createFakeAi({
+      script: [json(checkInputAnswer(warning)), json(CHECK_INPUT_CLEAR)],
+      usage,
+    });
     const state = await checkInput(initialState(), recordingDeps(ai));
     expect(ai.calls).toHaveLength(2);
     expect(state.lesson.slides).toEqual([]);
+  });
+
+  test("a missing period field is a schema miss, never read as not historical (ruling 163)", async () => {
+    // Both fields are required in the schema the model sees, so an omission fails closed.
+    const ai = createFakeAi({
+      script: [json({ findings: [] }), json({ findings: [], fiction_in_period: false })],
+      usage,
+    });
+    const error = await checkInput(initialState(), recordingDeps(ai)).catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(ai.calls).toHaveLength(2);
+    // A long period name is kept, not a failure of the whole check.
+    const long = "The Industrial Revolution in the textile towns of northern England, 1760 to 1840";
+    const ok = createFakeAi({
+      script: [json({ ...CHECK_INPUT_CLEAR, historical_period: long })],
+      usage,
+    });
+    const state = await checkInput(initialState(), recordingDeps(ok));
+    expect(state.lesson.historicalPeriod).toBe(long);
   });
 
   test("never logs the brief: the one log line carries the stage and a count", async () => {
@@ -93,7 +122,7 @@ describe("check-input", () => {
     const lesson = sampleBriefLesson({
       brief: { topic: "Help Amir with fractions", durationMin: 60 },
     });
-    const ai = createFakeAi({ script: [json(LEARNER_NAME)], usage });
+    const ai = createFakeAi({ script: [json(checkInputAnswer(LEARNER_NAME))], usage });
     await checkInput(initialState(lesson), recordingDeps(ai, { logger })).catch(() => undefined);
     const line = lines.map((l) => JSON.parse(l)).find((r) => r.msg === "input checked");
     expect(line).toMatchObject({ stage: "check-input", findings: 1 });

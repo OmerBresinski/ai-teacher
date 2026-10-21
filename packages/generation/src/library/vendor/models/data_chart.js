@@ -11,7 +11,7 @@ import {
 import { barChart, pictogram, pictoSymbol, lineChart, pie, pieAngles, tally, niceTop, pictogramCheck, PICTO_SYMBOLS } from '../kit/batch-C.js';
 
 export const meta = {
-  id: 'data_chart', name: 'Data chart', kind: 'info', version: 1,
+  id: 'data_chart', name: 'Data chart', kind: 'info', version: 2,
   subjects: ['Maths', 'Science', 'Geography'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How to show data as a tally, pictogram, block, bar, line or pie chart, read a value off the scale and answer a question from it.',
@@ -350,6 +350,15 @@ export function render(root, P, ctx) {
   const chartG = h('g', {}, root);
   const softFrom = i => (ka != null && M.A.length && !M.A.includes(i)) ? `${ka}:soft` : null;
   const readA = ka != null ? { s: kr, hide: ka } : { s: kr, c: `${N}:soft` };
+  // v2: a bar or line chart keeps its reading once the answer arrives, quietened, so the value the caption
+  // read is still on the chart at the end
+  const keepRead = ka != null && (M.kind === 'bar' || M.kind === 'line');
+  const readKeepA = keepRead ? { s: kr, c: `${ka}:soft` } : readA;
+  // the kept value: its box, and the answer marks it must stay clear of (else it leaves with the line)
+  let readVal = null; const marks = [];
+  const tbox = (el, cls, anchor) => { const x = +el.getAttribute('x'), y = +el.getAttribute('y'), w = measure(root, el.textContent, cls);
+    const x0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x; return { x0: x0 - 4, x1: x0 + w + 4, y0: y - 40, y1: y + 8 }; };
+  const hit = (a, m) => a.x0 < m.x1 && m.x0 < a.x1 && a.y0 < m.y1 && m.y0 < a.y1;
   const data = M.D.map(d => ({ label: d.label, value: d.v }));
   const bigTitle = sel => { const el = chartG.querySelector(`[data-edit="${sel}"]`); if (el) { el.style.fontSize = F.title; el.style.fill = 'var(--ink)'; } };
 
@@ -384,7 +393,8 @@ export function render(root, P, ctx) {
     // the reading: across from the top of the bar to the scale, and the value above it
     { const bar = C.bars[M.rt], y = C.S(bar.value); const g = h('g', readA, chartG);
       h('line', { x1: left, x2: bar.x - bar.w / 2, y1: y, y2: y, stroke: 'var(--ink-2)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6' }, g);
-      if (M.kind === 'bar') computed(T(g, bar.x, y - 14, fmtN(bar.value), 'ts-num', { 'text-anchor': 'middle', cls: 'halo' }), `data.${M.rt}.value`); }
+      // v2: the value can stay past the answer (quietened); the dashed line goes with the reading card
+      if (M.kind === 'bar') { const vg = h('g', readKeepA, chartG); const t = computed(T(vg, bar.x, y - 14, fmtN(bar.value), 'ts-num', { 'text-anchor': 'middle', cls: 'halo' }), `data.${M.rt}.value`); if (keepRead) readVal = { g: vg, b: tbox(t, 'ts-num', 'middle') }; } }
     // the answer: the bars it is about turn to the focus colour
     if (ka != null) {
       for (const i of M.A) { const ov = h('g', { s: ka }, chartG); C.bars[i].el.querySelectorAll('.body').forEach(sh => { const c = sh.cloneNode(false); c.removeAttribute('class'); c.style.setProperty('fill', 'var(--focus)'); ov.appendChild(c); }); }
@@ -392,11 +402,13 @@ export function render(root, P, ctx) {
         const [a, bb] = M.pair, A1 = C.bars[a], B1 = C.bars[bb], ya = C.S(A1.value), yb = C.S(B1.value), dir = B1.x > A1.x ? 1 : -1;
         const g = h('g', { s: ka }, chartG);
         // the reference across from the taller bar shows where the gap starts, then fades for the summary
-        h('line', { x1: A1.x + dir * A1.w / 2, x2: B1.x + dir * 12, y1: ya, y2: ya, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6', hide: N > ka ? N : null }, g);
+        h('line', { x1: A1.x + dir * A1.w / 2, x2: B1.x + dir * 12, y1: ya, y2: ya, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6' }, g);
+        marks.push({ x0: Math.min(A1.x + dir * A1.w / 2, B1.x + dir * 12), x1: Math.max(A1.x + dir * A1.w / 2, B1.x + dir * 12), y0: ya - 3, y1: ya + 3 }, { x0: B1.x - 14, x1: B1.x + 14, y0: ya - 3, y1: yb });
         if (yb - ya > 4) { h('line', { x1: B1.x, x2: B1.x, y1: ya, y2: yb - 4, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)' }, g);
           h('line', { x1: B1.x - 12, x2: B1.x + 12, y1: ya, y2: ya, stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)' }, g); }
         const dl = fmtN(A1.value - B1.value), sd = B1.x + 18 + measure(g, dl, 'ts-big') > CHR ? -1 : dir;   // keep the number off the side column
-        computed(T(g, B1.x + sd * 18, (ya + yb) / 2 + 18, dl, 'ts-big', { 'text-anchor': sd > 0 ? 'start' : 'end', fill: 'var(--focus-text)', cls: 'halo' }), `data.${a}.value`);
+        const dt = computed(T(g, B1.x + sd * 18, (ya + yb) / 2 + 18, dl, 'ts-big', { 'text-anchor': sd > 0 ? 'start' : 'end', fill: 'var(--focus-text)', cls: 'halo' }), `data.${a}.value`);
+        marks.push(tbox(dt, 'ts-big', sd > 0 ? 'start' : 'end'));
       }
     }
   }
@@ -462,7 +474,10 @@ export function render(root, P, ctx) {
       if (pl) editable(T(chartG, x, baseY + 40, d.label, 'ts-small', Object.assign({ 'text-anchor': 'middle' }, xA)), `data.${d.i}.label`); });
     { const x = C.X(M.rt), y = C.S(M.D[M.rt].v); const g = h('g', readA, chartG);
       h('path', { d: `M${x} ${baseY} V${y} H${box.x + 70}`, fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '6 6' }, g);
-      computed(T(g, x, y - 22, fmtN(M.D[M.rt].v), 'ts-num', { 'text-anchor': 'middle', cls: 'halo' }), `data.${M.rt}.value`); }
+      const vg = h('g', readKeepA, chartG); const t = computed(T(vg, x, y - 22, fmtN(M.D[M.rt].v), 'ts-num', { 'text-anchor': 'middle', cls: 'halo' }), `data.${M.rt}.value`);
+      if (keepRead) readVal = { g: vg, b: tbox(t, 'ts-num', 'middle') }; }
+    marks.push({ x0: -1e4, x1: box.x + 74, y0: -1e4, y1: 1e4 }); // the scale numbers down the left
+    if (ka != null) for (const i of M.A) marks.push({ x0: C.X(i) - 19, x1: C.X(i) + 19, y0: C.S(M.D[i].v) - 19, y1: C.S(M.D[i].v) + 19 });
     if (ka != null) for (const i of M.A) h('circle', { cx: C.X(i), cy: C.S(M.D[i].v), r: 17, fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-struct)', s: ka, cls: 'pop' }, chartG);
     lineHook = { kl, set: C.set };
   }
@@ -491,10 +506,26 @@ export function render(root, P, ctx) {
   const kw = keyWords(M), y0 = CH.y + 8;
   card(root, y0, { head: txt(P, 'label:scale', M.kind === 'bar' || M.kind === 'line' ? 'The scale' : 'The key'), headEdit: 'text.label:scale', sentence: kw.sentence, result: kw.result, path: kw.path,
     accent: 'var(--ink-3)', ink: 'var(--ink)', a: { hide: kr } });
+  // a key stays on the slide as a quiet line at the foot of the column once its card gives way, so every later
+  // frame can still be read
+  if (M.kind === 'block' || M.kind === 'tally') { // a pictogram keeps its key inside the chart
+    const line = `${kw.sentence.replace(/[:.]\s*$/, '')} ${kw.result}.`;
+    const tb = textBlock(root, CARD.x, GRID.bottom - 44, line, { cls: 'ts-small', maxW: CARD.w, maxLines: 2, lh: 28, a: { fill: 'var(--ink-2)', s: kr, cls: 'rise' } });
+    computed(tb.el, kw.path);
+  }
   card(root, y0, { head: txt(P, 'label:read', 'Reading the chart'), headEdit: 'text.label:read', sentence: rd.sentence, result: rd.result, path: rd.path,
     accent: 'var(--ink-3)', ink: 'var(--ink)', a: Object.assign({ cls: 'rise' }, ka != null ? { s: kr, hide: ka } : { s: kr }) });
-  if (an) card(root, y0, { head: txt(P, 'label:question', questionWords(M)), headEdit: 'text.label:question', sentence: an.sentence, result: an.result, path: an.path,
-    accent: 'var(--focus)', ink: 'var(--focus-text)', a: { s: ka, cls: 'rise' } });
+  // a kept value that would cross an answer mark leaves with the reading after all
+  if (readVal && marks.some((m) => hit(readVal.b, m))) { delete readVal.g.dataset.c; readVal.g.dataset.h = ka; }
+  const ah = an ? card(root, y0, { head: txt(P, 'label:question', questionWords(M)), headEdit: 'text.label:question', sentence: an.sentence, result: an.result, path: an.path,
+    accent: 'var(--focus)', ink: 'var(--focus-text)', a: { s: ka, cls: 'rise' } }) : 0;
+  // v2: the reading card gives way to the answer, and its result stays as a quiet line at the foot of the
+  // column, when there is room under the answer card
+  if (keepRead && y0 + ah + 40 <= GRID.bottom - 98) {
+    const g = h('g', { s: ka, cls: 'rise' }, root);
+    textBlock(g, CARD.x, GRID.bottom - 78, `${M.D[M.rt].label}:`, { cls: 'ts-small', maxW: CARD.w, maxLines: 1, lh: 28, a: { fill: 'var(--ink-2)' } });
+    computed(textBlock(g, CARD.x, GRID.bottom - 38, rd.result, { cls: 'ts-label', maxW: CARD.w, maxLines: 1, lh: 30, a: { fill: 'var(--ink-2)', cls: 'strong' } }).el, rd.path);
+  }
 
   if (!lineHook) return {};
   const L = lineHook;

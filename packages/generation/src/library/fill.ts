@@ -315,6 +315,35 @@ export function overlappingWords(svg: string, share = OVERLAP_SHARE): [string, s
   return out;
 }
 
+/** `grownTextFault`'s reason when a word is split across a label's lines or lost. */
+export const WORDS_SPLIT = "its words split or change across lines";
+/** The label-word split rule's step (TEACH-239 part b): the type scale steps down by this. */
+export const WHOLE_WORD_STEP = 0.05;
+
+/**
+ * The label-word split rule (TEACH-239 part b): from a grown drawing at `scale` whose words split,
+ * step the type scale down by 0.05 and redraw until every word is whole. Back at the kit's size, or
+ * when a redraw fails, the base drawing (whole words at scale 1) is kept: split words never ship.
+ */
+export async function wholeWordDrawing<D extends { svg: string }>(
+  grown: D,
+  scale: number,
+  base: D,
+  splits: (svg: string) => boolean,
+  redraw: (typeScale: number) => Promise<D | string>,
+): Promise<{ drawing: D; scale: number }> {
+  let drawing = grown;
+  let kept = scale;
+  while (kept > 1 && splits(drawing.svg)) {
+    const ts = Math.round((kept - WHOLE_WORD_STEP) * 100) / 100;
+    const down = ts > 1 ? await redraw(ts) : "at the kit's size";
+    if (typeof down === "string") return { drawing: base, scale: 1 };
+    drawing = down;
+    kept = ts;
+  }
+  return { drawing, scale: kept };
+}
+
 /**
  * What went wrong with a drawing's words once its type grew (the label floor), against the same
  * drawing at the kit's own sizes: a word split across lines or lost ("Oxygen-p" / "oor"), or a
@@ -329,7 +358,7 @@ export function grownTextFault(baseSvg: string, grownSvg: string): string | unde
       .sort()
       .join(" ");
   const grown = drawnLines(grownSvg);
-  if (words(baseSvg) !== words(grownSvg)) return "its words split or change across lines";
+  if (words(baseSvg) !== words(grownSvg)) return WORDS_SPLIT;
   for (const t of grown)
     if (t.pitch.some((d) => d < 0.9 * t.fs))
       return `its lines "${t.lines.join(" / ").slice(0, 30)}" sit on top of one another`;
@@ -337,6 +366,31 @@ export function grownTextFault(baseSvg: string, grownSvg: string): string | unde
 }
 
 /** The label floor's draws after the first, and the most the type may grow (flag `libraryLabelFloor`). */
+/**
+ * With checks only logged, why a grown drawing is too big to keep, or undefined. Growing the type
+ * is how a drawing reads at slide size, not a check: a size that will not draw, whose words split
+ * mid-word or are cut short (HEART1 D: the R1 heart's key split "Oxygen-ric / h"), or whose
+ * smallest words come out no larger (some models fit their words to their room) is too big.
+ */
+function floorTooBig(
+  grown: { svg: string } | string,
+  baseSvg: string,
+  place: { w: number; h: number },
+  minPt: number,
+): string | undefined {
+  if (typeof grown === "string") return `it did not draw at the label floor: ${grown}`;
+  const broken = nonFatalSync(
+    () => grownTextFault(baseSvg, grown.svg),
+    (e) => `its words could not be read: ${String(e).slice(0, 60)}`,
+  );
+  if (broken) return broken;
+  const pt = nonFatalSync(
+    () => placedTypeSize(grown.svg, place).minPt,
+    () => 0,
+  );
+  return (pt ?? 0) <= minPt + 0.01 ? "its smallest words came out no larger" : undefined;
+}
+
 const LABEL_FLOOR_TRIES = 3;
 export const LABEL_FLOOR_MAX = 2;
 
@@ -430,24 +484,64 @@ export async function libraryDiagram(
     const place = ask.place;
     const offBefore = new Set(full.offSlide);
     const baseSvg = full.svg;
-    for (let i = 0; i < LABEL_FLOOR_TRIES; i++) {
+    const baseDrawing = full;
+    // The type scale `full` was drawn at, and the smallest scale found too big to draw cleanly.
+    let keptScale = 1;
+    let tooBig = Number.POSITIVE_INFINITY;
+    // With checks only logged, a size that breaks the words is backed off from (a few more tries to
+    // find the largest clean size); with checks on, it is drawn and the checks below fall back.
+    const tries = ask.logOnly ? LABEL_FLOOR_TRIES + 3 : LABEL_FLOOR_TRIES;
+    for (let i = 0; i < tries; i++) {
       const svg = full.svg;
       const t = nonFatalSync(
         () => placedTypeSize(svg, place),
         () => undefined,
       );
       if (!t || t.minPt >= TYPE_FLOOR - 0.01) break;
-      typeScale = Math.min(LABEL_FLOOR_MAX, typeScale * (TYPE_FLOOR / t.minPt) * 1.02);
-      const ts = typeScale;
+      const want = Math.min(LABEL_FLOOR_MAX, keptScale * (TYPE_FLOOR / t.minPt) * 1.02);
+      // Past a size whose words broke, try halfway between the last clean size and it.
+      const ts = want < tooBig ? want : (keptScale + tooBig) / 2;
+      if (ts - keptScale < 0.02) break;
       const grown = await nonFatal(
         () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
         (e) => String(e).slice(0, 160),
       );
-      if (typeof grown === "string")
+      // Two strategies. Checks on: a grown size is drawn and the checks below fall back. Checks only
+      // logged: a size `floorTooBig` rejects is backed off from, keeping the largest clean size.
+      if (!ask.logOnly && typeof grown === "string")
         return fallback(`it did not draw at the label floor: ${grown}`);
+      const why = ask.logOnly ? floorTooBig(grown, baseSvg, place, t.minPt) : undefined;
+      if (why || typeof grown === "string") {
+        log({
+          ev: "lib-label-floor-too-big",
+          key: ask.key,
+          model: ask.model,
+          typeScale: ts,
+          reason: why,
+        });
+        tooBig = ts;
+        continue;
+      }
       full = grown;
+      keptScale = ts;
       if (ts >= LABEL_FLOOR_MAX) break;
     }
+    // TEACH-239 part b (C7): the label-word split rule. A grown size that breaks a word across a
+    // label's lines steps down 0.05 at a time until every word is whole (or back at the kit's size).
+    const splits = (svg: string) =>
+      nonFatalSync(
+        () => grownTextFault(baseSvg, svg) === WORDS_SPLIT,
+        () => false,
+      );
+    const whole = await wholeWordDrawing(full, keptScale, baseDrawing, splits, (ts) =>
+      nonFatal(
+        () => drawLibraryModel(ask.model, p, { typeScale: ts, ...face }),
+        (e) => String(e).slice(0, 160),
+      ),
+    );
+    full = whole.drawing;
+    keptScale = whole.scale;
+    typeScale = keptScale;
     log({ ev: "lib-label-floor", key: ask.key, model: ask.model, typeScale });
     if (typeScale !== 1) {
       const grownSvg = full.svg;

@@ -4,7 +4,7 @@ import { generateText, streamText, wrapLanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { PROVIDER_FAILURE_MESSAGE } from "./errors";
-import { AiError, isAiError, PRICES } from "./index";
+import { type AiCallRecord, AiError, isAiError, PRICES } from "./index";
 import { createLoggingMiddleware } from "./logging-middleware";
 import { createFakeAi } from "./testing";
 
@@ -235,5 +235,58 @@ describe("AI logging middleware", () => {
     const record = JSON.parse(lines[0] ?? "") as { level: number };
     expect(record.level).toBe(40);
     expect(JSON.stringify(record)).not.toContain("private");
+  });
+
+  test("hands each call's metadata to onCall, never content (ADR 0041)", async () => {
+    const { logger } = createMemoryLogger();
+    const calls: AiCallRecord[] = [];
+    const prompt = "private prompt for the reporter";
+    const ai = createFakeAi({
+      logger,
+      modelIds: { small: BEDROCK_LUNA },
+      text: "private completion for the reporter",
+      usage: { inputTokens: 11, outputTokens: 7 },
+      onCall: (call) => calls.push(call),
+    });
+    await generateText({
+      model: ai.model("small", { lessonId: "lesson_1", jobId: "job_1", stage: "write" }),
+      prompt,
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      class: "small",
+      modelId: BEDROCK_LUNA,
+      inputTokens: 11,
+      outputTokens: 7,
+      finishReason: "stop",
+      lessonId: "lesson_1",
+      jobId: "job_1",
+      stage: "write",
+      isError: false,
+    });
+    expect(JSON.stringify(calls)).not.toContain("private");
+  });
+
+  test("a failed call reaches onCall as an error, and a throwing onCall never breaks the call", async () => {
+    const { lines, logger } = createMemoryLogger();
+    const calls: AiCallRecord[] = [];
+    const failing = createFakeAi({
+      logger,
+      error: new Error("private provider body"),
+      onCall: (call) => calls.push(call),
+    });
+    await expect(generateText({ model: failing.model("frontier"), prompt: "p" })).rejects.toThrow();
+    expect(calls).toMatchObject([{ isError: true, finishReason: "error", costUsd: null }]);
+
+    const throwing = createFakeAi({
+      logger,
+      text: "ok",
+      onCall: () => {
+        throw new Error("reporter down");
+      },
+    });
+    const result = await generateText({ model: throwing.model("small"), prompt: "p" });
+    expect(result.text).toBe("ok");
+    expect(lines.some((l) => l.includes("ai call reporter failed"))).toBe(true);
   });
 });

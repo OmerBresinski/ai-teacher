@@ -29,7 +29,7 @@ test.describe("lesson brief", () => {
     await page.getByRole("button", { name: "Next" }).click();
     const request = await posted;
     expect(request.postDataJSON()).toMatchObject({
-      brief: { topic: "Fractions of amounts", level: "standard", slideCount: 8 },
+      brief: { topic: "Fractions of amounts", level: "standard" },
       yearGroup: "Year 5",
       sourceIds: [],
       skipPlanning: false,

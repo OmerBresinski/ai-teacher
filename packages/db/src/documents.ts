@@ -30,7 +30,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { z } from "zod";
-import { hasQueuedJobEvent, terminalJobEventFor } from "./job-events";
+import { hasQueuedJobEvent, pruneEphemeralEventsOf, terminalJobEventFor } from "./job-events";
 import { documents } from "./schema/documents";
 import type { WorkspaceDb } from "./tenant";
 
@@ -630,6 +630,28 @@ export async function relockWorksheet(ws: WorkspaceDb, id: string, jobId: JobId)
 }
 
 /**
+ * Lock a lesson whose generating job stopped for a new `lesson.generate` job that writes the rest
+ * (`POST /lessons/:id/resume`). One `UPDATE … WHERE id AND kind = 'lesson' AND generating_job_id
+ * IS NULL AND deleted_at IS NULL`, so two requests cannot both take it; the body and `updated_at`
+ * are left alone. `false` when the row is missing, deleted, not a lesson, or already locked.
+ */
+export async function relockLesson(ws: WorkspaceDb, id: string, jobId: JobId): Promise<boolean> {
+  const rows = await ws
+    .update(
+      documents,
+      and(
+        eq(documents.id, id),
+        eq(documents.kind, "lesson"),
+        isNull(documents.generatingJobId),
+        isNull(documents.deletedAt),
+      ),
+    )
+    .set({ generatingJobId: jobId })
+    .returning({ id: documents.id });
+  return rows.length > 0;
+}
+
+/**
  * Pass the generating lock from one job to the next (TDD T10, auto-continue): one
  * `UPDATE … SET generating_job_id = :to WHERE id AND generating_job_id = :from`. `false` when
  * `from` no longer holds it — a concurrent re-plan took the lock, and the caller must not enqueue.
@@ -734,6 +756,8 @@ export async function releaseStaleLock(
   const reason = await staleLockReason(ws, row, jobId, opts);
   if (reason === null) return row;
   await clearGenerating(ws, row.id, jobId);
+  // A dead job's slide drafts never reached its own prune (ADR 0039): they go with its lock.
+  await pruneEphemeralEventsOf(ws, jobId);
   opts.logger?.info({ lessonId: row.id, jobId, reason }, "released a stale generating lock");
   return (await getDocument(ws, row.id)) ?? { ...row, generatingJobId: null };
 }

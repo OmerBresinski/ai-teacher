@@ -8,6 +8,8 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { artOf } from "./art";
+import { contrastRatio, mix } from "./colour-contrast";
+import { composeCover } from "./cover-comps";
 import { docFromText, isChunked, uid } from "./factories";
 import { SAFE, SPACE, snapY } from "./grid";
 import { AGENDA_DIVIDER, AGENDA_STEM, PLACEHOLDER_IMAGE } from "./layouts";
@@ -15,6 +17,9 @@ import { HEADING_NAME, isBackdrop } from "./reflow";
 import { docPlainText, joinSentences, sentences } from "./sentences";
 import { measureHeadless } from "./text-measure";
 import { readingLeading, readingSize } from "./text-style";
+import { titleBand } from "./themes/surfaces";
+
+export { contrastRatio, mix };
 
 /*
  * The lesson look (quality PRD "look" uplift, 26 Sept 2026): the chrome that gives every slide in a
@@ -84,6 +89,16 @@ export const isOpenPhotoSlot = (el: SlideElement): boolean =>
   el.type === "image" && el.name === PHOTO_NAME && (el.src === PLACEHOLDER_IMAGE || el.src === "");
 
 /**
+ * The editor's placeholder icon (items-row `PLACEHOLDER_ICON`, `data-icon="placeholder"`) on an
+ * item a teacher added blank: it tells the teacher an icon goes there, so only the editor draws
+ * it. Present, the viewer, thumbnails and every export take it away (`withoutDiagramSlot`) and
+ * leave the medal empty, as a draft's held icon is.
+ */
+const PLACEHOLDER_ICON_MARK = encodeURIComponent('data-icon="placeholder"');
+export const isPlaceholderIcon = (el: SlideElement): boolean =>
+  el.type === "image" && el.src.includes(PLACEHOLDER_ICON_MARK);
+
+/**
  * What the slide is for, in the words a class sees on the tag. Only an activity, or a slide with a
  * specific job, takes one (Greg, 26 Sept 2026: "it should only be there if it's an exercise or
  * something specific"); teaching slides and the objectives go untagged (`UNTAGGED_HEADED`).
@@ -119,24 +134,6 @@ export const HEADING_GAP = SPACE[4];
 const CARD_PAD = SPACE[3];
 
 /* ---------------------------------------------------------------- colour */
-
-const rgb = (hex: string): [number, number, number] => {
-  const h = hex.replace("#", "");
-  const full = h.length === 3 ? [...h].map((c) => c + c).join("") : h.slice(0, 6);
-  const n = Number.parseInt(full, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-};
-
-/** `a` mixed into `b` by `amount` (0 = b, 1 = a), as a hex colour. */
-export function mix(a: string, b: string, amount: number): string {
-  const [ar, ag, ab] = rgb(a);
-  const [br, bg, bb] = rgb(b);
-  const c = (x: number, y: number) =>
-    Math.round(x * amount + y * (1 - amount))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${c(ar, br)}${c(ag, bg)}${c(ab, bb)}`.toUpperCase();
-}
 
 /** The theme's accent tint: the panel and pill colour. Accent text on it keeps 4.5:1. */
 export function accentTint(t: Theme): string {
@@ -207,21 +204,6 @@ function accentBar(ids: Ids, t: Theme, els: SlideElement[]): SlideElement {
 
 /* ---------------------------------------------------------------- slides */
 
-/** WCAG relative luminance of a `#rrggbb` colour. */
-function luminance(hex: string): number {
-  const [r, g, b] = rgb(hex).map((c) => {
-    const v = c / 255;
-    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-  }) as [number, number, number];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG contrast ratio between two `#rrggbb` colours. */
-export function contrastRatio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
-  return (hi + 0.05) / (lo + 0.05);
-}
-
 /**
  * The cover's quieter ink (eyebrow, subtitle): `ink` softened toward the accent, but never below
  * 4.5:1 on it, so small caption text stays readable on every theme.
@@ -235,8 +217,9 @@ function readableSoft(ink: string, accent: string): string {
 }
 
 function cover(slide: Slide, t: Theme): Slide {
-  // A title set beside a photograph keeps its own composition; the cover is the typographic one.
-  if (slide.elements.some((e) => e.type === "image")) return slide;
+  // A title set beside a photograph takes the theme's cover composition (bleed, collage, hexagon,
+  // masthead, frame; `cover-comps.ts`), or keeps the layout's own (split) when the theme has none.
+  if (slide.elements.some((e) => e.type === "image")) return composeCover(slide, t);
   // A theme with title art (UX ruling 107) sets its cover on its own ground under that art: the
   // title in the heading colour, the eyebrow and rule in the accent, the class line muted.
   if (artOf(t)?.title?.length) {
@@ -252,11 +235,12 @@ function cover(slide: Slide, t: Theme): Slide {
     });
     return { ...slide, elements };
   }
-  const ink = t.colors.onAccent;
-  const soft = readableSoft(ink, t.colors.accent);
+  const { fill, ink } = coverColours(t);
+  const soft = readableSoft(ink, fill);
   const elements = slide.elements.map((el): SlideElement => {
     if (el.type === "shape") {
-      if (el.name === "Accent rule") return { ...el, fill: ink };
+      // A banded cover's rule wears the band's accent (Poster's yellow on teal); others the ink.
+      if (el.name === "Accent rule") return { ...el, fill: titleBand(t)?.accent || ink };
       // The `agenda` title's hairline between the title and the objectives.
       return el.name === AGENDA_DIVIDER ? { ...el, fill: soft } : el;
     }
@@ -268,7 +252,21 @@ function cover(slide: Slide, t: Theme): Slide {
       el.name === "Subtitle";
     return { ...el, style: { ...el.style, color: quiet ? soft : ink } };
   });
-  return { ...slide, background: { ...slide.background, color: t.colors.accent }, elements };
+  return { ...slide, background: { ...slide.background, color: fill }, elements };
+}
+
+/**
+ * The plain cover's ground and ink: the accent and its ink, or on a v2 theme the accent family's
+ * deep (Paper's wine, as its title panels) with `onDeep`, so the red stays for highlighted words
+ * (Greg, 12 Oct: a full-bleed red cover was too bright).
+ */
+export function coverColours(t: Theme): { fill: string; ink: string } {
+  const deep = t.v2?.accents[t.v2.defaultAccent]?.deep;
+  if (t.v2 && deep) return { fill: deep, ink: t.v2.colors.onDeep };
+  // A theme with a title band (Poster's teal, round 5) wears it as its cover, in the band's ink.
+  const band = titleBand(t);
+  if (band) return { fill: band.fill, ink: band.ink };
+  return { fill: t.colors.accent, ink: t.colors.onAccent };
 }
 
 /**

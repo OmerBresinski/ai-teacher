@@ -1,6 +1,8 @@
 import { anonymousSignins } from "./anonymous-signins";
 import { accounts, sessions, users, verifications } from "./auth";
+import { bankImages } from "./bank-images";
 import { documents } from "./documents";
+import { generationDebug } from "./generation-debug";
 import { jobEvents } from "./job-events";
 import { magicLinkSends } from "./magic-link-sends";
 import { sources } from "./sources";
@@ -9,7 +11,9 @@ import { workspaces } from "./workspaces";
 export * from "./_columns";
 export { anonymousSignins } from "./anonymous-signins";
 export { accounts, authSchema, sessions, users, verifications } from "./auth";
+export { bankImages } from "./bank-images";
 export { DOCUMENTS_REQUEST_ID_INDEX, documentKind, documents } from "./documents";
+export { generationDebug } from "./generation-debug";
 export { JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX, jobEvents } from "./job-events";
 export { magicLinkSends } from "./magic-link-sends";
 export { sourceKind, sources } from "./sources";
@@ -20,13 +24,14 @@ export { workspaces } from "./workspaces";
  * invariant test checks each one has `workspace_id NOT NULL` with a FK and an index (ADR 0007).
  * **Add every new tenant table here.**
  */
-export const TENANT_TABLES = [jobEvents, documents, sources] as const;
+export const TENANT_TABLES = [jobEvents, documents, sources, generationDebug] as const;
 
 /**
  * The documented allow-list of tables without `workspace_id` (ADR 0007): the tenant root and the
  * better-auth identity tables (ADR 0008 — identity sits above the Workspace; see `auth.ts`), and
  * the per-IP anonymous sign-in counter (TEACH-222; see `anonymous-signins.ts`) and the magic-link
- * send log (TEACH-300; see `magic-link-sends.ts`).
+ * send log (TEACH-300; see `magic-link-sends.ts`), and the shared picture library (TEACH-84 part b;
+ * see `bank-images.ts`).
  * Anything else needs a written justification in its schema file.
  */
 export const NON_TENANT_TABLES = [
@@ -37,6 +42,7 @@ export const NON_TENANT_TABLES = [
   verifications,
   anonymousSignins,
   magicLinkSends,
+  bankImages,
 ] as const;
 
 /** Every application table, for the exhaustiveness check below and for tests. */
@@ -51,6 +57,8 @@ export const ALL_TABLES = {
   sources,
   anonymousSignins,
   magicLinkSends,
+  bankImages,
+  generationDebug,
 } as const;
 
 // ---------------------------------------------------------------------------------------------

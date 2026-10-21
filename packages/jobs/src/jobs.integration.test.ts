@@ -13,6 +13,7 @@ import pino from "pino";
 import { createBoss, ensureQueues } from "./boss";
 import { cancel, enqueue } from "./enqueue";
 import { emitJobEvent, nowIso } from "./events";
+import { reapOrphanedLocks } from "./reap";
 import { type BossJob, type RunJobOutcome, runJob } from "./run-job";
 import {
   defineJob,
@@ -33,11 +34,28 @@ if (!t.ok) console.warn(`skipping @tj/jobs integration tests: ${t.reason}`);
 
 const STEP_MS = 300;
 
-/** Same shape (and 300 ms steps, above the 250 ms progress window) as `apps/worker/src/jobs/ping.ts`. */
+/** Waits `ms`, or less: an abort wakes it at once, as `apps/worker/src/jobs/ping.ts` does. */
+function nap(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const wake = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", wake);
+      resolve();
+    };
+    const timer = setTimeout(wake, ms);
+    signal.addEventListener("abort", wake, { once: true });
+  });
+}
+
+/**
+ * Same shape (and 300 ms steps, above the 250 ms progress window) as `apps/worker/src/jobs/ping.ts`.
+ * A cancel wakes the step's wait: the latency `cancel after started` measures is the runtime's
+ * (`cancel()`, the 250 ms poll, the `cancelled` write), not where in a step the cancel landed.
+ */
 const pingJob = defineJob("ping", async ({ payload, signal, progress }) => {
   for (let i = 1; i <= payload.steps; i++) {
     if (signal.aborted) return;
-    await Bun.sleep(STEP_MS);
+    await nap(STEP_MS, signal);
     if (signal.aborted) return;
     if (payload.failAt !== undefined && i === payload.failAt) {
       throw new NonRetryableError(`ping asked to fail at step ${i}/${payload.steps}`);
@@ -531,6 +549,68 @@ describeDb("@tj/jobs against Postgres + pg-boss", () => {
       expect(events.map((e) => e.type)).toEqual(["failed"]);
       const last = events.at(-1);
       expect(last?.type === "failed" && last.error.retryable).toBe(false);
+    });
+  });
+
+  // TEACH-202 part g: a job that died on its last attempt (no `finally`, no terminal event) once
+  // pg-boss has failed it on lease expiry; the worker's sweep settles it and frees the lesson.
+  describe("reapOrphanedLocks", () => {
+    const quiet = pino({ level: "silent" });
+    async function lockedBy(jobId: JobId): Promise<string> {
+      const [row] = await sql<{ id: string }[]>`
+        insert into documents (id, workspace_id, kind, body, title, item_count, generating_job_id)
+        values (${newId<JobId>()}, ${workspaceId}, 'lesson', '{}'::jsonb, 'Eye', 0, ${jobId})
+        returning id`;
+      return (row as { id: string }).id;
+    }
+    const lockOf = async (id: string) =>
+      (
+        await sql<
+          { g: string | null }[]
+        >`select generating_job_id as g from documents where id = ${id}`
+      )[0]?.g ?? null;
+    const setState = (jobId: JobId, state: string) =>
+      sql`update pgboss_test.job set state = ${state}::pgboss_test.job_state where id = ${jobId}`;
+
+    test("a job failed by pg-boss with no terminal event: writes `failed`, releases the lock, and a new job can lock", async () => {
+      const jobId = await enqueue(ctx, "ping", { message: "hi" }, { workspaceId });
+      if (!jobId) throw new Error("enqueue returned null");
+      const doc = await lockedBy(jobId);
+      await setState(jobId, "active");
+      expect(await reapOrphanedLocks(ctx, { logger: quiet, schema: "pgboss_test" })).toBe(0);
+      expect(await lockOf(doc)).toBe(jobId);
+      // The process died; the lease ran out on the last attempt and pg-boss failed the job.
+      await setState(jobId, "failed");
+      expect(await reapOrphanedLocks(ctx, { logger: quiet, schema: "pgboss_test" })).toBe(1);
+      expect(await lockOf(doc)).toBeNull();
+      const events = await eventsFor(jobId);
+      expect(events.map((e) => e.type)).toEqual(["queued", "failed"]);
+      // Idempotent, and the lesson is free for the next job.
+      expect(await reapOrphanedLocks(ctx, { logger: quiet, schema: "pgboss_test" })).toBe(0);
+      const next = newId<JobId>();
+      await sql`update documents set generating_job_id = ${next} where id = ${doc} and generating_job_id is null`;
+      expect(await lockOf(doc)).toBe(next);
+    });
+
+    test("a cancelled job with no terminal event gets `cancelled`; one with a terminal event is only unlocked", async () => {
+      const cancelled = await enqueue(ctx, "ping", { message: "a" }, { workspaceId });
+      const settled = await enqueue(ctx, "ping", { message: "b" }, { workspaceId });
+      if (!cancelled || !settled) throw new Error("enqueue returned null");
+      const a = await lockedBy(cancelled);
+      const b = await lockedBy(settled);
+      await setState(cancelled, "cancelled");
+      await setState(settled, "active");
+      await emitJobEvent(ctx, {
+        type: "failed",
+        jobId: settled,
+        workspaceId,
+        at: nowIso(),
+        error: { message: "x", retryable: false },
+      });
+      expect(await reapOrphanedLocks(ctx, { logger: quiet, schema: "pgboss_test" })).toBe(2);
+      expect([await lockOf(a), await lockOf(b)]).toEqual([null, null]);
+      expect((await eventsFor(cancelled)).map((e) => e.type)).toEqual(["queued", "cancelled"]);
+      expect((await eventsFor(settled)).map((e) => e.type)).toEqual(["queued", "failed"]);
     });
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type {
   GapTextElement,
+  ImageElement,
   Lesson,
   OptionElement,
   Slide,
@@ -9,13 +10,23 @@ import type {
 } from "@tj/domain/documents";
 import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
-import { DIAGRAM_NAME, drawFigure, FIGURE_RECT, materialiseSlide } from "@tj/slides";
+import {
+  DIAGRAM_NAME,
+  drawFigure,
+  FIGURE_RECT,
+  FONT_STACKS,
+  HIGHLIGHT_FALLBACK_FILLS,
+  materialiseSlide,
+  v2Profile,
+} from "@tj/slides";
+import { iconImageSrc, iconMedalImageSrc, medalColoursFor } from "@tj/slides/icons";
 import JSZip from "jszip";
 import { newSlide } from "../model/factories";
 import { demoLibrary } from "../model/starter";
 import { getTheme } from "../model/themes";
 import { resolveTextStyle } from "../slide/elements/kit";
 import { imageCredentials } from "./image-credentials";
+import { dataUrlImageSize, imageSize } from "./image-size";
 import {
   answerText,
   buildSlidePlan,
@@ -35,10 +46,13 @@ import {
   pptxDashType,
   pptxFilename,
   pptxShapeName,
+  roundedPictureName,
+  runMarkRects,
   slideLabel,
   textBoxOptions,
   trackingToPt,
 } from "./pptx";
+import { PPTX_FALLBACK_FACE, withFallbackFacesXml } from "./pptx-fonts";
 import { docToRuns } from "./runs";
 
 /*
@@ -47,7 +61,7 @@ import { docToRuns } from "./runs";
  * Bun; the OOXML cases read `ppt/slides/*.xml` back through jszip.
  */
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 
 const doc = (content: unknown[]) => ({ type: "doc" as const, content: content as never });
 const text = (value: string, marks?: unknown[]) => ({
@@ -107,18 +121,38 @@ describe("hexColor", () => {
 
 describe("fontFaceFor", () => {
   it("maps every theme font stack to a real family name", () => {
-    expect(fontFaceFor(theme.fonts.body)).toBe("Lexend");
-    expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Source Serif 4");
+    expect(fontFaceFor(theme.fonts.body)).toBe("Nunito");
+    // Round 5 (TEACH-215 part c): Reading Room's titles are Outfit.
+    expect(fontFaceFor(getTheme("reading-room").fonts.title)).toBe("Outfit");
     expect(fontFaceFor(getTheme("beacon").fonts.body)).toBe("Atkinson Hyperlegible Next");
     expect(fontFaceFor(getTheme("night-lab").fonts.title)).toBe("Bricolage Grotesque");
     expect(fontFaceFor(getTheme("crayon").fonts.body)).toBe("Playpen Sans");
-    expect(fontFaceFor(getTheme("treehouse").fonts.title)).toBe("Literata");
+    expect(fontFaceFor(getTheme("treehouse").fonts.title)).toBe("Figtree");
   });
 
   it("falls back to the first real family, then to Arial", () => {
     expect(fontFaceFor('var(--font-unknown), "Trebuchet MS", sans-serif')).toBe("Trebuchet MS");
     expect(fontFaceFor("sans-serif")).toBe("Arial");
     expect(fontFaceFor(undefined)).toBe("Arial");
+  });
+
+  it("names the theme v2 faces, and maps each to its measured fallback (ruling 213)", () => {
+    expect(fontFaceFor(FONT_STACKS.andika)).toBe("Andika");
+    expect(fontFaceFor(FONT_STACKS.schibsted)).toBe("Schibsted Grotesk");
+    expect(fontFaceFor(FONT_STACKS.sourceSerif)).toBe("Source Serif 4");
+    const paper = getTheme("paper");
+    for (const profile of Object.values(paper.v2?.ages ?? {})) {
+      for (const key of Object.values(profile.fonts)) {
+        const face = fontFaceFor(FONT_STACKS[key as keyof typeof FONT_STACKS]);
+        expect([face, PPTX_FALLBACK_FACE[face] !== undefined]).toEqual([face, true]);
+      }
+    }
+    expect(PPTX_FALLBACK_FACE.Andika).toEqual({ body: "Comic Sans MS", display: "Comic Sans MS" });
+    expect(PPTX_FALLBACK_FACE.Lexend).toEqual({ body: "Trebuchet MS", display: "Arial Bold" });
+    expect(PPTX_FALLBACK_FACE["Schibsted Grotesk"]?.display).toBe("Arial Bold");
+    expect(PPTX_FALLBACK_FACE["Source Serif 4"]?.italic).toBe("Georgia Italic");
+    const all = Object.values(PPTX_FALLBACK_FACE).flatMap((f) => Object.values(f));
+    expect(all.some((f) => /verdana/i.test(f ?? ""))).toBe(false);
   });
 });
 
@@ -540,6 +574,92 @@ describe("exportLessonPptx", () => {
     expect(failed.warnings).toEqual(["A diagram could not be drawn as a picture: A square"]);
   }, 30_000);
 
+  it("exports a library icon carried as an SVG image as a PNG in literal colours (TEACH-310 part b)", async () => {
+    const [water] = demoLibrary();
+    const first = water?.slides[0];
+    if (!water || !first) throw new Error("fixture");
+    const icon = {
+      id: "ic1",
+      type: "image",
+      name: "Item icon",
+      x: 100,
+      y: 100,
+      w: 120,
+      h: 120,
+      src: iconImageSrc("canopic-jar", { age: "early", px: 480 }),
+      alt: "",
+      fit: "contain",
+    } as SlideElement;
+    const lesson: Lesson = { ...water, slides: [{ ...first, elements: [icon] }] };
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const asked: string[] = [];
+    const warnings: string[] = [];
+    const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
+      rasteriseSvg: async (src) => {
+        asked.push(decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
+        return png;
+      },
+      onWarning: (m) => warnings.push(m),
+    });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toContain('viewBox="0 0 240 240"');
+    expect(asked[0]).not.toContain("var(");
+    expect(asked[0]).toMatch(/(fill:|stop-color=")#[0-9a-f]{6}/);
+    expect(warnings).toEqual([]);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const media = Object.keys(zip.files).filter((f) => f.startsWith("ppt/media/"));
+    expect(media.some((f) => f.endsWith(".png"))).toBe(true);
+    expect(media.some((f) => f.endsWith(".svg"))).toBe(false);
+  }, 30_000);
+
+  it("rasterises an icon medal with nothing painted behind it, so the PNG keeps its alpha", async () => {
+    const [water] = demoLibrary();
+    const first = water?.slides[0];
+    if (!water || !first) throw new Error("fixture");
+    const medal = medalColoursFor({
+      tokens: {
+        mode: "dark",
+        "medal-fill": "#364753",
+        "medal-tint": "#364753",
+        "medal-line": "#445968",
+      },
+    });
+    const src = iconMedalImageSrc("penguin", { medal, age: "secondary", px: 480 });
+    const icon = {
+      id: "m1",
+      type: "image",
+      x: 100,
+      y: 100,
+      w: 120,
+      h: 120,
+      src,
+      alt: "",
+      fit: "contain",
+    };
+    const lesson: Lesson = { ...water, slides: [{ ...first, elements: [icon as SlideElement] }] };
+    const asked: string[] = [];
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const blob = await exportLessonPptx(lesson, getTheme(water.themeId), {
+      rasteriseSvg: async (s) => {
+        asked.push(decodeURIComponent(s.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
+        return png;
+      },
+    });
+    expect(asked).toHaveLength(1);
+    // the disc is the first thing drawn; no full-box rect or background, so the corners stay clear
+    expect(asked[0]).toMatch(
+      /^<svg[^>]*viewBox="0 0 240 240"[^>]*><circle cx="120" cy="120" r="120" style="fill:#364753"\/>/,
+    );
+    expect(asked[0]).not.toMatch(/<rect x="0" y="0" width="240"|<svg[^>]*style=/);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const slide = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+    const pic = /<p:pic>[\s\S]*?<\/p:pic>/.exec(slide)?.[0] ?? "";
+    expect(pic).toContain("<p:blipFill>");
+    expect(pic).not.toContain("<a:solidFill>"); // no fill behind the picture
+  }, 30_000);
+
   it("exports an image-match slide without throwing", async () => {
     const [water] = demoLibrary();
     if (!water) throw new Error("fixture");
@@ -739,7 +859,52 @@ describe("exportLessonPptx", () => {
     expect(xml.split("<a:cubicBezTo>").length - 1).toBe(4);
     expect(xml).toContain("<a:moveTo>");
     expect(xml).not.toMatch(/<a:close ?\/>/);
-    expect(xml).toContain('<a:tailEnd type="triangle"');
+    expect(xml).toContain('<a:tailEnd type="arrow" w="med" len="med"/>');
+  }, 30_000);
+
+  const lineElement = (extra: Partial<SlideElement> = {}): SlideElement =>
+    ({
+      id: "ln1",
+      type: "line",
+      x: 100,
+      y: 100,
+      w: 400,
+      h: 20,
+      from: { x: 0, y: 0.5 },
+      to: { x: 1, y: 0.5 },
+      stroke: "#000000",
+      strokeWidth: 4,
+      arrowEnd: true,
+      ...extra,
+    }) as SlideElement;
+
+  it("a line arrow gets an open head sized from its stroke, like the editor (TEACH-75 part x)", async () => {
+    const xml = await slideXml([lineElement()]);
+    expect(xml).toContain('<a:tailEnd type="arrow" w="med" len="med"/>');
+    expect(xml).not.toContain('type="triangle"');
+  }, 30_000);
+
+  it("a dotted arrow stops its dots two strokes short of a solid stub that carries the head", async () => {
+    const xml = await slideXml([lineElement({ dash: "dotted" } as Partial<SlideElement>)]);
+    const shapes = xml.split(/<p:(?:sp|cxnSp)>/).slice(1);
+    const dotted = shapes.filter((x) => /<a:prstDash val="sysDot"/.test(x));
+    const stub = shapes.filter((x) => x.includes('<a:tailEnd type="arrow"'));
+    expect(dotted).toHaveLength(1);
+    expect(stub).toHaveLength(1);
+    expect(dotted[0]).not.toContain('type="arrow"');
+    expect(stub[0]).not.toContain("sysDot");
+    // the dotted run ends before the stub begins: off.x + ext.cx (EMU) of each
+    const span = (x: string) => {
+      const off = Number(/<a:off x="(\d+)"/.exec(x)?.[1]);
+      const ext = Number(/<a:ext cx="(\d+)"/.exec(x)?.[1]);
+      return [off, off + ext];
+    };
+    const [, dotEnd] = span(dotted[0] as string);
+    const [stubStart, stubEnd] = span(stub[0] as string);
+    expect(dotEnd as number).toBeLessThan(stubStart as number);
+    // 4 pt stroke: the gap is two strokes, 8 pt = 101600 EMU
+    expect((stubStart as number) - (dotEnd as number)).toBeGreaterThanOrEqual(101600 - 2);
+    expect(Math.abs((stubEnd as number) - (500 / 72) * 914400)).toBeLessThan(10);
   }, 30_000);
 
   it("a closed path ends in a close and carries its fill", async () => {
@@ -770,7 +935,7 @@ describe("exportLessonPptx", () => {
   // TEACH-77 row 9. pptxgenjs 4.0.1 has no alt text for a shape or a text box, so the figure's
   // alt stays on screen only: a known limitation, recorded in the ADR 0032 amendment.
   it("exports a diagram slide's figure as custom geometry and text boxes, without its alt", async () => {
-    const diagram = newSlide("diagram", "chalk");
+    const diagram = newSlide("diagram", "splash");
     const lesson = { id: "l1", title: "Diagram", slides: [diagram] } as Lesson;
     const blob = await exportLessonPptx(lesson, theme, { includeAnswers: false });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
@@ -799,9 +964,10 @@ describe("exportLessonPptx", () => {
     expect(xml.split("<a:custGeom>").length - 1).toBe(1);
     expect(xml.split("<a:cubicBezTo>").length - 1).toBe(4);
     expect(xml).not.toMatch(/<a:close ?\/>/);
-    // The axes, the guide and the two arrows are lines; the arrows and axes end in a triangle.
+    // The axes, the guide and the two arrows are lines; the arrows and axes end in an open
+    // arrowhead, as the editor draws them (TEACH-75 part x).
     expect(xml.split('prst="line"').length - 1).toBe(5);
-    expect(xml.split('<a:tailEnd type="triangle"').length - 1).toBe(4);
+    expect(xml.split('<a:tailEnd type="arrow" w="med" len="med"/>').length - 1).toBe(4);
     for (const label of ["Energy", "Progress of reaction", "Ea", "ΔH"])
       expect(xml).toContain(`<a:t>${label}</a:t>`);
     // Every label is a text box, and nothing in the figure is rotated.
@@ -894,6 +1060,154 @@ describe("the emitted slide XML", () => {
     expect(xml[1]).toContain("Chlorophyll");
     expect(xml[0]).not.toBe(xml[1]);
   }, 30_000);
+
+  // TEACH-25 part b, row 6: the picture's source rectangle is its crop, so PowerPoint shows the
+  // editor's pixels (before, `sizing` was only cover/contain and a crop exported uncropped).
+  describe("a picture's crop is its source rectangle", () => {
+    // a 4x2 PNG
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR4nGM8kWLEAANMcBYDAwMAIbQBYsejYxUAAAAASUVORK5CYII=";
+    const picture = (over: Partial<ImageElement>): SlideElement =>
+      ({
+        id: "p",
+        type: "image",
+        x: 100,
+        y: 50,
+        w: 400,
+        h: 200,
+        src: png,
+        fit: "cover",
+        ...over,
+      }) as SlideElement;
+    const srcRect = (xml: string | undefined) => {
+      const m = /<a:srcRect l="(-?\d+)" r="(-?\d+)" t="(-?\d+)" b="(-?\d+)"\/>/.exec(xml ?? "");
+      return m ? m.slice(1).map(Number) : null;
+    };
+    const ext = (xml: string | undefined) => {
+      const m =
+        /<p:pic>[\s\S]*?<a:off x="(\d+)" y="(\d+)"\/>\s*<a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(
+          xml ?? "",
+        );
+      return m ? m.slice(1).map(Number) : null;
+    };
+
+    it("a stored crop", async () => {
+      const [xml] = await write(deck([picture({ crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.5 } })]));
+      const [l = 0, r = 0, t = 0, b = 0] = srcRect(xml) ?? [];
+      // within 0.5% of the crop
+      expect(Math.abs(l - 10_000)).toBeLessThanOrEqual(500);
+      expect(Math.abs(r - 40_000)).toBeLessThanOrEqual(500);
+      expect(Math.abs(t - 20_000)).toBeLessThanOrEqual(500);
+      expect(Math.abs(b - 30_000)).toBeLessThanOrEqual(500);
+      // the frame is still the element's box
+      const EMU = 914_400;
+      const want = [100, 50, 400, 200].map((v) => inches(v) * EMU);
+      const got = ext(xml) ?? [];
+      expect(got).toHaveLength(4);
+      for (const [i, v] of got.entries())
+        expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
+      expect(ext(xml)).toHaveLength(4);
+    }, 30_000);
+
+    it("a focal point with cover keeps that side of the picture", async () => {
+      const [xml] = await write(deck([picture({ w: 200, h: 200, focal: { x: 0, y: 0.5 } })]));
+      expect(srcRect(xml)).toEqual([0, 50_000, 0, 0]);
+    }, 30_000);
+
+    it("a crop stored for another box shape is re-derived round its focal point, as the editor does", async () => {
+      // a 2x zoom window made for a 2:1 box, on a box that has since become square
+      const [xml] = await write(
+        deck([
+          picture({
+            w: 200,
+            h: 200,
+            crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },
+            focal: { x: 0.5, y: 0.5 },
+          }),
+        ]),
+      );
+      expect(srcRect(xml)).toEqual([37_500, 37_500, 25_000, 25_000]);
+    }, 30_000);
+
+    it("contain: the picture is placed at its own shape, centred, never stretched", async () => {
+      const [xml] = await write(deck([picture({ w: 200, h: 200, fit: "contain" })]));
+      expect(srcRect(xml)).toBeNull();
+      const EMU = 914_400;
+      const want = [100, 100, 200, 100].map((v) => inches(v) * EMU);
+      const got = ext(xml) ?? [];
+      expect(got).toHaveLength(4);
+      for (const [i, v] of got.entries())
+        expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
+    }, 30_000);
+
+    it("contain with a turn and a radius: centred at its own shape and turned about the box centre", async () => {
+      const [xml] = await write(
+        deck([picture({ w: 200, h: 200, fit: "contain", rotation: 90, radius: 8 })]),
+      );
+      const EMU = 914_400;
+      const want = [100, 100, 200, 100].map((v) => inches(v) * EMU);
+      const got = ext(xml) ?? [];
+      expect(got).toHaveLength(4);
+      for (const [i, v] of got.entries())
+        expect(Math.abs(v - (want[i] ?? 0))).toBeLessThanOrEqual(2);
+      expect(xml).toContain('rot="5400000"');
+      // the radius rounds the corners of the contained frame (200x100): 8 / 100 of the short side
+      expect(xml).toContain(
+        '<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/>',
+      );
+      expect(xml).not.toContain('prst="ellipse"');
+      expect(srcRect(xml)).toBeNull();
+    }, 30_000);
+
+    // A rounded picture came out as an oval: PptxGenJS's `rounding` is an ellipse.
+    it("a rounded cover picture is a roundRect sized to its frame, never an ellipse", async () => {
+      const [xml] = await write(deck([picture({ radius: 16, name: "Kitten" })]));
+      expect(xml).not.toContain('prst="ellipse"');
+      // 16 on a 400x200 frame: 16 / 200 of the short side
+      expect(xml).toContain(
+        '<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 8000"/>',
+      );
+      expect(xml).toContain('name="Kitten"');
+      expect(xml).not.toContain("tj-round:");
+      expect(srcRect(xml)).not.toBeNull();
+    }, 30_000);
+
+    it("an unrounded picture keeps its rectangle", async () => {
+      const [xml] = await write(deck([picture({})]));
+      expect(xml).toContain('<a:prstGeom prst="rect">');
+      expect(xml).not.toContain("roundRect");
+    }, 30_000);
+
+    it("a radius past half the short side caps at a half (a pill, not an oval)", () => {
+      expect(roundedPictureName(500, 400, 200, "p")).toBe("tj-round:50000:p");
+      expect(roundedPictureName(12, 300, 240, "p")).toBe("tj-round:5000:p");
+    });
+
+    it("a JPEG with EXIF before its frame header", () => {
+      // SOI, an APP1 (EXIF) segment of 3000 bytes, then SOF0 for a 640x480 picture
+      const app1 = new Uint8Array(3002);
+      app1.set([0xff, 0xe1, 3000 >> 8, 3000 & 0xff]);
+      app1.set([0x45, 0x78, 0x69, 0x66, 0, 0], 4);
+      const sof = [0xff, 0xc0, 0x00, 0x11, 0x08, 480 >> 8, 480 & 0xff, 640 >> 8, 640 & 0xff, 3];
+      const bytes = new Uint8Array([0xff, 0xd8, ...app1, ...sof, ...new Uint8Array(20)]);
+      expect(imageSize(bytes)).toEqual({ w: 640, h: 480 });
+      const b64 = btoa(String.fromCharCode(...bytes));
+      expect(dataUrlImageSize(`data:image/jpeg;base64,${b64}`)).toEqual({ w: 640, h: 480 });
+    });
+
+    it("a JPEG's size is read from its header too", () => {
+      const jpeg =
+        "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAADAAYDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwBtFFFeWeyf/9k=";
+      expect(dataUrlImageSize(jpeg)).toEqual({ w: 6, h: 3 });
+      expect(dataUrlImageSize(png)).toEqual({ w: 4, h: 2 });
+      expect(dataUrlImageSize("data:image/png;base64,AAAA")).toBeUndefined();
+    });
+
+    it("no crop and no focal: cover crops the overflow instead of stretching", async () => {
+      const [xml] = await write(deck([picture({ w: 200, h: 200 })]));
+      expect(srcRect(xml)).toEqual([25_000, 25_000, 0, 0]);
+    }, 30_000);
+  });
 
   it("offsets a grouped child by the group, in EMU", async () => {
     const group: SlideElement = {
@@ -1094,7 +1408,7 @@ describe("a slide exported as the class sees it", () => {
       body: "Magma rises through cracks in the crust. Pressure builds as gas collects in the magma chamber. The crust gives way and lava pours out.",
       diagram: "Cross-section: magma chamber, vent, crater, ash cloud",
     },
-    "chalk",
+    "splash",
     meta,
   );
   const write = async (slides: Slide[]) =>
@@ -1111,4 +1425,208 @@ describe("a slide exported as the class sees it", () => {
     expect(xml).toContain("Magma rises through cracks in the crust");
     expect(xml).toContain("The crust gives way and lava pours out");
   });
+});
+
+describe("fallback faces in a v2 deck (ruling 213)", () => {
+  const run = (attrs: string, face: string) =>
+    `<a:rPr lang="en-GB"${attrs}><a:latin typeface="${face}" pitchFamily="34" charset="0"/><a:cs typeface="${face}"/></a:rPr>`;
+
+  it("names each new font's checked fallback by role", () => {
+    const xml = [
+      run("", "Andika"),
+      run(' b="1"', "Andika"),
+      run("", "Lexend"),
+      run(' b="1"', "Lexend"),
+      run(' b="1"', "Schibsted Grotesk"),
+      run(' i="1"', "Source Serif 4"),
+      run("", "Nunito"),
+    ].join("");
+    const faces = [...withFallbackFacesXml(xml).matchAll(/<a:latin typeface="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(faces).toEqual([
+      "Comic Sans MS",
+      "Comic Sans MS",
+      "Trebuchet MS",
+      "Arial",
+      "Arial",
+      "Georgia",
+      "Nunito",
+    ]);
+    expect(withFallbackFacesXml(run("", "Andika"))).not.toContain('"Andika"');
+  });
+
+  it("a Paper export names no unembedded v2 face; a v1 export is untouched", async () => {
+    const [water] = demoLibrary();
+    if (!water) throw new Error("fixture");
+    const first = water.slides[0];
+    const text = first?.elements.find((e) => e.type === "text");
+    if (!first || !text || text.type !== "text") throw new Error("fixture");
+    const andika = { ...text, style: { ...text.style, fontFamily: FONT_STACKS.andika } };
+    const lesson = {
+      ...water,
+      slides: [{ ...first, elements: [...first.elements, andika] }, ...water.slides.slice(1)],
+    };
+    const slideXml = async (blob: Blob) => {
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const parts = Object.keys(zip.files).filter((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p));
+      return (await Promise.all(parts.map((p) => zip.file(p)?.async("string") ?? ""))).join("");
+    };
+    const paper = await slideXml(await exportLessonPptx(lesson, getTheme("paper")));
+    expect(paper).not.toMatch(/typeface="(Andika|Lexend|Schibsted Grotesk|Source Serif 4)"/);
+    expect(paper).toContain('typeface="Comic Sans MS"');
+    expect(paper).toContain('typeface="Trebuchet MS"');
+    const v1 = await slideXml(await exportLessonPptx(lesson, getTheme(water.themeId)));
+    expect(v1).toContain('typeface="Andika"');
+    expect(v1).not.toContain("Comic Sans MS");
+  }, 30_000);
+});
+
+describe("rich runs and builds on rows (TEACH-205 part c)", () => {
+  const theme = getTheme("paper");
+  const accent = hexColor(theme.colors.accent) ?? "";
+  const text = (id: string, doc: TextElement["doc"], extra: Partial<TextElement> = {}) =>
+    ({
+      id,
+      type: "text",
+      x: 60,
+      y: 60,
+      w: 360,
+      h: 200,
+      doc,
+      style: { preset: "body" },
+      ...extra,
+    }) as TextElement;
+  const para = (...content: NonNullable<TextElement["doc"]["content"]>) => ({
+    type: "doc" as const,
+    content: [{ type: "paragraph", content }],
+  });
+  const claim = text(
+    "claim",
+    para(
+      { type: "text", text: "Bats are blind, " },
+      {
+        type: "text",
+        text: "so they fly into walls at night and cannot find their food",
+        marks: [{ type: "textStyle", attrs: { highlight: 2 } }],
+      },
+      { type: "text", text: " — " },
+      { type: "text", text: "a myth", marks: [{ type: "textStyle", attrs: { strikeStep: 2 } }] },
+      { type: "text", text: " where " },
+      { type: "text", text: "x", marks: [{ type: "textStyle", attrs: { font: "quote" } }] },
+    ),
+  );
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><g data-s="1"><rect width="5" height="5"/></g><g data-s="2"><rect x="5" width="5" height="5"/></g></svg>';
+  const diagram = {
+    id: "d",
+    type: "image",
+    x: 500,
+    y: 60,
+    w: 300,
+    h: 200,
+    src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    fit: "contain",
+    builds: 2,
+    buildFrom: 1,
+  } as SlideElement;
+  const rows = [1, 2].map((n) =>
+    text(`row${n}`, para({ type: "text", text: `Row ${n}` }), {
+      y: 300 + n * 40,
+      h: 36,
+      revealStep: n,
+    }),
+  );
+  const slide = { ...newSlide("content", "paper"), elements: [claim, diagram, ...rows] } as Slide;
+
+  it("a quote run takes the theme's quote face, italic where the theme sets quotes italic", () => {
+    const props = paragraphsToTextProps(docToRuns(claim.doc), {
+      fontFace: "Lexend",
+      fontSize: 20,
+      quoteFace: "Source Serif 4",
+      quoteItalic: true,
+    });
+    const x = props.find((p) => p.text === "x");
+    expect(x?.options?.fontFace).toBe("Source Serif 4");
+    expect(x?.options?.italic).toBe(true);
+    expect(props.find((p) => p.text?.startsWith("Bats"))?.options?.fontFace).toBe("Lexend");
+  });
+
+  it("a highlight is a rect per measured line under the text; a strike waits for its step (rows 3, 5)", () => {
+    const at1 = runMarkRects(claim, theme, 20, 1);
+    expect(at1.under.length).toBeGreaterThan(1);
+    expect(new Set(at1.under.map((s) => (s.fill as { color: string }).color))).toEqual(
+      new Set([HIGHLIGHT_FALLBACK_FILLS[1].slice(1)]),
+    );
+    expect(at1.over).toEqual([]);
+    const at2 = runMarkRects(claim, theme, 20, 2);
+    expect(at2.over).toHaveLength(1);
+    expect((at2.over[0]?.fill as { color: string } | undefined)?.color).toBe(accent);
+    // 0.075em thick at 20pt.
+    expect(at2.over[0]?.h).toBeCloseTo((0.075 * 20) / 72, 4);
+  });
+
+  it("emoji, ZWJ sequences and combining marks keep one rect; RTL gets none (review of #529)", () => {
+    const one = (t: string) =>
+      runMarkRects(
+        text(
+          "odd",
+          para(
+            { type: "text", text: "Plain words " },
+            { type: "text", text: t, marks: [{ type: "textStyle", attrs: { highlight: 1 } }] },
+          ),
+        ),
+        theme,
+        20,
+        1,
+      ).under;
+    for (const t of ["Bats 🦇 see", "the 👨‍👩‍👧 family", "wave 👋🏽", "cafe\u0301 naïve"]) {
+      const under = one(t);
+      expect(under).toHaveLength(1);
+      // Past the plain words, never a stray rect at the box's left edge.
+      expect(Number(under[0]?.x)).toBeGreaterThan((60 + 50) / 72);
+    }
+    expect(one("שלום עולם")).toEqual([]);
+  });
+
+  it("struck and row-bound steps are build slides", () => {
+    expect(maxRevealStep(slide)).toBe(2);
+    expect(maxRevealStep({ ...slide, elements: [claim] })).toBe(2);
+    expect(
+      maxRevealStep({ ...slide, elements: [{ ...diagram, buildFrom: 3 } as SlideElement] }),
+    ).toBe(4);
+  });
+
+  it("each build slide carries its row's diagram build and its strike (rows 2, 5)", async () => {
+    const lesson: Lesson = { ...demoLibrary()[0], slides: [slide] } as Lesson;
+    const drawn: string[] = [];
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const blob = await exportLessonPptx(lesson, theme, {
+      rasteriseSvg: async (src) => {
+        drawn.push(decodeURIComponent(src.replace(/^data:image\/svg\+xml;charset=utf-8,/, "")));
+        return png;
+      },
+    });
+    expect(drawn).toHaveLength(3);
+    expect(drawn[0]).toContain('[data-s="1"],[data-s="2"]{opacity:0}');
+    expect(drawn[1]).toContain('[data-s="2"]{opacity:0}');
+    expect(drawn[1]).not.toContain('[data-s="1"]');
+    expect(drawn[2]).not.toContain("{opacity:0}");
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = async (n: number) =>
+      (await zip.file(`ppt/slides/slide${n}.xml`)?.async("string")) ?? "";
+    const strikes = (s: string) =>
+      [...s.matchAll(/<p:sp>.*?<\/p:sp>/gs)].filter(
+        (m) => m[0].includes('prst="rect"') && m[0].includes(`<a:srgbClr val="${accent}"`),
+      ).length;
+    const washes = (s: string) => (s.match(/<a:srgbClr val="ADC0D6"/g) ?? []).length;
+    const [s1, s2, s3] = await Promise.all([xml(1), xml(2), xml(3)]);
+    expect([strikes(s1), strikes(s2), strikes(s3)]).toEqual([0, 0, 1]);
+    expect(washes(s1)).toBeGreaterThan(1);
+    expect(washes(s3)).toBe(washes(s1));
+    // The quote face (Source Serif 4, written with its checked fallback Georgia, ruling 213), italic.
+    expect(fontFaceFor(v2Profile(theme).fonts.quote)).toBe("Source Serif 4");
+    expect(s1).toMatch(/i="1"[^>]*>(?:(?!<\/a:rPr>).)*typeface="Georgia"/);
+  }, 30_000);
 });

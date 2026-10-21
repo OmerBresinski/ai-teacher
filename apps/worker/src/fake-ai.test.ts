@@ -1,12 +1,17 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
+import { createFakeAi, type FakeCall } from "@tj/ai/testing";
 import { FIXTURES } from "@tj/generation/testing";
 import { blockSpecSchemaFor, diagramSpecSchemaFor, slideSpecSchemaFor } from "@tj/slides";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import {
   createPerJobFakeAi,
+  FAKE_HOLD_TOPIC,
   FAKE_PROPOSAL_MARK,
   FAKE_REVIEW_WARNING,
+  loadWriterReplay,
   proposalAnswer,
+  writerReplayAnswer,
 } from "./fake-ai";
 
 /* `AI_FAKE_SCRIPT=pipeline`: one scripted run per job id, paced when asked. */
@@ -25,9 +30,14 @@ describe("createPerJobFakeAi", () => {
       });
       return text;
     };
-    // The script's first answer is the input check's clean `{ findings: [] }` for both jobs.
-    expect(await first("job-a")).toBe(JSON.stringify({ findings: [] }));
-    expect(await first("job-b")).toBe(JSON.stringify({ findings: [] }));
+    // The script's first answer is the input check's clean answer (no findings, no period) for both.
+    const clear = JSON.stringify({
+      findings: [],
+      historical_period: null,
+      fiction_in_period: false,
+    });
+    expect(await first("job-a")).toBe(clear);
+    expect(await first("job-b")).toBe(clear);
     // The same job's second call moves on to Plan's skeleton.
     const { text } = await generateText({
       model: ai.model("standard", {
@@ -90,6 +100,60 @@ describe("createPerJobFakeAi", () => {
       prompt: "Review the lesson.",
     });
     expect(JSON.parse(review.text).findings).toEqual([FAKE_REVIEW_WARNING]);
+  });
+
+  test("a topic held at review keeps the generate job's review open until it is cancelled", async () => {
+    const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 });
+    const lessonId = "held-lesson";
+    const call = (jobId: string, promptVersion: string, prompt: string, signal?: AbortSignal) =>
+      generateText({
+        model: ai.model("standard", { lessonId, jobId, promptVersion }),
+        prompt,
+        ...(signal ? { abortSignal: signal } : {}),
+      });
+    // The plan job sees the topic; the generate job (another job id) holds its review.
+    await call("plan", "plan-skeleton.v1", `Topic: Adaptations ${FAKE_HOLD_TOPIC}`);
+    const slide = await call("gen", "generate-slide.v1", 'Write the slide with kind "content".');
+    expect(JSON.parse(slide.text).kind).toBe("content");
+    const cancel = new AbortController();
+    let settled = false;
+    const review = call("gen", "evaluate.v1", "Review the lesson.", cancel.signal).then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    // Another lesson's review answers while this one is still held.
+    await generateText({
+      model: ai.model("standard", { lessonId: "other", jobId: "o", promptVersion: "evaluate.v1" }),
+      prompt: "Review the lesson.",
+    });
+    expect(settled).toBe(false);
+    cancel.abort("cancelled");
+    await review;
+    expect(settled).toBe(true);
+    // The cancel cleared the hold: a later run of the lesson reviews at once.
+    const again = await call("gen-2", "evaluate.v1", "Review the lesson.");
+    expect(JSON.parse(again.text).findings).toEqual([FAKE_REVIEW_WARNING]);
+  });
+
+  test("a held review answers after its cap when no cancel comes", async () => {
+    const ai = createPerJobFakeAi({ AI_FAKE_DELAY_MS: 0 }, { holdMaxMs: 1 });
+    await generateText({
+      model: ai.model("standard", {
+        lessonId: "held",
+        jobId: "p",
+        promptVersion: "plan-skeleton.v1",
+      }),
+      prompt: `Topic: Rivers ${FAKE_HOLD_TOPIC}`,
+    });
+    const held = await generateText({
+      model: ai.model("standard", { lessonId: "held", jobId: "g", promptVersion: "evaluate.v1" }),
+      prompt: "Review the lesson.",
+    });
+    expect(JSON.parse(held.text).findings).toEqual([FAKE_REVIEW_WARNING]);
   });
 
   test("the review answer carries one lesson-level warning", () => {
@@ -156,5 +220,54 @@ describe("createPerJobFakeAi", () => {
       const schema = blockSpecSchemaFor(block.type as never);
       if (schema) expect(schema.safeParse(JSON.parse(answer)).success, block.type).toBe(true);
     }
+  });
+});
+
+describe("the writer replay (live writing P0, TEACH-202 part d)", () => {
+  const dir = join(
+    import.meta.dir,
+    "../../../packages/generation/src/writer/fixtures/replay/y5-maths-fractions-of-amounts",
+  );
+  const call = (name: string) =>
+    ({ promptText: "", context: { promptVersion: `lesson-writer.v1/${name}` } }) as FakeCall;
+
+  test("streams the recorded writer text at the recorded pace", () => {
+    const replay = loadWriterReplay(dir);
+    const answer = writerReplayAnswer(call("lesson"), replay);
+    expect(answer?.text).toBe(replay.main.text);
+    const stream = answer?.stream;
+    expect(stream?.firstMs).toBe(replay.main.firstTokenMs);
+    const pieces = Math.ceil(replay.main.text.length / (stream?.pieceChars ?? 1));
+    const total = (stream?.firstMs ?? 0) + pieces * (stream?.paceMs ?? 0);
+    // Within 2% of the recorded writer call.
+    expect(Math.abs(total - replay.main.ms) / replay.main.ms).toBeLessThan(0.02);
+  });
+
+  test("answers the objectives and notes calls from the run, other writer calls with {}", () => {
+    const replay = loadWriterReplay(dir);
+    const objectives = JSON.parse(writerReplayAnswer(call("objectives"), replay)?.text ?? "");
+    expect(objectives.objectives).toEqual(replay.objectives);
+    expect(typeof objectives.objectives[0]).toBe("string");
+    expect(writerReplayAnswer(call("pupil_objectives"), replay)?.text).toBe("{}");
+    expect(
+      writerReplayAnswer(
+        { promptText: "", context: { promptVersion: "evaluate.v1" } } as FakeCall,
+        replay,
+      ),
+    ).toBeUndefined();
+  });
+
+  test("a streamed call waits for the first piece and then paces the rest", async () => {
+    const ai = createFakeAi({
+      fallback: { text: "abcdefghij", stream: { pieceChars: 5, paceMs: 40, firstMs: 80 } },
+    });
+    const t0 = Date.now();
+    const at: number[] = [];
+    const result = streamText({ model: ai.model("frontier"), prompt: "x" });
+    for await (const _ of result.textStream) at.push(Date.now() - t0);
+    expect(at).toHaveLength(2);
+    expect(at[0]).toBeGreaterThanOrEqual(75);
+    // Measured from the start, not between pieces: a busy machine can read the first piece late.
+    expect(at[1] ?? 0).toBeGreaterThanOrEqual(115);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { canonicalArrows } from "@tj/slides/arrow";
 import { stripBuilds, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { DIAGRAM_SAMPLES, MEANING_SAMPLES, openaiSchemaFaults } from "@tj/slides/diagrams";
 
@@ -33,6 +34,8 @@ type Fixture = {
     rect: { x: number; y: number; w: number; h: number };
     specs: unknown[];
     sha256: string;
+    /** The same drawing with each line arrow as its tip (`canonicalArrows`, TEACH-75 part x). */
+    sha256Arrows?: string;
   }[];
   figures: {
     lesson: string;
@@ -46,6 +49,17 @@ type Fixture = {
   }[];
 };
 const fixture = saved as unknown as Fixture;
+/**
+ * TEACH-247 part n (register diagrams-02): base4's drawing of this row set "small shaded part" over
+ * the point and leader of "large part", so a pupil could not see which part was which. The label now
+ * moves clear and both points show; no other row's drawing changes.
+ */
+const LABEL_CLASH_ROWS = new Set(
+  saved.rows
+    .filter((r) => /y2-maths-halves-quarters/.test(r.lesson) && r.slide === 3)
+    .filter((r) => r.specs.some((s) => (s as { kind?: unknown }).kind === "labelled-diagram"))
+    .map((r) => `${r.lesson} slide ${r.slide}`),
+);
 
 type J = Record<string, unknown>;
 const STAGES = ["KS1", "KS2", "KS3-5"] as const;
@@ -297,20 +311,30 @@ describe("replay: saved base4 writer outputs (lab/ab 92f1b36d)", () => {
       const hit = row.specs.some((spec) => {
         const el = writerDiagramElement(spec, getTheme(row.theme), row.stage, row.rect, () => "x");
         const svg = el && svgOfDataUrl(el.src);
-        return !!svg && createHash("sha256").update(stripBuilds(svg)).digest("hex") === row.sha256;
+        // Line arrows are drawn by the arrow primitive since TEACH-75 part x: each arrow compares
+        // by its tip, and the rest of the drawing byte for byte.
+        const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+        return (
+          !!svg &&
+          (sha(stripBuilds(svg)) === row.sha256 ||
+            sha(canonicalArrows(stripBuilds(svg))) === row.sha256Arrows)
+        );
       });
       if (hit) same += 1;
       // readGraph and labels3 (TEACH-110 part e) redraw measured line graphs and particle keys on
-      // purpose: those drawings may differ from base4's, no other kind may.
+      // purpose: those drawings may differ from base4's. So may the labelled diagram whose labels
+      // clashed (TEACH-247 part n, register diagrams-02); no other kind or row may.
       else
         expect({
           row: `${row.lesson} slide ${row.slide}`,
-          redrawn: row.specs.some((s) =>
-            ["line-graph", "particles"].includes(String((s as { kind?: unknown }).kind)),
-          ),
+          redrawn:
+            LABEL_CLASH_ROWS.has(`${row.lesson} slide ${row.slide}`) ||
+            row.specs.some((s) =>
+              ["line-graph", "particles"].includes(String((s as { kind?: unknown }).kind)),
+            ),
         }).toEqual({ row: `${row.lesson} slide ${row.slide}`, redrawn: true });
     }
-    expect(same).toBeGreaterThan(fixture.rows.length - 10);
+    expect(same).toBeGreaterThan(fixture.rows.length - 10 - LABEL_CLASH_ROWS.size);
   });
   test("the writer's specs draw by code as the lab's did (D14), and every diagram asked is drawn", () => {
     const specs = fixture.figures.filter((f) => writerSpecOf(f.figure as J));

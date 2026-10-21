@@ -17,11 +17,11 @@ describe("factories", () => {
     expect(uid()).not.toBe(uid());
   });
 
-  test("newLesson: version 1, one title slide, chalk, already fitted", () => {
+  test("newLesson: version 1, one title slide, splash, already fitted", () => {
     const lesson = newLesson("T");
     expect(lesson.version).toBe(1);
     expect(lesson.title).toBe("T");
-    expect(lesson.themeId).toBe("chalk");
+    expect(lesson.themeId).toBe("splash");
     expect(lesson.slides).toHaveLength(1);
     expect(lesson.slides[0]?.kind).toBe("title");
     expect(lesson.id).toHaveLength(10);
@@ -42,7 +42,7 @@ describe("factories", () => {
   });
 
   test("cloneSlide gives fresh ids and re-points question references", () => {
-    const slide = newSlide("multiple-choice", "chalk");
+    const slide = newSlide("multiple-choice", "splash");
     const copy = cloneSlide(slide);
     expect(copy.id).not.toBe(slide.id);
     const oldIds = new Set(slide.elements.map((e) => e.id));

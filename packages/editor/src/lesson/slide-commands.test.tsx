@@ -30,7 +30,7 @@ const KEY = ["library", "documents", "L1"] as const;
 notifyManager.setScheduler((callback) => callback());
 
 function seeded(): Lesson {
-  const lesson = newLesson("Test", "chalk");
+  const lesson = newLesson("Test", "splash");
   lesson.slides.push(newSlide("content", lesson.themeId), newSlide("starter", lesson.themeId));
   return lesson;
 }
@@ -100,7 +100,7 @@ describe("slide commands", () => {
 
   test("insert slide after places a built slide and makes it active", () => {
     const t = setup();
-    const built = newSlide("multiple-choice", "chalk");
+    const built = newSlide("multiple-choice", "splash");
     act(() => {
       insertSlideAfter(t.deps(), t.idAt(2), built);
     });

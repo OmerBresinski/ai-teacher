@@ -11,7 +11,7 @@ import {
 import { isWholeNumber, fmtNum, partWhole } from '../kit/batch-A.js';
 
 export const meta = {
-  id: 'number_bonds', name: 'Number bonds', kind: 'info', version: 1,
+  id: 'number_bonds', name: 'Number bonds', kind: 'info', version: 2,
   subjects: ['Maths'],
   years: ['Reception', 'Y1', 'Y2'],
   teaches: 'A whole number splits into parts that add back to the whole, in either order, and each bond gives addition and subtraction facts.',
@@ -174,8 +174,8 @@ export function render(root, P0, ctx) {
   // each part has its own word (“part”, or a name such as “red”), so it travels with its part
   const wordPart = i => txt(P, `label:part${i}`, 'part');
   // the list of every bond takes the stage on its own: the bond and its facts step aside for it
-  const stage = kA != null ? `${kA}-${kA + 1}:off` : null;
-  const gRep = h('g', { c: stage }, root), gText = h('g', { c: stage }, root);
+  // the list is the last stage and stays: the lesson ends on every bond, not back on the one bond
+  const gRep = h('g', { hide: kA }, root), gText = h('g', { hide: kA }, root);
   // the words keep full strength to the end: dimmed grey text is lost on a projector
   const labSoft = null;
   // swap: the swapped copy shows only at the swap build; the original steps aside meanwhile
@@ -232,6 +232,9 @@ export function render(root, P0, ctx) {
     const wc = pw.whole.g.querySelector('circle');
     wc.style.setProperty('fill', 'var(--paper)'); wc.style.setProperty('stroke', 'var(--ink-2)');
     pw.whole.text.style.setProperty('fill', 'var(--ink)');
+    // the whole comes first with its parts still empty (dashed), so the whole is seen alone before it is split
+    if (kS != null && kS > kW) pw.parts.forEach(q => { const c = q.g.querySelector('circle');
+      gRep.insertBefore(h('circle', { cx: c.getAttribute('cx'), cy: c.getAttribute('cy'), r: c.getAttribute('r'), fill: 'none', stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-rule)', 'stroke-dasharray': '10 8', s: kW, hide: kS }, null), pw.g); });
     pw.parts.forEach((q, i) => {
       const c = q.g.querySelector('circle'); c.style.setProperty('fill', PC[i].pale); c.style.setProperty('stroke', PC[i].fill);
       q.text.style.setProperty('fill', PC[i].text);
@@ -475,6 +478,10 @@ export function render(root, P0, ctx) {
     };
     const gs = h('g', { s: kS, cls: 'wipe' }, gRep), gsi = h('g', { c: kSw != null ? off(kSw) : null }, gs);
     A.forEach(s => seg(gsi, s)); labels(gsi, A);
+    // bonds in tens: the parts bar is marked in tens, so the tens can be counted in each part
+    const st = stepOf(w);
+    if (st > 1 && w % st === 0 && w / st <= 20) for (let j = 1; j < w / st; j++) { const x = x0 + BW * j * st / w;
+      h('line', { x1: x, x2: x, y1: y2 + 8, y2: y2 + BH - 8, stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-hair)', 'stroke-dasharray': '4 5' }, gs); }
     if (kSw != null) {
       const B = segs(M.swapped);
       B.forEach(s => { const src = A.find(a => a.k === s.k); const fg = h('g', { s: kSw, hide: kSw + 1, cls: 'fly', vars: { '--fx': `${src.x - s.x}px`, '--fy': '0px' } }, gRep); swapSets.push(fg); seg(fg, s); });
@@ -506,7 +513,7 @@ export function render(root, P0, ctx) {
 
   /* ---- every bond of the whole, in order: on its own, large, centred (not in the summary) ---- */
   if (ALL && kA != null) {
-    const gT = h('g', { s: kA, hide: NB }, root);
+    const gT = h('g', { s: kA }, root);
     // the heading first (it may wrap to two lines), then as many rows per column as fit under it
     const numW = measure(gText, fmtNum(w), LBL);
     const st = stepOf(w);
@@ -519,22 +526,30 @@ export function render(root, P0, ctx) {
       const t = headAt(mw);
       if (t.lines.length === 2 && t.cls === head.cls && !/…$/.test(t.lines[1])) { head.el.remove(); head = t; } else { t.el.remove(); break; }
     }
-    const rowsN = w / st + 1, lh = 58, maxRows = Math.max(1, Math.floor((GRID.bottom - GRID.top - 10 - head.h - 30) / lh));
+    // the list keeps the bond's words: "whole" under the whole number, "part + part" over each column of rows
+    const TAG = 'ts-tiny', tagH = 34;
+    const rowsN = w / st + 1, lh = 58, maxRows = Math.max(1, Math.floor((GRID.bottom - GRID.top - 10 - head.h - 30 - tagH) / lh));
     const colsN = Math.ceil(rowsN / maxRows), perCol = Math.ceil(rowsN / colsN);
     const sumW = measure(gText, `${fmtNum(w)} + ${fmtNum(w)}`, 'ts-num');
     const CG = 110, colW = sumW + CG, blockW = colsN * colW - CG;
-    const blockH = head.h + 30 + perCol * lh;
+    const blockH = head.h + 30 + tagH + perCol * lh;
     const top = GRID.top + 10 + Math.max(0, (GRID.bottom - GRID.top - 10 - blockH) / 2);
     // the heading lines end flush right, so the whole number follows the last line as its next
     // word, at the heading's size, and never sits inside the heading
     const numCls = head.cls === LBL ? LBL : 'ts-tiny', numW2 = measure(gText, fmtNum(w), numCls), gapW = head.cls === LBL ? 12 : 8;
     const hx = CX - (head.w + gapW + numW2) / 2;
     hg.setAttribute('transform', `translate(${hx + head.w} ${top + 32})`);
-    computed(T(gT, hx + head.w + gapW, top + 32 + (head.lines.length - 1) * head.lh, fmtNum(w), numCls, { fill: 'var(--ink)', s: kA, cls: 'rise' }), 'whole');
-    const y0 = top + head.h + 30;
+    const numX = hx + head.w + gapW, numY = top + 32 + (head.lines.length - 1) * head.lh;
+    computed(T(gT, numX, numY, fmtNum(w), numCls, { fill: 'var(--ink)', s: kA, cls: 'rise' }), 'whole');
+    const tagWhole = T(gT, numX + numW2 / 2, numY + 30, wordWhole, TAG, { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kA, cls: 'rise' });
+    editable(tagWhole, 'text.label:whole');
+    const y0 = top + head.h + 30 + tagH;
     if (y0 + perCol * lh > GRID.bottom + 8) ctx.warn('The list of bonds is too tall for the slide.');
     if (blockW > zW) ctx.warn('The list of bonds is too wide for the slide.');
     const mine = n === 2 ? M.parts[0] : -1, lx0 = CX - blockW / 2;
+    for (let col = 0; col < colsN; col++) {
+      factText(gT, lx0 + col * colW, y0 - 8, [{ s: wordPart(0), k: 0 }, { s: ' + ' }, { s: wordPart(1), k: 1 }], TAG, { 'text-anchor': 'start', s: kA, cls: 'rise' });
+    }
     for (let a = 0; a <= w; a += st) {
       const col = Math.floor(a / st / perCol), rw = (a / st) % perCol;
       const x = lx0 + col * colW, y = y0 + rw * lh + 40;

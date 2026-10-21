@@ -2,7 +2,7 @@
  * Choice answers drawn as cards or boxes (TEACH-101 part b): the words that name one, and which
  * ones the reveal marks. Kept out of `kit.ts` so print chunks that never show a choice stay small.
  */
-import type { Slide, SlideElement } from "@tj/domain/documents";
+import type { Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { richDocToPlainText as docToPlainText } from "@tj/domain/documents";
 
 /**
@@ -41,12 +41,17 @@ export function choiceMarks(
 ): { id: string; state: "dim" | "right" }[] {
   const q = slide.question;
   if (q?.type !== "multiple-choice") return [];
+  // A one-step reveal (the hinge): the one click fades every wrong option and marks the right one.
+  const shown = revealAnswer || (q.oneStep === true && answerProgress > 0);
   const wrong = q.options.filter((o) => !o.correct);
   return q.options.flatMap((o): { id: string; state: "dim" | "right" }[] => {
     const el = slide.elements.find((e) => e.id === o.id);
     if (!el || el.type === "option") return [];
-    if (o.correct) return revealAnswer ? [{ id: o.id, state: "right" as const }] : [];
+    if (o.correct) return shown ? [{ id: o.id, state: "right" as const }] : [];
     const rank = wrong.findIndex((w) => w.id === o.id);
-    return revealAnswer || answerProgress > rank ? [{ id: o.id, state: "dim" as const }] : [];
+    return shown || answerProgress > rank ? [{ id: o.id, state: "dim" as const }] : [];
   });
 }
+
+/** The hinge's letter key (`@tj/slides` templates/hinge.ts `HINGE_NAMES.key`): a hinge slide. */
+export const HINGE_KEY = "Hinge key";

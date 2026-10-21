@@ -1,9 +1,17 @@
 import type { ShapeElement, ShapeKind, Theme } from "@tj/domain/documents";
 import { richDocToPlainText } from "@tj/domain/documents";
-import { DIAGRAM_NAME } from "@tj/slides";
-import { lazy, type ReactNode, Suspense } from "react";
+import { type BadgeGlyph, badgeGlyph, DIAGRAM_NAME, isBadgeBox } from "@tj/slides";
+import { markHexagonPoints, notchPoints, octagonPoints } from "@tj/slides/marks";
+import { surfacesOf } from "@tj/slides/surfaces";
+import { type CSSProperties, lazy, type ReactNode, Suspense } from "react";
 import { isDocEmpty } from "../../text/static";
-import { type ElementViewProps, resolveTextStyle, textTypeCss } from "./kit";
+import {
+  badgeGlyphType,
+  badgeGlyphVars,
+  type ElementViewProps,
+  resolveTextStyle,
+  textTypeCss,
+} from "./kit";
 import { RichText } from "./RichText";
 import { SlotPlaceholder } from "./SlotPlaceholder";
 import { TextShell } from "./TextView";
@@ -36,10 +44,20 @@ export function shapeNode(kind: ShapeKind, w: number, h: number, radius: number)
       return <polygon points={starPoints(w, h)} />;
     case "speech":
       return <path d={speechPath(w, h, radius)} />;
+    case "hexagon":
+      return <polygon points={fracPoints(markHexagonPoints(), w, h)} />;
+    case "octagon":
+      return <polygon points={fracPoints(octagonPoints(w, h), w, h)} />;
+    case "notch":
+      return <polygon points={fracPoints(notchPoints(w, h, radius), w, h)} />;
     default:
       return <rect x={0} y={0} width={w} height={h} />;
   }
 }
+
+/** Box-fraction points (`@tj/slides/marks`) as an SVG `points` list in the box's units. */
+const fracPoints = (pts: readonly { x: number; y: number }[], w: number, h: number): string =>
+  pts.map((p) => `${p.x * w},${p.y * h}`).join(" ");
 
 function starPoints(w: number, h: number): string {
   const cx = w / 2;
@@ -96,12 +114,43 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
   const strokeWidth = element.strokeWidth ?? (stroke ? 2 : 0);
   const fill = element.fill ?? theme.colors.surface;
   const radius = shapeRadius(element, theme);
+  // A theme's field grain (Scrapbook's kraft, THEMING.md look table) over a painted field: the
+  // slot's dot colour, under the label and never hit-tested. Decoration only; PPTX drops it.
+  const grain = element.name?.startsWith("surface:field-b")
+    ? surfacesOf(theme).roles["field-b"].pattern
+    : undefined;
 
   const label = element.doc && !isDocEmpty(element.doc) ? element.doc : null;
   const r = resolveTextStyle(
     { align: "center", valign: "middle", padding: 12, ...element.textStyle },
     theme,
     element.textStyle?.preset ?? "body",
+  );
+
+  // A badge's numeral or letter centres on its cap height, not its line box (`badgeGlyph`):
+  // no padding, line height 1, an unconditional centre (`safe center` drops an overflowing line
+  // to the top), the line trimmed to the cap band and the glyph's own ink offset. Only a badge
+  // (a small, near-square shape) gets it, and only at rest: while the label is being typed into
+  // it keeps the plain layout, so the editor's tree never changes under the caret.
+  const glyphOf = (editing: boolean) =>
+    label && !editing && isBadgeBox(element.w, element.h)
+      ? badgeGlyph(richDocToPlainText(label), r.fontFamily, r.fontSize)
+      : null;
+  const shellStyle = (glyph: BadgeGlyph | null): CSSProperties =>
+    glyph
+      ? { position: "relative", padding: 0, justifyContent: "center" }
+      : { position: "relative" };
+  const typeCss = (glyph: BadgeGlyph | null) =>
+    glyph ? badgeGlyphType(textTypeCss(r), r.fontSize) : textTypeCss(r);
+  const glyph = glyphOf(false);
+  /** One wrapper element whatever the label: only its class and style change. */
+  const glyphWrap = (glyph: BadgeGlyph | null, children: ReactNode, style?: CSSProperties) => (
+    <div
+      className={glyph ? "tj-badge-glyph" : undefined}
+      style={glyph ? badgeGlyphVars(glyph) : style}
+    >
+      {children}
+    </div>
   );
 
   /** The shape, drawn either with its label, with the editor in the label's place, or bare. */
@@ -115,6 +164,16 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         aria-hidden
         focusable="false"
       >
+        {element.shadow ? (
+          // An offset block (Poster): the same outline in the block's colour, moved, no line.
+          <g
+            fill={element.shadow.color}
+            stroke="none"
+            transform={`translate(${element.shadow.x} ${element.shadow.y})`}
+          >
+            {shapeNode(element.shape, w, h, radius)}
+          </g>
+        ) : null}
         <g
           fill={fill}
           stroke={stroke ?? "none"}
@@ -125,15 +184,29 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
           {shapeNode(element.shape, w, h, radius)}
         </g>
       </svg>
+      {grain ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            // themes.css's grain: a 1pt dot every 9pt, in the slot's colour.
+            background: `radial-gradient(${grain} 1px, transparent 1.4px) 0 0 / 9px 9px`,
+            borderRadius: element.shape === "rect" ? 0 : radius,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
       {editor ? (
-        <TextShell r={r} mode={mode} theme={theme} style={{ position: "relative" }}>
-          {editor}
+        <TextShell r={r} mode={mode} theme={theme} style={shellStyle(null)}>
+          {glyphWrap(null, editor)}
         </TextShell>
       ) : label ? (
-        <TextShell r={r} mode={mode} theme={theme} style={{ position: "relative" }}>
-          <div style={{ width: "100%", flex: "0 0 auto" }}>
-            <RichText doc={label} style={textTypeCss(r)} />
-          </div>
+        <TextShell r={r} mode={mode} theme={theme} style={shellStyle(glyph)}>
+          {glyphWrap(glyph, <RichText doc={label} style={typeCss(glyph)} />, {
+            width: "100%",
+            flex: "0 0 auto",
+          })}
         </TextShell>
       ) : null}
     </div>
@@ -148,7 +221,7 @@ export function ShapeView({ element, theme, mode, slideId }: ElementViewProps<Sh
         doc={element.doc}
         // A shape can be given a label it never had, so the first edit seeds one.
         seedEmpty={element.doc === undefined}
-        style={{ flex: "0 0 auto", ...textTypeCss(r) }}
+        style={{ flex: "0 0 auto", ...typeCss(null) }}
         render={({ editor }) => shape(editor)}
       />
     </Suspense>

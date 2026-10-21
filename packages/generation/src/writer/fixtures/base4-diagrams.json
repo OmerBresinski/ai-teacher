@@ -25,7 +25,8 @@
         }
       ],
       "sha256": "9ffe5b4ef9f6f8b3ce7cac9df7400e73cb2a4b8ce30994c98b8902675b33624f",
-      "bytes": 4125
+      "bytes": 4125,
+      "sha256Arrows": "9ffe5b4ef9f6f8b3ce7cac9df7400e73cb2a4b8ce30994c98b8902675b33624f"
     },
     {
       "lesson": "base4-3/y12-psychology-multi-store-model",
@@ -93,7 +94,8 @@
         }
       ],
       "sha256": "3261d504431e01f2d07857cdb5cec4440dcdfd5e9023ff2655a723cd1eb07397",
-      "bytes": 2750
+      "bytes": 2750,
+      "sha256Arrows": "3261d504431e01f2d07857cdb5cec4440dcdfd5e9023ff2655a723cd1eb07397"
     },
     {
       "lesson": "base4-3/y12-psychology-multi-store-model",
@@ -135,7 +137,8 @@
         }
       ],
       "sha256": "60c75f5f2927ee80338b94019b434caa43973d35d3c80a001f254f4fcd4f2f20",
-      "bytes": 1949
+      "bytes": 1949,
+      "sha256Arrows": "28dc2a45075045f337c24c94937113d3d7a80ee476d7fbda21f3693f698b298e"
     },
     {
       "lesson": "base4-3/y8-french-my-family",
@@ -162,7 +165,8 @@
         }
       ],
       "sha256": "96626dfac746414d508d311eb748719281b0416e3425d245c5f3322f86e13917",
-      "bytes": 1733
+      "bytes": 1733,
+      "sha256Arrows": "96626dfac746414d508d311eb748719281b0416e3425d245c5f3322f86e13917"
     },
     {
       "lesson": "base4-3/y8-french-my-family",
@@ -351,7 +355,8 @@
         }
       ],
       "sha256": "74345e49d2992779a2e8519051d85cdebeb352bfb3ca307c3f0240d956b212ce",
-      "bytes": 5840
+      "bytes": 5840,
+      "sha256Arrows": "74345e49d2992779a2e8519051d85cdebeb352bfb3ca307c3f0240d956b212ce"
     },
     {
       "lesson": "base4-3/y8-french-my-family",
@@ -398,7 +403,8 @@
         }
       ],
       "sha256": "7d455f52992dea807332eaa5bec7f6746185d2d103e78f04c1ee70a202051014",
-      "bytes": 2793
+      "bytes": 2793,
+      "sha256Arrows": "5d5836802c11c70a14aa4ee7d065b4e6a95732dcc7b7e6623d0744de5f84bee9"
     },
     {
       "lesson": "base4-3/y2-maths-halves-quarters",
@@ -434,7 +440,8 @@
         }
       ],
       "sha256": "2a628864146e4adaf6b99db36ef11afd03643daa4a4ef1582575374608b1125b",
-      "bytes": 3391
+      "bytes": 3391,
+      "sha256Arrows": "2a628864146e4adaf6b99db36ef11afd03643daa4a4ef1582575374608b1125b"
     },
     {
       "lesson": "base4-3/y2-maths-halves-quarters",
@@ -470,7 +477,8 @@
         }
       ],
       "sha256": "0a3a963c5cca10b84e79adf5260a9543971ca725fd15f2981896a37f5836127f",
-      "bytes": 3615
+      "bytes": 3615,
+      "sha256Arrows": "0a3a963c5cca10b84e79adf5260a9543971ca725fd15f2981896a37f5836127f"
     },
     {
       "lesson": "base4-3/y2-maths-halves-quarters",
@@ -559,7 +567,8 @@
         }
       ],
       "sha256": "49446c8ae4d44bbd0c2dc7ad52a917c6915e602b8f923f7fde527353c5ce9cfe",
-      "bytes": 2181
+      "bytes": 2181,
+      "sha256Arrows": "49446c8ae4d44bbd0c2dc7ad52a917c6915e602b8f923f7fde527353c5ce9cfe"
     },
     {
       "lesson": "base4-3/y2-maths-halves-quarters",
@@ -584,7 +593,8 @@
         }
       ],
       "sha256": "e68a4450ef210cf75204839a28c3b04922ef2efc4d4baa7439ae51b287a150a4",
-      "bytes": 2777
+      "bytes": 2777,
+      "sha256Arrows": "e68a4450ef210cf75204839a28c3b04922ef2efc4d4baa7439ae51b287a150a4"
     },
     {
       "lesson": "base4-3/y2-maths-halves-quarters",
@@ -609,7 +619,8 @@
         }
       ],
       "sha256": "182d0d7b3cd897786c6396b9fd7edaa122fd8795383abad3a82a3b8b58bf877c",
-      "bytes": 3287
+      "bytes": 3287,
+      "sha256Arrows": "182d0d7b3cd897786c6396b9fd7edaa122fd8795383abad3a82a3b8b58bf877c"
     },
     {
       "lesson": "base4-3/y5-maths-fractions-of-amounts",
@@ -634,7 +645,8 @@
         }
       ],
       "sha256": "ba7c6c640807a222d9fc89cfd54ef1baf26158f0e578e0316407d2a1a8757050",
-      "bytes": 4892
+      "bytes": 4892,
+      "sha256Arrows": "ba7c6c640807a222d9fc89cfd54ef1baf26158f0e578e0316407d2a1a8757050"
     },
     {
       "lesson": "base4-3/y5-maths-fractions-of-amounts",
@@ -659,7 +671,8 @@
         }
       ],
       "sha256": "e735bcd04d613075eda0ff9344e1b1191b100e086afb6be48d51b176e344729e",
-      "bytes": 5821
+      "bytes": 5821,
+      "sha256Arrows": "e735bcd04d613075eda0ff9344e1b1191b100e086afb6be48d51b176e344729e"
     },
     {
       "lesson": "base4-3/y5-maths-fractions-of-amounts",
@@ -716,7 +729,8 @@
         }
       ],
       "sha256": "4c034517b517d38f52a57ff594793504e7de0bae1c1a4da5ca10c8797462e7fb",
-      "bytes": 2173
+      "bytes": 2173,
+      "sha256Arrows": "4c034517b517d38f52a57ff594793504e7de0bae1c1a4da5ca10c8797462e7fb"
     },
     {
       "lesson": "base4-3/y5-maths-fractions-of-amounts",
@@ -758,7 +772,8 @@
         }
       ],
       "sha256": "95926ff74a1f85c7c0f993ec5ad9ae82234be1ae7d52ea41aac11bc98332c46e",
-      "bytes": 1442
+      "bytes": 1442,
+      "sha256Arrows": "95926ff74a1f85c7c0f993ec5ad9ae82234be1ae7d52ea41aac11bc98332c46e"
     },
     {
       "lesson": "base4-3/y5-maths-fractions-of-amounts",
@@ -809,7 +824,8 @@
         }
       ],
       "sha256": "e4bb11f510b8f67128a191baa5080f9dbdd860f9bbffcbfe7a727108a61b9e1e",
-      "bytes": 2124
+      "bytes": 2124,
+      "sha256Arrows": "e4bb11f510b8f67128a191baa5080f9dbdd860f9bbffcbfe7a727108a61b9e1e"
     },
     {
       "lesson": "base4-3/y11-chemistry-rates-of-reaction",
@@ -831,7 +847,8 @@
         }
       ],
       "sha256": "ffc47edbdbb44a8553dfb5d7f279232361ca5a1950193cc51836a631b9e02e1d",
-      "bytes": 1832
+      "bytes": 1832,
+      "sha256Arrows": "ffc47edbdbb44a8553dfb5d7f279232361ca5a1950193cc51836a631b9e02e1d"
     },
     {
       "lesson": "base4-3/y11-chemistry-rates-of-reaction",
@@ -1010,7 +1027,8 @@
         }
       ],
       "sha256": "8d2d4fd5180ff3d785ea933547e1e63f9b82bc1a9125956bf0226391459c0146",
-      "bytes": 2082
+      "bytes": 2082,
+      "sha256Arrows": "b5e6e32e189e7e8501d6211533bc1fbcdf2d678227daa8937a196846b0636a3d"
     },
     {
       "lesson": "base4-4/y12-psychology-multi-store-model",
@@ -1036,7 +1054,8 @@
         }
       ],
       "sha256": "0865b0c9e1555e5185019e96b641d5180e05996080ae8d9380b92c729bd7f1f3",
-      "bytes": 4003
+      "bytes": 4003,
+      "sha256Arrows": "0865b0c9e1555e5185019e96b641d5180e05996080ae8d9380b92c729bd7f1f3"
     },
     {
       "lesson": "base4-4/y12-psychology-multi-store-model",
@@ -1090,7 +1109,8 @@
         }
       ],
       "sha256": "4e77b1b60b54fad737eff600b8dbe04028b9ca51cfee90163f2471ce8cff6336",
-      "bytes": 3579
+      "bytes": 3579,
+      "sha256Arrows": "50bec67289beb906f971b2c1bd9ec9f042443242056ad2ab1ca6cff7e91202e7"
     },
     {
       "lesson": "base4-4/y12-psychology-multi-store-model",
@@ -1187,7 +1207,8 @@
         }
       ],
       "sha256": "3c051f49538b06ed2889261f6c435e0492e0bdfa47570e58efa335e1dbe7b02b",
-      "bytes": 2471
+      "bytes": 2471,
+      "sha256Arrows": "0ead0ea07c50618f44b859efbd96cecba9ac2b89acaf558dd6a03c60a0804f0d"
     },
     {
       "lesson": "base4-4/y12-psychology-multi-store-model",
@@ -1279,7 +1300,8 @@
         }
       ],
       "sha256": "6658af89ad096d8e4fbb56c247aafb8cfe5e46f2b98c5e2f5c117d62c7f2ac34",
-      "bytes": 3460
+      "bytes": 3460,
+      "sha256Arrows": "6658af89ad096d8e4fbb56c247aafb8cfe5e46f2b98c5e2f5c117d62c7f2ac34"
     },
     {
       "lesson": "base4-4/y12-psychology-multi-store-model",
@@ -1301,7 +1323,8 @@
         }
       ],
       "sha256": "4f8f8ecdf171ed2b4be2ac9c5f81fa9280ee02e7774ba8919c56f1b23ff86391",
-      "bytes": 1860
+      "bytes": 1860,
+      "sha256Arrows": "4f8f8ecdf171ed2b4be2ac9c5f81fa9280ee02e7774ba8919c56f1b23ff86391"
     },
     {
       "lesson": "base4-4/y8-french-my-family",
@@ -1327,7 +1350,8 @@
         }
       ],
       "sha256": "fa659ae6cb121948595b68b392d5081d8b5aefbfff7b0e04f9369602f080b297",
-      "bytes": 3128
+      "bytes": 3128,
+      "sha256Arrows": "fa659ae6cb121948595b68b392d5081d8b5aefbfff7b0e04f9369602f080b297"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1363,7 +1387,8 @@
         }
       ],
       "sha256": "a37a628183e5d21a63f3f010fc09623c753bb1c99c3c5325cbf4aec2aa98e9d6",
-      "bytes": 3366
+      "bytes": 3366,
+      "sha256Arrows": "a37a628183e5d21a63f3f010fc09623c753bb1c99c3c5325cbf4aec2aa98e9d6"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1444,7 +1469,8 @@
         }
       ],
       "sha256": "5a86127ad8c5d63826dc8247e7fa60bee2b432c0ccab82056860cc381e3354aa",
-      "bytes": 2219
+      "bytes": 2219,
+      "sha256Arrows": "5a86127ad8c5d63826dc8247e7fa60bee2b432c0ccab82056860cc381e3354aa"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1487,7 +1513,8 @@
         }
       ],
       "sha256": "4e464238f146bcb2558e5fdce64f4d886d9efdc6b684824884bc181f658ced12",
-      "bytes": 5290
+      "bytes": 5290,
+      "sha256Arrows": "4e464238f146bcb2558e5fdce64f4d886d9efdc6b684824884bc181f658ced12"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1512,7 +1539,8 @@
         }
       ],
       "sha256": "0e64cc438c2a573ce4ac8009dd349967af632f115b7d9b61c721ca090f07b7f3",
-      "bytes": 2741
+      "bytes": 2741,
+      "sha256Arrows": "0e64cc438c2a573ce4ac8009dd349967af632f115b7d9b61c721ca090f07b7f3"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1537,7 +1565,8 @@
         }
       ],
       "sha256": "26e34f0a8d94e31c95189032e751faf738b85d215e450913f997733a598d88bc",
-      "bytes": 2769
+      "bytes": 2769,
+      "sha256Arrows": "26e34f0a8d94e31c95189032e751faf738b85d215e450913f997733a598d88bc"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1562,7 +1591,8 @@
         }
       ],
       "sha256": "e208023ce9cfd8f06d1dd29dd444e15bb2673e35176dcd5cd540097a61e1e27b",
-      "bytes": 3251
+      "bytes": 3251,
+      "sha256Arrows": "e208023ce9cfd8f06d1dd29dd444e15bb2673e35176dcd5cd540097a61e1e27b"
     },
     {
       "lesson": "base4-4/y2-maths-halves-quarters",
@@ -1587,7 +1617,8 @@
         }
       ],
       "sha256": "a47eada9ed85de3dd07347aa88ca7e2c47cf54604a177fc75d848bc518f53b9d",
-      "bytes": 3306
+      "bytes": 3306,
+      "sha256Arrows": "a47eada9ed85de3dd07347aa88ca7e2c47cf54604a177fc75d848bc518f53b9d"
     },
     {
       "lesson": "base4-4/y5-maths-fractions-of-amounts",
@@ -1612,7 +1643,8 @@
         }
       ],
       "sha256": "89bd6defdd696c77ce72cff223b30b4f248988a46b1503410ce7ac5ec6213138",
-      "bytes": 5237
+      "bytes": 5237,
+      "sha256Arrows": "89bd6defdd696c77ce72cff223b30b4f248988a46b1503410ce7ac5ec6213138"
     },
     {
       "lesson": "base4-4/y5-maths-fractions-of-amounts",
@@ -1637,7 +1669,8 @@
         }
       ],
       "sha256": "4fafa80e6c168d5f0224794f903446d241d025db8276d7f11c272e1a45eb3a0c",
-      "bytes": 5214
+      "bytes": 5214,
+      "sha256Arrows": "4fafa80e6c168d5f0224794f903446d241d025db8276d7f11c272e1a45eb3a0c"
     },
     {
       "lesson": "base4-4/y5-maths-fractions-of-amounts",
@@ -1687,7 +1720,8 @@
         }
       ],
       "sha256": "05374930076f8e1e5dd3c1a8a9449baac13f7122a9ad86fa00c85924ea1e0911",
-      "bytes": 1901
+      "bytes": 1901,
+      "sha256Arrows": "05374930076f8e1e5dd3c1a8a9449baac13f7122a9ad86fa00c85924ea1e0911"
     },
     {
       "lesson": "base4-4/y5-maths-fractions-of-amounts",
@@ -1737,7 +1771,8 @@
         }
       ],
       "sha256": "f7b2bfa807d3e06dae3571de713400c04a5ab4ede02e10f2c74ed038ac7c4106",
-      "bytes": 1957
+      "bytes": 1957,
+      "sha256Arrows": "f7b2bfa807d3e06dae3571de713400c04a5ab4ede02e10f2c74ed038ac7c4106"
     },
     {
       "lesson": "base4-4/y5-maths-fractions-of-amounts",
@@ -1778,7 +1813,8 @@
         }
       ],
       "sha256": "5266ff5eabba7881b0dbde30c9ef351c0037d401a0f160f04283150de44862f7",
-      "bytes": 1418
+      "bytes": 1418,
+      "sha256Arrows": "5266ff5eabba7881b0dbde30c9ef351c0037d401a0f160f04283150de44862f7"
     },
     {
       "lesson": "base4-4/y5-maths-fractions-of-amounts",
@@ -1840,7 +1876,8 @@
         }
       ],
       "sha256": "0257f0fda4dd3d89c6098d55de70abf707971173e205374900abcaf3733c63f6",
-      "bytes": 2598
+      "bytes": 2598,
+      "sha256Arrows": "0257f0fda4dd3d89c6098d55de70abf707971173e205374900abcaf3733c63f6"
     },
     {
       "lesson": "base4-4/y11-chemistry-rates-of-reaction",
@@ -1925,7 +1962,8 @@
         }
       ],
       "sha256": "cf71f34c009cd2114ed26ed065faf6abdcf685cb7c7261a8f690cfbedc95b8ef",
-      "bytes": 2152
+      "bytes": 2152,
+      "sha256Arrows": "56d1d193a3167c010575284fabb3d012bc68527a64f9dd59b657655de83f8264"
     },
     {
       "lesson": "b3-r2-1/y12-psychology-multi-store-model",
@@ -1951,7 +1989,8 @@
         }
       ],
       "sha256": "a0d007435c21a5ec90e3f618e43c662ccee3606d41bd8fce5280ccc53e776ac4",
-      "bytes": 3148
+      "bytes": 3148,
+      "sha256Arrows": "a0d007435c21a5ec90e3f618e43c662ccee3606d41bd8fce5280ccc53e776ac4"
     },
     {
       "lesson": "b3-r2-1/y12-psychology-multi-store-model",
@@ -2053,7 +2092,8 @@
         }
       ],
       "sha256": "ee103fae610d99f4cd8602c9284f9863d89789a203a014516ee56f8d5daac372",
-      "bytes": 3491
+      "bytes": 3491,
+      "sha256Arrows": "7a9e35d0ffb6e636bd454f69b0a38289c8c34845103deb298e1d48d8b6cc7df9"
     },
     {
       "lesson": "b3-r2-1/y12-psychology-multi-store-model",
@@ -2083,7 +2123,8 @@
         }
       ],
       "sha256": "8b18f74931270d811cdc5bf2b3017e58a53d37a1b368a5e5d2d9020a5ac13ef9",
-      "bytes": 1386
+      "bytes": 1386,
+      "sha256Arrows": "9e7ad5ca50bd33086a6d6b12b43a1a1b74dde8b2e26b88343cea28b96c85ea7d"
     },
     {
       "lesson": "b3-r2-1/y12-psychology-multi-store-model",
@@ -2124,7 +2165,8 @@
         }
       ],
       "sha256": "8420255b4d0b34597f3e64b06240faaacaf86b970ecbb75599f0f0d02886f0f0",
-      "bytes": 1422
+      "bytes": 1422,
+      "sha256Arrows": "8420255b4d0b34597f3e64b06240faaacaf86b970ecbb75599f0f0d02886f0f0"
     },
     {
       "lesson": "b3-r2-1/y12-psychology-multi-store-model",
@@ -2171,7 +2213,8 @@
         }
       ],
       "sha256": "547c79de1a7e1f28b6a2c38225bc885a8e22c632bd47d9ed9fc8cee3588a259c",
-      "bytes": 2476
+      "bytes": 2476,
+      "sha256Arrows": "547c79de1a7e1f28b6a2c38225bc885a8e22c632bd47d9ed9fc8cee3588a259c"
     },
     {
       "lesson": "b3-r2-1/y12-psychology-multi-store-model",
@@ -2193,7 +2236,8 @@
         }
       ],
       "sha256": "f9072d1735491ec2fd865657e444de40238ce7248cf693275a5590401cdcf59b",
-      "bytes": 1845
+      "bytes": 1845,
+      "sha256Arrows": "f9072d1735491ec2fd865657e444de40238ce7248cf693275a5590401cdcf59b"
     },
     {
       "lesson": "b3-r2-1/y8-french-my-family",
@@ -2337,7 +2381,8 @@
         }
       ],
       "sha256": "97aae76868c519f9e19c2d7036ded4c08ab7200870a5c48e54c3255bbc08295a",
-      "bytes": 5270
+      "bytes": 5270,
+      "sha256Arrows": "97aae76868c519f9e19c2d7036ded4c08ab7200870a5c48e54c3255bbc08295a"
     },
     {
       "lesson": "b3-r2-1/y2-maths-halves-quarters",
@@ -2443,7 +2488,8 @@
         }
       ],
       "sha256": "f336b0ad1373ececa430a00f8768c157cde67459651db7d66367104c06cff1b9",
-      "bytes": 2286
+      "bytes": 2286,
+      "sha256Arrows": "f336b0ad1373ececa430a00f8768c157cde67459651db7d66367104c06cff1b9"
     },
     {
       "lesson": "b3-r2-1/y2-maths-halves-quarters",
@@ -2468,7 +2514,8 @@
         }
       ],
       "sha256": "8fcfd946e48b694ac783d3b5ca14a50e3015c171bf06b9456b51266aa9ea21a5",
-      "bytes": 2779
+      "bytes": 2779,
+      "sha256Arrows": "8fcfd946e48b694ac783d3b5ca14a50e3015c171bf06b9456b51266aa9ea21a5"
     },
     {
       "lesson": "b3-r2-1/y2-maths-halves-quarters",
@@ -2493,7 +2540,8 @@
         }
       ],
       "sha256": "f62f15ca0865523207c8795f92bdb0cbbc54d29f6b94ff2c316ffa9ebebe4f17",
-      "bytes": 3481
+      "bytes": 3481,
+      "sha256Arrows": "f62f15ca0865523207c8795f92bdb0cbbc54d29f6b94ff2c316ffa9ebebe4f17"
     },
     {
       "lesson": "b3-r2-1/y2-maths-halves-quarters",
@@ -2518,7 +2566,8 @@
         }
       ],
       "sha256": "9928c8edaa8a23232c63dcaff95eb28748fce04aea1ee682a1fa7b823a27b5aa",
-      "bytes": 3289
+      "bytes": 3289,
+      "sha256Arrows": "9928c8edaa8a23232c63dcaff95eb28748fce04aea1ee682a1fa7b823a27b5aa"
     },
     {
       "lesson": "b3-r2-1/y2-maths-halves-quarters",
@@ -2543,7 +2592,8 @@
         }
       ],
       "sha256": "14b77f8fdf48c319017f91e21e8ed49bfb30c28ba3b12a6266cea28b51d6aa87",
-      "bytes": 4021
+      "bytes": 4021,
+      "sha256Arrows": "14b77f8fdf48c319017f91e21e8ed49bfb30c28ba3b12a6266cea28b51d6aa87"
     },
     {
       "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
@@ -2572,7 +2622,8 @@
         }
       ],
       "sha256": "6e56ef8c4b903347deb145635d3e171722ae95eb6ae2ba14a019b89ce0a63605",
-      "bytes": 2074
+      "bytes": 2074,
+      "sha256Arrows": "6e56ef8c4b903347deb145635d3e171722ae95eb6ae2ba14a019b89ce0a63605"
     },
     {
       "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
@@ -2597,7 +2648,8 @@
         }
       ],
       "sha256": "7c6ee2596c632f451f521016358e2f29355a6bc1ecfbf3404a2c0f1f61e34aa1",
-      "bytes": 4132
+      "bytes": 4132,
+      "sha256Arrows": "7c6ee2596c632f451f521016358e2f29355a6bc1ecfbf3404a2c0f1f61e34aa1"
     },
     {
       "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
@@ -2626,7 +2678,8 @@
         }
       ],
       "sha256": "e8668f5b3eeae582af9d17f30b0c426b53beaff7af22c41be19a144a7d345067",
-      "bytes": 2082
+      "bytes": 2082,
+      "sha256Arrows": "e8668f5b3eeae582af9d17f30b0c426b53beaff7af22c41be19a144a7d345067"
     },
     {
       "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
@@ -2676,7 +2729,8 @@
         }
       ],
       "sha256": "85530a1a5ced0aa4f33136940ab3c18cf94c31c4d78c8694dce1aec98be6ca65",
-      "bytes": 1901
+      "bytes": 1901,
+      "sha256Arrows": "85530a1a5ced0aa4f33136940ab3c18cf94c31c4d78c8694dce1aec98be6ca65"
     },
     {
       "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
@@ -2722,7 +2776,8 @@
         }
       ],
       "sha256": "456fd3ab1859018e99ba36c5adc5237b9304255f8b69642683be529921f1152a",
-      "bytes": 1660
+      "bytes": 1660,
+      "sha256Arrows": "456fd3ab1859018e99ba36c5adc5237b9304255f8b69642683be529921f1152a"
     },
     {
       "lesson": "b3-r2-1/y5-maths-fractions-of-amounts",
@@ -2771,7 +2826,8 @@
         }
       ],
       "sha256": "d95e193aa3d516f2a6f8c528da26ea9386f0a074c71638ec5e8bbbdbaef1a283",
-      "bytes": 1921
+      "bytes": 1921,
+      "sha256Arrows": "d95e193aa3d516f2a6f8c528da26ea9386f0a074c71638ec5e8bbbdbaef1a283"
     },
     {
       "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
@@ -2793,7 +2849,8 @@
         }
       ],
       "sha256": "6e5f62105bbc7f102ab18bd9309d6cf0b54722559f8632118354d0c0929e6160",
-      "bytes": 1804
+      "bytes": 1804,
+      "sha256Arrows": "6e5f62105bbc7f102ab18bd9309d6cf0b54722559f8632118354d0c0929e6160"
     },
     {
       "lesson": "b3-r2-1/y11-chemistry-rates-of-reaction",
@@ -2925,7 +2982,8 @@
         }
       ],
       "sha256": "ec2da6835eb38bb6eb40af6b8fa3983b5c9205dac1f7f25336bbe0c2c9f0da60",
-      "bytes": 1585
+      "bytes": 1585,
+      "sha256Arrows": "cc08387b8e89da29c68b5ff282e826f174ea425d6da1c0b2fef2904e2d33688b"
     },
     {
       "lesson": "b3-r2-2/y12-psychology-multi-store-model",
@@ -2951,7 +3009,8 @@
         }
       ],
       "sha256": "337a1f87dc9429697f1587310e8bce05ffe958249e3a9aba7755657473d9d87a",
-      "bytes": 3819
+      "bytes": 3819,
+      "sha256Arrows": "337a1f87dc9429697f1587310e8bce05ffe958249e3a9aba7755657473d9d87a"
     },
     {
       "lesson": "b3-r2-2/y12-psychology-multi-store-model",
@@ -3006,7 +3065,8 @@
         }
       ],
       "sha256": "b120a3948f574bfaae0f5b837f76e34e814a4385acd92308a60a5e218f3c4e60",
-      "bytes": 2046
+      "bytes": 2046,
+      "sha256Arrows": "56c2b0bc9c389ef35c8ee474a2d570ea96d3f8641b8f9c29ee73b227f822d2d2"
     },
     {
       "lesson": "b3-r2-2/y12-psychology-multi-store-model",
@@ -3075,7 +3135,8 @@
         }
       ],
       "sha256": "3c13dbc7909b2c00c446f52d49910569f6f27dee917dbc635a28e75940fb0daa",
-      "bytes": 2733
+      "bytes": 2733,
+      "sha256Arrows": "3c13dbc7909b2c00c446f52d49910569f6f27dee917dbc635a28e75940fb0daa"
     },
     {
       "lesson": "b3-r2-2/y12-psychology-multi-store-model",
@@ -3097,7 +3158,8 @@
         }
       ],
       "sha256": "16f64052ba6ec1b216d43c527e356363886a1a41a276db52679a10bc6a3b42ef",
-      "bytes": 1896
+      "bytes": 1896,
+      "sha256Arrows": "16f64052ba6ec1b216d43c527e356363886a1a41a276db52679a10bc6a3b42ef"
     },
     {
       "lesson": "b3-r2-2/y8-french-my-family",
@@ -3126,7 +3188,8 @@
         }
       ],
       "sha256": "08c202d44defd6cb42d8ac9d7e7a9056965811822aa4e7ac906a7f20294b60d3",
-      "bytes": 3705
+      "bytes": 3705,
+      "sha256Arrows": "08c202d44defd6cb42d8ac9d7e7a9056965811822aa4e7ac906a7f20294b60d3"
     },
     {
       "lesson": "b3-r2-2/y2-maths-halves-quarters",
@@ -3162,7 +3225,8 @@
         }
       ],
       "sha256": "2fe1d1d6de8a91c461be07f0049f24497fc2c8d8a721c0c3e81ab174711dbb99",
-      "bytes": 3373
+      "bytes": 3373,
+      "sha256Arrows": "2fe1d1d6de8a91c461be07f0049f24497fc2c8d8a721c0c3e81ab174711dbb99"
     },
     {
       "lesson": "b3-r2-2/y2-maths-halves-quarters",
@@ -3262,7 +3326,8 @@
         }
       ],
       "sha256": "f249613874fa63f953580718f88a01da5d4680fe60ada48b795677c006281362",
-      "bytes": 3536
+      "bytes": 3536,
+      "sha256Arrows": "f249613874fa63f953580718f88a01da5d4680fe60ada48b795677c006281362"
     },
     {
       "lesson": "b3-r2-2/y2-maths-halves-quarters",
@@ -3287,7 +3352,8 @@
         }
       ],
       "sha256": "b9a7e3dfaa8c0206c41a819311e6c10b840984c7c5cda44bd3a17e1cccd1ccc8",
-      "bytes": 2741
+      "bytes": 2741,
+      "sha256Arrows": "b9a7e3dfaa8c0206c41a819311e6c10b840984c7c5cda44bd3a17e1cccd1ccc8"
     },
     {
       "lesson": "b3-r2-2/y2-maths-halves-quarters",
@@ -3312,7 +3378,8 @@
         }
       ],
       "sha256": "d9de7f2ca47654c04bd84cfafdbdb95b691da11eb186ee5de8216943870f3f86",
-      "bytes": 3127
+      "bytes": 3127,
+      "sha256Arrows": "d9de7f2ca47654c04bd84cfafdbdb95b691da11eb186ee5de8216943870f3f86"
     },
     {
       "lesson": "b3-r2-2/y2-maths-halves-quarters",
@@ -3337,7 +3404,8 @@
         }
       ],
       "sha256": "c01514464c9a8144e193a5ddcc5045d142a730328c395b58454335b4abccf1a7",
-      "bytes": 3251
+      "bytes": 3251,
+      "sha256Arrows": "c01514464c9a8144e193a5ddcc5045d142a730328c395b58454335b4abccf1a7"
     },
     {
       "lesson": "b3-r2-2/y2-maths-halves-quarters",
@@ -3362,7 +3430,8 @@
         }
       ],
       "sha256": "066babf42d0a509ac0cbb568210d98e964c7ffe5cc340a6e1ca3e78d06231727",
-      "bytes": 3320
+      "bytes": 3320,
+      "sha256Arrows": "066babf42d0a509ac0cbb568210d98e964c7ffe5cc340a6e1ca3e78d06231727"
     },
     {
       "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
@@ -3407,7 +3476,8 @@
         }
       ],
       "sha256": "f6cc568ceb4424549d20fe4552542838c8426dd7cab0de95e9733e1d2b084bc5",
-      "bytes": 1846
+      "bytes": 1846,
+      "sha256Arrows": "f6cc568ceb4424549d20fe4552542838c8426dd7cab0de95e9733e1d2b084bc5"
     },
     {
       "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
@@ -3454,7 +3524,8 @@
         }
       ],
       "sha256": "8bfeb6f189666cf4bebd24df7c2c993c66788b9bdfcc7c9b07ac61b204552e1b",
-      "bytes": 1854
+      "bytes": 1854,
+      "sha256Arrows": "8bfeb6f189666cf4bebd24df7c2c993c66788b9bdfcc7c9b07ac61b204552e1b"
     },
     {
       "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
@@ -3504,7 +3575,8 @@
         }
       ],
       "sha256": "8fa6118ad9d3f226aba50b5d5e95e3dfc89639aac21a74a6c88d6e1101261720",
-      "bytes": 2090
+      "bytes": 2090,
+      "sha256Arrows": "8fa6118ad9d3f226aba50b5d5e95e3dfc89639aac21a74a6c88d6e1101261720"
     },
     {
       "lesson": "b3-r2-2/y5-maths-fractions-of-amounts",
@@ -3555,7 +3627,8 @@
         }
       ],
       "sha256": "45da812859b804353696b5c73e6d32cce729009024c8f173b3e19b7a1e4a86ce",
-      "bytes": 2100
+      "bytes": 2100,
+      "sha256Arrows": "45da812859b804353696b5c73e6d32cce729009024c8f173b3e19b7a1e4a86ce"
     },
     {
       "lesson": "b3-r2-2/y11-chemistry-rates-of-reaction",

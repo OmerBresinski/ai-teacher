@@ -9,7 +9,7 @@ import {
 } from '../kit/index.js';
 
 export const meta = {
-  id: 'cycle_wheel', name: 'Cycle wheel', kind: 'info', version: 1,
+  id: 'cycle_wheel', name: 'Cycle wheel', kind: 'info', version: 2,
   subjects: ['RE', 'PSHE', 'Science', 'Geography', 'Design and technology', 'Art'],
   years: ['Reception', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'How things come round again: festivals and seasons through the year on their real dates, the school year, or the stages of any cycle.',
@@ -529,7 +529,8 @@ export function render(root, P, ctx) {
       const [x0, y0] = at(Rtrack, a0), [x1, y1] = at(Rtrack, a1);
       const hd = ctx.tk.head * .72; const a1b = a1 - hd / Rtrack; const [x1b, y1b] = at(Rtrack, a1b);
       const d = `M${x0.toFixed(1)} ${y0.toFixed(1)} A${Rtrack} ${Rtrack} 0 ${a1b - a0 > Math.PI ? 1 : 0} 1 ${x1b.toFixed(1)} ${y1b.toFixed(1)}`;
-      const kk = j === n - 1 ? N : bi(`st:${B.i}`);
+      // the arrow that closes the loop arrives with the last stage, not on an empty extra click
+      const kk = j === n - 1 ? bi(`st:${A.i}`) : bi(`st:${B.i}`);
       arrow(ctx, root, d, x1b, y1b, a1b + Math.PI / 2, 'var(--ink-2)', 'var(--sw-arrow)', { draw: kk, g: {} });
       void x1; void y1;
     }

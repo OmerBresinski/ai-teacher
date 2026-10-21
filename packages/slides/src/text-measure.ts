@@ -1,8 +1,10 @@
-import type { RichDoc, RichNode, TextPreset, Theme } from "@tj/domain/documents";
-import { ADVANCES } from "./font-metrics.generated";
+import type { RichDoc, RichNode, TextPreset, TextStyle, Theme } from "@tj/domain/documents";
+import { ADVANCES, ITALIC_ADVANCES } from "./font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "./fonts";
 import type { MeasureInput, Measurer } from "./reflow";
-import { type ResolvedText, resolveTextStyle } from "./text-style";
+import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
+import { fontFloor, keyStageOf } from "./themes";
+import THEME_TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
  * Line counts without a DOM, for the recipes that have to know how tall a text will be before
@@ -20,58 +22,124 @@ import { type ResolvedText, resolveTextStyle } from "./text-style";
  * which is the gap the inset exists to avoid; a short count in a teacher's edit is caught by the
  * editor's own fitting engine.
  */
-const WRAP_SLACK = 0;
+export const WRAP_SLACK = 0;
 
 const KEY_BY_STACK = new Map<string, FontKey>(
   Object.entries(FONT_STACKS).map(([key, stack]) => [stack, key as FontKey]),
 );
 
-function advancesFor(stack: string, weight: number): readonly number[] | undefined {
+function advancesFor(
+  stack: string,
+  weight: number,
+  italic = false,
+  exact500 = false,
+): readonly number[] | undefined {
   const key = KEY_BY_STACK.get(stack);
-  const table = key ? ADVANCES[key] : undefined;
+  // An italic quote face measures in its own advances when the font has them (TEACH-75 part ab).
+  const table = key ? ((italic ? ITALIC_ADVANCES[key] : undefined) ?? ADVANCES[key]) : undefined;
   if (!table) return undefined;
-  return weight >= 650 ? table[700] : weight >= 500 ? table[600] : table[400];
+  // An 800 face (Paper's and Poster's headings) reads its own advances: Lexend at 800 is about 2%
+  // wider than at 700, enough that a name measured on one line wrapped onto two in the browser and
+  // printed over the line under it (TEACH-215 part m).
+  if (weight >= 750) return table[800];
+  if (weight >= 650) return table[700];
+  // A quote run at 500 reads its own 500 advances (TEACH-75 part ab); everything else keeps the
+  // 600 table at 500, so laid-out lessons stay byte-identical.
+  if (weight >= 500 && weight < 550 && exact500 && table[500]) return table[500];
+  return weight >= 500 ? table[600] : table[400];
 }
 
 /** Width, in ems, of an unknown character: the widest capital, to stay on the safe side. */
 const FALLBACK_EM = 1;
 
-function emWidth(word: string, advances: readonly number[] | undefined, tracking: number): number {
+/**
+ * The advance of one character in ems: the single place a character's width is read. Characters
+ * outside printable ASCII have no table entry and count as `FALLBACK_EM`, which is why Arabic and
+ * Hebrew lines over-count about 2x (RTL-ALL). The RTL fix (layout batch A7) replaces this
+ * fallback with real metrics here; every count, line lookup and run rect follows.
+ */
+export function charAdvance(code: number, advances: readonly number[] | undefined): number {
+  // A mark that joins its neighbour takes no room: combining marks, ZWJ/ZWNJ, variation
+  // selectors, skin tones and emoji tags, so "é" (e + U+0301) or a ZWJ family is one glyph wide.
+  if (
+    (code >= 0x300 && code < 0x370) ||
+    (code >= 0x200c && code < 0x200e) ||
+    (code >= 0x20d0 && code < 0x2100) ||
+    (code >= 0xfe00 && code < 0xfe10) ||
+    (code >= 0x1f3fb && code < 0x1f400) ||
+    (code >= 0xe0020 && code < 0xe0080)
+  )
+    return 0;
+  const adv = advances && code >= 32 && code <= 126 ? advances[code - 32] : undefined;
+  return (adv === undefined ? FALLBACK_EM * 1000 : adv) / 1000;
+}
+
+export function emWidth(
+  word: string,
+  advances: readonly number[] | undefined,
+  tracking: number,
+): number {
   let w = 0;
-  for (const ch of word) {
-    const code = ch.codePointAt(0) ?? 0;
-    const adv = advances && code >= 32 && code <= 126 ? advances[code - 32] : undefined;
-    w += (adv === undefined ? FALLBACK_EM * 1000 : adv) / 1000 + tracking;
-  }
+  for (const ch of word) w += charAdvance(ch.codePointAt(0) ?? 0, advances) + tracking;
   return w;
 }
 
-/** The resolved type a line count depends on. */
-type LineType = Pick<ResolvedText, "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing">;
-
-/** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
-const isSpace = (code: number, ch: string): boolean =>
-  code === 32 || (code >= 9 && code <= 13) || (code > 127 && /\s/.test(ch));
-
-/** A run of text and whether it is set bold (a chunk's label). */
-type Run = { text: string; bold?: boolean };
-
-/** How many lines `text` takes in a column `room` points wide, set in `type`. */
-function linesIn(text: string, type: LineType, room: number): number {
-  return linesOfRuns([{ text }], type, room);
+/**
+ * One line of `text` in a face, in points: the font's own advances plus `trackingEm` per letter
+ * (the cover kicker plate is sized from it, not from an average letter width).
+ */
+export function runWidth(
+  text: string,
+  stack: string,
+  weight: number,
+  size: number,
+  trackingEm = 0,
+): number {
+  return emWidth(text, advancesFor(stack, weight), trackingEm) * size;
 }
 
 /**
- * How many lines a paragraph's runs take in a column `room` points wide. A bold run is measured at
- * 700, as the renderer sets it: a chunk's bold label is wider than the same words at 400. A hard break ("\n") starts a new line.
+ * One line of `text` in a face at its own advances, a 500 weight reading the 500 table when the
+ * face has one (`runWidth` keeps the 600 table at 500 so laid-out lessons stay byte-identical).
+ * The worked example's equation sides measure with it, as the gold's `meas()` reads the DOM.
+ */
+export function exactWidth(
+  text: string,
+  stack: string,
+  weight: number,
+  size: number,
+  italic = false,
+): number {
+  return emWidth(text, advancesFor(stack, weight, italic, true), 0) * size;
+}
+
+/** The resolved type a line count depends on. */
+export type LineType = Pick<
+  ResolvedText,
+  "fontFamily" | "fontWeight" | "fontSize" | "letterSpacing"
+> & {
+  /** The stack a `font: "quote"` run is set in (the theme's quote face); body when absent. */
+  quoteFamily?: string;
+  /** The quote face is set italic (`quoteFaceOf(theme).italic`): measured in its italic advances. */
+  quoteItalic?: boolean;
+};
+
+/** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
+export const isSpace = (code: number, ch: string): boolean =>
+  code === 32 || (code >= 9 && code <= 13) || (code > 127 && /\s/.test(ch));
+
+/** A run of text: set bold (a chunk's label) and/or in the quote face (`font: "quote"`). */
+export type Run = { text: string; bold?: boolean; quote?: boolean; node?: RichNode };
+
+/**
+ * How many lines a paragraph's runs take in a column `room` points wide: the one wrap rule. A bold
+ * run is measured at 700, as the renderer sets it: a chunk's bold label is wider than the same
+ * words at 400; a quote run in the theme's quote face. A hard break ("\n") starts a new line. A
+ * word wider than the column breaks inside itself. `./text-lines.ts` (`breakRuns`) walks the same
+ * rule and also records where each line starts; `text-measure.test.ts` holds the two to one count.
  */
 function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
-  const regular = advancesFor(type.fontFamily, type.fontWeight);
-  // The bold table only when a run is bold: most text has none.
-  const bold = runs.some((r) => r.bold)
-    ? advancesFor(type.fontFamily, Math.max(700, type.fontWeight))
-    : regular;
-  const tracking = type.letterSpacing.endsWith("em") ? Number.parseFloat(type.letterSpacing) : 0;
+  const t = tablesFor(runs, type);
   const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
   let lines = 1;
   let used = 0;
@@ -93,8 +161,8 @@ function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number
     word = 0;
   };
   for (const run of runs) {
-    const advances = run.bold ? bold : regular;
-    const spaceWidth = emWidth(" ", advances, tracking);
+    const advances = t.of(run);
+    const spaceWidth = emWidth(" ", advances, t.tracking);
     for (const ch of run.text) {
       const code = ch.codePointAt(0) ?? 0;
       if (code === 10) {
@@ -104,14 +172,37 @@ function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number
       } else if (isSpace(code, ch)) {
         place();
         space = spaceWidth;
-      } else {
-        const adv = advances && code >= 32 && code <= 126 ? advances[code - 32] : undefined;
-        word += (adv === undefined ? FALLBACK_EM * 1000 : adv) / 1000 + tracking;
-      }
+      } else word += charAdvance(code, advances) + t.tracking;
     }
   }
   place();
   return Math.max(1, lines);
+}
+
+/** The advance tables a paragraph's runs need (bold and quote only when a run is), and tracking. */
+export function tablesFor(runs: readonly Run[], type: LineType) {
+  const regular = advancesFor(type.fontFamily, type.fontWeight);
+  const bold = runs.some((r) => r.bold)
+    ? advancesFor(type.fontFamily, Math.max(700, type.fontWeight))
+    : regular;
+  const quoteFamily = type.quoteFamily ?? type.fontFamily;
+  const qi = type.quoteItalic ?? false;
+  const quote = runs.some((r) => r.quote)
+    ? advancesFor(quoteFamily, type.fontWeight, qi, true)
+    : regular;
+  const quoteBold = runs.some((r) => r.quote && r.bold)
+    ? advancesFor(quoteFamily, Math.max(700, type.fontWeight), qi, true)
+    : quote;
+  const tracking = type.letterSpacing.endsWith("em") ? Number.parseFloat(type.letterSpacing) : 0;
+  return {
+    tracking,
+    of: (run: Run) => (run.quote ? (run.bold ? quoteBold : quote) : run.bold ? bold : regular),
+  };
+}
+
+/** How many lines `text` takes in a column `room` points wide, set in `type`. */
+function linesIn(text: string, type: LineType, room: number): number {
+  return linesOfRuns([{ text }], type, room);
 }
 
 /**
@@ -148,6 +239,42 @@ export function lineWidth(text: string, preset: TextPreset, theme: Theme, weight
   return emWidth(shown, advances, tracking) * r.fontSize + 2 * r.padding;
 }
 
+/**
+ * The theme's quote face and whether it is set italic: its v2 age profile's (`v2Profile(theme).fonts.quote`), a v1 theme's body
+ * face. Read from `theme.v2` here rather than through `./theme-v2`, which would put the v2 profile
+ * tables in every chunk that fits text; `text-measure.test.ts` holds the two equal on every theme.
+ */
+export function quoteFaceOf(theme: Theme): { family: string; italic: boolean } {
+  const v2 = theme.v2;
+  const stage = keyStageOf(theme) ?? "";
+  const want = /^(eyfs|ks1)$/i.test(stage) ? 0 : /^(ks[345]|post16)$/i.test(stage) ? 2 : 1;
+  // `v2Profile`'s nearest supported age: the wanted one, then by distance, the younger on a tie.
+  const order = [want, want - 1, want + 1, want - 2, want + 2];
+  for (const i of order) {
+    const age = (["early", "primary", "secondary"] as const)[i];
+    const p = age && v2?.supports.includes(age) ? v2.ages[age] : undefined;
+    const family = p && FONT_STACKS[p.fonts.quote as FontKey];
+    if (p && family) return { family, italic: p.quoteStyle === "italic" };
+  }
+  return { family: theme.fonts.body, italic: false };
+}
+
+/**
+ * The face a `font: "math"` run (a maths variable) is set in: a theme's own tokens `math-face` and
+ * `math-style`, else Source Serif 4 italic, the worked gold's `.v` in every round 5 theme (C11,
+ * THEME-AUDIT 18 Oct: the variable is set in italic as in print, never the theme's upright face).
+ */
+export function mathFaceOf(theme: Theme): { family: string; italic: boolean } {
+  const tk = (THEME_TOKENS as Record<string, Record<string, string>>)[theme.id];
+  const own = tk?.["math-face"] ? FONT_STACKS[tk["math-face"] as FontKey] : undefined;
+  return own
+    ? { family: own, italic: tk?.["math-style"] === "italic" }
+    : { family: FONT_STACKS.sourceSerif, italic: true };
+}
+
+/** The family a `font: "quote"` run is measured and drawn in. */
+export const quoteFamilyOf = (theme: Theme): string => quoteFaceOf(theme).family;
+
 /*
  * The headless ruler (TEACH-28): the `Measurer` the fitting engine (`./reflow.ts`) takes, built
  * on `linesIn` instead of the DOM, so `materialiseSlide` can fit a slide before anything renders
@@ -160,14 +287,20 @@ export function lineWidth(text: string, preset: TextPreset, theme: Theme, weight
  * `slide.css`: `.td-rt p, li, ul, ol { margin-bottom: 0.35em }`, `ul { padding-left: 1.2em }`,
  * `ol { padding-left: 1.45em }` (the number's disc and a clear gap before the words).
  */
-const BLOCK_GAP_EM = 0.35;
-const LIST_INDENT_EM = 1.2;
-const ORDERED_INDENT_EM = 1.45;
+export const BLOCK_GAP_EM = 0.35;
+export const LIST_INDENT_EM = 1.2;
+export const ORDERED_INDENT_EM = 1.45;
 
-/** A block's text as runs, each bold or not, a hard break as "\n". */
-function runsOf(node: RichNode, bold = false): Run[] {
+/** A block's text as runs (bold, quote face, run attributes), a hard break as "\n". */
+export function runsOf(node: RichNode, bold = false): Run[] {
   const b = bold || !!node.marks?.some((m) => m.type === "bold");
-  if (node.type === "text") return [{ text: node.text ?? "", bold: b }];
+  if (node.type === "text") {
+    // A maths variable is measured in the quote advances (a single serif glyph: the nearest table).
+    const quote = node.marks?.some(
+      (m) => m.type === "textStyle" && (m.attrs?.font === "quote" || m.attrs?.font === "math"),
+    );
+    return [{ text: node.text ?? "", bold: b, quote, node }];
+  }
   if (node.type === "hardBreak") return [{ text: "\n" }];
   return (node.content ?? []).flatMap((n) => runsOf(n, b));
 }
@@ -205,17 +338,105 @@ export const measureHeadless =
   (input: MeasureInput): number => {
     const r = resolveTextStyle(input.style, theme, input.preset, input.role);
     const fontSize = input.fontSize ?? r.fontSize;
-    const type: LineType = { ...r, fontSize };
+    const type: LineType = {
+      ...r,
+      fontSize,
+      quoteFamily: quoteFamilyOf(theme),
+      quoteItalic: quoteFaceOf(theme).italic,
+    };
     const upper = r.textTransform === "uppercase";
     const doc = upper ? upperDoc(input.doc) : input.doc;
     const { lines, gaps } = blocksOf(doc.content ?? [], type, input.width - input.inset);
     return lines * fontSize * r.lineHeight + gaps * BLOCK_GAP_EM * fontSize + input.chrome;
   };
 
-function upperDoc(doc: RichDoc): RichDoc {
+export function upperDoc(doc: RichDoc): RichDoc {
   const up = (node: RichNode): RichNode =>
     node.type === "text"
       ? { ...node, text: (node.text ?? "").toUpperCase() }
       : { ...node, content: node.content?.map(up) };
   return { ...doc, content: doc.content?.map(up) };
+}
+
+/**
+ * Width a fitted box keeps spare. Measured in Chromium (Studio, 51pt): the ruler set "system today"
+ * on one 300pt line that the browser broke, so a fit is measured 6% narrower than the box.
+ */
+const FIT_CUSHION = 0.94;
+
+type FixedText = { doc: RichDoc; w: number; h: number; style?: Partial<TextStyle> };
+
+/** How a fixed-height box fits: its stored size, its floor, and the height it needs at a size. */
+function fitPlan(el: FixedText, theme: Theme) {
+  const style = el.style ?? {};
+  if (style.autoHeight !== false || style.autoFit === false) return undefined;
+  const preset: TextPreset = style.preset ?? "body";
+  const r = resolveTextStyle(style, theme, preset);
+  const measure = measureHeadless(theme);
+  const pad = 2 * r.padding;
+  const need = (fontSize: number, width = el.w) =>
+    measure({ doc: el.doc, width, style, preset, fontSize, inset: pad, chrome: pad });
+  // Display type (a title, a subtitle) may come down to the heading's projector floor (26pt,
+  // SPEC §7) rather than be cut: a smaller title is still read from the back of the room.
+  const display = preset === "title" || preset === "subtitle";
+  const floor = Math.min(
+    r.fontSize,
+    floorBelow(theme, preset),
+    display ? fontFloor("heading") : Number.POSITIVE_INFINITY,
+  );
+  return { size: r.fontSize, floor, need };
+}
+
+/**
+ * The size a fixed-height text box is drawn at so its words stay inside it, or `undefined` when
+ * they already fit at the stored size. A box the generator sized exactly to its words (the title
+ * slide's title stands on the foot of its box, `templates/index.ts`) has no room for one more line,
+ * so a teacher's edit that adds a word ran out of the top of the box and the first line was cut off
+ * (TEACH-75 part o). The type steps down 1pt at a time, never under the role's floor (`floorBelow`,
+ * UX ruling 91; display type down to the heading's 26pt). Words that do not fit even at the floor
+ * get a taller box from `growFixedText`. `autoFit: false` opts out, and an auto-height box grows
+ * instead, so it is never fitted here. The renderer and the PPTX export both draw at this size.
+ */
+export function fittedFontSize(el: FixedText, theme: Theme): number | undefined {
+  const plan = fitPlan(el, theme);
+  if (!plan || plan.need(plan.size) <= el.h + 1) return undefined;
+  for (let size = Math.floor(plan.size) - 1; size > plan.floor; size--) {
+    if (plan.need(size, el.w * FIT_CUSHION) <= el.h) return size;
+  }
+  return plan.floor;
+}
+
+/** Top of the room a grown box may rise into, in slide points. */
+const GROW_TOP = 24;
+
+/**
+ * Gives a fixed-height text box whose words do not fit even at the floor the height they need, so
+ * nothing is clipped (TEACH-75 part o). A bottom-anchored box (the title) rises into the free room
+ * above it first, down to `GROW_TOP`; the rest of the growth goes downward and pushes the elements
+ * below it that share its column (the subtitle) down by the same amount. Boxes that fit, at their
+ * own size or a fitted one, are returned as they are. Top-level elements only.
+ */
+export function growFixedText<
+  E extends { type: string; x: number; y: number; w: number; h: number },
+>(elements: readonly E[], theme: Theme): E[] {
+  let out = elements as E[];
+  for (let i = 0; i < out.length; i++) {
+    const el = out[i] as E;
+    if (el.type !== "text") continue;
+    const text = el as unknown as E & FixedText;
+    const plan = fitPlan(text, theme);
+    if (!plan || fittedFontSize(text, theme) !== plan.floor) continue;
+    const delta = Math.ceil(plan.need(plan.floor, el.w * FIT_CUSHION) - el.h);
+    if (delta <= 0) continue;
+    const bottom = text.style?.valign === "bottom" || text.style?.valign === "middle";
+    const up = bottom ? Math.max(0, Math.min(delta, el.y - GROW_TOP)) : 0;
+    const down = delta - up;
+    const foot = el.y + el.h;
+    out = out.map((o, j) => {
+      if (j === i) return { ...o, y: o.y - up, h: o.h + delta };
+      const below = o.y >= foot - 1 && o.x < el.x + el.w && o.x + o.w > el.x;
+      return down > 0 && below ? { ...o, y: o.y + down } : o;
+    });
+  }
+  return out;
 }

@@ -85,6 +85,20 @@
       "when": 1790950583862,
       "tag": "0011_magic_link_sends",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791670438087,
+      "tag": "0012_bank_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792510710544,
+      "tag": "0013_generation_debug",
+      "breakpoints": true
     }
   ]
 }

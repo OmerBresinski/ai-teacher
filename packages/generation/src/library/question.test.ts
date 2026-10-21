@@ -41,12 +41,13 @@ const hasNumber = (words: string[], n: number) =>
   words.some((w) => new RegExp(`(^|[^\\d.])${n}([^\\d.]|$)`).test(w));
 
 describe("a library model on a question slide", () => {
-  test("equal_groups, one half of 16: opens on the counters and rings, the 8 only at the reveal", async () => {
+  test("equal_groups, one half of 16: opens on the counters, the rings follow, the 8 only at the reveal", async () => {
     const P = await params("equal_groups", { groups: 2, size: 8, division: "sharing" });
     const step = await questionStep("equal_groups", P);
     expect(step).toBeDefined();
     const d = await renderLibraryModel("equal_groups", P, { step });
-    expect(d.builds === 0).toBe(true);
+    // equal_groups v2 says the whole amount ("16 counters") on its own first frame, so the rings are a build
+    expect(d.builds).toBeGreaterThan(0);
     expect(hasRevealPart(d.svg)).toBe(true);
     const s = seen(d.svg);
     expect(s.openMarks).toBeGreaterThan(16); // never an empty box: the 16 counters and the rings
@@ -61,6 +62,17 @@ describe("a library model on a question slide", () => {
     expect(svgAtBuild(d.svg, 0, { answer: true, motion: false })).toContain(
       '[data-reveal="1"][data-reveal]{opacity:1}',
     );
+  });
+
+  test("equal_groups, 3 groups of 5: the opening total line does not give the 15 away", async () => {
+    const P = await params("equal_groups", { groups: 3, size: 5, division: "none" });
+    const step = await questionStep("equal_groups", P);
+    expect(step).toBeDefined();
+    const d = await renderLibraryModel("equal_groups", P, { step });
+    expect(hasRevealPart(d.svg)).toBe(true);
+    const s = seen(d.svg);
+    expect(hasNumber(s.open, 15)).toBe(false);
+    expect(hasNumber(s.reveal, 15)).toBe(true);
   });
 
   test("bar_model, 3/5 of 40: opens on the bar and what is known, the answer 24 only at the reveal", async () => {

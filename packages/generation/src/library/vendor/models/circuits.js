@@ -11,7 +11,7 @@ import {
 import { apparatus, circuit, currentDots } from '../kit/batch-E.js';
 
 export const meta = {
-  id: 'circuits', name: 'Electrical circuits', kind: 'scene', version: 1,
+  id: 'circuits', name: 'Electrical circuits', kind: 'scene', version: 2,
   subjects: ['Science'],
   years: ['Y4', 'Y6'],
   teaches: 'A bulb lights only in a complete loop with a cell; switches open and close the loop, metals conduct, and more cells or fewer bulbs make a bulb brighter.',
@@ -503,12 +503,14 @@ export function render(root, P, ctx) {
     const v = brk.o === 'v', L = 26;
     h('rect', v ? { x: brk.x - 12, y: brk.y - L, width: 24, height: 2 * L, fill: 'var(--bg)' } : { x: brk.x - L, y: brk.y - 12, width: 2 * L, height: 24, fill: 'var(--bg)' }, bg);
     for (const s of [-1, 1]) h('circle', { cx: v ? brk.x : brk.x + s * L, cy: v ? brk.y + s * L : brk.y, r: 6, fill: pic ? 'var(--ink-2)' : 'var(--ink)' }, bg);
-    if (M.cells > 0) ring(brk.x, brk.y, 38, kWire);
+    // v2: the gap is drawn with the wires; the ring and its name arrive on the build that explains it
+    const kGap = b.off != null ? b.off : kWire;
+    if (M.cells > 0) ring(brk.x, brk.y, 38, kGap);
     // the label sits inside the loop, next to the ring, well away from the slide edge; it is drawn at the
     // part-label size and fits the inside of the loop
     const vb = res.vb, S = res.S, inner = (vb.h - 70) * S;
-    const opts = v ? { anchor: brk.s < 0 ? 'start' : 'end', laneW: (vb.w - 110) * S, maxLines: f => inner / (28 * f), edit: 'text.label:break', a: { s: kWire, cls: 'rise' } }
-      : { anchor: 'middle', laneW: (vb.w - 80) * S, maxLines: f => (vb.h - 110) * S / (28 * f), edit: 'text.label:break', a: { s: kWire, cls: 'rise' } };
+    const opts = v ? { anchor: brk.s < 0 ? 'start' : 'end', laneW: (vb.w - 110) * S, maxLines: f => inner / (28 * f), edit: 'text.label:break', a: { s: kGap, cls: 'rise' } }
+      : { anchor: 'middle', laneW: (vb.w - 80) * S, maxLines: f => (vb.h - 110) * S / (28 * f), edit: 'text.label:break', a: { s: kGap, cls: 'rise' } };
     const bgl = h('g', {}, L1);
     const { tb, f } = fitLabel(ctx, bgl, txt(P, 'label:break', 'not joined'), opts);
     const n = tb.lines.length, ax = v ? brk.x - brk.s * 50 : brk.x, ay = v ? brk.y : (brk.s < 0 ? brk.y + 70 : brk.y - 50);
@@ -573,7 +575,7 @@ export function render(root, P, ctx) {
     if (!colR.ok) ctx.warn('circuits: the materials list runs below the slide');
   } else if (M.complete) {
     dots(res, { s: b.current });
-    light(res, L1, M.b1, { s: b.light != null ? b.light : N });
+    light(res, L1, M.b1, { s: b.light != null ? b.light : b.current }); // v2: lights with the current, no extra summary frame
   } else if (b.off != null) {
     if (M.cells > 0 && M.layout !== 'broken' && M.sw === 'open') for (const it of res.items.filter(i => i.kind === 'switch')) ring(it.x, pic ? it.y - 8 : it.y, pic ? 62 : 46, b.off);
   }

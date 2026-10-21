@@ -247,6 +247,8 @@ describe("watch lists cover the transitive @tj/* closure (from the manifests)", 
       "packages/jobs/**",
       "packages/slides/**",
       "packages/storage/**",
+      // ADR 0041 (20 Oct 2026): not yet applied to Railway; see the PR for the one-line apply.
+      "packages/observability/**",
     ];
     expect(IMAGE_WATCH).toEqual(APPLIED_IMAGE_WATCH);
   });

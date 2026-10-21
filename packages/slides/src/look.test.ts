@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Slide, TextElement } from "@tj/domain/documents";
 import { SLIDE_H } from "@tj/domain/documents";
+import { artOf } from "./art";
 import { slideBackground } from "./background";
 import { SAFE } from "./grid";
 import { layoutSlide } from "./layouts";
@@ -65,7 +66,25 @@ describe("the lesson look", () => {
     });
   }
 
-  for (const theme of THEMES) {
+  test("paper (theme v2, no art): the cover is the deep wine with its paper ink, not the red", () => {
+    const paper = getTheme("paper");
+    const slide = materialiseSlide(
+      { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },
+      paper.id,
+      META,
+      counter(),
+    );
+    expect(slide.background?.color).toBe("#5A1530");
+    const title = slide.elements.find(
+      (e): e is TextElement => e.type === "text" && e.style.preset === "title",
+    );
+    expect(title?.style.color).toBe("#FFF6E8");
+    expect(contrastRatio("#FFF6E8", "#5A1530")).toBeGreaterThanOrEqual(7);
+  });
+
+  // Theme v2 has no art; its title takes the deep cover (TEACH-152 part b). Nor do the round 5
+  // themes without title art (TEACH-215 part c, 16 Oct 2026): they take the plain cover too.
+  for (const theme of THEMES.filter((t) => !t.v2 && (artOf(t)?.title?.length ?? 0) > 0)) {
     test(`${theme.id}: the title is a cover on the ground under the theme's title art (ruling 107)`, () => {
       const slide = materialiseSlide(
         { kind: "title", title: "Coastal erosion", subtitle: "Year 9 · Geography", factRefs: [] },
@@ -126,7 +145,7 @@ describe("the lesson look", () => {
         points: ["shield: runny lava, gentle slopes", "composite: layers of ash and lava"],
         factRefs: ["k1"],
       },
-      "chalk",
+      "studio",
       META,
       counter(),
     );
@@ -152,7 +171,7 @@ describe("the lesson look", () => {
         explanation: "Sound needs particles to pass the vibration on.",
         factRefs: ["q1"],
       },
-      "chalk",
+      "studio",
       META,
       counter(),
     );
@@ -161,10 +180,10 @@ describe("the lesson look", () => {
   });
 
   test("is idempotent: a styled slide is returned as it is", () => {
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     const slide = materialiseSlide(
       { kind: "starter", heading: "Do now", items: ["What is sediment?"], factRefs: [] },
-      "chalk",
+      "splash",
       META,
       counter(),
     );
@@ -176,13 +195,13 @@ describe("one heading size across a deck (P19-14)", () => {
   const meta = { promptVersion: "t", model: "m", at: "2026-09-27T00:00:00.000Z" };
   const headingSize = (spec: Parameters<typeof materialiseSlide>[0]) =>
     (
-      materialiseSlide(spec, "chalk", meta).elements.find((e) => e.name === HEADING_NAME) as
+      materialiseSlide(spec, "studio", meta).elements.find((e) => e.name === HEADING_NAME) as
         | TextElement
         | undefined
     )?.style.fontSize;
 
   test("a teaching slide and a one-line activity heading share the display size", () => {
-    const display = Math.round(getTheme("chalk").sizes.heading * HEADING_DISPLAY);
+    const display = Math.round(getTheme("studio").sizes.heading * HEADING_DISPLAY);
     expect(
       headingSize({
         kind: "content",

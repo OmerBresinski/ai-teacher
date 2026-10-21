@@ -1,16 +1,28 @@
 import { createDb } from "@tj/db";
 import { JobName, safeError } from "@tj/domain";
-import { type BossJob, createBoss, ensureQueues, type JobsContext, runJob } from "@tj/jobs";
+import {
+  type BossJob,
+  createBoss,
+  ensureQueues,
+  type JobsContext,
+  REAP_INTERVAL_MS,
+  reapOrphanedLocks,
+  runJob,
+} from "@tj/jobs";
 import { createWorkerDeps } from "./deps";
 import { parseEnv } from "./env";
 import { publicJobFailure } from "./job-errors";
 import {
   ANONYMOUS_CLEANUP_CRON,
   ANONYMOUS_CLEANUP_QUEUE,
+  GENERATION_DEBUG_CLEANUP_CRON,
+  GENERATION_DEBUG_CLEANUP_QUEUE,
   registry,
   runAnonymousCleanup,
+  runGenerationDebugCleanup,
 } from "./jobs";
-import { createLogger } from "./logger";
+import { createLogger, type LogTap } from "./logger";
+import { createWorkerObservability, lessonIdOf, reportJobFailure } from "./observability";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
 const SHUTDOWN_GRACE_MS = 25_000;
@@ -18,12 +30,36 @@ const SHUTDOWN_GRACE_MS = 25_000;
 const POLLING_INTERVAL_SECONDS = 0.5;
 
 const env = parseEnv();
-const logger = createLogger(env);
+// ADR 0041: every job log line is also offered to PostHog as a `gen_*` event (metadata only).
+let logTap: LogTap | undefined;
+const logger = createLogger(env, undefined, (bindings, record, msg) =>
+  logTap?.(bindings, record, msg),
+);
+// ADR 0041: PostHog (EU) error tracking and model-call metrics; a no-op without POSTHOG_API_KEY.
+const observability = createWorkerObservability(env, logger);
+if (observability.enabled) logTap = observability.captureLogLine;
+if (observability.enabled) {
+  // A crash still crashes (exit 1, as before); it is reported first, scrubbed, within the flush
+  // timeout. Registered only with a key, so dev and tests keep the runtime's own behaviour.
+  const crash = (source: string) => (error: unknown) => {
+    logger.fatal({ err: safeError(error), source }, "worker crashed");
+    observability.captureException(error, source);
+    void observability.shutdown().finally(() => process.exit(1));
+  };
+  process.on("uncaughtException", crash("uncaughtException"));
+  process.on("unhandledRejection", crash("unhandledRejection"));
+}
 
 const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
+// The debug record's own pool (Greg, 20 Oct): one connection, so a debug batch never holds a
+// connection a lesson save is waiting for.
+const debugPool = createDb(env.DATABASE_URL, { max: 1 });
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
-const deps = { ...createWorkerDeps(env, logger, unsafeDb), jobs: ctx };
+const deps = {
+  ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability),
+  jobs: ctx,
+};
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));
@@ -49,17 +85,40 @@ for (const name of Object.values(JobName)) {
     async (jobs) => {
       const results = [];
       for (const job of jobs as BossJob[]) {
+        const data = job.data as { jobId?: unknown; workspaceId?: unknown } | null;
+        const endScope =
+          typeof data?.jobId === "string"
+            ? observability.beginJob(data.jobId, {
+                job: name,
+                workspaceId: typeof data.workspaceId === "string" ? data.workspaceId : undefined,
+                lessonId: lessonIdOf(job.data),
+                capUsd: name === "lesson.worksheet" ? deps.worksheetCapUsd : deps.caps.capUsd,
+              })
+            : undefined;
+        if (typeof data?.jobId === "string") {
+          // Queue wait: from the enqueue to this pick-up (and, on a retry, from the re-queue).
+          observability.captureJobEvent(data.jobId, "gen_job", {
+            status: "picked",
+            attempt: job.retryCount,
+            queueWaitMs: Date.now() - new Date(job.createdOn).getTime(),
+          });
+        }
         const run = runJob(ctx, name, registry, job, {
           shutdown: shutdown.signal,
           logger,
           deps,
           failureMessage: publicJobFailure,
+          onFailure: (report) => reportJobFailure(observability, report),
         });
         active.set(job.id, run);
         try {
           results.push(await run);
         } finally {
           active.delete(job.id);
+          endScope?.();
+          // Sends this job's events now, in the background: never awaited, so a slow PostHog
+          // never holds the job's slot (ADR 0041).
+          void observability.flush();
         }
       }
       return results;
@@ -89,6 +148,41 @@ logger.info(
   },
   "worker registered",
 );
+
+// Greg, 20 Oct 2026: the daily delete of `generation_debug` rows past their TTL, the same shape.
+await boss.createQueue(GENERATION_DEBUG_CLEANUP_QUEUE);
+await boss.schedule(
+  GENERATION_DEBUG_CLEANUP_QUEUE,
+  GENERATION_DEBUG_CLEANUP_CRON,
+  {},
+  { tz: "UTC" },
+);
+await boss.work(GENERATION_DEBUG_CLEANUP_QUEUE, { batchSize: 1 }, async () => {
+  await runGenerationDebugCleanup({
+    sql,
+    ttlDays: env.GENERATION_DEBUG_TTL_DAYS,
+    logger: logger.child({ job: GENERATION_DEBUG_CLEANUP_QUEUE }),
+    signal: shutdown.signal,
+  });
+});
+logger.info(
+  {
+    queue: GENERATION_DEBUG_CLEANUP_QUEUE,
+    cron: GENERATION_DEBUG_CLEANUP_CRON,
+    ttlDays: env.GENERATION_DEBUG_TTL_DAYS,
+  },
+  "worker registered",
+);
+
+// TEACH-202 part g: a job that died on its last attempt (crash, OOM) never ran its `finally`;
+// once pg-boss settles it, this sweep writes its terminal event and releases its lock.
+const reaper = setInterval(() => {
+  reapOrphanedLocks(ctx, { logger: logger.child({ task: "reap-locks" }) }).catch((err) =>
+    logger.error({ err: safeError(err) }, "lock reaper failed"),
+  );
+}, REAP_INTERVAL_MS);
+reaper.unref();
+shutdown.signal.addEventListener("abort", () => clearInterval(reaper), { once: true });
 
 const server = Bun.serve({
   port: env.PORT,
@@ -142,7 +236,10 @@ async function stop(signal: string): Promise<void> {
   }
   bossState = "stopped";
   server.stop(true);
+  // Whatever is still queued for PostHog, bounded by its flush timeout (ADR 0041).
+  await observability.shutdown();
   await close();
+  await debugPool.close();
   logger.info("worker exited cleanly");
   process.exit(0);
 }

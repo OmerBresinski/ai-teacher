@@ -2,10 +2,10 @@
  * The writer's picture checks (BAKEOFF base4f, TEACH-110 part e), all on:
  *  - match6 + match6w: a several-thing picture ships only when the judge saw every thing the
  *    slide's own words name (`unmatchedItems`, `namedUnmatched`, `seenOf`);
- *  - orphan6: a fit repair that moved the only words naming a pictured thing drops the picture
- *    (`orphansAfterFit`);
- *  - keepPic: a photo dropped from an ask slide is held and fills the slide only when it ended
- *    with no visual (`asksToSee`, `heldPhotoFills`);
+ *  - orphan6: a fit repair that moved the only words naming a pictured thing drops the picture,
+ *    unless the slide asks pupils to look (`orphansAfterFit`, `asksToSee`);
+ *  - keepPic: a photo dropped by match6 is held on every slide and fills the slide only when it
+ *    ended with no visual (`heldPhotoFills`);
  *  - rerouteLists: a rewrite may not paste the lost picture's subject list (`pastedPictureList`).
  * Copied from lab/bakeoff/ab/{pics6,stage2,base4f-fixes}.ts; stage6's bank rule is not here (the
  * writer's pictures use no bank yet).

@@ -1,6 +1,12 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { DocumentSummary, LessonFacts, Worksheet } from "@tj/domain/documents";
+import {
+  DEFAULT_THEME_ID,
+  type DocumentSummary,
+  type LessonFacts,
+  liveThemeId,
+  type Worksheet,
+} from "@tj/domain/documents";
 import { starterWorksheet } from "@tj/editor/starter";
 import {
   type CreateSource,
@@ -105,10 +111,10 @@ export function WorksheetCreatePage() {
 
   function createBlank(): void {
     const remembered = readLastClass();
+    // Ruling 202: a remembered retired theme (chalk) reads as the one it renders in.
+    const wanted = remembered?.themeId ? liveThemeId(remembered.themeId) : undefined;
     const themeId =
-      remembered?.themeId && LIBRARY_THEMES.some((theme) => theme.id === remembered.themeId)
-        ? remembered.themeId
-        : (LIBRARY_THEMES[0]?.id ?? "chalk");
+      wanted && LIBRARY_THEMES.some((theme) => theme.id === wanted) ? wanted : DEFAULT_THEME_ID;
     const sheet = starterWorksheet(BLANK_TITLE, themeId);
     const subject = rememberedSubject(remembered);
     if (subject) sheet.subject = subject;

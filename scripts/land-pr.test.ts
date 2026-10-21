@@ -47,6 +47,8 @@ interface FakeOptions {
    * non-zero exit (e.g. "no checks reported"), an array is the parsed JSON rows.
    */
   requiredChecks?: Array<string | Array<{ name: string; bucket: string; state: string }>>;
+  /** The PR's head commit (default "head"). */
+  headRefOid?: string;
 }
 
 function fakeDeps(options: FakeOptions = {}): {
@@ -123,7 +125,7 @@ function fakeDeps(options: FakeOptions = {}): {
             JSON.stringify({
               mergeStateStatus: states.shift() ?? "CLEAN",
               headRefName: "chore/land-pr-script",
-              headRefOid: "head",
+              headRefOid: options.headRefOid ?? "head",
               state: "OPEN",
               isDraft: false,
             }),
@@ -352,7 +354,7 @@ Fetching deployments in omerbresinskis-projects
       ["fetch", "origin"],
       ["checkout", "chore/land-pr-script"],
       ["rebase", "origin/master"],
-      ["push", "--force-with-lease"],
+      ["push", "--force-with-lease=chore/land-pr-script:head"],
       ["checkout", "fix/next-thing"],
     ]);
   });
@@ -466,9 +468,37 @@ Fetching deployments in omerbresinskis-projects
     expect(fake.deps.now()).toBe(60_000);
   });
 
-  test("refuses a PR with merge conflicts", async () => {
-    const fake = fakeDeps({ states: ["DIRTY"] });
+  test("refuses a PR that stays DIRTY after two local rebases", async () => {
+    const fake = fakeDeps({ states: ["DIRTY", "DIRTY", "DIRTY"] });
     await expect(landPr(42, {}, fake.deps)).rejects.toThrow("merge conflicts");
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
+  });
+
+  // TEACH-106 part b: GitHub ignores the union driver on the layout registries; a local rebase
+  // applies it, so a DIRTY PR is rebased once before it is refused.
+  test("lands a DIRTY PR that a local rebase clears", async () => {
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"] });
+    await landPr(42, {}, fake.deps);
+    expect(fake.calls.git).toContainEqual(["rebase", "origin/master"]);
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(true);
+  });
+
+  test("leases the push against the head GitHub reported, and names a refused push", async () => {
+    const lease = ["push", "--force-with-lease=chore/land-pr-script:head"];
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"], failGit: [lease] });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
+      "Could not push the rebased chore/land-pr-script: the remote branch is no longer head",
+    );
+    expect(fake.calls.git).toContainEqual(lease);
+    expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
+  });
+
+  test("refuses a DIRTY PR whose local rebase conflicts, and aborts the rebase", async () => {
+    const fake = fakeDeps({ states: ["DIRTY", "CLEAN"], failGit: [["rebase", "origin/master"]] });
+    await expect(landPr(42, {}, fake.deps)).rejects.toThrow(
+      "merge conflicts a local rebase could not resolve",
+    );
+    expect(fake.calls.git).toContainEqual(["rebase", "--abort"]);
     expect(fake.calls.gh.some((args) => args[0] === "pr" && args[1] === "merge")).toBe(false);
   });
 
@@ -595,6 +625,64 @@ Fetching deployments in omerbresinskis-projects
         expect(error).toBeInstanceOf(UserFacingError);
         expect((error as UserFacingError).exitCode).toBe(ExitCode.Usage);
       }
+    }
+  });
+});
+
+const TESTED = "0123456789abcdef0123456789abcdef01234567";
+
+describe("land-pr --expect-sha (TEACH-110 part af)", () => {
+  test("merges only that head, with --match-head-commit", async () => {
+    const fake = fakeDeps({ headRefOid: TESTED });
+    const summary = await landPr(42, { expectSha: TESTED }, fake.deps);
+    expect(summary.mergedAs).toBe("abc123");
+    expect(fake.calls.gh.find((args) => args[1] === "merge")).toEqual([
+      "pr",
+      "merge",
+      "42",
+      "--squash",
+      "--delete-branch",
+      "--match-head-commit",
+      TESTED,
+    ]);
+  });
+
+  test("refuses a PR whose head is not the tested commit, before any merge", async () => {
+    const fake = fakeDeps({ headRefOid: "f".repeat(40) });
+    await expect(landPr(42, { expectSha: TESTED }, fake.deps)).rejects.toThrow(
+      `not the tested ${TESTED}`,
+    );
+    expect(fake.calls.gh.some((args) => args[1] === "merge")).toBe(false);
+  });
+
+  test("refuses to rebase a BEHIND or DIRTY PR", async () => {
+    for (const status of ["BEHIND", "DIRTY"]) {
+      const fake = fakeDeps({ headRefOid: TESTED, states: [status, "CLEAN"] });
+      await expect(landPr(42, { expectSha: TESTED }, fake.deps)).rejects.toThrow(
+        "--expect-sha never rebases",
+      );
+      expect(fake.calls.git.some((args) => args[0] === "rebase")).toBe(false);
+      expect(fake.calls.gh.some((args) => args[1] === "merge")).toBe(false);
+    }
+  });
+
+  test("without the flag the merge is unchanged", async () => {
+    const fake = fakeDeps();
+    await landPr(42, {}, fake.deps);
+    expect(fake.calls.gh.find((args) => args[1] === "merge")).toEqual([
+      "pr",
+      "merge",
+      "42",
+      "--squash",
+      "--delete-branch",
+    ]);
+  });
+
+  test("parses a full SHA and rejects a short or non-hex one", () => {
+    expect(parseLandPrArgs(["42", "--expect-sha", TESTED]).options.expectSha).toBe(TESTED);
+    expect(parseLandPrArgs(["42"]).options.expectSha).toBeUndefined();
+    for (const bad of ["0123456", "g".repeat(40)]) {
+      expect(() => parseLandPrArgs(["42", "--expect-sha", bad])).toThrow(UserFacingError);
     }
   });
 });

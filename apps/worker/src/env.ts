@@ -39,14 +39,19 @@ export const EnvSchema = z
     /** Plan on the frontier class from this year group up (TEACH-259); unset keeps every Plan call `standard`. */
     AI_PLAN_FRONTIER_FROM_YEAR: z.coerce.number().int().min(1).max(13).optional(),
     /**
-     * Which planner plans a new lesson (TEACH-93, ADR 0033): `objectives-first` (default, decision
-     * 25–26 Sept 2026: the objectives call, then the facts waves in the generate job) or `legacy`
-     * (skeleton + facts calls). A lesson already planned keeps the planner its stamp names whatever
-     * this says.
+     * Which planner plans a new lesson (TEACH-93, ADR 0033): `writer` (default from 20 Oct 2026,
+     * Greg: the objectives call, then the lesson writer in the generate job), `objectives-first`
+     * (the objectives call, then the facts waves) or `legacy` (skeleton + facts calls), both kept
+     * for rollback. A lesson already planned keeps the planner its stamp names whatever this says.
      */
-    AI_LESSON_PLANNER: z.enum(PLANNERS).default("objectives-first"),
+    AI_LESSON_PLANNER: z.enum(PLANNERS).default("writer"),
     /** A finished lesson above this cost logs `lesson cost above target` (TEACH-93); never a stop. */
-    AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.03),
+    AI_LESSON_COST_WARN_USD: z.coerce.number().nonnegative().default(0.12),
+    /**
+     * Days a lesson's `generation_debug` rows are kept (Greg, 20 Oct 2026); the worker's daily
+     * `generation.debug-cleanup` cron deletes older ones.
+     */
+    GENERATION_DEBUG_TTL_DAYS: z.coerce.number().int().min(1).default(30),
     /**
      * Every model call runs at this reasoning effort (TEACH-72). Unset or blank: `low`, the
      * shipped setting (decision 25–26 Sept 2026, SHIP-H-PLAN §3 item 9).
@@ -64,9 +69,27 @@ export const EnvSchema = z
      * slot routed to generation keeps its placeholder and no generation call is made.
      */
     IMAGE_GENERATION_DAILY_CAP_USD: z.coerce.number().nonnegative().default(5),
+    /**
+     * TEACH-84 part b: `on` lets the writer planner's picture director reuse judged pictures from
+     * the shared library (`bank_images`) and store the pictures its judge passes. `off` (default)
+     * keeps today's behaviour: every picture is searched or generated afresh, nothing is stored.
+     * Needs `OPENAI_API_KEY` (the request embeddings); without it the library stays off.
+     */
+    PICTURE_LIBRARY_REUSE: z.enum(["off", "on"]).default("off"),
+    // --- Observability (ADR 0041) ------------------------------------------------------------
+    /**
+     * PostHog project API key (`phc_…`): job errors and model-call metrics, metadata only. Unset
+     * or blank: nothing is sent (dev, tests and CI).
+     */
+    POSTHOG_API_KEY: optionalString,
+    /** PostHog ingestion host. Unset: `https://eu.i.posthog.com` (EU cloud, ADR 0041). */
+    POSTHOG_HOST: optionalString.pipe(z.url({ protocol: /^https?$/ }).optional()),
     // --- test-only: the scripted fake in place of Bedrock (ADR 0025 §22) --------------------
     AI_FAKE_SCRIPT: z.enum(["pipeline"]).optional(),
     AI_FAKE_DELAY_MS: z.coerce.number().int().nonnegative().default(0),
+    // Live writing P0: a recorded writer run (a replay fixture folder) the fake streams at the
+    // recorded pace, for the writer planner (`AI_LESSON_PLANNER=writer`). Needs AI_FAKE_SCRIPT.
+    AI_FAKE_WRITER_REPLAY: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.OPENAI_API_KEY && !env.AWS_BEARER_TOKEN_BEDROCK) {
@@ -74,6 +97,13 @@ export const EnvSchema = z
         code: "custom",
         path: ["OPENAI_API_KEY"],
         message: "required in production unless AWS_BEARER_TOKEN_BEDROCK is set (ADR 0031)",
+      });
+    }
+    if (env.AI_FAKE_WRITER_REPLAY !== undefined && env.AI_FAKE_SCRIPT !== "pipeline") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AI_FAKE_WRITER_REPLAY"],
+        message: "the writer replay answers through the fake: set AI_FAKE_SCRIPT=pipeline",
       });
     }
     if (env.NODE_ENV === "production" && env.AI_FAKE_SCRIPT !== undefined) {

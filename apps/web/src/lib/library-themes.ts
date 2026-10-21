@@ -1,5 +1,5 @@
 /**
- * The New dialog's theme picker: the editor's ten themes (ADR 0021; the catalogue itself lives in
+ * The New dialog's theme picker: the editor's sixteen themes (ADR 0021; the catalogue itself lives in
  * `@tj/slides`, and `library-themes.test.ts` checks this table agrees with it) with the shell's
  * own "Primary / Secondary / Calm / Bold" filter chips. A literal so the dialog's chunk does not
  * carry the catalogue.
@@ -14,32 +14,18 @@ export type LibraryTheme = {
 
 export const LIBRARY_THEMES: LibraryTheme[] = [
   {
-    id: "chalk",
-    name: "Chalk & Cream",
-    swatch: "#FAF4E6",
-    ink: "#2C2A24",
-    tags: ["Primary", "Calm"],
+    id: "paper",
+    name: "Paper",
+    swatch: "#FFFAF4",
+    ink: "#22152B",
+    tags: ["Primary", "Secondary", "Calm"],
   },
   {
-    id: "playground",
-    name: "Playground",
-    swatch: "#FFF6DA",
-    ink: "#2B2118",
-    tags: ["Primary", "Bold"],
-  },
-  {
-    id: "crayon",
-    name: "Crayon Box",
-    swatch: "#FFFDF7",
-    ink: "#232120",
-    tags: ["Primary", "Bold"],
-  },
-  {
-    id: "splash",
-    name: "Splash",
-    swatch: "#EDF8FC",
-    ink: "#10252F",
-    tags: ["Primary", "Bold"],
+    id: "poster",
+    name: "Poster",
+    swatch: "#FFF4E2",
+    ink: "#1B1B2F",
+    tags: ["Primary", "Secondary", "Bold"],
   },
   {
     id: "treehouse",
@@ -51,16 +37,51 @@ export const LIBRARY_THEMES: LibraryTheme[] = [
   {
     id: "reading-room",
     name: "Reading Room",
-    swatch: "#F4EFE6",
+    swatch: "#F8F8F5",
     ink: "#22201C",
     tags: ["Secondary", "Calm"],
   },
   {
-    id: "studio",
-    name: "Studio",
-    swatch: "#F7F9FB",
-    ink: "#0F172A",
-    tags: ["Secondary", "Calm"],
+    id: "storytime",
+    name: "Storytime",
+    swatch: "#FFFCF5",
+    ink: "#1E2A3A",
+    tags: [],
+  },
+  {
+    id: "scrapbook",
+    name: "Scrapbook",
+    swatch: "#FBF8F1",
+    ink: "#23201C",
+    tags: ["Primary"],
+  },
+  {
+    id: "calm",
+    name: "Calm",
+    swatch: "#F6F6F2",
+    ink: "#1E2226",
+    tags: ["Calm"],
+  },
+  {
+    id: "geometric",
+    name: "Geometric",
+    swatch: "#FFFFFF",
+    ink: "#0E1B33",
+    tags: ["Secondary"],
+  },
+  {
+    id: "beacon",
+    name: "Beacon",
+    swatch: "#FFFDF2",
+    ink: "#0E0E0E",
+    tags: ["Primary", "Bold"],
+  },
+  {
+    id: "crayon",
+    name: "Crayon Box",
+    swatch: "#FFFDF7",
+    ink: "#232120",
+    tags: ["Primary", "Bold"],
   },
   {
     id: "exam-hall",
@@ -70,17 +91,44 @@ export const LIBRARY_THEMES: LibraryTheme[] = [
     tags: ["Secondary", "Calm"],
   },
   {
-    id: "night-lab",
-    name: "Night Lab",
-    swatch: "#131519",
-    ink: "#ECEDEF",
-    tags: ["Secondary", "Bold"],
-  },
-  {
-    id: "beacon",
-    name: "Beacon",
-    swatch: "#FFFDF2",
-    ink: "#0E0E0E",
+    id: "playground",
+    name: "Playground",
+    swatch: "#FFF6DA",
+    ink: "#2B2118",
     tags: ["Primary", "Bold"],
   },
+  {
+    id: "splash",
+    name: "Splash",
+    swatch: "#EDF8FC",
+    ink: "#10252F",
+    tags: ["Primary", "Bold"],
+  },
+  {
+    id: "studio",
+    name: "Studio",
+    swatch: "#F7F9FB",
+    ink: "#0F172A",
+    tags: ["Secondary", "Calm"],
+  },
+  {
+    id: "dark-slate",
+    name: "Slate",
+    swatch: "#1E232B",
+    ink: "#E4E7EB",
+    tags: [],
+  },
+  {
+    id: "dark-ember",
+    name: "Ember",
+    swatch: "#1B1B1E",
+    ink: "#EDEDEF",
+    tags: [],
+  },
 ];
+
+/**
+ * The New dialog's preselected theme: Paper (Greg, decision 35 B, 20 Oct 2026). Only a blank
+ * lesson starts here; a written lesson keeps the theme its writer picked.
+ */
+export const NEW_DIALOG_DEFAULT_THEME_ID = "paper";

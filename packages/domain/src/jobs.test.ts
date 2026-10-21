@@ -4,6 +4,7 @@ import {
   AiPingPayloadSchema,
   CASCADE_MAX_FACTS,
   isTerminalJobEvent,
+  JOB_EPHEMERAL_EVENT_TYPES,
   JOB_TERMINAL_EVENT_TYPES,
   JobCompletedEventSchema,
   type JobEvent,
@@ -519,5 +520,67 @@ describe("JOB_TERMINAL_EVENT_TYPES", () => {
     expect(isTerminalJobEvent({ type: "queued", ...base })).toBe(false);
     expect(isTerminalJobEvent({ type: "started", ...base })).toBe(false);
     expect(isTerminalJobEvent({ type: "progress", ...base, progress: {} })).toBe(false);
+  });
+});
+
+describe("slide-draft events (ADR 0039)", () => {
+  const slide = {
+    id: "s3",
+    kind: "content",
+    elements: [
+      {
+        id: "d-Heading-0",
+        type: "text",
+        x: 64,
+        y: 46,
+        w: 832,
+        h: 50,
+        doc: {
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text: "Hea" }] }],
+        },
+        style: { preset: "heading", fontSize: 44 },
+      },
+    ],
+    notes: "",
+  };
+  const event = {
+    type: "slide-draft",
+    jobId,
+    workspaceId,
+    at,
+    draft: { index: 2, slideId: "s3", slide },
+  };
+
+  test("a draft event parses, is not terminal and is ephemeral", () => {
+    const parsed = JobEventSchema.parse(event) as JobEvent;
+    expect(parsed.type).toBe("slide-draft");
+    expect(isTerminalJobEvent(parsed)).toBe(false);
+    expect(JobEventType.options).toContain("slide-draft");
+    expect(JOB_EPHEMERAL_EVENT_TYPES).toEqual(["slide-draft"]);
+    expect(JOB_TERMINAL_EVENT_TYPES as readonly string[]).not.toContain("slide-draft");
+  });
+
+  test("final is optional and boolean; unknown fields and a bad slide are refused", () => {
+    expect(
+      JobEventSchema.safeParse({ ...event, draft: { ...event.draft, final: true } }).success,
+    ).toBe(true);
+    expect(
+      JobEventSchema.safeParse({ ...event, draft: { ...event.draft, final: "yes" } }).success,
+    ).toBe(false);
+    expect(JobEventSchema.safeParse({ ...event, extra: 1 }).success).toBe(false);
+    expect(JobEventSchema.safeParse({ ...event, draft: { ...event.draft, seq: 1 } }).success).toBe(
+      false,
+    );
+    expect(
+      JobEventSchema.safeParse({ ...event, draft: { ...event.draft, index: -1 } }).success,
+    ).toBe(false);
+    expect(
+      JobEventSchema.safeParse({ ...event, draft: { ...event.draft, slideId: "" } }).success,
+    ).toBe(false);
+    const dup = { ...slide, elements: [slide.elements[0], slide.elements[0]] };
+    expect(
+      JobEventSchema.safeParse({ ...event, draft: { ...event.draft, slide: dup } }).success,
+    ).toBe(false);
   });
 });

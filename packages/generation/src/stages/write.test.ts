@@ -4,6 +4,7 @@ import type { AgeBand, Lesson } from "@tj/domain/documents";
 import pino from "pino";
 import { sampleBriefLesson } from "../testing";
 import type { PipelineDeps } from "../types";
+import { withActivityMenu } from "../writer/activities";
 import { writerRoute } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { contractSystem } from "../writer/contract";
@@ -12,7 +13,7 @@ import fixture from "../writer/fixtures/activities/y1-animals.json" with { type:
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
 import { runWriter } from "../writer/stage";
 import { writerObjectivesCall } from "./objectives";
-import { stageOf, writerBrief, writtenTitle } from "./write";
+import { slideRange, stageOf, withQueuedWorksheet, writerBrief, writtenTitle } from "./write";
 
 /*
  * Sixth-form lessons carry `ageBand: "post16"` (`deriveAgeBand`, Years 12–13). The writer used
@@ -52,6 +53,58 @@ describe("the writer's key stage", () => {
     expect(writerBrief(year12()).keyStage).toBe("ks5");
     expect(writerBrief(year12()).year).toBe(12);
   });
+
+  test("ruling 201: the exit ticket is on the slides unless a worksheet was queued", () => {
+    const withWorksheet = (worksheet: boolean | undefined): Lesson => {
+      const lesson = year12();
+      return { ...lesson, brief: { topic: "Memory", durationMin: 60, worksheet } };
+    };
+    expect(writerBrief(withWorksheet(true)).exitTicketOnSlides).toBe(false);
+    expect(writerBrief(withWorksheet(false)).exitTicketOnSlides).toBe(true);
+    // A lesson confirmed before the field existed had no worksheet queued with it.
+    expect(writerBrief(withWorksheet(undefined)).exitTicketOnSlides).toBe(true);
+  });
+
+  describe("ruling 201: the worksheet flag holds only when its job was created", () => {
+    const asked = (): Lesson => ({
+      ...year12(),
+      brief: { topic: "Memory", durationMin: 60, worksheet: true },
+    });
+    const deps = (queued?: boolean) => {
+      const calls: number[] = [];
+      const d = {
+        logger: pino({ level: "silent" }),
+        ...(queued === undefined
+          ? {}
+          : {
+              worksheetQueued: async () => {
+                calls.push(1);
+                return queued;
+              },
+            }),
+      } as unknown as PipelineDeps;
+      return { d, calls };
+    };
+
+    test("the worksheet request failed: the exit ticket goes on the slides", async () => {
+      const lesson = await withQueuedWorksheet(asked(), deps(false).d);
+      expect(lesson.brief?.worksheet).toBe(false);
+      expect(writerBrief(lesson).exitTicketOnSlides).toBe(true);
+    });
+
+    test("the worksheet job exists: the exit ticket stays on the worksheet", async () => {
+      const lesson = await withQueuedWorksheet(asked(), deps(true).d);
+      expect(lesson.brief?.worksheet).toBe(true);
+      expect(writerBrief(lesson).exitTicketOnSlides).toBe(false);
+    });
+
+    test("no worksheet asked for: nothing is looked up", async () => {
+      const { d, calls } = deps(true);
+      const none = { ...asked(), brief: { topic: "Memory", durationMin: 60, worksheet: false } };
+      expect(await withQueuedWorksheet(none, d)).toBe(none);
+      expect(calls).toEqual([]);
+    });
+  });
 });
 
 describe("a Year 12 lesson's requests", () => {
@@ -70,9 +123,15 @@ describe("a Year 12 lesson's requests", () => {
         throw new Error("no answers in this run");
       },
     };
-    await runWriter({ brief, objectives: fixture.objectives, services });
+    // The fixture predates `close` (TEACH-110 part ab): its exit ticket is on the worksheet.
+    await runWriter({
+      brief: { ...brief, exitTicketOnSlides: false },
+      objectives: fixture.objectives,
+      services,
+    });
     const P = writerBundle();
-    expect(writer?.system).toBe(contractSystem(P.systemKS3_5));
+    // Activities are on by default (TEACH-101 part e): the KS3-5 text carries the KS3-5 menu.
+    expect(writer?.system).toBe(withActivityMenu(contractSystem(P.systemKS3_5), "KS3-5"));
     expect(writer?.user).toContain("Year group: Year 12 (ks5)");
     expect(writer?.user).not.toContain("(ks3)");
     const pupil = chats.find((c) => c.name === "pupil_objectives");
@@ -157,5 +216,18 @@ describe("the lesson's title after the writer", () => {
   test("the heading is trimmed, its whitespace collapsed and cut to the title limit", () => {
     expect(writtenTitle(created(), "  The   heart\n")).toBe("The heart");
     expect(writtenTitle(created(), "x".repeat(120))).toHaveLength(80);
+  });
+});
+
+// Ruling 261 (TEACH-110 part ae): the writer plans near a range's low end, so the schema's maximum
+// must leave room for a split to add one or two slides; an exact count stays exact.
+describe("the slide range leaves room for splits", () => {
+  for (const slideTier of ["quick", "standard", "detailed"] as const)
+    test(`${slideTier}: a plan at the minimum may add two slides`, () => {
+      const r = slideRange({ slideTier });
+      expect(r.min + 2).toBeLessThanOrEqual(r.max);
+    });
+  test("an exact slide count is not a range", () => {
+    expect(slideRange({ slideCount: 10 })).toEqual({ min: 10, max: 10 });
   });
 });

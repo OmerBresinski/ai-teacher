@@ -15,7 +15,7 @@ import { DropTrigger, SliderRow } from "./shared";
 
 afterEach(cleanup);
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 
 /** A lesson whose first slide carries one element of each type at known spots. */
 function chromeLesson(): Lesson {

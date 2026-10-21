@@ -1,5 +1,7 @@
 import type { CalloutKind, TextPreset, Theme } from "@tj/domain/documents";
+import { DEFAULT_THEME_ID, liveThemeId } from "@tj/domain/documents";
 import { FONT_STACKS } from "./fonts";
+import { PAPER_V2 } from "./theme-v2-paper";
 
 /**
  * Ten classroom themes (look/themes, 26 Sept 2026): four clean (Studio, Exam Hall, Night Lab,
@@ -42,36 +44,7 @@ function type(stops: Stops) {
 }
 
 const BASE: Theme[] = [
-  {
-    id: "chalk",
-    name: "Chalk & Cream",
-    suits: "The default. KS2, and any class with dyslexic readers.",
-    tags: ["dyslexia", "low-stimulation"],
-    colors: {
-      background: "#FAF4E6",
-      surface: "#FFFBF0",
-      ink: "#2C2A24",
-      muted: "#6E6656",
-      accent: "#A94A18",
-      accent2: "#4A5D8C",
-      onAccent: "#FAF4E6",
-      line: "#E7DCC4",
-      correct: "#2F6B44",
-      incorrect: "#A83A2E",
-    },
-    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
-    ...type([
-      [52, 1.1],
-      [44, 1.14],
-      [30, 1.2],
-      [24, 1.55],
-      [20, 1.55],
-      [14, 1.25],
-    ]),
-    weights: { title: 600, heading: 600, body: 400 },
-    titleTracking: "-0.01em",
-    radius: 14,
-  },
+  // Chalk & Cream was retired (UX ruling 202); `getTheme` renders its lessons as Splash.
   {
     id: "playground",
     name: "Playground",
@@ -196,7 +169,7 @@ const BASE: Theme[] = [
       correct: "#245F28",
       incorrect: "#B3401F",
     },
-    fonts: { title: FONT_STACKS.literata, body: FONT_STACKS.nunito },
+    fonts: { title: FONT_STACKS.figtree, body: FONT_STACKS.nunito },
     ...type([
       [52, 1.08],
       [44, 1.12],
@@ -216,19 +189,19 @@ const BASE: Theme[] = [
     suits: "KS3 to KS5 English, history and RE. Serif titles on warm paper.",
     tags: ["low-stimulation"],
     colors: {
-      background: "#F4EFE6",
-      surface: "#FFFCF6",
+      background: "#F8F8F5",
+      surface: "#FFFFFF",
       ink: "#22201C",
       muted: "#5F584D",
       // Library green: its own colour, not Exam Hall's navy or Chalk's rust.
-      accent: "#2C5A4D",
+      accent: "#1F5A45",
       accent2: "#7A3B2E",
       onAccent: "#F4EFE6",
-      line: "#DDD3C1",
+      line: "#D9D9D2",
       correct: "#2F6B44",
       incorrect: "#9A3B2E",
     },
-    fonts: { title: FONT_STACKS.sourceSerif, body: FONT_STACKS.schibsted },
+    fonts: { title: FONT_STACKS.outfit, body: FONT_STACKS.schibsted },
     ...type([
       [56, 1.04],
       [46, 1.1],
@@ -362,6 +335,270 @@ const BASE: Theme[] = [
     titleTracking: "0em",
     radius: 6,
   },
+  {
+    // Theme v2 (TEACH-152 part b; UX rulings 211, 212, 259): the golds' warm paper, ink headings
+    // at the gold's weight with one accent word, and one red accent family. The v2 layouts read `v2` through `v2Profile`/`v2Colors`
+    // (`theme-v2.ts`); the rest of the product reads the v1 fields below like any theme.
+    id: "paper",
+    name: "Paper",
+    suits:
+      "Every age. Warm paper, white icon medals and one accent; type, shapes and fonts tune to the age.",
+    tags: [],
+    colors: {
+      background: "#FFFAF4",
+      surface: "#FFFFFF",
+      ink: "#22152B",
+      heading: "#22152B",
+      muted: "#5E5066",
+      accent: "#D7263D",
+      accent2: "#1F5C9E",
+      onAccent: "#FFFFFF",
+      line: "#EFE6D8",
+      correct: "#2E7D4F",
+      incorrect: "#B3261E",
+    },
+    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 800, heading: 800, body: 400 },
+    titleTracking: "-0.03em",
+    radius: 13,
+    v2: PAPER_V2,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "poster",
+    name: "Poster",
+    suits: "KS2 and KS3. Bold blocks: a full-width title band, square badges and offset cards.",
+    tags: [],
+    colors: {
+      background: "#FFF4E2",
+      surface: "#FFFFFF",
+      ink: "#1B1B2F",
+      heading: "#1B1B2F",
+      muted: "#3B3C52",
+      accent: "#B8360F",
+      accent2: "#014580",
+      onAccent: "#FFF4E2",
+      line: "#E2D3BA",
+      correct: "#1C7E37",
+      incorrect: "#D3213A",
+    },
+    // Round 5 (themes5.css): Public Sans 800 at -0.015em replaced round 4's wide Archivo and
+    // round 2's Bricolage, which read as "AI" (Greg, 215k review item 43).
+    fonts: { title: FONT_STACKS.publicSans, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 800, heading: 800, body: 400 },
+    titleTracking: "-0.015em",
+    radius: 0,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "storytime",
+    name: "Storytime",
+    suits: "KS1. Soft and friendly: rounded shapes and warm colours, Lexend throughout.",
+    tags: ["early-learners"],
+    colors: {
+      background: "#FFFCF5",
+      surface: "#FFFFFF",
+      ink: "#1E2A3A",
+      heading: "#1E2A3A",
+      muted: "#46536A",
+      accent: "#1F5FBF",
+      accent2: "#014580",
+      onAccent: "#FFFFFF",
+      line: "#DCE3EE",
+      correct: "#22823C",
+      incorrect: "#D7263D",
+    },
+    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 21,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "scrapbook",
+    name: "Scrapbook",
+    suits: "KS2. Crafty: lined paper, torn fields and taped cards.",
+    tags: [],
+    colors: {
+      background: "#FBF8F1",
+      surface: "#FFFFFF",
+      ink: "#23201C",
+      heading: "#23201C",
+      muted: "#4A433B",
+      accent: "#1F57B8",
+      accent2: "#014580",
+      onAccent: "#FFFFFF",
+      line: "#CDBFA6",
+      correct: "#1E7F39",
+      incorrect: "#D5243C",
+    },
+    fonts: { title: FONT_STACKS.playpen, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 13,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "calm",
+    name: "Calm",
+    suits: "Any age, for a calm room: flat, muted, no patterns, no ground art and no motion.",
+    tags: ["low-stimulation", "adhd"],
+    colors: {
+      background: "#F6F6F2",
+      surface: "#FFFFFF",
+      ink: "#1E2226",
+      heading: "#1E2226",
+      muted: "#383E45",
+      accent: "#245150",
+      accent2: "#01305C",
+      onAccent: "#FFFFFF",
+      line: "#CDD1CA",
+      correct: "#026123",
+      incorrect: "#A90127",
+    },
+    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 8,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "geometric",
+    name: "Geometric",
+    suits: "KS3 and maths: crisp, notched shapes on a dot grid.",
+    tags: [],
+    colors: {
+      background: "#FFFFFF",
+      surface: "#FFFFFF",
+      ink: "#0E1B33",
+      heading: "#0E1B33",
+      muted: "#3E4A63",
+      accent: "#1D4FD6",
+      accent2: "#014580",
+      onAccent: "#FFFFFF",
+      line: "#C9D2E1",
+      correct: "#24843D",
+      incorrect: "#D7263D",
+    },
+    fonts: { title: FONT_STACKS.outfit, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.02em",
+    radius: 0,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "dark-slate",
+    name: "Slate",
+    suits: "A dark room or a bright projector: muted slate with light ink.",
+    tags: ["dark"],
+    dark: true,
+    colors: {
+      background: "#1E232B",
+      surface: "#262C35",
+      ink: "#E4E7EB",
+      heading: "#E4E7EB",
+      muted: "#A9B1BC",
+      accent: "#9DBBD0",
+      accent2: "#8FB6E3",
+      onAccent: "#1E232B",
+      line: "#3A424D",
+      correct: "#93C9A5",
+      incorrect: "#E8A196",
+    },
+    fonts: { title: FONT_STACKS.lexend, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 700, heading: 700, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 9,
+  },
+  {
+    // Round 5 (TEACH-215 part c; rulings 236, 246, 247): colours from \`themes/tokens.json\`.
+    id: "dark-ember",
+    name: "Ember",
+    suits: "Dark and warm: deep brown with a coral accent.",
+    tags: ["dark"],
+    dark: true,
+    colors: {
+      background: "#1B1B1E",
+      surface: "#252528",
+      ink: "#EDEDEF",
+      heading: "#EDEDEF",
+      muted: "#ABABB2",
+      accent: "#F2A08C",
+      accent2: "#85B7EE",
+      onAccent: "#1B1B1E",
+      line: "#37373D",
+      correct: "#8FCFA4",
+      incorrect: "#F2A08C",
+    },
+    fonts: { title: FONT_STACKS.outfit, body: FONT_STACKS.lexend },
+    ...type([
+      [50, 1.08],
+      [42, 1.14],
+      [28, 1.22],
+      [23, 1.45],
+      [20, 1.45],
+      [13, 1.2],
+    ]),
+    weights: { title: 600, heading: 600, body: 400 },
+    titleTracking: "-0.01em",
+    radius: 8,
+  },
 ];
 
 /**
@@ -379,18 +616,24 @@ const BASE: Theme[] = [
  * the themes' own sizes, which is every lesson until the writer planner binds a stage to its themes.
  */
 export type KeyStage = "ks1" | "ks2" | "ks3" | "ks4" | "ks5";
-type StageScale = { body: number; heading: number; caption: number };
-/** Body in slide points (960 wide); display stops multiply the theme's own. */
+type StageScale = { body: number; display?: number; heading: number; caption: number };
+/**
+ * Body in slide points (960 wide); `display` is the slide heading, the golds' `--t-title` (ruling
+ * 259): 72 px at KS2 and 68 px from KS3 on a 1440 slide, the same in every theme (ruling 235).
+ * KS1 keeps the theme's own display heading (its heading stop x1.15): the early gold's 80 px
+ * leaves no room for KS1's rows, options and long titles. The other display stops multiply the
+ * theme's own.
+ */
 export const KEY_STAGE_TYPE: Record<KeyStage, StageScale> = {
   ks1: { body: 33, heading: 1.15, caption: 1.1 },
-  ks2: { body: 29, heading: 1.1, caption: 1.05 },
-  ks3: { body: 25, heading: 1.05, caption: 1 },
-  ks4: { body: 25, heading: 1.05, caption: 1 },
-  ks5: { body: 25, heading: 1.05, caption: 1 },
+  ks2: { body: 29, display: 48, heading: 1.1, caption: 1.05 },
+  ks3: { body: 25, display: 45.3, heading: 1.05, caption: 1 },
+  ks4: { body: 25, display: 45.3, heading: 1.05, caption: 1 },
+  ks5: { body: 25, display: 45.3, heading: 1.05, caption: 1 },
 };
 /** bodySmall = body x this: the one step under body. */
 export const BODY_SMALL = 0.85;
-/** The slide heading over the theme's heading stop (`look.ts` HEADING_DISPLAY). */
+/** The slide heading over the theme's heading stop, where the stage sets no display size (KS1). */
 const DISPLAY_HEADING = 1.15;
 
 /** The key stages, as a set: `in` on `KEY_STAGE_TYPE` would also accept "constructor" or "toString". */
@@ -433,16 +676,23 @@ export type TypeStep =
   | "caption";
 export type TypeScale = Record<TypeStep, number>;
 
+/**
+ * The stage's bodySmall: the one step under body and the smallest reading size (ruling 162), the
+ * same in every theme. The type scale and the layouts' gold sizes (`layout-sizes.ts`) both read it.
+ */
+export const bodySmallAt = (ks: KeyStage): number =>
+  Math.round(KEY_STAGE_TYPE[ks].body * BODY_SMALL);
+
 function scaleAt(own: Record<TextPreset, number>, ks: KeyStage): TypeScale {
   const k = KEY_STAGE_TYPE[ks];
   const heading = Math.round(own.heading * k.heading);
   return {
     title: Math.round(own.title * k.heading),
     subtitle: Math.round(own.subtitle * k.heading),
-    headingDisplay: Math.round(heading * DISPLAY_HEADING),
+    headingDisplay: k.display ?? Math.round(heading * DISPLAY_HEADING),
     heading,
     body: k.body,
-    bodySmall: Math.round(k.body * BODY_SMALL),
+    bodySmall: bodySmallAt(ks),
     caption: Math.round(own.caption * k.caption),
   };
 }
@@ -453,8 +703,40 @@ export function typeScale(t: Theme): TypeScale | undefined {
   return ks ? scaleAt(t.sizes, ks) : undefined;
 }
 
-/** Every theme. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
-export const THEMES: Theme[] = BASE;
+/** The round 5 themes (TEACH-215 part c): no old lesson was laid out on them. */
+export const ROUND5_THEME_IDS: ReadonlySet<string> = new Set([
+  "poster",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "geometric",
+  "dark-slate",
+  "dark-ember",
+]);
+
+/** The picker's themes, the final sixteen in ruling 246's order (light, then the two dark). */
+export const THEME_ORDER = [
+  "paper",
+  "poster",
+  "treehouse",
+  "reading-room",
+  "storytime",
+  "scrapbook",
+  "calm",
+  "geometric",
+  "beacon",
+  "crayon",
+  "exam-hall",
+  "playground",
+  "splash",
+  "studio",
+  "dark-slate",
+  "dark-ember",
+] as const;
+/** Every theme in the picker. Its art per slide role is `artOf(theme)` (`art.ts`, UX ruling 107). */
+export const THEMES: Theme[] = THEME_ORDER.map((id) => BASE.find((t) => t.id === id) as Theme);
+/** Every theme a saved deck may name: the picker's, plus the retired ones (Night Lab), which keep rendering. */
+export const ALL_THEMES: Theme[] = [...THEMES, ...BASE.filter((t) => !THEMES.includes(t))];
 
 const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
   BASE.map((t) => [t.id, RAW_BODY.get(t.sizes)]),
@@ -469,7 +751,7 @@ const DISPLAY_BODY: Record<string, number | undefined> = Object.fromEntries(
 export const displayBodyStop = (theme: Theme): number | undefined =>
   typeScale(theme) ? undefined : DISPLAY_BODY[theme.id];
 
-export { DEFAULT_THEME_ID } from "@tj/domain/documents";
+export { DEFAULT_THEME_ID, fallbackThemeFor, liveThemeId } from "@tj/domain/documents";
 
 /**
  * A callout's colours (UX ruling 84, TEACH-75): the card's tint, its hairline, the ink its label
@@ -479,7 +761,9 @@ export { DEFAULT_THEME_ID } from "@tj/domain/documents";
  */
 export type CalloutTone = { fill: string; line: string; ink: string; icon: string };
 
-/** The three tones a theme gives its callouts, one per kind. */
+/**
+ * The three tones a theme gives its callouts, one per kind.
+ */
 export type CalloutToneSet = Record<CalloutKind, CalloutTone>;
 
 /**
@@ -546,7 +830,55 @@ export const CALLOUT_TONES: Record<string, CalloutToneSet> = {
     example: { fill: "#DFF3E6", line: "#0B6B3A", ink: "#062E1A", icon: "#0B6B3A" },
     "key-words": { fill: "#FFEDB8", line: "#7A5200", ink: "#3A2600", icon: "#7A5200" },
   },
+  // Paper (theme v2): Chalk's warm set, made for the same cream ground.
+  paper: {
+    "watch-out": { fill: "#F7DFD8", line: "#DBA99C", ink: "#5A1D12", icon: "#A83A2E" },
+    example: { fill: "#DCEBD8", line: "#A7C7A2", ink: "#1F4A2C", icon: "#2F6B44" },
+    "key-words": { fill: "#F7E5B9", line: "#D8B86A", ink: "#4E3604", icon: "#8A5800" },
+  },
+  // Round 5 themes (TEACH-215 part c), derived from tokens.json by one recipe. Hues: watch-out
+  // sem-incorrect-ink, example sem-correct-ink, key words cat-3-ink. Light: a pale tint at
+  // lightness 0.90 (amber 0.86), the hairline 0.13 darker, ink and icon the hue darkened to 7:1 and
+  // 4.5:1 on the tint (Calm: muted tints, icons at 7:1). Dark: a wash 0.09 above the ground, the
+  // hairline 0.2 above, ink and icon the hue lightened to 7:1 and 4.5:1.
+  poster: {
+    "watch-out": { fill: "#FAD1D7", line: "#F395A3", ink: "#861525", icon: "#BB1D33" },
+    example: { fill: "#D4F7DD", line: "#8EEBA8", ink: "#145B28", icon: "#1C7C36" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD161", ink: "#644804", icon: "#7A5805" },
+  },
+  storytime: {
+    "watch-out": { fill: "#F9D2D7", line: "#F197A3", ink: "#851726", icon: "#BB2135" },
+    example: { fill: "#D5F6DE", line: "#9FEAB3", ink: "#175A29", icon: "#207C39" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD775", ink: "#644804", icon: "#7A5805" },
+  },
+  scrapbook: {
+    "watch-out": { fill: "#F9D2D7", line: "#F296A3", ink: "#861726", icon: "#BB2035" },
+    example: { fill: "#D4F7DE", line: "#98EBAF", ink: "#155A28", icon: "#1D7B37" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD46B", ink: "#644804", icon: "#7A5805" },
+  },
+  calm: {
+    "watch-out": { fill: "#F1DADF", line: "#DEAAB6", ink: "#920122", icon: "#920122" },
+    example: { fill: "#DAF1E2", line: "#ABDEBD", ink: "#025A20", icon: "#025A20" },
+    "key-words": { fill: "#EBE2CC", line: "#D8C79C", ink: "#5D4301", icon: "#5D4301" },
+  },
+  geometric: {
+    "watch-out": { fill: "#F9D2D7", line: "#F197A3", ink: "#851726", icon: "#BB2135" },
+    example: { fill: "#D5F6DE", line: "#9FE9B3", ink: "#195A2A", icon: "#227C39" },
+    "key-words": { fill: "#FFEAB8", line: "#FFD775", ink: "#644804", icon: "#7A5805" },
+  },
+  "dark-slate": {
+    "watch-out": { fill: "#473330", line: "#684B47", ink: "#EFBDB5", icon: "#E8A196" },
+    example: { fill: "#364139", line: "#4F6055", ink: "#B7DBC3", icon: "#93C9A5" },
+    "key-words": { fill: "#4B402C", line: "#6E5E41", ink: "#F9DBA6", icon: "#F9DBA6" },
+  },
+  "dark-ember": {
+    "watch-out": { fill: "#402C27", line: "#63443C", ink: "#F4AD9C", icon: "#F2A08C" },
+    example: { fill: "#2D3A31", line: "#46594C", ink: "#9AD4AD", icon: "#8FCFA4" },
+    "key-words": { fill: "#433824", line: "#675638", ink: "#FFDA97", icon: "#FFDA97" },
+  },
 };
+
+export { OPTION_TONES, optionTones } from "./option-tones";
 
 /** A theme's set; a theme the table does not know takes Chalk's, or Night Lab's when it is dark. */
 export const calloutTones = (t: Theme): CalloutToneSet =>
@@ -557,7 +889,7 @@ export const calloutTone = (t: Theme, kind: CalloutKind): CalloutTone => callout
 
 /** True for an id in the catalogue. `getTheme` falls back to the default for anything else. */
 export function isThemeId(id: string): boolean {
-  return THEMES.some((t) => t.id === id);
+  return ALL_THEMES.some((t) => t.id === id);
 }
 
 const BOUND_THEMES = new Map<string, Theme>();
@@ -566,7 +898,10 @@ const BOUND_THEMES = new Map<string, Theme>();
  * stage. No band, or one that is not a key stage: the catalogue theme, its own sizes.
  */
 export function getTheme(id: string | undefined | null, ageBand?: string | null): Theme {
-  const t = THEMES.find((x) => x.id === id) ?? (THEMES[0] as Theme);
+  const want = id ? liveThemeId(id) : DEFAULT_THEME_ID;
+  const t =
+    ALL_THEMES.find((x) => x.id === want) ??
+    (THEMES.find((x) => x.id === DEFAULT_THEME_ID) as Theme);
   const ks = asStage(ageBand);
   if (!ks) return t;
   const key = `${t.id}@${ks}`;

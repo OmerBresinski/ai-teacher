@@ -92,7 +92,7 @@ describe("fitsPlanned agrees with the editor's lint", () => {
         () => "Water moves up the stem to the leaves of the plant.",
       ).join(" "),
     } as SlideSpec;
-    const theme = getTheme("chalk");
+    const theme = getTheme("splash");
     let n = 0;
     const slide = materialiseSlide(spec, theme.id, META, () => `e${++n}`);
     const flagged = slidesNeedingFit(

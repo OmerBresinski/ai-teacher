@@ -9,11 +9,13 @@ import {
 import { countable, groupRing, isWholeNumber } from '../kit/batch-A.js';
 
 export const meta = {
-  id: 'counting_subitising', name: 'Counting and subitising', kind: 'info', version: 2,
+  id: 'counting_subitising', name: 'Counting and subitising', kind: 'info', version: 3,
   subjects: ['Maths'],
   years: ['Reception', 'Y1'],
   teaches: 'Counting a set one by one, knowing the last number said is how many, seeing small amounts at a glance in a ten frame, and one more and one less.',
 };
+// Present opens on the first build: the empty ten frame (or dice, hands, line) is the first idea, so every caption keeps its own frame (TEACH-247 part x).
+export const opensOnFirstBuild = true;
 
 const REPS = ['tenframe', 'dice', 'fingers', 'line', 'scatter'];
 const OBJECTS = ['counter', 'apple', 'star', 'car'];
@@ -375,15 +377,16 @@ export function render(root, P, ctx) {
     groupRing(rings, { x: D.x, y: D.y, w: L.die, h: L.die }, { pad: 10, s: kMore, a: { hide: both ? kLess : null } });
   }
 
-  /* small running numerals: on each counter in a ten frame, under each object in a line or scatter; they go when the total arrives */
+  /* small running numerals: on each counter in a ten frame, under each object in a line or scatter. They stay when the
+     total arrives, so the last number counted sits beside the total it names (TEACH-247 part x) */
   if (M.smallOK) for (let i = 0; i < n; i++) {
     const [x, y] = L.small(i);
     if (L.onObj) {
-      const sc = L.cell / 120, g = h('g', { s: kOf(i), hide: kT, cls: 'pop' }, smalls);
+      const sc = L.cell / 120, g = h('g', { s: kOf(i), cls: 'pop' }, smalls);
       // dark on the counter's colour in every theme (the counters are the same hue in all of them)
       computed(T(h('g', { transform: `translate(${x} ${y + 14 * sc}) scale(${sc})` }, g), 0, 0, String(i + 1), 'ts-num',
         { 'text-anchor': 'middle', fill: 'color-mix(in oklab, var(--hue-orange) 18%, #000)' }), 'n');
-    } else computed(T(smalls, x, y, String(i + 1), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kOf(i), hide: kT, cls: 'pop' }), 'n');
+    } else computed(T(smalls, x, y, String(i + 1), 'ts-label', { 'text-anchor': 'middle', fill: 'var(--ink-2)', s: kOf(i), cls: 'pop' }), 'n');
   }
 
   /* focus: the one being counted (when it has no numeral), the group of five, the total ring */

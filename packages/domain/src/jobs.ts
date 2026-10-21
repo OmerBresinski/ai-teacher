@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ModelClassSchema } from "./ai";
 import { GeneratedFromSchema } from "./documents/generated-from";
-import { QuestionDataSchema, SlideElementSchema } from "./documents/slide";
+import { QuestionDataSchema, SlideElementSchema, SlideSchema } from "./documents/slide";
 import { RecipeIdSchema, WorksheetBlockSchema } from "./documents/worksheet";
 import { JobId, LessonId, WorkspaceId } from "./ids";
 import { IsoDateTime } from "./primitives";
@@ -178,12 +178,30 @@ export const JobEventType = z.enum([
   "completed",
   "failed",
   "cancelled",
+  "slide-draft",
 ]);
 export type JobEventType = z.infer<typeof JobEventType>;
 
 /** Event types after which no further events are emitted for a job. */
 export const JOB_TERMINAL_EVENT_TYPES = ["completed", "failed", "cancelled"] as const;
+
+/**
+ * How every budget-stop failure message starts (the worker's `publicJobFailure`): the lesson spent
+ * its cap, so trying again cannot finish it (UX-A: no Try again, and `/resume` refuses).
+ */
+export const BUDGET_STOP_MESSAGE_PREFIX = "lesson budget exceeded";
+
+/** Whether a job's failure message is a budget stop. */
+export function isBudgetStopMessage(message: string | undefined): boolean {
+  return message?.startsWith(BUDGET_STOP_MESSAGE_PREFIX) === true;
+}
 export type JobTerminalEventType = (typeof JOB_TERMINAL_EVENT_TYPES)[number];
+
+/**
+ * Event types that live only while their job runs (ADR 0039): pruned from `job_events` when the
+ * job ends, never part of a job's record. A client that missed them loses nothing it needs.
+ */
+export const JOB_EPHEMERAL_EVENT_TYPES = ["slide-draft"] as const;
 
 const jobEventBase = {
   jobId: JobId,
@@ -318,6 +336,29 @@ export const JobCancelledEventSchema = z.strictObject({
   ...jobEventBase,
 });
 
+/**
+ * Live writing (ADR 0039, TEACH-202 part f): the slide the writer is writing, laid out as it
+ * stands, before its words are done. `slideId` is the id the slide will have in the lesson (the
+ * persisted copy always wins over a draft); `index` is its position in the deck. `final` marks the
+ * slide exactly as it was handed to the lesson (the same layout the next save carries), so the
+ * client keeps showing it until the saved copy is in, with nothing to swap at the hand-over.
+ * Unlike every other event it carries content: it is scoped to the workspace like every job
+ * event, and pruned when the job ends.
+ */
+export const SlideDraftSchema = z.strictObject({
+  index: z.number().int().min(0).max(200),
+  slideId: z.string().min(1).max(64),
+  slide: SlideSchema,
+  final: z.boolean().optional(),
+});
+export type SlideDraftPayload = z.infer<typeof SlideDraftSchema>;
+
+export const JobSlideDraftEventSchema = z.strictObject({
+  type: z.literal("slide-draft"),
+  ...jobEventBase,
+  draft: SlideDraftSchema,
+});
+
 /** Discriminated on `type`. Every variant is strict: unknown fields are rejected. */
 export const JobEventSchema = z.discriminatedUnion("type", [
   JobQueuedEventSchema,
@@ -326,6 +367,7 @@ export const JobEventSchema = z.discriminatedUnion("type", [
   JobCompletedEventSchema,
   JobFailedEventSchema,
   JobCancelledEventSchema,
+  JobSlideDraftEventSchema,
 ]);
 export type JobEvent = z.infer<typeof JobEventSchema>;
 

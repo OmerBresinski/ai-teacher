@@ -1,5 +1,9 @@
+import { bannerCaps } from "./banner-text-fits";
 import { type WriterBundle, writerBundle } from "./bundle";
-import { freeformLabels, teachesSchema, writerCaps } from "./contract";
+import { gridCaps } from "./cards-grid-fits";
+import { ANSWER_FIRST, freeformLabels, teachesSchema, writerCaps } from "./contract";
+import { hookCap } from "./hook-fits";
+import { ITEMS_ROW_MAX, rowCaps } from "./items-row-fits";
 
 /*
  * The lesson writer's strict output schema, built in code (TEACH-110 part b). The base shape is
@@ -59,9 +63,10 @@ const THEMES = [
 ];
 
 /** `design` first (the title slide uses it), then the flow; the objectives come approved, as input. */
-const front = (lo: number, hi: number): J => ({
+const front = (lo: number, hi: number, planTheme = false): J => ({
+  // planTheme (base4g): the objectives call picks the theme (ruling 202); the writer no longer does.
   design: obj({
-    theme: { type: "string", enum: THEMES },
+    ...(planTheme ? {} : { theme: { type: "string", enum: THEMES } }),
     picture_style: { type: "string", enum: ["photo", "illustration"] },
   }),
   flow: arr(
@@ -177,7 +182,7 @@ function baseSchema(b: WriterBundle, stage: WriterStage, lo: number, hi: number)
   const T = templates(JSON.parse(capsOf(b, stage)) as Record<string, number>);
   const teach = WRITER_TEMPLATES.filter((n) => n !== "title" && n !== "objectives");
   const schema = obj({
-    ...front(lo - 2, hi - 2),
+    ...front(lo - 2, hi - 2, b.features?.planTheme),
     slides: arr({ anyOf: teach.map(REF) }, lo - 2, hi - 2),
   });
   schema.$defs = { ...visualDefs(b), ...T };
@@ -214,24 +219,225 @@ function withDiagramSpecs(b: WriterBundle, schema: J, stage: WriterStage): J {
 }
 
 /**
+ * Tile visuals (TEACH-75 part d, LAYOUT-AUDIT finding 4): a compare card's visual and a sequence
+ * stage may be a diagram as well as a picture, and a hinge takes a figure, so a comparison of
+ * structures or a drawn process keeps its layout. Every older output still parses: a picture card
+ * and a picture stage keep their shape, and the hinge's figure is nullable. Not in the pinned
+ * schema (the lab's bytes). Off by default (`TILE_VISUALS_DEFAULT`) until the writer's menu names
+ * it; a caller turns it on with `tileVisuals: true`.
+ */
+export const TILE_VISUALS_DEFAULT = false;
+
+function withTileVisuals(schema: J): J {
+  const defs = schema.$defs as Record<string, J>;
+  const VIS: J = { anyOf: [REF("picture"), REF("diagram-side")] };
+  const def = (n: string) => defs[n] as J;
+  const setProps = (n: string, f: (p: J) => J) => {
+    const props = f({ ...(def(n).properties as J) });
+    defs[n] = { ...def(n), properties: props, required: Object.keys(props) };
+  };
+  setProps("compare", (p) => {
+    const cols = p.columns as J;
+    const card = cols.items as J;
+    const props = { ...(card.properties as J), picture: NUL(VIS) };
+    return { ...p, columns: { ...cols, items: { ...card, properties: props } } };
+  });
+  setProps("picture-sequence", (p) => {
+    const seq = p.sequence as J;
+    const drawn = obj({ caption: S(), diagram: REF("diagram-side") });
+    return { ...p, sequence: { ...seq, items: { anyOf: [seq.items, drawn] } } };
+  });
+  setProps("hinge", (p) => ({ ...p, figure: REF("figure") }));
+  return schema;
+}
+
+/**
+ * Typed callouts (UX ruling 203, P1; TEACH-75 part e): a support point on explain and visual-text
+ * may be `{kind, text}`, one of Remember, Watch out (a misconception), Key point, Example or Fun
+ * fact, set as that type's key card under the text. A third branch beside the plain and labelled
+ * point, so every older output parses. Off by default (`CALLOUTS_DEFAULT`) until the writer's
+ * menu names it; a caller turns it on with `callouts: true`.
+ */
+export const CALLOUTS_DEFAULT = false;
+export const CALLOUT_TYPES = ["remember", "watch-out", "key-point", "example", "fun-fact"] as const;
+
+function withCallouts(schema: J): J {
+  const defs = schema.$defs as Record<string, J>;
+  const typed = obj({ kind: { type: "string", enum: [...CALLOUT_TYPES] }, text: S() });
+  for (const n of ["explain", "visual-text"]) {
+    const def = defs[n] as J | undefined;
+    const props = def?.properties as J | undefined;
+    const pts = props?.points as J | undefined;
+    const items = pts?.items as J | undefined;
+    if (!def || !props || !pts || !items) continue;
+    const branches = (items.anyOf as J[] | undefined) ?? [items];
+    defs[n] = {
+      ...def,
+      properties: { ...props, points: { ...pts, items: { anyOf: [...branches, typed] } } },
+    };
+  }
+  return schema;
+}
+
+/**
+ * Cards grid (UX ruling 203, Chalkie layout parity P3; TEACH-75 part j): 2-4 cards, each a
+ * short label, a body and an optional small icon picture (`icon`, asked as a square cut-out). Added
+ * to the slide menu as one more teaching layout; every older output still parses. Off by default
+ * (`CARDS_GRID_DEFAULT`) until the writer's menu names it; a caller turns it on with
+ * `cardsGrid: true`.
+ */
+export const CARDS_GRID_DEFAULT = false;
+/** Most cards a grid holds (the renderer's 2x2). */
+export const CARDS_GRID_MAX = 4;
+
+/** A string held to `n` characters (strict mode takes `pattern`, not `maxLength`). */
+const capped = (n: number): J => ({ type: "string", pattern: `^.{1,${n}}$` });
+
+/** Its caps come from the renderer's measured fit (`gridCaps`, the fit table's cards-grid entry). */
+function withCardsGrid(schema: J, stage: WriterStage): J {
+  const caps = gridCaps(stage);
+  const defs = schema.$defs as Record<string, J>;
+  defs["cards-grid"] = obj({
+    template: { type: "string", enum: ["cards-grid"] },
+    heading: S(),
+    lead: NUL(S()),
+    grid: arr(
+      obj({ label: capped(caps.label), text: capped(caps.text), icon: NUL(REF("picture")) }),
+      2,
+      CARDS_GRID_MAX,
+    ),
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("cards-grid")] };
+  return schema;
+}
+
+/**
+ * Items row (TEACH-75 part u): 2-4 named parts or stages on a connecting line, each a name, one
+ * line and an icon label the slides' icon library draws (or null). Live, with no off switch (Greg,
+ * 12 Oct 2026); every older output still parses. Caps from the renderer's measured table.
+ */
+function withItemsRow(schema: J, stage: WriterStage): J {
+  const caps = rowCaps(stage);
+  const defs = schema.$defs as Record<string, J>;
+  defs["items-row"] = obj({
+    template: { type: "string", enum: ["items-row"] },
+    heading: S(),
+    accentWord: NUL(capped(40)),
+    lead: NUL(capped(caps.lead)),
+    ordered: { type: "boolean" },
+    items: arr(
+      obj({
+        name: capped(caps.name),
+        text: capped(caps.text),
+        icon: NUL({ type: "string", pattern: "^[a-z][a-z -]{0,22}$" }),
+      }),
+      2,
+      ITEMS_ROW_MAX,
+    ),
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("items-row")] };
+  return schema;
+}
+
+/**
+ * Banner text (UX ruling 203, Chalkie layout parity P4; TEACH-75 part k): a picture as a
+ * full-width strip across the top or the bottom of the slide, with a heading, a lead and 0-3
+ * labelled bullets. Added to the slide menu as one more teaching layout; every older output still
+ * parses. Off by default (`BANNER_TEXT_DEFAULT`) until the writer's menu names it; a caller turns it
+ * on with `bannerText: true`.
+ */
+export const BANNER_TEXT_DEFAULT = false;
+/** Most bullets under a banner's lead (the renderer's `BANNER_POINTS`). */
+export const BANNER_TEXT_POINTS = 3;
+
+/** Its caps come from the renderer's measured fit (`bannerCaps`, the fit table's banner entry). */
+function withBannerText(schema: J, stage: WriterStage): J {
+  const caps = bannerCaps(stage);
+  const defs = schema.$defs as Record<string, J>;
+  const point = capped(caps.point);
+  defs["banner-text"] = obj({
+    template: { type: "string", enum: ["banner-text"] },
+    heading: S(),
+    lead: capped(caps.lead),
+    points: arr(
+      { anyOf: [point, obj({ label: capped(caps.label), text: point })] },
+      0,
+      BANNER_TEXT_POINTS,
+    ),
+    picture: REF("picture"),
+    at: { type: "string", enum: ["top", "bottom"] },
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("banner-text")] };
+  return schema;
+}
+
+/**
+ * Full-bleed hook (UX ruling 203, Chalkie layout parity P5; TEACH-75 part l): the photo across
+ * the whole slide under a dark scrim, the heading and 1-2 short paragraphs (about 40 words) centred
+ * in white. Added to the slide menu as one more layout; every older output still parses. Off by
+ * default (`HOOK_DEFAULT`) until the writer's menu names it; a caller turns it on with `hook: true`.
+ */
+export const HOOK_DEFAULT = false;
+
+/** Its cap comes from the renderer's measured fit (`hookCap`, the fit table's hook entry). */
+function withHook(schema: J, stage: WriterStage): J {
+  const defs = schema.$defs as Record<string, J>;
+  defs.hook = obj({
+    template: { type: "string", enum: ["hook"] },
+    heading: S(),
+    // strict mode takes `pattern`, not `maxLength`
+    lead: { type: "string", pattern: `^.{1,${hookCap(stage)}}$` },
+    picture: REF("picture"),
+  });
+  const slides = (schema.properties as Record<string, J>).slides as J;
+  const items = slides.items as { anyOf: J[] };
+  slides.items = { ...items, anyOf: [...items.anyOf, REF("hook")] };
+  return schema;
+}
+
+/**
  * The writer's strict schema for a lesson of `min..max` slides at this stage, with the contract
  * (contract.ts): the freeform diagram labels held to the drawer's limits and, given the approved
- * `objectives` count, `flow[].teaches` held to `1..objectives`. `pinned` gives the lab's pinned
+ * `objectives` count, `flow[].teaches` held to `1..objectives`, and the tile visuals
+ * (`withTileVisuals`). `pinned` gives the lab's pinned
  * schema with no contract (the evidence pins compare against it).
  */
 export function writerSchema(
   stage: WriterStage,
   slides: { min: number; max: number },
   b: WriterBundle = writerBundle(),
-  opts: { objectives?: number; pinned?: boolean } = {},
+  opts: {
+    objectives?: number;
+    pinned?: boolean;
+    tileVisuals?: boolean;
+    callouts?: boolean;
+    cardsGrid?: boolean;
+    bannerText?: boolean;
+    hook?: boolean;
+  } = {},
 ): J {
   const s = withDiagramSpecs(b, baseSchema(b, stage, slides.min, slides.max), stage);
   if (opts.pinned) return s;
+  if (opts.tileVisuals ?? TILE_VISUALS_DEFAULT) withTileVisuals(s);
+  if (opts.callouts ?? CALLOUTS_DEFAULT) withCallouts(s);
+  if (opts.cardsGrid ?? CARDS_GRID_DEFAULT) withCardsGrid(s, stage);
+  withItemsRow(s, stage);
+  if (opts.bannerText ?? BANNER_TEXT_DEFAULT) withBannerText(s, stage);
+  if (opts.hook ?? HOOK_DEFAULT) withHook(s, stage);
   const defs = s.$defs as Record<string, J>;
   for (const [name, def] of Object.entries(defs)) {
     const m = /^dg-(.+)-(side|full)$/.exec(name);
     if (m) defs[name] = writerCaps(def, m[1] as string, stage, m[2] as "side" | "full");
   }
+  // Answer first: the hinge's correct option is its first; no counted key (ANSWER-BUG.md).
+  const hinge = defs.hinge;
+  if (hinge) defs.hinge = answerFirstDef(hinge, "options", ANSWER_FIRST.options);
   const free = defs["diagram-freeform"];
   if (free)
     defs["diagram-freeform"] = {
@@ -248,6 +454,19 @@ export function writerSchema(
     };
   }
   return s;
+}
+
+/**
+ * A single-answer def without its counted `correct`: the answer is the first item of `list`,
+ * which says so in its description (the writer's def only; the repair schema is pinned apart).
+ */
+export function answerFirstDef(def: J, list: string, description: string): J {
+  const { correct: _, ...props } = def.properties as Record<string, J>;
+  return {
+    ...def,
+    required: (def.required as string[]).filter((k) => k !== "correct"),
+    properties: { ...props, [list]: { ...(props[list] as J), description } },
+  };
 }
 
 /** The schema as the pinned file holds it (one-space indent, trailing newline). */

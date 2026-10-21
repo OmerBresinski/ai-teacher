@@ -1,4 +1,6 @@
+import { layoutOffer, MENU_AGE, menuWordCaps, sideCaps } from "./layout-menu";
 import { resolveAsks, type VisualState } from "./materialise";
+import type { WriterStage } from "./schema";
 
 /*
  * The writer stage's fallbacks for a figure that cannot be shown, ported from the pinned writer:
@@ -67,8 +69,45 @@ export function asWords(raw: S): S {
   };
 }
 
-/** A table that cannot draw, as cards or labelled points (a row's first cell names it). */
-export function asTableText(raw: S, table: TableData): S {
+/**
+ * split-compare's words-only room for `sides` sides at a stage, from the same numbers production's
+ * menu prints (`menuWordCaps`) and the measured table behind them (`sideCaps`, characters).
+ * Undefined when the menu offers no words-only split of that many sides.
+ */
+export function splitWordsOnly(
+  stage: WriterStage,
+  sides: number,
+): { text: number; title: number; textChars: number; titleChars: number } | undefined {
+  const words = menuWordCaps(stage)["split-compare"];
+  const text = words.sides[String(sides)];
+  const chars = sideCaps(MENU_AGE[stage], sides, "");
+  if (!text || !chars?.text || !chars.title) return undefined;
+  return { text, title: words.title, textChars: chars.text, titleChars: chars.title };
+}
+
+const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+
+/** The pilot pack a table's fallback is laid for (production): its stage and its drawn-size check. */
+export type TablePack = {
+  stage: WriterStage;
+  /** The slide holds at its drawn size: no field past its room (heading included), no member too many. */
+  holds: (s: S) => boolean;
+};
+
+/**
+ * A table that cannot draw, as words that keep its data (a row's first cell names it).
+ *
+ * Without a pack (lab runs on a bundle): cards (compare) for 2-4 rows, else labelled points, as
+ * before ruling 218.
+ *
+ * On a pilot pack (production; compare retired, ruling 218), the first that holds every cell:
+ * - a words-only split-compare, 2-3 rows, when every side is within the menu's words and the
+ *   table's characters, the slide has no lead (split-compare has none) and it holds as drawn;
+ * - a panel-list, at a row count the menu offers, when it holds as drawn;
+ * - explain as its schema takes it: one row a key card, 2-3 rows as plain points, more rows
+ *   grouped into 3 points. Nothing is dropped; a slide still over shows the editor's chip.
+ */
+export function asTableText(raw: S, table: TableData, pack?: TablePack): S {
   const s = resolveAsks(raw, () => false);
   const { header, rows } = table;
   const cell = (r: string[], k: number) => (header?.[k] ? `${header[k]}: ${r[k]}` : (r[k] ?? ""));
@@ -87,19 +126,82 @@ export function asTableText(raw: S, table: TableData): S {
   const lead = [str(s.lead), constant ? `${constant}.` : ""].filter(Boolean).join(" ");
   const name = (r: string[]) =>
     header?.[0] && /^\d/.test(r[0] ?? "") ? `${header[0]} ${r[0]}` : (r[0] ?? "");
-  if (rows.length >= 2 && rows.length <= 4 && keep.length)
+  const heading = str(s.heading);
+  if (!pack) {
+    if (rows.length >= 2 && rows.length <= 4 && keep.length)
+      return {
+        template: "compare",
+        heading,
+        ...(lead ? { lead } : {}),
+        columns: rows.map((r) => ({ label: name(r), text: rest(r), picture: null })),
+      };
     return {
-      template: "compare",
-      heading: str(s.heading),
-      ...(lead ? { lead } : {}),
-      columns: rows.map((r) => ({ label: name(r), text: rest(r), picture: null })),
+      template: "explain",
+      heading,
+      lead,
+      points: rows.map((r) => (keep.length ? { label: name(r), text: rest(r) } : name(r))),
     };
-  return {
-    template: "explain",
-    heading: str(s.heading),
-    lead,
-    points: rows.map((r) => (keep.length ? { label: name(r), text: rest(r) } : name(r))),
-  };
+  }
+  const n = rows.length;
+  const filled = rows.every((r) => name(r).trim() && rest(r).trim());
+  const room = n >= 2 && n <= 3 ? splitWordsOnly(pack.stage, n) : undefined;
+  const sides = rows.map((r) => ({ title: name(r), text: rest(r), quote: null, picture: null }));
+  if (
+    room &&
+    keep.length &&
+    filled &&
+    !lead &&
+    sides.every(
+      (d) =>
+        wordCount(d.title) <= room.title &&
+        wordCount(d.text) <= room.text &&
+        d.title.length <= room.titleChars &&
+        d.text.length <= room.textChars,
+    )
+  ) {
+    const split: S = { template: "split-compare", heading, accentWord: null, sides };
+    if (pack.holds(split)) return split;
+  }
+  const offer = layoutOffer(pack.stage)["panel-list"];
+  if (keep.length && filled && (lead ? offer.lead : offer.plain).includes(n)) {
+    const panel: S = {
+      template: "panel-list",
+      heading,
+      lead: lead || null,
+      panel: null,
+      items: rows.map((r) => ({ name: name(r), text: rest(r), icon: null, picture: null })),
+    };
+    if (pack.holds(panel)) return panel;
+  }
+  const line = (r: string[]) =>
+    keep.length && rest(r).trim() ? `${name(r)}: ${rest(r)}` : name(r);
+  if (n === 1 && keep.length)
+    return {
+      template: "explain",
+      heading,
+      lead,
+      points: [{ label: name(rows[0] as string[]), text: rest(rows[0] as string[]) }],
+    };
+  // One row with nothing beside its name: the name is the lead's last sentence.
+  if (n === 1)
+    return {
+      template: "explain",
+      heading,
+      lead: [lead, name(rows[0] as string[])].filter(Boolean).join(" "),
+      points: [],
+    };
+  if (n <= 3) return { template: "explain", heading, lead, points: rows.map(line) };
+  // More rows than explain holds: three points, rows shared out in order, every cell kept.
+  const per = Math.ceil(n / 3);
+  const points = [0, 1, 2]
+    .map((g) =>
+      rows
+        .slice(g * per, (g + 1) * per)
+        .map(line)
+        .join("; "),
+    )
+    .filter(Boolean);
+  return { template: "explain", heading, lead, points };
 }
 
 /** A picture field as the writer writes one: `shows` is what is searched for, never missing. */
@@ -143,7 +245,7 @@ export function asPicture(raw: S): S | undefined {
     if (!shows) return undefined;
     const pic: PictureField = {
       shows,
-      must_see: labels.filter((l) => l.trim().length > 1).slice(0, 4),
+      must_see: labels.filter((l) => l.trim()),
       subject: "generic",
       ask: alone,
       ask_without: alone,
@@ -160,11 +262,48 @@ export function asPicture(raw: S): S | undefined {
 }
 void isPic;
 
+/**
+ * Tile diagrams that could not be shown (TEACH-75 part d), each as a picture of the same thing:
+ * `col.n` a compare card's visual, `seq.n` a sequence stage. Undefined when a lost tile is not a
+ * diagram or its kind is not a thing or process (`pictureFallbackOk`): the slide then takes its
+ * words-only form (text cards, numbered steps), never an empty tile.
+ */
+export function tilesAsPictures(raw: S, keys: string[]): S | undefined {
+  const s: S = { ...raw };
+  const cols = Array.isArray(s.columns) ? (s.columns as S[]).map((c) => ({ ...c })) : undefined;
+  const seq = Array.isArray(s.sequence) ? (s.sequence as S[]).map((x) => ({ ...x })) : undefined;
+  for (const key of keys) {
+    const m = /^(col|seq)\.(\d+)$/.exec(key);
+    const n = Number(m?.[2]);
+    const host = m?.[1] === "col" ? cols?.[n] : m?.[1] === "seq" ? seq?.[n] : undefined;
+    const f = host ? (m?.[1] === "col" ? host.picture : host.diagram) : undefined;
+    if (!host || !isDia(f) || !pictureFallbackOk(str(f.kind))) return undefined;
+    const labels = Array.isArray(f.labels) ? (f.labels as unknown[]).map(str) : [];
+    const alone = f.ask_without ?? null;
+    const pic: S = {
+      shows: str(f.shows) || str(host.label) || str(host.caption),
+      must_see: labels.filter((l) => l.trim()),
+      subject: "generic",
+      ...(m?.[1] === "col" ? { ask: alone, ask_without: alone } : {}),
+    };
+    if (!pic.shows) return undefined;
+    if (m?.[1] === "col") host.picture = pic;
+    else {
+      delete host.diagram;
+      Object.assign(host, pic);
+    }
+  }
+  if (cols) s.columns = cols;
+  if (seq) s.sequence = seq;
+  return s;
+}
+
 const LIST_KEYS = ["points", "questions"] as const;
 /**
  * The last-resort strip never ships overflow: its list items are carried onto continuation slides
  * of the same layout, each keeping the longest run of items, in order, that fits. Words are never
- * cut or rewritten; a slide with no such list, or whose first item cannot fit alone, is left.
+ * cut or rewritten. When not one item fits beside the slide's other words, those stay alone and the
+ * whole list continues. A slide with no such list, or one item too big for a part, is left.
  */
 export function continueForFit(
   slide: S,
@@ -174,7 +313,15 @@ export function continueForFit(
   if (!key) return undefined;
   const items = slide[key] as unknown[];
   const cont = (c: unknown[]): S => {
-    const s: S = { template: slide.template, heading: slide.heading, [key]: c };
+    // A worked example's formula heads each part too: its panel is never drawn empty.
+    const s: S = {
+      template: slide.template,
+      heading: slide.heading,
+      [key]: c,
+      ...(typeof slide.formula === "string" && slide.formula.trim()
+        ? { formula: slide.formula }
+        : {}),
+    };
     for (const [k, v] of Object.entries(slide))
       if (!(k in s))
         s[k] = typeof v === "string" ? (k === "lead" ? "" : null) : Array.isArray(v) ? [] : null;
@@ -190,6 +337,12 @@ export function continueForFit(
         take = k;
         break;
       }
+    }
+    // Nothing of the list fits beside the slide's other words: they stand alone on this slide and
+    // the whole list continues on the next (UX-C J8, a worked example's steps under its formula).
+    if (!take && !chunks.length && fits({ ...slide, [key]: [] })) {
+      chunks.push([]);
+      continue;
     }
     if (!take) return undefined;
     chunks.push(items.slice(at, at + take));

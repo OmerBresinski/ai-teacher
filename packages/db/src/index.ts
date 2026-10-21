@@ -2,6 +2,20 @@
  * `@tj/db` — Drizzle schema, migrations and the `forWorkspace()` tenancy helper (ADR 0006, 0007,
  * 0012). Subpaths: `@tj/db/tenant`, `@tj/db/schema`, `@tj/db/testing`.
  */
+
+export {
+  type BankImageRow,
+  bankImageIdsIn,
+  copyBankImage,
+  deleteBankImage,
+  insertBankImage,
+  listBankImages,
+  type NewBankImage,
+  nearestBankImages,
+  readyBankImages,
+  rejectBankImage,
+  touchBankImage,
+} from "./bank";
 export {
   type CreateDbOptions,
   createDb,
@@ -40,6 +54,7 @@ export {
   putDocumentAsJob,
   type ReleaseStaleLockOptions,
   releaseStaleLock,
+  relockLesson,
   relockWorksheet,
   restore,
   type SetPlanRevisionOptions,
@@ -52,6 +67,14 @@ export {
 } from "./documents";
 export { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./errors";
 export {
+  deleteExpiredGenerationDebug,
+  GENERATION_DEBUG_DELETE_BATCH,
+  type GenerationDebugInsert,
+  type GenerationDebugRow,
+  insertGenerationDebug,
+  listGenerationDebug,
+} from "./generation-debug";
+export {
   getTerminalJobEvent,
   hasQueuedJobEvent,
   insertJobEvent,
@@ -62,6 +85,7 @@ export {
   type ListJobEventsOptions,
   listJobEvents,
   notifyJobEvent,
+  pruneEphemeralJobEvents,
   terminalJobEventFor,
 } from "./job-events";
 export { MIGRATIONS_FOLDER, migrateDatabase } from "./migrator";

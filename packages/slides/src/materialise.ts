@@ -39,6 +39,7 @@ import {
   DIAGRAM_NAME,
   isDiagramMark,
   isOpenPhotoSlot,
+  isPlaceholderIcon,
   KEY_IDEA_NAME,
   KIND_TAG_NAME,
   PHOTO_NAME,
@@ -279,7 +280,11 @@ export function lookAndFit(
  * else across the full measure. The top line and counter are kept as they were. A slide without
  * an open slot (a placed photograph is not one) comes back as it is (same object).
  */
-export function withoutDiagramSlot(slide: Slide, theme: Theme): Slide {
+export function withoutDiagramSlot(given: Slide, theme: Theme): Slide {
+  // The editor's placeholder icon is the teacher's alone: its medal stays, empty (look.ts).
+  const slide = given.elements.some(isPlaceholderIcon)
+    ? { ...given, elements: given.elements.filter((e) => !isPlaceholderIcon(e)) }
+    : given;
   if (
     slide.kind !== "content" ||
     !slide.elements.some((e) => e.name === DIAGRAM_NAME || isOpenPhotoSlot(e))

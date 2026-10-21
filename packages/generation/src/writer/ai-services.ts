@@ -2,9 +2,12 @@ import type { AiCallContext } from "@tj/ai";
 import { costUsd, withGenerationBudget } from "@tj/ai";
 import { generateText, jsonSchema, Output, streamText } from "ai";
 import { imageMediaType, providerOptionsFor } from "../call";
+import { fullError, recordDebug } from "../debug";
 import type { PipelineDeps } from "../types";
 import {
+  type CallTokens,
   type ChatReq,
+  isBudgetRefusal,
   nonFatalSync,
   SMALL_MODEL,
   WRITER_MODEL,
@@ -114,6 +117,31 @@ export function writerProviderOptions(model: string, effort: WriterReq["effort"]
   };
 }
 
+const tokensOf = (
+  u: { inputTokens?: number; outputTokens?: number } | undefined,
+): CallTokens | undefined =>
+  u ? { input: u.inputTokens ?? 0, output: u.outputTokens ?? 0 } : undefined;
+
+/**
+ * The call that tripped the lesson's budget stop, in the debug record (`budget-stop`). The call
+ * itself is recorded once by `@tj/ai`'s capture middleware (`model-call`). Never throws.
+ */
+function recordBudgetStop(
+  deps: Pick<PipelineDeps, "debug" | "budget">,
+  call: { name: string; model: string; stage?: string; effort?: string; ms: number },
+  error: unknown,
+): void {
+  if (!deps.debug || !isBudgetRefusal(error)) return;
+  recordDebug(deps.debug, "budget-stop", {
+    ...call,
+    totals: nonFatalSync(
+      () => deps.budget.totals(),
+      () => undefined,
+    ),
+    error: fullError(error),
+  });
+}
+
 /** The stage's calls on `@tj/ai`: every call carries the writer's context, so the route applies. */
 export function aiWriterServices(deps: PipelineDeps): WriterServices {
   const ctx = (stage: string, name: string, effort: string): AiCallContext => ({
@@ -125,6 +153,7 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
   });
   return {
     log: (e) => deps.logger.info({ writer: e }, "writer stage"),
+    ...(deps.debug ? { debug: deps.debug } : {}),
     async chat(r: ChatReq) {
       const t0 = Date.now();
       // A call that names the writer's model runs on it (the objectives call); every other on Luna.
@@ -137,15 +166,23 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         writerRoute(cls, c) ?? deps.ai.modelId(cls),
         deps.budget,
       );
+      const modelId = sol ? WRITER_MODEL : SMALL_MODEL;
+      const call = { name: r.name, model: modelId, stage: c.stage, effort: c.effort ?? "low" };
+      // Always rethrows (never recovers), so it is not one of the stage's non-fatal handlers.
       const result = await generateText({
         model,
         system: r.system,
         ...chatUserTurn(r),
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),
         ...chatCallOptions(r, deps.signal),
+      }).then(undefined, (error: unknown) => {
+        recordBudgetStop(deps, { ...call, ms: Date.now() - t0 }, error);
+        throw error;
       });
-      const usd = usdOf(sol ? WRITER_MODEL : SMALL_MODEL, result.usage);
-      return { out: result.output, usd, ms: Date.now() - t0 };
+      const usd = usdOf(modelId, result.usage);
+      const tokens = tokensOf(result.usage);
+      const ms = Date.now() - t0;
+      return { out: result.output, usd, ms, ...(tokens ? { tokens } : {}) };
     },
     async writer(r: WriterReq, onDelta): Promise<WriterResult> {
       const t0 = Date.now();
@@ -156,7 +193,14 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         writerRoute("frontier", c) ?? deps.ai.modelId("frontier"),
         deps.budget,
       );
+      // The SDK reports a stream's error to `onError` and then fails `usage` with its own
+      // `NoOutputGeneratedError`, which drops the original: a budget refusal would reach the job
+      // as an unknown error and be retried (TEACH-202 part g). Keep the first error and throw it.
+      let streamError: unknown;
       const result = streamText({
+        onError: ({ error }) => {
+          streamError ??= error;
+        },
         model,
         system: r.system,
         prompt: r.user,
@@ -167,18 +211,33 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
         ...writerProviderOptions(r.model, r.effort),
       });
       let text = "";
-      for await (const delta of result.textStream) {
-        if (firstTokenMs === undefined) firstTokenMs = Date.now() - t0;
-        text += delta;
-        onDelta(delta);
-      }
-      const usage = await result.usage;
+      let usage: Awaited<typeof result.usage> | undefined;
+      let finishReason: Awaited<typeof result.finishReason> | undefined;
+      const read = async () => {
+        for await (const delta of result.textStream) {
+          if (firstTokenMs === undefined) firstTokenMs = Date.now() - t0;
+          text += delta;
+          onDelta(delta);
+        }
+        usage = await result.usage;
+        finishReason = await result.finishReason;
+      };
+      // Always rethrows (never recovers), so it is not one of the stage's non-fatal handlers.
+      const call = { name: r.name, model: r.model, stage: c.stage, effort: r.effort };
+      await read().then(undefined, (error: unknown) => {
+        recordBudgetStop(deps, { ...call, ms: Date.now() - t0 }, streamError ?? error);
+        throw streamError ?? error;
+      });
+      const usd = usdOf(r.model, usage as Awaited<typeof result.usage>);
+      const tokens = tokensOf(usage);
+      const ms = Date.now() - t0;
       return {
         text,
-        finishReason: (await result.finishReason) ?? null,
-        usd: usdOf(r.model, usage),
-        ms: Date.now() - t0,
+        finishReason: finishReason ?? null,
+        usd,
+        ms,
         ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
+        ...(tokens ? { tokens } : {}),
       };
     },
   };

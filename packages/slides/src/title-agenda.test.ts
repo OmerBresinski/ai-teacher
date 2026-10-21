@@ -77,7 +77,7 @@ describe("title, agenda (objectives on the title slide)", () => {
   });
 
   test("real titles and objectives fit on every theme, one step down", () => {
-    expect(THEMES.length).toBe(10);
+    expect(THEMES.length).toBe(16); // the round 5 sixteen (TEACH-215 part c, 16 Oct 2026)
     for (const d of DECKS) {
       const { failing } = fitsPlanned(spec(d), { stepDown: 1 });
       expect({ title: d.title, failing: failing.map((f) => f.theme) }).toEqual({

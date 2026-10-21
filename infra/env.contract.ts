@@ -732,6 +732,34 @@ const CONTRACT = [
       "Model ID for the F13 §7 small class: items, glossary, variants and summaries. Default `openai/gpt-6-luna` (OpenAI direct, `OPENAI_API_KEY`); a value set on Railway overrides it.",
   },
 
+  // --- observability (PostHog EU, ADR 0041) -----------------------------------------------------
+  {
+    name: "POSTHOG_API_KEY",
+    services: ["worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "PostHog project API key (`phc_…`, ADR 0041): the worker reports job errors and model-call metrics (tokens, cost, latency) to PostHog EU, metadata only, never prompt text, model output or lesson content. Unset: nothing is sent (dev, tests and CI). Set on Railway, never in git.",
+  },
+  {
+    name: "POSTHOG_HOST",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "url",
+    files: ["worker"],
+    description:
+      "PostHog ingestion host for the worker (ADR 0041). Default `https://eu.i.posthog.com` (EU cloud); set it to that value on Railway so the region is explicit.",
+  },
+
   // --- images (Pexels, Images project) ----------------------------------------------------------
   {
     name: "PEXELS_API_KEY",
@@ -759,6 +787,49 @@ const CONTRACT = [
     files: ["worker"],
     description:
       "Default 5. USD the picture generator may spend in one UTC day, per worker process (TEACH-237). Once spent, a picture slot routed to generation keeps its placeholder, no generation call is made, and one log line says so.",
+  },
+  {
+    name: "PICTURE_LIBRARY_REUSE",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["off", "on"],
+    files: ["worker"],
+    description:
+      "Default `off`. `on` lets the writer planner's picture director reuse judged pictures from the shared picture library (`bank_images`, TEACH-84 part b) and store each picture its judge passes, so the library grows. A reuse is a cosine of at least 0.77 between request embeddings (`text-embedding-3-small`, about $0.000004 a lookup) and is judged again before it is placed. Needs `OPENAI_API_KEY`; a failed lookup falls through to the live search. `off` searches or generates every picture afresh and stores nothing.",
+  },
+  {
+    name: "LAB_PARITY",
+    services: ["api", "worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "enum",
+    values: ["1"],
+    runtimeOnly: true,
+    files: [],
+    description:
+      "Lab marker for the production-matching (parity) lab: the teacher-path harness sets `1` on the local api and worker it starts. Never set on any deployed service. Without it `LAB_WRITER_BUNDLE_ID` is ignored.",
+  },
+  {
+    name: "LAB_WRITER_BUNDLE_ID",
+    services: ["api", "worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    runtimeOnly: true,
+    files: [],
+    description:
+      "Parity lab only: the writer prompt bundle to run as the one declared candidate (a key of `WRITER_BUNDLES`). Honoured only when `LAB_PARITY=1`, no `RAILWAY_*` variable is present and NODE_ENV is not `production`; otherwise ignored with a warning. Production runs `WRITER_BUNDLE_ID`. Never set on any deployed service.",
   },
   // --- AI budget + Mastra (ADR 0025 §15, §21) ------------------------------------------------------
   {
@@ -856,7 +927,7 @@ const CONTRACT = [
     values: ["legacy", "objectives-first", "writer"],
     files: ["worker"],
     description:
-      "Which planner plans a new lesson (TEACH-93, ADR 0033). `objectives-first` (default since the decision of 25–26 Sept 2026, SHIP-H-PLAN §3 item 9): `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. `legacy`: the skeleton and facts calls in `lesson.plan`. `writer` (TEACH-110 part b, off until TEACH-238): `lesson.plan` makes the same objectives call, stamped for the writer; `lesson.generate` runs the base4 lesson writer (one streamed `gpt-6.1-sol` call) and its own checks, repair and notes. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `legacy`.",
+      "Which planner plans a new lesson (TEACH-93, ADR 0033). `writer` (TEACH-110 part b; production defaults to it from 20 Oct 2026, Greg): `lesson.plan` makes the objectives call only, stamped for the writer, and stops for the teacher; `lesson.generate` runs the lesson writer (one streamed `gpt-6.1-sol` call on `OPENAI_API_KEY`, the bundle pinned in code) and its own checks, repair and notes. `objectives-first` (the default from 25–26 Sept to 20 Oct 2026): the same objectives call; `lesson.generate` writes the facts in waves and the outline in code, then the slides. `legacy`: the skeleton and facts calls in `lesson.plan`. Both stay selectable for rollback. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `objectives-first`.",
   },
   {
     name: "AI_LESSON_COST_WARN_USD",
@@ -869,7 +940,20 @@ const CONTRACT = [
     format: "number",
     files: ["worker"],
     description:
-      "Per-lesson cost target in USD (TEACH-93, default 0.03): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`.",
+      "Per-lesson cost target in USD (TEACH-93, default 0.12): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`. The default is about 1.5x the median real writer lesson ($0.079 over 20 lab lessons on writer pack v4.8, 20 Oct 2026); the old 0.03 fired on every writer lesson.",
+  },
+  {
+    name: "GENERATION_DEBUG_TTL_DAYS",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["worker"],
+    description:
+      "Days a lesson's debug record (`generation_debug`: the writer's raw output, checks, repairs, splits, picture decisions, model calls, a failed job's full error) is kept; the worker's daily `generation.debug-cleanup` job deletes older rows (Greg, 20 Oct 2026; ADR 0015 amendment). Default 30.",
   },
   {
     name: "AI_MODEL_JUDGE",
@@ -911,6 +995,19 @@ const CONTRACT = [
     files: ["worker"],
     description:
       "Pause before each scripted fake answer when `AI_FAKE_SCRIPT` is set, so a browser test can watch slides arrive one by one. Ignored otherwise.",
+  },
+  {
+    name: "AI_FAKE_WRITER_REPLAY",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "Test only (live writing, TEACH-202 part d): a writer replay fixture folder the scripted fake streams at its recorded pace for the writer planner. Refused at boot unless `AI_FAKE_SCRIPT=pipeline`, which is itself refused when NODE_ENV=production; never set it on Railway.",
   },
   {
     name: "MASTRA_TELEMETRY_DISABLED",

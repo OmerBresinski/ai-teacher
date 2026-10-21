@@ -85,7 +85,7 @@ export function sampleBriefLesson(patch: Partial<Lesson> = {}): Lesson {
     version: 1,
     id: SAMPLE_LESSON_ID,
     title: "States of matter",
-    themeId: "chalk",
+    themeId: "splash",
     slides: [],
     createdAt: "2026-09-06T10:00:00.000Z",
     updatedAt: "2026-09-06T10:00:00.000Z",
@@ -107,6 +107,17 @@ export function fixtureSlideScript(skeleton: PlanSkeleton = FIXTURES.planSkeleto
 
 /** The input check's one answer (a clean brief), then Plan's three: skeleton, facts, verify. */
 export const CHECK_INPUT_CALLS = 1;
+/** The input check's clean answer: no findings and no past period (both fields are required). */
+export const CHECK_INPUT_CLEAR = {
+  findings: [],
+  historical_period: null,
+  fiction_in_period: false,
+};
+/** An input check answer: the clear answer under the test's own fields. */
+export const checkInputAnswer = (answer?: unknown) => ({
+  ...CHECK_INPUT_CLEAR,
+  ...(answer as Record<string, unknown> | undefined),
+});
 export const PLAN_CALLS = 3;
 /** Script index of the first Plan answer. */
 export const PLAN_INDEX = CHECK_INPUT_CALLS;
@@ -136,7 +147,7 @@ export function pipelineScript(
 ): FakeScriptEntry[] {
   const skeleton = options.skeleton ?? FIXTURES.planSkeleton;
   const script: FakeScriptEntry[] = [
-    json(options.checkInput ?? { findings: [] }),
+    json(checkInputAnswer(options.checkInput)),
     json(skeleton),
     json(FIXTURES.planFacts),
     // The facts fixture has no figures (TEACH-253): with a diagram in the skeleton the facts call
@@ -429,11 +440,29 @@ export * from "./planner/testing";
  * A saved lesson writer answer and its notes answer (the Year 5 fractions evidence run), for
  * tests that run the writer planner through the jobs with a fake model (TEACH-110 part b).
  */
+/** The answers to `writerFixture`'s exit ticket (its three jug questions). */
+export const EXIT_ANSWERS = ["9 litres", "10 litres", "Jug B: it holds exactly 10 litres"];
+
 export function writerFixture(): { main: string; notes: string } {
   const dir = new URL("./writer/fixtures/replay/y5-maths-fractions-of-amounts/", import.meta.url);
   const read = (f: string) => readFileSync(new URL(f, dir), "utf8");
+  // The saved run predates `close` (TEACH-110 part ab) and its lesson ends on practice. A lesson
+  // with the exit ticket on the slides must end with it, so its last slide becomes the exit ticket
+  // in `close`, as the writer's schema now asks: same slide count, same words.
+  const main = JSON.parse((JSON.parse(read("main.json")) as { text: string }).text) as {
+    slides: Record<string, unknown>[];
+  };
+  const { picture: _picture, ...last } = main.slides.pop() ?? {};
   return {
-    main: (JSON.parse(read("main.json")) as { text: string }).text,
+    main: JSON.stringify(
+      {
+        ...main,
+        // Its answers, as the writer now gives them with each question.
+        close: { ...last, template: "exit-ticket", answers: EXIT_ANSWERS },
+      },
+      null,
+      2,
+    ),
     notes: read("notes.json"),
   };
 }

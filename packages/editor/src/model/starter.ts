@@ -86,7 +86,7 @@ export const STARTER_KINDS: SlideKind[] = [
  */
 export function starterLesson(
   title = "Untitled lesson",
-  themeId = "chalk",
+  themeId = "splash",
   ageBand?: AgeBand,
 ): Lesson {
   const lesson = newLesson(title, themeId);
@@ -142,7 +142,7 @@ export function starterLesson(
 /* ------------------------------------------------------------------ */
 
 function waterCycle(): Lesson {
-  const themeId = "chalk";
+  const themeId = "splash";
   const kinds: SlideKind[] = [
     "title",
     "objectives",

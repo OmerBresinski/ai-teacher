@@ -1,6 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { jobEventsUrl } from "@tj/api-client";
-import { isTerminalJobEvent, type JobEvent, JobEventSchema } from "@tj/domain/jobs";
+import {
+  isTerminalJobEvent,
+  type JobEvent,
+  JobEventSchema,
+  type SlideDraftPayload,
+} from "@tj/domain/jobs";
+import type { DraftStore } from "@tj/editor/live-draft";
 import { useEffect, useReducer } from "react";
 import { env } from "@/env";
 import { sessionBoundary, sessionSignal } from "@/lib/session-boundary";
@@ -19,9 +25,22 @@ export interface JobEventsState {
   /** 0–100 derived from the latest `progress` event; `100` once completed. */
   percent: number | null;
   terminal: JobEvent | null;
+  /**
+   * Live writing (ADR 0039): the newest `slide-draft` per slide id. Drafts are not appended to
+   * `events` (a lesson streams a few hundred); a replay after a reconnect only overwrites them, and
+   * the job's end clears them (the saved slides are the record).
+   */
+  drafts: Readonly<Record<string, SlideDraftPayload & { seq?: number }>>;
 }
 
-const INITIAL: JobEventsState = { events: [], status: "idle", percent: null, terminal: null };
+const NO_DRAFTS: Readonly<Record<string, SlideDraftPayload & { seq?: number }>> = {};
+const INITIAL: JobEventsState = {
+  events: [],
+  status: "idle",
+  percent: null,
+  terminal: null,
+  drafts: NO_DRAFTS,
+};
 /** The API names SSE events by type (`event: progress`); derived once from the schema. */
 const EVENT_TYPES = JobEventSchema.options.map((option) => option.shape.type.value);
 let seq = 0;
@@ -39,6 +58,12 @@ export function reduceJobEvents(state: JobEventsState, action: Action): JobEvent
       return { ...state, status: action.status };
     case "event": {
       const { event } = action;
+      if (event.type === "slide-draft") {
+        if (state.terminal) return state;
+        const seq = Number(action.id) || undefined;
+        const draft = { ...event.draft, ...(seq ? { seq } : {}) };
+        return { ...state, drafts: { ...state.drafts, [event.draft.slideId]: draft } };
+      }
       const terminal = isTerminalJobEvent(event) ? event : state.terminal;
       const percent =
         event.type === "completed"
@@ -51,6 +76,7 @@ export function reduceJobEvents(state: JobEventsState, action: Action): JobEvent
         status: terminal ? "closed" : state.status,
         percent,
         terminal,
+        drafts: terminal ? NO_DRAFTS : state.drafts,
       };
     }
   }
@@ -132,4 +158,40 @@ export function useJobEvents(
   }, [jobId, client]);
 
   return state;
+}
+
+/**
+ * Live writing (ADR 0039): hands a job stream's drafts to the canvas's store. A fresh stream (the
+ * editor opening mid-job, a reconnect) starts with none until its replay arrives, so an empty set
+ * never clears the store while the job runs: the slide on screen keeps its draft. The job's end
+ * clears it, and the saved slides are all that shows.
+ */
+/** How long a finished job's drafts stay for the last save to reach the document. */
+export const DRAFTS_AFTER_END_MS = 1500;
+
+export function useFeedDrafts(
+  store: DraftStore | undefined,
+  drafts: JobEventsState["drafts"],
+  ended: boolean,
+): void {
+  useEffect(() => {
+    if (!store) return;
+    const list = Object.values(drafts);
+    if (!ended) {
+      if (list.length === 0) return;
+      // A fresh stream replays oldest first: a draft the store already holds a newer copy of (a
+      // later row) keeps the newer one, so the slide on screen never steps back.
+      const merged = new Map<string, (typeof list)[number]>();
+      for (const d of list) {
+        const held = store.get(d.slideId);
+        merged.set(d.slideId, held && (held.seq ?? 0) > (d.seq ?? 0) ? held : d);
+      }
+      store.set(merged.values());
+      return;
+    }
+    // The job's end lands a moment before its last save reaches the open document: the drafts
+    // stay for that moment, so the last slide never flashes an older copy, then go. The store
+    // owns the wait: the lock release after `completed` unmounts this view, and must not keep them.
+    store.end(DRAFTS_AFTER_END_MS);
+  }, [store, drafts, ended]);
 }

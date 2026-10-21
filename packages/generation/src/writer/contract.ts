@@ -53,24 +53,73 @@ export function drawerLimits() {
 }
 
 /** The menu lines for the freeform kinds, from the drawer's limits (`Diagram kinds:` block). */
-export function freeformMenuLines(): { labelled: string; particles: string } {
+export function freeformMenuLines(): {
+  labelled: string;
+  labelledRoute: string;
+  particles: string;
+} {
   const L = drawerLimits();
   const p = L.particles;
   return {
     labelled: `- labelled-diagram: a simple drawing of one thing with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}.`,
+    labelledRoute: `- labelled-diagram: a drawing of one object with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}; ${LABELLED_ROUTE}.`,
     particles: `- particles: up to ${p.panels} panels of atoms or molecules, at least ${p.perPanel} particles in each, for states of matter, diffusion, dissolving, or how temperature, concentration or pressure changes how particles move and collide; ${LIMIT_TEXT.particles}, and no arrows between panels that compare. Organisms, populations and variants are never particles: compare them with bar-chart, table or the compare layout.`,
   };
 }
+
+/** base4g's anatomy routing on the labelled-diagram line (t-anatomy PROPOSAL.md, option C). */
+const LABELLED_ROUTE =
+  "a structure hidden inside or too small to see, or a route through it, is a picture";
 
 /** The pinned lines the contract replaces, exactly as every bundle's system text holds them. */
 export const PINNED_LINES = {
   labelled:
     "- labelled-diagram: a simple drawing of one thing with up to 8 parts labelled, each label up to 4 words.",
+  /** base4g and later: the labelled line with the anatomy routing, in place of `labelled`. */
+  labelledRoute: `- labelled-diagram: a drawing of one object with up to 8 parts labelled, each label up to 4 words; ${LABELLED_ROUTE}.`,
   particles:
     "- particles: up to 3 particle panels, each with a note of up to 4 words, for states of matter, diffusion, dissolving, comparing conditions or collisions.",
   count:
     "The context gives a range of slides. Choose the number in that range that fits the topic, the pupils' age and the objectives, and plan that many in the flow.",
+  /** The hinge's counted key, read from 1 by code and written from 0 by gpt-6.1-sol. */
+  hingeKey:
+    "2 to 4 options, each wrong option a belief pupils plausibly hold at this point, and the number of the correct option;",
 } as const;
+
+/**
+ * Answer first (hotfix, pilot build/ANSWER-BUG.md): the writer puts the correct option or card
+ * first and writes no index; code fixes the key at 1 (`answerFirst`) and the shuffles place it.
+ * The parenthesis says why, so the model does not reorder to hide the answer.
+ */
+export const ANSWER_FIRST = {
+  hingeKey:
+    "2 to 4 options with the correct option first, then the wrong ones, each wrong option a belief pupils plausibly hold at this point (pupils see the options in a shuffled order);",
+  options: "The correct option first, then the wrong ones.",
+  chooseCards: "The correct card first, then the others.",
+  oddCards: "The odd one out first, then the cards that share the property.",
+} as const;
+
+/** The activity menu lines the answer-first rule rewrites, exactly as every bundle's menu holds them. */
+const MENU_KEY_LINES: [string, string][] = [
+  [
+    "- choose: one question answered by picking one card;",
+    "- choose: one question answered by picking one card, the correct card written first (pupils see the cards in a shuffled order);",
+  ],
+  [
+    "and only that property separates the odd one; the explanation names it.",
+    "and only that property separates the odd one, written as the first card (pupils see the cards in a shuffled order); the explanation names it.",
+  ],
+];
+
+const swapLine = (t: string, from: string, to: string) => {
+  if (!t.includes(from)) throw new Error(`writer contract: pinned line not found: ${from}`);
+  return t.split(from).join(to);
+};
+
+/** The activity menu with the answer-first lines. Throws when a menu line is missing. */
+export function answerFirstMenu(menu: string): string {
+  return MENU_KEY_LINES.reduce((t, [from, to]) => swapLine(t, from, to), menu);
+}
 
 /** The slide-count sentence: the context's count includes the title and objectives (ADR 0036). */
 export const COUNT_LINE =
@@ -82,12 +131,12 @@ export const COUNT_LINE =
  */
 export function contractSystem(text: string): string {
   const lines = freeformMenuLines();
-  const swap = (t: string, from: string, to: string) => {
-    if (!t.includes(from)) throw new Error(`writer contract: pinned line not found: ${from}`);
-    return t.split(from).join(to);
-  };
-  let t = swap(text, PINNED_LINES.labelled, lines.labelled);
+  const swap = swapLine;
+  let t = text.includes(PINNED_LINES.labelledRoute)
+    ? swap(text, PINNED_LINES.labelledRoute, lines.labelledRoute)
+    : swap(text, PINNED_LINES.labelled, lines.labelled);
   t = swap(t, PINNED_LINES.particles, lines.particles);
+  t = swap(t, PINNED_LINES.hingeKey, ANSWER_FIRST.hingeKey);
   return swap(t, PINNED_LINES.count, COUNT_LINE);
 }
 

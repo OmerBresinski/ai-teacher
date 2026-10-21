@@ -1,4 +1,5 @@
-import type { Id, SlideElement } from "@tj/domain/documents";
+import type { Id, SlideElement, Theme } from "@tj/domain/documents";
+import { minLayoutSize } from "@tj/slides/layout-paths";
 import {
   centre as centreOf,
   normaliseAngle,
@@ -57,6 +58,8 @@ export type StartBox = {
   lockHeight: boolean;
   /** Group children, in the group's local space, as they were at gesture start. */
   children?: SlideElement[];
+  /** The smallest a resize may make it (an adaptive layout group: `minLayoutSize`). */
+  minSize?: { w: number; h: number };
 };
 
 /** Element id → in-flight geometry, painted by `SlideView` instead of the cache. */
@@ -115,14 +118,31 @@ export const sampleOf = (e: {
   meta: e.metaKey || e.ctrlKey,
 });
 
-export const startBoxOf = (b: ElementBox): StartBox => ({
+export const startBoxOf = (b: ElementBox, theme?: Theme): StartBox => ({
   id: b.id,
   rect: b.rect,
   rotation: b.rotation,
   type: b.el.type,
   lockHeight: (b.el.type === "text" || b.el.type === "gap-text") && b.el.style.autoHeight !== false,
   children: b.el.type === "group" ? b.el.children : undefined,
+  ...(theme && b.el.type === "group" && b.el.layout
+    ? { minSize: minLayoutSize(b.el, theme) }
+    : null),
 });
+
+/** `rect` no smaller than `min`, the edges the handle moves giving way (the others stay put). */
+export function clampToMin(rect: Rect, min: { w: number; h: number }, handle: HandleId): Rect {
+  const out = { ...rect };
+  if (out.w < min.w) {
+    if (handle.includes("w")) out.x = rect.x + rect.w - min.w;
+    out.w = min.w;
+  }
+  if (out.h < min.h) {
+    if (handle.includes("n")) out.y = rect.y + rect.h - min.h;
+    out.h = min.h;
+  }
+  return out;
+}
 
 export const boundsOfBoxes = (boxes: StartBox[]): Rect =>
   unionRect(boxes.map((b) => rotatedBounds(b.rect, b.rotation)));
@@ -258,6 +278,7 @@ export function previewResize(
       rect = applyEdgeSnap(rect, g.handle, r.dx, r.dy, MIN_SIZE);
       guides = r.guides;
     }
+    if (b.minSize) rect = clampToMin(rect, b.minSize, g.handle);
     preview.set(b.id, transformAt(b, rect));
     return { preview, guides: settings.showGuides ? guides : [] };
   }

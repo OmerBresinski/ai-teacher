@@ -1,0 +1,306 @@
+import { describe, expect, test } from "bun:test";
+import type { Slide, TextElement } from "@tj/domain/documents";
+import { groundArt, isGroundArt } from "../art";
+import { footStrip, slideArtLayers } from "../background";
+import { contrastRatio } from "../look";
+import { withTitleBand } from "../templates/title-band";
+import { getTheme } from "../themes";
+import { CONNECTORS, connectorShape } from "./marks";
+import { markLook, surfaceStyle, surfacesOf } from "./surfaces";
+
+/*
+ * TEACH-215 part k: the shape families of Poster, Scrapbook, Calm and Storytime from their golds
+ * (round 2 themes2.css with round 4 themes4.css on top), the foot accent strip (round 3 themes3.css
+ * `.footbar`), the heading's title-accent word and the quick check's solid answer column.
+ */
+
+const marks = (id: string) => surfacesOf(getTheme(id)).marks;
+
+describe("shape families from each gold", () => {
+  test("poster: outline keys, tile medals, square chips, offset cards", () => {
+    expect(marks("poster")).toMatchObject({
+      title: "band",
+      badge: "disc",
+      key: "outline",
+      medal: "tile",
+      chip: "square",
+      card: "offset",
+      frame: "offset",
+      ground: "none",
+      connector: "block-offset",
+    });
+    expect(marks("poster").offset).toEqual({ d: 5.33, color: "#1B1B2F" });
+  });
+  test("scrapbook: outline badges, sticky keys, tag chips, dashed rule, torn fields, lined ground", () => {
+    expect(marks("scrapbook")).toMatchObject({
+      title: "none",
+      badge: "outline",
+      key: "sticky",
+      chip: "tag",
+      card: "plain",
+      rule: "dashed",
+      frame: "polaroid",
+      field: "torn",
+      ground: "lined",
+      connector: "sketch",
+    });
+    expect(marks("scrapbook").sticky).toEqual({ fill: "#FFE45C", tilt: -3 });
+  });
+  test("calm: rounded badges, outline keys and chips, outline cards", () => {
+    expect(marks("calm")).toMatchObject({
+      badge: "rounded",
+      key: "outline",
+      chip: "outline",
+      card: "outline",
+      medal: "disc",
+      ground: "none",
+    });
+  });
+  test("storytime: outline cards and the round connector", () => {
+    expect(marks("storytime")).toMatchObject({
+      card: "outline",
+      connector: "round",
+      badge: "disc",
+    });
+  });
+  test("geometric keeps its own families", () => {
+    expect(marks("geometric")).toMatchObject({
+      badge: "hex",
+      key: "notch",
+      card: "outline",
+      ground: "dots",
+      connector: "block",
+      footBar: 0,
+    });
+  });
+});
+
+describe("hinge keys in each family (hinge lane's request)", () => {
+  test("storytime and calm keys wear the theme colour; poster's the ink; scrapbook's the sticky paper", () => {
+    expect(marks("storytime").keyFill).toBe("accent");
+    expect(marks("calm").keyFill).toBe("accent");
+    expect(marks("poster").keyFill).toBe("ink");
+    const calm = getTheme("calm");
+    const s = surfacesOf(calm);
+    // An outline key asked for in its role's (clear) fill draws its ring in the theme's teal.
+    expect(markLook(calm, "key", 30, s.roles.key.fill, "#FFFFFF")).toMatchObject({
+      fill: "transparent",
+      stroke: "#245150",
+      ink: "#245150",
+    });
+    expect(markLook(getTheme("scrapbook"), "key", 30, "#23201C", "#FFFFFF")).toMatchObject({
+      fill: "#FFE45C",
+      rotation: -3,
+    });
+  });
+});
+
+describe("connector shapes", () => {
+  for (const kind of CONNECTORS)
+    test(`${kind} stays inside its box`, () => {
+      const s = connectorShape(kind, 40, 30);
+      const pts = [...s.fills.flatMap((f) => f.pts), ...s.strokes.flat()];
+      expect(pts.length).toBeGreaterThan(0);
+      for (const p of pts) {
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.x).toBeLessThanOrEqual(40);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeLessThanOrEqual(30);
+      }
+    });
+  test("the sketch's chevron tip is the shaft's end", () => {
+    const s = connectorShape("sketch", 60, 40);
+    const [shaft, head] = s.strokes;
+    expect(head?.[1]).toEqual(shaft?.[shaft.length - 1]);
+    // the gold's stroke: max(5, round(h * 1.5 * .12)) px, in points
+    expect(s.width).toBeCloseTo(7 / 1.5, 3);
+  });
+});
+
+describe("foot accent strip", () => {
+  const slide = (kind: Slide["kind"], names: string[] = []): Slide =>
+    ({
+      id: "s",
+      kind,
+      elements: names.map((name, i) => ({
+        id: `e${i}`,
+        type: "shape",
+        shape: "rect",
+        name,
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+      })),
+    }) as Slide;
+  const ON = [
+    "treehouse",
+    "reading-room",
+    "crayon",
+    "exam-hall",
+    "playground",
+    "splash",
+    "studio",
+    "dark-slate",
+    "dark-ember",
+    "beacon",
+  ];
+  // Each gold's `--accent` (round 3 themes3.css; Reading Room round 4; the darks round 5).
+  const GOLD_ACCENT: Record<string, string> = {
+    treehouse: "#245F28",
+    "reading-room": "#1F5A45",
+    crayon: "#A31F2E",
+    "exam-hall": "#1B3A8C",
+    playground: "#6532BE",
+    splash: "#0A5CA2",
+    studio: "#0B6E86",
+    "dark-slate": "#9DBBD0",
+    "dark-ember": "#F2A08C",
+    beacon: "#0A46C8",
+  };
+  test("the ten themes whose gold has it paint 14px at 1440 in the gold's accent", () => {
+    expect(Object.keys(GOLD_ACCENT).sort()).toEqual([...ON].sort());
+    for (const id of ON) {
+      const s = footStrip(getTheme(id), slide("content"));
+      expect({ id, s }).toEqual({
+        id,
+        s: { x: 0, y: 530.6667, w: 960, h: 9.3333, fill: GOLD_ACCENT[id] as string },
+      });
+    }
+  });
+  test("none on the cover, none in the other themes, none over the look's own accent bar", () => {
+    expect(footStrip(getTheme("treehouse"), slide("title"))).toBeNull();
+    expect(footStrip(getTheme("treehouse"), slide("content", ["Accent bar"]))).toBeNull();
+    for (const id of ["paper", "poster", "storytime", "scrapbook", "calm", "geometric"])
+      expect(footStrip(getTheme(id), slide("content"))).toBeNull();
+  });
+});
+
+describe("grounds", () => {
+  test("scrapbook's lined paper is a ground layer; geometric keeps its dots", () => {
+    const lined = groundArt(getTheme("scrapbook"));
+    expect(lined?.image).toContain(encodeURIComponent("#F1B9B4"));
+    expect(lined).toMatchObject({ x: 0, y: 0, w: 960, h: 540 });
+    expect(groundArt(getTheme("geometric"))).not.toBeNull();
+    expect(groundArt(getTheme("calm"))).toBeNull();
+  });
+});
+
+describe("title accent and the quick check's answer column", () => {
+  const heading = (color: string): TextElement =>
+    ({
+      id: "h",
+      type: "text",
+      name: "Heading",
+      x: 64,
+      y: 40,
+      w: 800,
+      h: 50,
+      doc: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "magnetic", marks: [{ type: "textStyle", attrs: { color } }] },
+            ],
+          },
+        ],
+      },
+    }) as unknown as TextElement;
+  const colourOf = (e: TextElement) =>
+    JSON.stringify(e.doc).match(/"color":"(#[0-9A-Fa-f]{6})"/)?.[1];
+  test("treehouse's accent word takes its title-accent; geometric's is unchanged", () => {
+    const tree = getTheme("treehouse");
+    const out = withTitleBand([heading(tree.colors.accent)], tree, "content");
+    expect(colourOf(out[0] as TextElement)).toBe("#8A4B12");
+    const geo = getTheme("geometric");
+    expect(
+      colourOf(withTitleBand([heading(geo.colors.accent)], geo, "content")[0] as TextElement),
+    ).toBe(geo.colors.accent);
+  });
+  test("the cover's title is left to the cover", () => {
+    const tree = getTheme("treehouse");
+    const out = withTitleBand([heading(tree.colors.accent)], tree, "title");
+    expect(colourOf(out[0] as TextElement)).toBe(tree.colors.accent);
+  });
+  test("beacon and poster set a solid answer column; others have none", () => {
+    expect(surfaceStyle(getTheme("beacon"), "field-b", "inverse")).toMatchObject({
+      fill: "#0A46C8",
+      ink: "#FFFFFF",
+    });
+    expect(surfaceStyle(getTheme("poster"), "field-b", "inverse")).toMatchObject({
+      fill: "#123C4A",
+      ink: "#FFF4E2",
+    });
+    expect(surfacesOf(getTheme("paper")).states["field-b:inverse"]).toBeUndefined();
+  });
+});
+
+describe("sticky key reveal (TEACH-215 part k integration)", () => {
+  test("scrapbook's right key keeps the correct green, not the sticky paper", () => {
+    const t = getTheme("scrapbook");
+    const right = surfaceStyle(t, "key", "right");
+    expect(right.fill).not.toBe(surfacesOf(t).marks.sticky?.fill);
+    expect(right.ink).toBe("#FFFFFF");
+    expect(contrastRatio(right.ink as string, right.fill as string)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("scrapbook's cover keeps its own ground (review S1)", () => {
+  test("a title slide wears the cover art (margin at 38pt, rules in the lower band), no lined ground", () => {
+    const t = getTheme("scrapbook");
+    const cover = slideArtLayers(t, { id: "c", kind: "title", elements: [] } as Slide);
+    expect(cover.map((l) => [l.x, l.y, l.w, l.h])).toEqual([
+      [38, 0, 1.5, 531],
+      [0, 404, 960, 127],
+    ]);
+    expect(cover.some(isGroundArt)).toBe(false);
+    const content = slideArtLayers(t, { id: "k", kind: "content", elements: [] } as Slide);
+    expect(content).toEqual([groundArt(t) as NonNullable<ReturnType<typeof groundArt>>]);
+  });
+});
+
+describe("corners are the golds' 1440px radii in slide points (review item 47)", () => {
+  // Each gold's `--radius-pic` in CSS px at 1440 wide (round 2 themes2.css, round 3 themes3.css,
+  // round 4 themes4.css, round 5 themes5.css; Paper and Scrapbook inherit theme-v2.css's 20px), and
+  // the slide point it becomes (px / 1.5, to 0.1pt). Paper keeps each layout's own field corners.
+  const GOLD: Record<string, [px: number, pt: number | "own"]> = {
+    paper: [20, "own"],
+    poster: [0, 0],
+    treehouse: [15, 10],
+    "reading-room": [9, 6],
+    storytime: [32, 21.3],
+    scrapbook: [20, 13.3],
+    calm: [12, 8],
+    geometric: [0, 0],
+    beacon: [9, 6],
+    crayon: [9, 6],
+    "exam-hall": [6, 4],
+    playground: [33, 22],
+    splash: [39, 26],
+    studio: [21, 14],
+    "dark-slate": [14, 9.3],
+    "dark-ember": [12, 8],
+  };
+  test("every theme's field and card corner", () => {
+    for (const [id, [, pt]] of Object.entries(GOLD)) {
+      const r = surfacesOf(getTheme(id)).roles;
+      // Scrapbook's fields are torn paper (round 2 `--fb-edge: var(--edge-torn)`): no radius.
+      // Cards take the gold's own `--card-radius` where it differs: Scrapbook 2px, Storytime 26px.
+      const card = id === "scrapbook" ? 1.3 : id === "storytime" ? 17.3 : pt;
+      expect({ id, field: r["field-b"].corner, card: r.card.corner }).toEqual({
+        id,
+        field: id === "scrapbook" ? 0 : pt,
+        card,
+      });
+    }
+  });
+  test("a picture frame takes the gold's radius-pic in points (Paper included)", () => {
+    for (const [id, [px]] of Object.entries(GOLD))
+      expect({ id, frame: surfacesOf(getTheme(id)).roles.frame.corner }).toEqual({
+        id,
+        frame: Math.round(((px * 2) / 3) * 10) / 10,
+      });
+  });
+});

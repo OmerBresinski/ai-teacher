@@ -17,6 +17,7 @@ import {
   FIT_VERSION,
   fontFloor,
   getTheme,
+  isThemeId,
   MIN_FONT_SIZE,
   THEME_TAG_LABELS,
   THEMES,
@@ -32,15 +33,20 @@ const artOf = (t: Theme) =>
   ].join(" ");
 
 describe("theme catalogue", () => {
-  test("ten themes; the six older ids still resolve; an unknown id falls back to chalk", () => {
-    expect(THEMES).toHaveLength(10);
+  test("sixteen themes, no Chalk & Cream; old chalk lessons render as Splash; unknown ids fall back to Splash (ruling 202)", () => {
+    // TEACH-215 part c: the ten plus the round 5 themes (16 Oct 2026).
+    expect(THEMES).toHaveLength(16);
+    expect(THEMES.map((t) => t.id)).not.toContain("chalk");
+    expect(isThemeId("chalk")).toBe(false);
     expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);
-    for (const id of ["chalk", "playground", "reading-room", "exam-hall", "night-lab", "beacon"]) {
+    for (const id of ["playground", "reading-room", "exam-hall", "night-lab", "beacon"]) {
       expect(getTheme(id).id).toBe(id);
     }
-    expect(DEFAULT_THEME_ID).toBe("chalk");
-    expect(getTheme("nope").id).toBe("chalk");
-    expect(getTheme(undefined).id).toBe("chalk");
+    expect(getTheme("chalk")).toBe(getTheme("splash"));
+    expect(getTheme("chalk", "ks2")).toBe(getTheme("splash", "ks2"));
+    expect(DEFAULT_THEME_ID).toBe("splash");
+    expect(getTheme("nope").id).toBe("splash");
+    expect(getTheme(undefined).id).toBe("splash");
     expect(getTheme("night-lab").dark).toBe(true);
   });
 
@@ -189,9 +195,9 @@ describe("callout tones", () => {
   });
 
   test("a theme the table does not know takes Chalk's set, or Night Lab's when dark", () => {
-    const chalk = getTheme("chalk");
+    const light = getTheme("splash");
     const night = getTheme("night-lab");
-    expect(calloutTones({ ...chalk, id: "new-light" })).toBe(calloutTones(chalk));
+    expect(calloutTones({ ...light, id: "new-light" })).toBe(CALLOUT_TONES.chalk as never);
     expect(calloutTones({ ...night, id: "new-dark" })).toBe(calloutTones(night));
   });
 

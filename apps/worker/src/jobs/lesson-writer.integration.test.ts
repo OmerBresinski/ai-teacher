@@ -91,14 +91,20 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     await createTestUserWithWorkspace(unsafeDb, { workspaceId });
   });
 
-  const ctxFor = <P>(jobId: JobId, payload: P, deps: WorkerDeps) => ({
+  const ctxFor = <P>(
+    jobId: JobId,
+    payload: P,
+    deps: WorkerDeps,
+    extra: { attemptsLeft?: boolean; signal?: AbortSignal } = {},
+  ) => ({
     jobId,
     workspaceId,
     payload,
-    signal: new AbortController().signal,
+    signal: extra.signal ?? new AbortController().signal,
     progress: async () => {},
     logger: quiet,
     deps,
+    ...(extra.attemptsLeft !== undefined ? { attemptsLeft: extra.attemptsLeft } : {}),
   });
 
   async function newLesson(): Promise<{ lessonId: LessonId; jobId: JobId }> {
@@ -196,21 +202,39 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
 
     expect(done.lock).toBeNull();
     expect(done.lesson.generation?.stage).toBe("generated");
-    expect(done.lesson.slides.length).toBe(12);
+    // 12 written slides plus slide 9's continuation, then the guard and three Answers pages
+    // (TEACH-191 parts b and d): measured at the size KS2 draws them, the sentence answers no
+    // longer fit two pages without overlapping. Slide 9 (equation-hero, "A fraction of some
+    // money") lays its steps to y 648 on the 540-tall slide, so it splits onto s9c1 (UX-C J8,
+    // Greg 70 B).
+    expect(done.lesson.slides.length).toBe(17);
+    const ids = done.lesson.slides.map((s) => s.id);
+    expect(ids.indexOf("s9c1")).toBe(ids.indexOf("s9") + 1);
+    expect(done.lesson.slides.slice(13).map((s) => s.answersRole)).toEqual([
+      "guard",
+      "answers",
+      "answers",
+      "answers",
+    ]);
     expect(done.lesson.slides.slice(0, 2).map((s) => s.kind)).toEqual(["title", "objectives"]);
   });
 
   test("C2: slides are saved read-only while the writer streams, before it ends", async () => {
     // TEACH-110 part h: the writer's answer arrives in paced pieces (a model writing over time).
+    // The deck is saved at most once a second, so the stream must outlast the first slide plus a
+    // second's wait plus a save: 55 pieces 60 ms apart is about 3.2 s, the first slide closing at
+    // about 0.8 s. The stream's end is read off the fake when its last piece goes out, never
+    // worked out from the pace: under CI load the timers run late and a computed end comes early.
     const PIECE = 150;
-    const PACE = 40;
-    const pieces = Math.ceil(fixture.main.length / PIECE);
-    let writerStart = 0;
+    const PACE = 60;
+    let writerEnd = Number.POSITIVE_INFINITY;
     const paced = labAi({
       extra: (call) => {
         if (call.context?.promptVersion === `${WRITER_VERSION}/lesson`) {
-          writerStart = performance.now();
-          return { text: fixture.main, stream: { pieceChars: PIECE, paceMs: PACE } };
+          const onEnd = () => {
+            writerEnd = performance.now();
+          };
+          return { text: fixture.main, stream: { pieceChars: PIECE, paceMs: PACE, onEnd } };
         }
         return writerAnswers(call);
       },
@@ -223,16 +247,17 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
       ...ctxFor(genJob, { lessonId, revision: 1 }, depsWith(paced, "writer")),
       progress: async (_percent: number, message: string) => {
         if (message !== "Writing slides" && message !== "Slides written") return;
+        // The save has landed when its progress is sent: stamp it before this test's own read.
+        const at = performance.now();
         const r = await row(lessonId);
         seen.push({
-          at: performance.now(),
+          at,
           message,
           kinds: r.lesson.slides.map((x) => x.kind),
           states: Object.values(r.lesson.generation?.slideStates ?? {}),
         });
       },
     } as never);
-    const writerEnd = writerStart + (pieces - 1) * PACE;
     const first = seen[0];
     expect(first?.message).toBe("Writing slides");
     // the first save lands while the writer is still streaming
@@ -249,8 +274,12 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(editable?.states.every((x) => x === "done")).toBe(true);
     const done = await row(lessonId);
     expect(done.lesson.generation?.stage).toBe("generated");
-    expect(done.lesson.slides.length).toBe(12);
-  });
+    // 12 written slides plus slide 9's continuation (it runs off the slide; UX-C J8, Greg 70 B).
+    expect(done.lesson.slides.filter((s) => !s.answersRole).length).toBe(13);
+    // Its own timeout: the paced stream alone is about 3.2 s by design, and on CI the whole test
+    // took 3.9 to 5.0 s on master (21 Oct 2026), over bun's 5 s default once (PR #603). The pace and
+    // every assertion above stay as they are; only the ceiling is raised.
+  }, 15_000);
 
   test("flipping the flag back: a writer-stamped lesson still generates on the writer route", async () => {
     const { genAi, done } = await planAndGenerate("objectives-first");
@@ -309,9 +338,126 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(err).toBeInstanceOf(NonRetryableError);
     const after = await row(lessonId);
     expect(after.lock).toBeNull();
-    // The job re-materialises the objectives slide (fresh ids); no writer slide was saved.
-    expect(after.lesson.slides.map((x) => x.kind)).toEqual(
+    // UX-A: the slides the writer closed before the cut are kept, after the plan's own slides, so
+    // the teacher keeps them in the editor; only whole, schema-valid slides survive.
+    const kinds = after.lesson.slides.map((x) => x.kind);
+    expect(kinds.slice(0, planned.lesson.slides.length)).toEqual(
       planned.lesson.slides.map((x) => x.kind),
     );
+    expect(kinds.length).toBeGreaterThan(planned.lesson.slides.length);
+    expect(new Set(after.lesson.slides.map((x) => x.id)).size).toBe(kinds.length);
+  });
+
+  // TEACH-202 part g (the part f bug): a lesson hung for good when the writer's retry was refused
+  // on budget. The refusal came wrapped in the stream's error, was taken for a retryable one, and
+  // the last attempt kept the lock "for the retry" that pg-boss never ran.
+  describe("the generating lock is released on every terminal exit (TEACH-202 part g)", () => {
+    /** A budget no call fits, so the first model call of the run is refused by the middleware. */
+    const broke = (a: WorkerDeps["ai"]): WorkerDeps => ({
+      ...depsWith(a, "writer"),
+      caps: { capUsd: 0.000_001, capTokens: 5_000_000 },
+    });
+    const generate = (genJob: JobId, lessonId: LessonId, deps: WorkerDeps, extra = {}) =>
+      lessonGenerateJob(ctxFor(genJob, { lessonId, revision: 1 }, deps, extra) as never).catch(
+        (e: unknown) => e,
+      );
+
+    test("a retry refused on budget fails for good and releases the lock (the Y10 eye hang)", async () => {
+      const { lessonId } = await planOnly();
+      const genJob = await confirm(lessonId);
+      // Attempt 0: an unknown failure mid-stage, with attempts left: the lock is kept for the retry.
+      const first = await generate(
+        genJob,
+        lessonId,
+        depsWith(ai({ text: fixture.main.slice(0, 400) }), "writer"),
+        {
+          attemptsLeft: true,
+        },
+      );
+      expect(first).not.toBeInstanceOf(NonRetryableError);
+      expect((await row(lessonId)).lock).toBe(genJob);
+      // Attempt 1 (resumed): the writer's streamed call is refused by the budget.
+      const refusedAi = ai();
+      const second = await generate(genJob, lessonId, broke(refusedAi), { attemptsLeft: true });
+      expect(second).toBeInstanceOf(NonRetryableError);
+      expect((await row(lessonId)).lock).toBeNull();
+    });
+
+    test("a budget refusal on attempt 0 is not retried and releases the lock", async () => {
+      const { lessonId } = await planOnly();
+      const genJob = await confirm(lessonId);
+      const err = await generate(genJob, lessonId, broke(ai()), { attemptsLeft: true });
+      expect(err).toBeInstanceOf(NonRetryableError);
+      expect((await row(lessonId)).lock).toBeNull();
+    });
+
+    test("an error thrown mid-stage on the last attempt releases the lock; no calls after it", async () => {
+      const { lessonId } = await planOnly();
+      const genJob = await confirm(lessonId);
+      const cut = ai({ text: fixture.main.slice(0, 400) });
+      const err = await generate(genJob, lessonId, depsWith(cut, "writer"), {
+        attemptsLeft: false,
+      });
+      expect(err).toBeInstanceOf(Error);
+      expect((await row(lessonId)).lock).toBeNull();
+      const calls = cut.calls.length;
+      await new Promise((r) => setTimeout(r, 150));
+      expect(cut.calls.length).toBe(calls);
+    });
+
+    test("a shutdown on the last attempt releases the lock; with attempts left it keeps it", async () => {
+      for (const attemptsLeft of [false, true]) {
+        const { lessonId } = await planOnly();
+        const genJob = await confirm(lessonId);
+        const stop = new AbortController();
+        stop.abort("shutdown");
+        await generate(genJob, lessonId, depsWith(ai(), "writer"), {
+          attemptsLeft,
+          signal: stop.signal,
+        });
+        expect((await row(lessonId)).lock).toBe(attemptsLeft ? genJob : null);
+      }
+    });
+
+    test("a cancel mid-stream releases the lock", async () => {
+      const { lessonId } = await planOnly();
+      const genJob = await confirm(lessonId);
+      const stop = new AbortController();
+      const paced = labAi({
+        extra: (call) => {
+          if (call.context?.promptVersion === `${WRITER_VERSION}/lesson`) {
+            setTimeout(() => stop.abort("cancelled"), 60);
+            return { text: fixture.main, stream: { pieceChars: 100, paceMs: 30 } };
+          }
+          return writerAnswers(call);
+        },
+        route: writerRoute,
+      });
+      await generate(genJob, lessonId, depsWith(paced, "writer"), { signal: stop.signal });
+      const after = await row(lessonId);
+      expect(after.lock).toBeNull();
+      expect(after.lesson.generation?.stage).not.toBe("generated");
+    });
+
+    test("after a terminal failure a second job for the same lesson starts and finishes", async () => {
+      const { lessonId } = await planOnly();
+      const genJob = await confirm(lessonId);
+      await generate(genJob, lessonId, broke(ai()), { attemptsLeft: true });
+      expect((await row(lessonId)).lock).toBeNull();
+      const next = await setPlanRevisionAndLock(ws(), lessonId, {
+        expectedRevision: 1,
+        jobId: newId<JobId>(),
+        patch: (lesson) => lesson,
+      });
+      expect(next.status).toBe("ok");
+      const nextJob = (await row(lessonId)).lock as JobId;
+      expect(nextJob).not.toBe(genJob);
+      await lessonGenerateJob(
+        ctxFor(nextJob, { lessonId, revision: 1 }, depsWith(ai(), "writer")) as never,
+      );
+      const done = await row(lessonId);
+      expect(done.lock).toBeNull();
+      expect(done.lesson.generation?.stage).toBe("generated");
+    });
   });
 });

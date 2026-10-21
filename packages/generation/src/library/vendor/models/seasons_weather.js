@@ -5,7 +5,8 @@
 //   daylength plus the Sun's path on the season's solstice or equinox day: the arc's width is the
 //             hours of daylight (24 h = the full arc track) and its height follows the Sun's noon
 //             height, both worked out from the place's latitude.
-// Truth: season months follow the hemisphere; trees are deciduous so they are bare in winter
+// Truth: season months follow the hemisphere; trees are deciduous so they are bare in winter, except in a
+// place marked evergreen in PLACES (Sydney's native eucalypts and wattles keep their leaves)
 // (drawn from the season, not a setting); no snow in summer, nor in places where it hardly snows.
 import { TOWNS } from '../kit/facts.js'; import { gazPlace } from '../kit/geo.js'; // libdata
 import {
@@ -17,7 +18,7 @@ import {
 import { seasonTree, weatherIcon, sunArc, WEATHER } from '../kit/batch-F.js';
 
 export const meta = {
-  id: 'seasons_weather', name: 'Seasons, weather and day length', kind: 'scene', version: 1,
+  id: 'seasons_weather', name: 'Seasons, weather and day length', kind: 'scene', version: 2,
   subjects: ['Science', 'Geography'],
   years: ['Reception', 'Y1', 'Y2'],
   teaches: 'The four seasons in order, how a tree and the weather change through the year, and why summer days are long and winter days are short.',
@@ -31,7 +32,7 @@ const WEATHER_LABELS = { sun: 'Sunny', cloud: 'Cloudy', rain: 'Rainy', snow: 'Sn
 const PLACES = {
   london: { name: 'London', lat: 51.5, snows: true }, edinburgh: { name: 'Edinburgh', lat: 55.95, snows: true },
   cardiff: { name: 'Cardiff', lat: 51.48, snows: true }, belfast: { name: 'Belfast', lat: 54.6, snows: true },
-  'new-york': { name: 'New York', lat: 40.7, snows: true }, sydney: { name: 'Sydney', lat: -33.87, snows: false },
+  'new-york': { name: 'New York', lat: 40.7, snows: true }, sydney: { name: 'Sydney', lat: -33.87, snows: false, evergreen: true },
   melbourne: { name: 'Melbourne', lat: -37.81, snows: false }, auckland: { name: 'Auckland', lat: -36.85, snows: false },
   'cape-town': { name: 'Cape Town', lat: -33.92, snows: false },
 };
@@ -336,7 +337,7 @@ function fitColumns(p, P, S, hrs, hemi, span, ph) {
 
 /* ------------------------------------------------------------------ render */
 export function render(root, P, ctx) {
-  const { S, sun, hrs, hemi } = plan(P); const b = ctx.b, N = ctx.N;
+  const { S, sun, hrs, hemi, place: home } = plan(P); const b = ctx.b, N = ctx.N;
   const bi = k => b[k] ?? 0;
   // dark rooms: faded panels step back less, or they vanish into the background
   const dark = ctx.name === 'night', rq = dark ? 'soft' : 'quiet';
@@ -355,6 +356,12 @@ export function render(root, P, ctx) {
   const fieldFill = (s) => s.weather === 'snow' ? snowField : s.season === 'autumn' ? 'var(--field)' : s.season === 'winter' ? 'var(--hill-mid)' : 'var(--hill-near)';
   const suns = [];
 
+  // the four empty frames are there from the first build, so the year reads as one grid that fills
+  // in season by season (and the opening frame is the first season, not a lone corner)
+  slots.forEach(({ x, y }) => h('rect', { x, y, width: pw, height: ph, rx: 'var(--r-card)', fill: 'none', stroke: 'var(--rule)', 'stroke-width': 'var(--sw-hair)', 'stroke-dasharray': '6 8' }, root));
+  // a place whose own trees are evergreen (Sydney: eucalypts and wattles) keeps its tree in leaf all
+  // year, so the weather tells the seasons apart; everywhere else, south of the equator too, the tree is deciduous
+  const evergreen = home.evergreen === true;
   S.forEach((s, i) => {
     const { c, x, y } = slots[i]; const k = bi(`season:${s.season}`);
     // each panel steps back after its build; for "again" all four step back so the arrows lead;
@@ -387,7 +394,7 @@ export function render(root, P, ctx) {
       // 24 hours = the whole arc track; the arc's height follows the Sun's noon height (70° = the top of the sky)
       const tx0 = x + 18, tx1 = x + pw - 18, tw = tx1 - tx0, cx = (tx0 + tx1) / 2, r = 18;
       const aw = tw * sun[i].hours / 24, ah = Math.max(r + 18, (ph - 50 - 34) * clamp(sun[i].noon / 70, 0.05, 1));
-      seasonTree(sc, x + pw - 40, yH + 6, s.season, 0.6, {}, { snow: s.weather === 'snow' });
+      seasonTree(sc, x + pw - 40, yH + 6, evergreen ? 'summer' : s.season, 0.6, {}, { snow: s.weather === 'snow' });
       // the day as a strip on the ground: the whole strip is 24 hours, the bright part is daylight
       h('rect', { x: tx0, y: yH + 22, width: tw, height: 14, rx: 'var(--r-mark)', fill: 'var(--shade)' }, sc);
       h('rect', { x: cx - aw / 2, y: yH + 22, width: aw, height: 14, fill: 'var(--sun)' }, sc);
@@ -396,10 +403,10 @@ export function render(root, P, ctx) {
       const disc = arc.g.querySelector('circle'); suns.push({ k, disc, at: arc.at });
     } else {
       const tX = P.view === 'weather' ? x + pw * 0.3 : x + pw / 2;
-      if (s.season === 'autumn') // fallen leaves gather on the ground: the "then fall" of autumn
+      if (s.season === 'autumn' && !evergreen) // fallen leaves gather on the ground: the "then fall" of autumn
         for (let j = 0; j < 14; j++) { const lx = x + 14 + j * (pw - 28) / 13, ly = yH + 16 + (j % 3) * 9;
           h('ellipse', { cx: lx, cy: ly, rx: 8, ry: 4, fill: j % 2 ? 'var(--counter)' : 'var(--sun)', transform: `rotate(${(j * 47) % 180 - 90} ${lx} ${ly})` }, sc); }
-      seasonTree(sc, tX, yH + 22, s.season, P.view === 'weather' ? 1.05 : 1.15, {}, { snow: s.weather === 'snow' });
+      seasonTree(sc, tX, yH + 22, evergreen ? 'summer' : s.season, P.view === 'weather' ? 1.05 : 1.15, {}, { snow: s.weather === 'snow' });
       if (P.view === 'weather') weatherIcon(g, s.weather, x + pw * 0.74, y + 62, 0.95, { s: k, cls: 'pop', delay: 500 });
     }
     h('rect', { x, y, width: pw, height: ph, rx: 'var(--r-card)', fill: 'none', stroke: 'var(--rule)', 'stroke-width': 'var(--sw-hair)' }, g);

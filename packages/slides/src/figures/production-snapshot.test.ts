@@ -54,7 +54,8 @@ describe("production figures are unchanged", () => {
   for (const name of Object.keys(FIGURE_TEMPLATES) as FigureTemplateName[]) {
     test(`${name} on every theme`, () => {
       const out = (SAMPLES[name] ?? [undefined]).flatMap((values) =>
-        THEMES.flatMap((theme) =>
+        // Theme v2 (TEACH-152 part b) is new: the snapshot holds the v1 themes unchanged.
+        THEMES.filter((t) => !t.v2).flatMap((theme) =>
           RECTS.map((rect) => stable(drawFigure(name, values, theme, rect))),
         ),
       );

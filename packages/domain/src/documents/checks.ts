@@ -3,7 +3,7 @@ import type { Lesson } from "./lesson";
 import type { FactId, LessonFacts } from "./lesson-facts";
 import { QUALITY_CHECKS, qualityChecks } from "./quality-checks";
 import { richDocToPlainText } from "./rich-text";
-import { hasRevealableAnswer, type Slide } from "./slide";
+import { answersOffSlide, hasRevealableAnswer, type Slide } from "./slide";
 import { walkElements } from "./text";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
@@ -81,7 +81,11 @@ function checkQuestionAnswers(lesson: Lesson, worksheet?: Worksheet): Finding[] 
 function slideAnswerProblem(slide: Slide): string | undefined {
   const q = slide.question;
   if (!q) return undefined;
-  if (q.type === "open-response" && !hasRevealableAnswer(slide)) return "has no model answer";
+  if (
+    q.type === "open-response" &&
+    (answersOffSlide(slide) ? !q.modelAnswer?.trim() : !hasRevealableAnswer(slide))
+  )
+    return "has no model answer";
   if (q.type === "fill-gap" && q.gaps.some((gap) => isBlank(gap.answer))) {
     return "has a gap with no answer";
   }

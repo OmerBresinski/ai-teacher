@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { GroupElement } from "@tj/domain/documents";
 import { drawFigure, FIGURE_RECT } from "@tj/slides";
+import * as kit from "@tj/slides/relayout";
 import { getTheme } from "../../model/themes";
 import { GroupView } from "./GroupView";
 
@@ -9,7 +10,7 @@ import { GroupView } from "./GroupView";
 
 afterEach(cleanup);
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 
 const renderGroup = (element: GroupElement) =>
   render(
@@ -61,5 +62,51 @@ describe("GroupView", () => {
     expect(box.getAttribute("role")).toBeNull();
     expect(box.getAttribute("aria-label")).toBeNull();
     expect(screen.queryByRole("img")).toBeNull();
+  });
+});
+
+describe("GroupView of an adaptive layout (TEACH-205 part b)", () => {
+  const layoutGroup = (): GroupElement => {
+    const grid = ["Roots", "Stem"].map((label) => ({ label, text: `The ${label} works.` }));
+    return kit.layoutGroup(
+      { template: "cards-grid", input: { heading: "Parts", grid } },
+      theme,
+      "ks2",
+      "g1",
+    );
+  };
+  test("view, present, print capture and thumbnails draw it unclipped, as master did", () => {
+    for (const mode of ["view", "present", "capture", "thumb"] as const) {
+      const { container } = render(
+        <GroupView
+          element={layoutGroup()}
+          theme={theme}
+          mode={mode}
+          slideId="s1"
+          hidden={false}
+          ghost={false}
+          revealAnswer={false}
+        />,
+      );
+      expect(container.querySelector("[data-layout-frame]")).toBeNull();
+      expect(container.innerHTML).not.toContain("overflow: hidden");
+      cleanup();
+    }
+  });
+
+  test("the editor clips it at its frame", () => {
+    const { container } = render(
+      <GroupView
+        element={layoutGroup()}
+        theme={theme}
+        mode="edit"
+        slideId="s1"
+        hidden={false}
+        ghost={false}
+        revealAnswer={false}
+      />,
+    );
+    const frame = container.querySelector<HTMLElement>("[data-layout-frame]");
+    expect(frame?.style.overflow).toBe("hidden");
   });
 });

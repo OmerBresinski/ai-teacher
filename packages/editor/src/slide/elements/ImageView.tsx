@@ -1,5 +1,5 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { isOpenPhotoSlot } from "@tj/slides";
+import { isOpenPhotoSlot, PHOTO_NAME } from "@tj/slides";
 import {
   builtSvgDataUrl,
   hasAnswerPart,
@@ -81,6 +81,9 @@ function useBuiltSrc(element: ImageElement, build: number | undefined, answer: b
   }, [element.src, element.builds, build, answer, reduced, back]);
 }
 
+/** An svg data URI: a drawing with a transparent ground, such as a library icon. */
+export const isDrawing = (src: string | undefined) => !!src?.startsWith("data:image/svg+xml");
+
 function Picture({
   element,
   theme,
@@ -104,6 +107,23 @@ function Picture({
   const shown = useResolvedImageSrc(src);
   // A drawn diagram's words in the face it was measured in (an <img> cannot reach web fonts).
   const resolved = useDiagramFonts(built === src ? shown : built);
+  // Live writing P2 (TEACH-202 part e): a slide's photograph fades in over 200 ms once its bitmap
+  // has loaded in the editor, so a placed picture replaces its placeholder without a pop.
+  const reducedMotion = useReducedMotion();
+  const fade = mode === "edit" && element.name === PHOTO_NAME && !reducedMotion;
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  useEffect(() => {
+    const img = ref.current;
+    if (!img || !fade) return;
+    const loaded = () => setLoadedSrc(src);
+    if (img.complete) loaded();
+    img.addEventListener("load", loaded);
+    img.addEventListener("error", loaded);
+    return () => {
+      img.removeEventListener("load", loaded);
+      img.removeEventListener("error", loaded);
+    };
+  }, [src, fade]);
   useEffect(() => {
     const img = ref.current;
     if (!img) return;
@@ -132,7 +152,14 @@ function Picture({
         height: "100%",
         overflow: "hidden",
         borderRadius: radius || undefined,
-        background: theme.colors.surface,
+        // Geometric's hexagon cover (TEACH-215 part c): the same outline PPTX's preset draws.
+        clipPath:
+          element.mask === "hexagon"
+            ? "polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%)"
+            : undefined,
+        // A photo waits on the slide's surface; a drawing (a library icon, an svg data URI) keeps
+        // its own transparency, so it never sits in a white box on a coloured ground (TEACH-310 b).
+        background: isDrawing(src) ? undefined : theme.colors.surface,
       }}
     >
       <div style={{ position: "absolute", ...style.wrapper }}>
@@ -154,6 +181,9 @@ function Picture({
             transform: style.img.transform,
             objectFit: renderedFit(element),
             objectPosition: style.img.objectPosition,
+            ...(fade
+              ? { opacity: loadedSrc === src ? 1 : 0, transition: "opacity 200ms ease-out" }
+              : {}),
           }}
         />
       </div>

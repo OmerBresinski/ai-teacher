@@ -21,6 +21,11 @@ export type Lesson = {
   id: Id;
   title: string;
   themeId: string;
+  /**
+   * True when the teacher chose `themeId` (an explicit or remembered choice). Unset, the planner
+   * picks the theme for the topic and age at the objectives step (UX ruling 202).
+   */
+  themeChosen?: boolean;
   slides: Slide[];
   createdAt: string; // ISO
   updatedAt: string; // ISO
@@ -34,6 +39,14 @@ export type Lesson = {
   remixedFrom?: Id;
   /** Free text shown on the library card. */
   subject?: string;
+  /**
+   * The real past the lesson's content is set in ("Ancient Egypt"), named by the input check
+   * when it returns (ruling 163, B1). Unset for present-day or timeless content and for lessons
+   * stored before the field existed. The picture rules read it through `isHistoricalLesson`.
+   */
+  historicalPeriod?: string;
+  /** True when the content is a story, play or poem set in `historicalPeriod` (input check). */
+  fictionInPeriod?: boolean;
   ageBand?: AgeBand;
   /** What the teacher chose, e.g. "Year 5" or "EYFS"; ageBand is derived from it. */
   yearGroup?: string;
@@ -63,7 +76,21 @@ export type Lesson = {
   sources?: SourceRef[];
   /** ADR 0029: the plan revision the teacher is looking at, and whether it is confirmed. */
   plan?: LessonPlan;
+  /**
+   * Set when the teacher turned "Answers slides" off (ruling 260); unset reads as on, so a lesson
+   * stored before the field keeps its Answers slides. `kept` is the guard and Answers slides as
+   * they were. `edited` says the teacher had worked on them: turning the setting on puts those
+   * back unchanged; otherwise they are built again from the lesson's current questions.
+   */
+  answersOff?: AnswersOff;
 };
+
+export type AnswersOff = { kept: Slide[]; edited: boolean };
+
+export const AnswersOffSchema = z.strictObject({
+  kept: z.array(SlideSchema),
+  edited: z.boolean(),
+});
 
 export type LessonArtefacts = { worksheetId: Id };
 
@@ -91,6 +118,7 @@ export const LessonSchema = z.object({
   id: z.string(),
   title: z.string(),
   themeId: z.string(),
+  themeChosen: z.boolean().optional(),
   slides: z.array(SlideSchema),
   // Defaulted, not optional: a lesson written before the field existed still has a date to show
   // in the info popover, and the rest of the code reads it without a fallback.
@@ -102,6 +130,9 @@ export const LessonSchema = z.object({
   fitVersion: z.number().int().nonnegative().default(0),
   remixedFrom: z.string().optional(),
   subject: z.string().optional(),
+  // Ruling 163 (B1): named by the input check; optional so stored lessons parse unchanged.
+  historicalPeriod: z.string().optional(),
+  fictionInPeriod: z.boolean().optional(),
   ageBand: AgeBandSchema.optional(),
   yearGroup: z.string().optional(),
   readingLevel: z.string().optional(),
@@ -118,6 +149,8 @@ export const LessonSchema = z.object({
   sources: z.array(SourceRefSchema).optional(),
   // ADR 0029.
   plan: LessonPlanSchema.optional(),
+  // Ruling 260 (TEACH-191 part e): unset reads as on.
+  answersOff: AnswersOffSchema.optional(),
 });
 
 export function parseLesson(input: unknown): Lesson {

@@ -1,17 +1,20 @@
 import type { RichDoc, Slide, SlideElement } from "@tj/domain/documents";
 import { LEAKS } from "@tj/slides/templates/activities";
 import CAPACITY from "@tj/slides/templates/activity-capacity.json" with { type: "json" };
+import { isHistoricalLesson, type PeriodFields } from "../period";
 import MENU from "./bundles/base4f-p123/activity-menu.txt" with { type: "text" };
+import { ANSWER_FIRST, answerFirstMenu } from "./contract";
 import type { WriterStage } from "./schema";
+import { wordsWithin } from "./shown-cap";
 
 /*
  * The activity templates (TEACH-101 part b) as writer layouts (TEACH-101 part c), behind
- * `WriterRun.activities` (default off): the schema defs per family, bounded per key stage from the
- * templates' own measured capacities; the writer's activity slide mapped onto the template's input
- * (1-based indices to 0-based, a card's picture phrase to a one-subject picture ask); the code
- * repair for what strict mode cannot bound (card words over the measured cell); and the checks a
- * laid-out activity must pass (the seeded shuffles give nothing away, no answer shows in the
- * question state).
+ * `WriterRun.activities` (default on, `ACTIVITIES_DEFAULT`): the schema defs per family, bounded
+ * per key stage from the templates' own measured capacities; the writer's activity slide mapped
+ * onto the template's input (1-based indices to 0-based, a card's picture phrase to a one-subject
+ * picture ask); the code repair for what strict mode cannot bound (card words over the measured
+ * cell); and the checks a laid-out activity must pass (the seeded shuffles give nothing away, no
+ * answer shows in the question state).
  *
  * `label` is not offered: its pointers need the drawn parts' positions, and neither the drawer nor
  * the library returns label anchors (a drawn diagram is an SVG string). The template stays for
@@ -33,8 +36,12 @@ export type WriterActivity = (typeof WRITER_ACTIVITIES)[number];
 export const isWriterActivity = (t: unknown): t is WriterActivity =>
   (WRITER_ACTIVITIES as readonly unknown[]).includes(t);
 
-/** The production default: the writer's menu has no activities until the gate is turned on. */
-export const ACTIVITIES_DEFAULT = false;
+/**
+ * The production default: the writer's menu offers the activity layouts (Greg, 10 Oct 2026; the
+ * templates and their Present reveal shipped in TEACH-101 parts b to d). `WriterRun.activities`
+ * false turns them off for one run.
+ */
+export const ACTIVITIES_DEFAULT = true;
 
 /** A measured variant is offered only when its card words can be this long (the menu's rule). */
 export const MIN_CELL = 8;
@@ -87,15 +94,41 @@ const orWords = (xs: number[]) => {
   return u.length === 1 ? `${u[0]}` : `${u.slice(0, -1).join(", ")} or ${u.at(-1)}`;
 };
 
-/** One family's `Fits:` clause at a stage, rendered from the capacity table (never hand-copied). */
-export function fitsLine(id: WriterActivity, stage: WriterStage): string {
+/** "one word" for a 1-word room, else "up to N words" (the pack's unit; ruling: words, not characters). */
+const labelWords = (w: number) => (w === 1 ? "one word" : `up to ${w} words`);
+
+/**
+ * One family's `Fits:` clause at a stage, rendered from the capacity table (never hand-copied).
+ * `words` (the pack's menu, `fit-fits.ts`): the label room in words at the stage's long-word rate
+ * (`wordsWithin`, the hard cap in words; labels are names and terms), adjacent counts with the same
+ * words joined ("3 to 4 cards"). Without it, characters (the base4f menu, unchanged).
+ */
+export function fitsLine(id: WriterActivity, stage: WriterStage, words = false): string {
   const v = variants(id, stage);
   if (id === "group-sort") {
     const cards = [...new Set(v.map((x) => x.cards))];
     const lo = Math.min(...cards);
     const hi = Math.max(...cards);
     const n = lo === hi ? `${lo}` : `${lo} to ${hi}`;
-    return `${n} cards in ${orWords(v.map((x) => x.groups ?? 0))} groups, labels up to ${Math.min(...v.map((x) => x.chars))} characters`;
+    const least = Math.min(...v.map((x) => x.chars));
+    return words
+      ? `${n} cards in ${orWords(v.map((x) => x.groups ?? 0))} groups, labels ${labelWords(wordsWithin(least, stage))} each`
+      : `${n} cards in ${orWords(v.map((x) => x.groups ?? 0))} groups, labels up to ${least} characters`;
+  }
+  if (words) {
+    const runs: { lo: number; hi: number; w: number }[] = [];
+    for (const x of v) {
+      const w = wordsWithin(x.chars, stage);
+      const last = runs.at(-1);
+      if (last && last.w === w) last.hi = x.cards;
+      else runs.push({ lo: x.cards, hi: x.cards, w });
+    }
+    return runs
+      .map((r) => {
+        const n = r.lo === r.hi ? `${r.lo}` : `${r.lo} to ${r.hi}`;
+        return `${n} cards, labels ${labelWords(r.w)} each`;
+      })
+      .join("; ");
   }
   return v
     .map((x, k) =>
@@ -112,7 +145,7 @@ export function activityMenu(stage: WriterStage, menu: string = MENU): string {
     const id = line.match(/^- ([a-z-]+):/)?.[1];
     return !id || isWriterActivity(id);
   };
-  return menu
+  return answerFirstMenu(menu)
     .split("\n")
     .filter(offered)
     .join("\n")
@@ -175,17 +208,16 @@ export function activityDefs(stage: WriterStage): Record<string, J> {
       id === "group-sort"
         ? obj({ ...head, groups: arr(S_(), b.groups?.[0] ?? 2, b.groups?.[1] ?? 2), cards })
         : id === "choose"
-          ? obj({
+          ? // Answer first (ANSWER-BUG.md): the correct card is the first; no counted key.
+            obj({
               ...head,
-              cards,
-              correct: { type: "integer", minimum: 1, maximum: b.cards[1] },
+              cards: { ...cards, description: ANSWER_FIRST.chooseCards },
               explanation: NUL(S_()),
             })
           : id === "odd-one-out"
             ? obj({
                 ...head,
-                cards,
-                correct: { type: "integer", minimum: 1, maximum: b.cards[1] },
+                cards: { ...cards, description: ANSWER_FIRST.oddCards },
                 explanation: S_(),
               })
             : obj({ ...head, cards });
@@ -226,7 +258,7 @@ const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 export function fromWriterActivity(
   raw: S,
   stage: WriterStage,
-  lessonSubject = "",
+  lesson: PeriodFields = {},
 ): { slide: S; fixes: string[]; converted?: string } {
   const id = raw.template as WriterActivity;
   const fixes: string[] = [];
@@ -249,7 +281,8 @@ export function fromWriterActivity(
   const b = bounds(id, stage);
   const groups = Array.isArray(raw.groups) ? raw.groups.map(str).filter(Boolean) : [];
   type Card = { text: string; picture?: string; group?: number; answer: boolean; bad?: boolean };
-  const correct = Number(raw.correct);
+  // The writer's answer is its first card (answer first); an older output's `correct` counts from 1.
+  const correct = raw.correct === undefined ? 1 : Number(raw.correct);
   if (asks && !(Number.isInteger(correct) && correct >= 1 && correct <= raws.length))
     return plain(`correct ${String(raw.correct)} out of range`);
   let cards: Card[] = (Array.isArray(raw.cards) ? (raw.cards as S[]) : []).flatMap(
@@ -311,7 +344,7 @@ export function fromWriterActivity(
   // Ruling 163: a history lesson's card, or a card naming a person, place or thing (a capitalised
   // word after the first), is a named subject: a real picture or its word, never generated.
   const named = (p: string) =>
-    /^hist/i.test(lessonSubject) ||
+    isHistoricalLesson(lesson) ||
     /\s(?!I\b)[A-Z][a-z]/.test(` ${p.split(/\s+/).slice(1).join(" ")}`);
   const slide: S = {
     template: id,

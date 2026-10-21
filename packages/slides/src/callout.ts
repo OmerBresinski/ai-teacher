@@ -8,6 +8,7 @@ import {
   type TextElement,
   type Theme,
 } from "@tj/domain/documents";
+import { CALLOUT_ICONS } from "./callout-icons";
 import { uid } from "./factories";
 import type { Rect } from "./geometry";
 import { BASELINE, SAFE, SPACE, snapY } from "./grid";
@@ -54,18 +55,6 @@ export const CALLOUT_LABELS: Record<CalloutKind, string> = {
   "watch-out": "COMMON MISTAKE",
   example: "EXAMPLE",
   "key-words": "KEY WORDS",
-};
-
-/**
- * The drawn icon each kind carries (lucide names from the editor's icon set), drawn in the kind's
- * colour rather than set as emoji: Chalkie's warning sign for a common mistake; a lightbulb for
- * an example and an open book for key words, where Chalkie has a magnifier and a key (review
- * T75-7: the idea and the vocabulary read faster than the tools).
- */
-export const CALLOUT_ICONS: Record<CalloutKind, string> = {
-  "watch-out": "triangle-alert",
-  example: "lightbulb",
-  "key-words": "book-open",
 };
 
 /** The four elements a callout adds, by `name`; the card first so the rest stay above it. */
@@ -430,3 +419,5 @@ export function placeCallout(
   });
   return { ...slide, elements: [...slide.elements, ...placed] };
 }
+
+export * from "./point-kinds";

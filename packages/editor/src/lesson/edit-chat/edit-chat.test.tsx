@@ -7,6 +7,7 @@ import { makeText } from "../../model/insert";
 import { getTheme } from "../../model/themes";
 import type { PromptEditAnswer, PromptEditPartial, PromptEditRequest } from "../proposals-context";
 import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "../test-harness";
+import { preloadEditChat } from "./EditChatPane";
 import { EDIT_CHAT_LABEL } from "./edit-chat-context";
 import {
   canUndo,
@@ -30,6 +31,10 @@ import {
  * follow-ups resolved in code.
  */
 
+// The thread and the bubble load as one lazy chunk (TEACH-104 part d); load it once up front so a
+// pane renders them at once, as it does in the app after first paint.
+beforeAll(preloadEditChat);
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
@@ -39,7 +44,7 @@ const ORIGINAL = "Water warms up and turns into a gas called water vapour.";
 
 function textLesson(): Lesson {
   const lesson = seededLesson();
-  const theme = getTheme("chalk");
+  const theme = getTheme("splash");
   lesson.slides.forEach((slide, i) => {
     const box = { ...makeText("body", theme), x: 500, y: 100, w: 300, h: 60 } as TextElement;
     box.doc = docFromText(i === 0 ? ORIGINAL : `Slide ${i + 1} text.`);

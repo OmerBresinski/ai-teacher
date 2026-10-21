@@ -1,0 +1,33 @@
+{
+  "pins": {
+    "T/repair-schema.KS1.json": "3e5ef6279d81552ae1589f51839d7c4891bb40bfd0e8831134fbf236ed101671",
+    "T/repair-schema.KS2.json": "e8c343cd3ede4e3d762535fdd10efec15d74752ca4e45a2e47566c2c0d35d5e0",
+    "T/repair-schema.KS3-5.json": "e8c343cd3ede4e3d762535fdd10efec15d74752ca4e45a2e47566c2c0d35d5e0",
+    "T/schema.KS1.json": "8e7d6adafae974d967bc873476784dea73515056bae3edd601ecc3555826dc91",
+    "T/schema.KS2.json": "9b864598e93d28ab21c1e3be45e376b1b6ebd3bccd8240cf658cb60645a1d53f",
+    "T/schema.KS3-5.json": "183639060d3fa5b8a763019d7cffadd1010ef8a6bdfdc6b382995d08ec1e8b66",
+    "T/system.KS1.txt": "760aa645baa26da925b250cff0beb21390bcb2dfd41cef076b79a93a226bb72b",
+    "T/system.KS2.txt": "dfe1b27382de48024f806139d0e333198b557de77c2b4452006b74dd7a2eaaca",
+    "T/system.KS3-5.txt": "89a4b97960e81b7390870ae1e1d5f2065787fa2b446b63e51d8feec89d858170",
+    "shared/base-visuals.KS1.txt": "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab",
+    "shared/base-visuals.KS2.txt": "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab",
+    "shared/base-visuals.KS3-5.txt": "119cb4a8a7be4d497a468724e505f7cb2e39dae846c27cb8da1c49ea469d5eab",
+    "shared/diagram-spec.txt": "446b2a136879abddb6893c958513765330cba1dcebf14b5634e2bd22434abbe3",
+    "shared/notes-schema.json": "60cd5f9f412d10cabd88689a31b28d5e79c76d349bd8bb623f369ea694c75f9d",
+    "shared/notes-user.txt": "32251d09064c700d49aed94e17e601682adad911892fe85f91f4cd06e4fdfab7",
+    "shared/notes.txt": "c36761c0782ac9822eae303d19e9e2e3010145681c76dde49150903437e611a4",
+    "shared/objective-repair.txt": "b5898343c50560349da5084adb5791b7445b81928d7d5033178a8650151a5955",
+    "shared/objectives-schema.json": "584e463c6116b05c47deed0cebf108bfcfb1b5acac19a7cf92ddadc1720878f3",
+    "shared/objectives-user.txt": "4ba6cef369b0c0426067f6a014472a8df8d9b6e8864de7cd1fe2b11798197f77",
+    "shared/objectives.txt": "963a6119a6ca87ce07b32ffade76b6043be3485877c20517de7b100766852256",
+    "shared/pupil-objectives-schema.json": "a2017252a1e0bc4f569179400a68be062fa5b2afd81b6f0ce735ea173ace76d4",
+    "shared/pupil-objectives-user.txt": "c9ba284cf44b528ba3f75f91734e9750db81e619b58ad38c24e582da676a2a28",
+    "shared/pupil-objectives.txt": "3d4f02f2e3abfca86af9dc4b68e2d114c507600cdd7794f62343dcdb72294aca",
+    "shared/repair-user.txt": "11332c01ae0e6d95e0dc153aa410f2805ad219b62c6e030384bcc9a066a9950f",
+    "shared/repair.txt": "36706df7a5233ce763f0985f17484436ed79b2e1fd13bdffdffb473ab0f5f894",
+    "shared/restage.txt": "ed93563626de975edcbbfa86fda2339d3e07057698d9ddfc98d301a187378ce0",
+    "shared/user.txt": "e980669337ec97382122070fee72c60693a15d897ac435022d3110238d759696"
+  },
+  "sourceSha256": "89e7ede99c84286587857354eabcda95a8719b4d2d170fcb6cf9962cfea7aaf5",
+  "source": "bundles/base4g/prompts.gen.ts and activity-menu.txt: base4f-p123 plus the line edits in base4g.test.ts; the slot-fill wording slot-fill.ts adds ran in lab/slotfill round 2 (3a26ce97), this bundle has not run yet"
+}

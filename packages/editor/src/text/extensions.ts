@@ -4,6 +4,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
+import { RunStyle } from "./run-style";
 
 /**
  * The single extension set used by every Tiptap editor AND by static rendering,
@@ -24,6 +25,8 @@ export const baseExtensions = [
   Underline,
   TextStyle,
   Color,
+  // Quote face, highlight slot and myth strike on a run (TEACH-205 part c).
+  RunStyle,
   TextAlign.configure({ types: ["paragraph"] }),
   /**
    * Links.

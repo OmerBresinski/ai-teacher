@@ -4,13 +4,13 @@
 // Ported from the north-star water cycle onto the kit.
 import {
   h, T, bez, overlaps, measure, GRID,
-  textBlock, arrow, wavyD, headD, object, sky,
+  textBlock, arrow, wavyD, object, sky,
   editable, computed, txt, TEXT_PARAM_FOR, TITLE_PARAM, schemaCheck, withDefaults, result,
 } from '../kit/index.js';
 import { cloud } from '../kit/batch-F.js';
 
 export const meta = {
-  id: 'water_cycle', name: 'The water cycle', kind: 'scene', version: 1,
+  id: 'water_cycle', name: 'The water cycle', kind: 'scene', version: 2,
   subjects: ['Science', 'Geography'],
   years: ['Y4', 'Y5', 'Y6'],
   teaches: 'How the same water goes round and round: it evaporates from the sea, condenses into clouds, falls as rain and flows back to the sea.',
@@ -129,7 +129,7 @@ export function notes(P) {
 
 /* ------------------------------------------------------------------ scene geometry */
 // Vapour from the sea: cubic paths [start, c1, c2, end], ending at the cloud's right side.
-const VAPOUR = [[[860, 536], [860, 420], [790, 304], [694, 268]], [[940, 540], [940, 400], [850, 282], [702, 242]], [[1020, 544], [1020, 380], [920, 252], [708, 214]]];
+const VAPOUR = [[[860, 536], [860, 420], [790, 304], [694, 268]], [[940, 540], [940, 400], [850, 282], [714, 245]], [[1020, 544], [1020, 380], [920, 252], [722, 217]]];
 const LAND = {
   hills: {
     trees: [[64, 614, .95], [132, 604, 1], [198, 600, .9]],
@@ -151,7 +151,8 @@ const LAND = {
     trees: [[44, 446, .8], [100, 430, .85], [156, 426, .8]],
     leafTops: [[44, 384], [100, 366], [156, 364]],
     // a simple river from the hill foot, passing left of the road, along the front and into the sea
-    river: 'M 318 500 C 326 550, 332 600, 380 630 S 560 652, 690 640',
+    // rises in the hills left of the road and runs in front of the street, never under the houses
+    river: 'M 296 470 C 296 560, 300 628, 384 640 S 560 660, 690 645',
     riverSegs: [[[318, 500], [326, 550], [332, 600], [380, 630]], [[380, 630], [428, 660], [560, 652], [690, 640]]],
     // rain lands on the roofs: each drop stops at the roof line under it
     rain: { x0: 452, rows: 6, cols: 6, oh: 240, floor: x => { const r = roofY(x); return r == null ? 554 : r - 22; } },
@@ -269,6 +270,9 @@ export function render(root, P, ctx) {
     for (const [x1, y1, x2, y2] of [[1112, 236, 1062, 526], [1166, 244, 1160, 530]])
       arrow(ctx, g, wavyD(x1, y1, x2, y2, 7, 4), x2, y2, Math.atan2(y2 - y1, x2 - x1), 'var(--heat)', 'var(--sw-struct)', { draw: k, k: .8, g: { c: soft('sun') } });
     obstacles.push({ x: 1050, y: 236, w: 130, h: 300 });
+    // the Sun is named on its own build, so that build is a frame of its own in Present (TEACH-247 part x)
+    T(g, 1082, 176, 'Sun', 'ts-small', { 'text-anchor': 'end', s: k });
+    obstacles.push({ x: 1020, y: 148, w: 66, h: 40 });
   }
   obstacles.push({ x: 1086, y: 104, w: 128, h: 128 });
 
@@ -276,8 +280,8 @@ export function render(root, P, ctx) {
   const vapour = (paths, id) => {
     const vg = h('g', { s: bi(id), cls: 'rise', c: soft(id) }, g);
     for (const [a0, c1, c2, d] of paths) {
-      h('path', { d: `M${a0} C${c1} ${c2} ${d}`, fill: 'none', stroke: 'var(--vapour)', 'stroke-width': 'calc(var(--sw-arrow) + 2px)', 'stroke-linecap': 'round', 'stroke-dasharray': '0.1 18', cls: 'vflow' }, vg);
-      { const ang = Math.atan2(d[1] - c2[1], d[0] - c2[0]); h('path', { d: headD(d[0] + Math.cos(ang) * 4, d[1] + Math.sin(ang) * 4, ang, ctx.tk.head * .9), fill: 'var(--vapour)' }, vg); }
+      // the arrow primitive: the dotted shaft runs to the tip and ends with a dot under the head (TEACH-75 part x)
+      arrow(ctx, vg, `M${a0} C${c1} ${c2} ${d}`, d[0], d[1], Math.atan2(d[1] - c2[1], d[0] - c2[0]), 'var(--vapour)', 'var(--sw-arrow)', { dash: '0.1 16', cls: 'vflow', reach: 4 });
       obstacles.push(...pathBoxes([a0, c1, c2, d]));
     }
   };

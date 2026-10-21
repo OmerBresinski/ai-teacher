@@ -11,6 +11,7 @@ import {
   useMobileEditor,
   usePaneWidth,
 } from "@tj/editor/lesson";
+import { type DraftStore, LiveSlide } from "@tj/editor/live-draft";
 import { SlideStatic } from "@tj/editor/thumb";
 import { AppBar, AppBarGroup, Button, cn, Display, IconButton, Skeleton } from "@tj/ui";
 import { ArrowDown, ArrowLeft, Check, Lock, Square } from "lucide-react";
@@ -85,6 +86,11 @@ export type GeneratingShellProps = {
    * on every pick so the editor can open on it at Ready.
    */
   onViewSlide?: (slideId: Id | null) => void;
+  /**
+   * Live writing (ADR 0039): the job's slide drafts. While the canvas follows, the slide being
+   * written shows as it grows, typed out, before (and until) its saved copy is in.
+   */
+  drafts?: DraftStore;
 };
 
 export function GeneratingShell({
@@ -99,6 +105,7 @@ export function GeneratingShell({
   exportSlot,
   className,
   onViewSlide,
+  drafts,
 }: GeneratingShellProps) {
   const mobile = useMobileEditor();
   const state = stageOf(events, lesson.plan?.state === "proposed");
@@ -125,6 +132,12 @@ export function GeneratingShell({
   const selected = selectedId === null ? undefined : lesson.slides.find((s) => s.id === selectedId);
   const shown = selected ?? newest;
   const following = selected === undefined;
+  // The slide being written, while the canvas follows: shown from its drafts until editable.
+  const latestDraft = following && running ? drafts?.latest() : undefined;
+  const live =
+    latestDraft && latestDraft.index >= lesson.slides.length - 1 ? latestDraft : undefined;
+  const liveSaved = live ? lesson.slides.find((s) => s.id === live.slideId) : undefined;
+  const canvasId = live?.slideId ?? shown?.id;
   const arrivals = useArrivals(lesson.slides.length, running);
   const pending = running ? pendingSlides(lesson) : [];
 
@@ -284,21 +297,31 @@ export function GeneratingShell({
               className="min-h-0 flex-1 px-4 py-[76px]"
               style={shift || reserve ? { paddingRight: 16 + shift * 2 + reserve } : undefined}
             >
-              {shown ? (
+              {shown || live ? (
                 <SlideScaler zoom="fit">
                   <div
-                    key={shown.id}
-                    data-canvas-slide={shown.id}
+                    key={canvasId}
+                    data-canvas-slide={canvasId}
                     className={cn(
                       "overflow-hidden rounded-dialog shadow-3",
                       // The arrival fade belongs to a slide that has just landed; a slide the
-                      // teacher is looking at has not.
+                      // teacher is looking at has not, nor one already shown as it was written.
                       following &&
+                        !live &&
+                        !(shown && drafts?.get(shown.id)) &&
                         arrivals(lesson.slides.length - 1) !== null &&
                         "motion-safe:animate-arrive",
                     )}
                   >
-                    <SlideView slide={shown} theme={theme} mode="view" />
+                    <LiveSlide
+                      store={drafts}
+                      slideId={canvasId}
+                      slide={live ? liveSaved : shown}
+                      writing={!!live}
+                      render={(slide) =>
+                        slide ? <SlideView slide={slide} theme={theme} mode="view" /> : null
+                      }
+                    />
                   </div>
                 </SlideScaler>
               ) : canvasCompanion ? null : (

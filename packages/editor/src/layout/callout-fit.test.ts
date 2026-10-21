@@ -94,7 +94,8 @@ describe("a callout on a content slide", () => {
         // This file's ruler reads every face as half an em a character. Studio's Outfit is
         // narrower, so the headless fit gives its key idea two lines where this ruler counts three
         // and pushes the card down; for Studio the full size is checked on the stored slide.
-        if (theme.id === "studio" && variant === "headed") {
+        // Reading Room and Treehouse take Outfit and Figtree titles in round 5 (TEACH-215 part c).
+        if (["studio", "reading-room", "treehouse"].includes(theme.id) && variant === "headed") {
           const text = out.slide.elements.find((el) => el.name === "Callout text");
           expect(text?.type === "text" && text.style.fontSize).toBeFalsy();
         } else {

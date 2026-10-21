@@ -1,9 +1,9 @@
-import type { ModelClass } from "@tj/domain";
+import { type ModelClass, safeError } from "@tj/domain";
 import type { LanguageModelMiddleware } from "ai";
 import type pino from "pino";
 import { toProviderError } from "./errors";
 import { costUsd } from "./prices";
-import type { AiCallContext } from "./types";
+import type { AiCallContext, AiCallRecord } from "./types";
 
 interface LoggingMiddlewareOptions {
   logger: pino.Logger;
@@ -11,6 +11,8 @@ interface LoggingMiddlewareOptions {
   modelId: string;
   /** ADR 0025 §16: pipeline identifiers to log beside the usage. Never content. */
   context?: AiCallContext | undefined;
+  /** Receives each call's log fields too (ADR 0041); a throw here never reaches the call. */
+  onCall?: ((call: AiCallRecord) => void) | undefined;
 }
 
 /**
@@ -86,6 +88,22 @@ function logSuccess(
   if (cachedInputTokens !== undefined) ai.cachedInputTokens = cachedInputTokens;
   if (cacheWriteInputTokens !== undefined) ai.cacheWriteInputTokens = cacheWriteInputTokens;
   logger.info({ ai });
+  report(logger, options, ai, false);
+}
+
+/** Hands the same metadata the log line carries to `onCall`; its failure is logged, not thrown. */
+function report(
+  logger: pino.Logger,
+  options: LoggingMiddlewareOptions,
+  ai: AiLogFields,
+  isError: boolean,
+): void {
+  if (!options.onCall) return;
+  try {
+    options.onCall({ ...ai, isError });
+  } catch (err) {
+    logger.warn({ err: safeError(err) }, "ai call reporter failed");
+  }
 }
 
 function logError(
@@ -94,19 +112,19 @@ function logError(
   provider: string,
   startedAt: number,
 ) {
-  logger.warn({
-    ai: {
-      ...contextFields(options.context),
-      class: options.modelClass,
-      modelId: options.modelId,
-      provider,
-      durationMs: Date.now() - startedAt,
-      inputTokens: null,
-      outputTokens: null,
-      costUsd: null,
-      finishReason: "error",
-    } satisfies AiLogFields,
-  });
+  const ai: AiLogFields = {
+    ...contextFields(options.context),
+    class: options.modelClass,
+    modelId: options.modelId,
+    provider,
+    durationMs: Date.now() - startedAt,
+    inputTokens: null,
+    outputTokens: null,
+    costUsd: null,
+    finishReason: "error",
+  };
+  logger.warn({ ai });
+  report(logger, options, ai, true);
 }
 
 /**

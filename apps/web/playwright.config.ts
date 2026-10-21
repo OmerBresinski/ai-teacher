@@ -20,6 +20,19 @@ import { defineConfig, devices } from "@playwright/test";
 const CI = process.env.CI === "true";
 const E2E_KIT = process.env.E2E_KIT === "1";
 const SCREENSHOTS = process.env.TEACH_SCREENSHOTS === "1";
+/**
+ * `TEACH_LIVE_TIMELINE=1` runs the live writing timeline (opt-in like the screenshot specs, never
+ * in CI) over a recorded writer run: `TEACH_LIVE_REPLAY=<fixture folder>`, by default the Year 5
+ * fractions run (its writer streamed 7.3k characters over 40 s).
+ */
+const LIVE_TIMELINE = process.env.TEACH_LIVE_TIMELINE === "1";
+const LIVE_REPLAY = LIVE_TIMELINE
+  ? path.resolve(
+      import.meta.dirname,
+      process.env.TEACH_LIVE_REPLAY ??
+        "../../packages/generation/src/writer/fixtures/replay/y5-maths-fractions-of-amounts",
+    )
+  : undefined;
 // The optional kit gate cannot reuse a developer's production-mode e2e server: it needs Vite dev.
 // `E2E_PORT_BASE=<n>` moves the three servers to n, n+1, n+2, so a second worktree can run the
 // suite beside another one (or beside `bun run dev`) without sharing servers.
@@ -74,7 +87,11 @@ export default defineConfig({
       name: "chromium",
       // Screenshot specs are opt-in visual references (`TEACH_SCREENSHOTS=1`). Leaving them out of
       // the default run, rather than skipping them, keeps them from weighing on the shard split.
-      testIgnore: SCREENSHOTS ? /kit\.spec\.ts$/ : [/kit\.spec\.ts$/, /-screenshots\.spec\.ts$/],
+      testIgnore: [
+        /kit\.spec\.ts$/,
+        ...(SCREENSHOTS ? [] : [/-screenshots\.spec\.ts$/]),
+        ...(LIVE_TIMELINE ? [] : [/-timeline\.spec\.ts$/]),
+      ],
       use: { ...devices["Desktop Chrome"] },
     },
     ...(E2E_KIT
@@ -137,8 +154,17 @@ export default defineConfig({
         AI_FAKE_SCRIPT: "pipeline",
         AI_FAKE_DELAY_MS: "250",
         // The fake answers the legacy planner's prompts (skeleton + facts) only; the worker's
-        // default is objectives-first since 25–26 Sept 2026, so the e2e run pins legacy.
+        // default is the writer from 20 Oct 2026, so the e2e run pins legacy.
         AI_LESSON_PLANNER: "legacy",
+        // Live writing P0 (`live-writing-timeline.spec.ts`): the writer planner over a recorded
+        // writer run streamed at its own pace (`AI_FAKE_WRITER_REPLAY`, a replay fixture folder).
+        ...(LIVE_REPLAY
+          ? {
+              AI_LESSON_PLANNER: "writer",
+              AI_FAKE_WRITER_REPLAY: LIVE_REPLAY,
+              AI_FAKE_DELAY_MS: "0",
+            }
+          : {}),
         STORAGE_ROOT: E2E_STORAGE_ROOT,
         LOG_LEVEL: process.env.E2E_VERBOSE ? "info" : "warn",
       },

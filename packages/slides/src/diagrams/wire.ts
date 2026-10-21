@@ -47,7 +47,11 @@ export function relaxed(schema: z.ZodType): z.ZodType {
     case "object": {
       const shape = def.shape as Record<string, z.ZodType>;
       const out: Record<string, z.ZodType> = {};
-      for (const [k, v] of Object.entries(shape)) out[k] = relaxed(v);
+      for (const [k, v] of Object.entries(shape)) {
+        // TEACH-75 part y: a field code sets for the drawer (a bar model's panel) is not the writer's.
+        if ((z.globalRegistry.get(v) as { drawerOnly?: boolean } | undefined)?.drawerOnly) continue;
+        out[k] = relaxed(v);
+      }
       return withMeta(schema, s.clone({ ...def, shape: out, checks: [] }));
     }
     case "array":

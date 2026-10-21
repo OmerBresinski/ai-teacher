@@ -37,6 +37,11 @@ export interface FakeCall {
    * request (e.g. the writer offers no diagram-library menu), never for shaping an answer.
    */
   systemText?: string | undefined;
+  /**
+   * The structured-output format the caller asked for (`{ type: "json", schema, name }`), if any.
+   * For tests that pin the schema a stage sends, never for shaping an answer.
+   */
+  responseFormat?: unknown;
   /** The provider's signal, for signal-aware scripts and deadline assertions. */
   abortSignal?: AbortSignal | undefined;
 }
@@ -51,7 +56,19 @@ export interface FakeReply {
    * A streamed call only: hand the text over in pieces of this many characters, `paceMs` apart
    * (a model writing over time). Absent: one piece at once.
    */
-  stream?: { pieceChars: number; paceMs: number } | undefined;
+  stream?:
+    | {
+        pieceChars: number;
+        paceMs: number;
+        /** Wait this long before the first piece (a model's time to first token). */
+        firstMs?: number | undefined;
+        /**
+         * Called once the last piece is handed over: when the model stopped writing, by the clock
+         * the pieces actually kept (timers run late under load), not by `paceMs` times the pieces.
+         */
+        onEnd?: (() => void) | undefined;
+      }
+    | undefined;
 }
 
 /** A function entry may be async, so a test can hold a call open (concurrency, cancellation). */
@@ -71,6 +88,8 @@ export interface CreateFakeAiOptions {
   fallback?: FakeScriptEntry | undefined;
   modelIds?: Partial<Record<ModelClassType, string>> | undefined;
   logger?: pino.Logger | undefined;
+  /** The real client's per-call metadata hook (`CreateAiOptions.onCall`, ADR 0041). */
+  onCall?: CreateAiOptions["onCall"];
   error?: unknown;
   /** The same per-call route the real client takes (the writer's route, TEACH-110 part b). */
   route?: CreateAiOptions["route"];
@@ -150,6 +169,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     prompt: FakePrompt,
     providerOptions: unknown,
     abortSignal: AbortSignal | undefined,
+    responseFormat?: unknown,
   ) => {
     const call: FakeCall = {
       index: calls.length,
@@ -160,6 +180,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
       promptText: userText(prompt),
       systemText: systemText(prompt),
       abortSignal,
+      ...(responseFormat !== undefined ? { responseFormat } : {}),
       ...(providerOptions !== undefined ? { providerOptions } : {}),
       ...(imageParts(prompt) > 0 ? { imageParts: imageParts(prompt) } : {}),
     };
@@ -182,6 +203,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
     modelIds,
     logger,
     ...(options.route ? { route: options.route } : {}),
+    ...(options.onCall ? { onCall: options.onCall } : {}),
     createModel: (modelClass, modelId, context) =>
       new MockLanguageModelV4({
         provider: "bedrock",
@@ -195,6 +217,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
             call.prompt,
             call.providerOptions,
             call.abortSignal,
+            call.responseFormat,
           );
           return {
             content: [{ type: "text", text }],
@@ -217,7 +240,9 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                 call.prompt,
                 call.providerOptions,
                 call.abortSignal,
+                call.responseFormat,
               );
+              if (stream?.firstMs) await new Promise((r) => setTimeout(r, stream.firstMs));
               controller.enqueue({ type: "text-start", id: "fake-text" });
               if (stream && stream.pieceChars > 0) {
                 for (let at = 0; at < text.length; at += stream.pieceChars) {
@@ -226,6 +251,7 @@ export function createFakeAi(options: CreateFakeAiOptions = {}): FakeAi {
                   controller.enqueue({ type: "text-delta", id: "fake-text", delta });
                 }
               } else controller.enqueue({ type: "text-delta", id: "fake-text", delta: text });
+              stream?.onEnd?.();
               controller.enqueue({ type: "text-end", id: "fake-text" });
               controller.enqueue({
                 type: "finish",

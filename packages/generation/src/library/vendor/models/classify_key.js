@@ -46,7 +46,7 @@ export const meta = {
   id: "classify_key",
   name: "Grouping and branching keys",
   kind: "info",
-  version: 1,
+  version: 2,
   subjects: ["Science"],
   years: ["Y1", "Y2", "Y3", "Y4", "Y5", "Y6"],
   teaches:
@@ -1451,7 +1451,8 @@ function renderKey(root, P, ctx) {
         stroke: "var(--focus)",
         "stroke-width": "var(--sw-struct)",
         s: k,
-        hide: k + 1,
+        // v2: the last highlight stays, so the still is the last step (no extra summary frame)
+        hide: k + 1 < N ? k + 1 : null,
       },
       top,
     );
@@ -1699,7 +1700,8 @@ function renderGroups(root, P, ctx) {
         stroke: "var(--focus)",
         "stroke-width": "var(--sw-struct)",
         s: k,
-        hide: k + 1,
+        // v2: the last highlight stays, so the still is the last step (no extra summary frame)
+        hide: k + 1 < N ? k + 1 : null,
       },
       boxes,
     );

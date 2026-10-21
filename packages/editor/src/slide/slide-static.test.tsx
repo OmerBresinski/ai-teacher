@@ -8,7 +8,7 @@ import { PathView } from "./elements";
 import { SlideStatic } from "./SlideStatic";
 import { SlideView } from "./SlideView";
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 
 function element(extra: Partial<SlideElement> & { type: SlideElement["type"] }): SlideElement {
   return { id: uid(), x: 60, y: 60, w: 300, h: 100, ...extra } as SlideElement;
@@ -16,7 +16,7 @@ function element(extra: Partial<SlideElement> & { type: SlideElement["type"] }):
 
 describe("SlideStatic", () => {
   test("scales the 960x540 slide to the width given and renders every element", () => {
-    const slide = newSlide("title", "chalk");
+    const slide = newSlide("title", "splash");
     const { container } = render(<SlideStatic slide={slide} theme={theme} width={240} />);
     const root = container.querySelector("[data-slide-static]") as HTMLElement;
     expect(root.style.width).toBe("240px");
@@ -193,5 +193,12 @@ describe("PathView", () => {
     expect(polygons).toHaveLength(1);
     const [tip] = (polygons[0]?.getAttribute("points") ?? "").split(" ");
     expect(tip).toBe("400,300");
+  });
+
+  test("dots are 2.2 stroke widths apart by default, dashGap widths apart when set", () => {
+    const dots = view(path({ dash: "dotted", strokeWidth: 5 }));
+    expect(dots.container.querySelector("path")?.getAttribute("stroke-dasharray")).toBe("0.001 11");
+    const wide = view(path({ dash: "dotted", strokeWidth: 5, dashGap: 4.4 }));
+    expect(wide.container.querySelector("path")?.getAttribute("stroke-dasharray")).toBe("0.001 22");
   });
 });

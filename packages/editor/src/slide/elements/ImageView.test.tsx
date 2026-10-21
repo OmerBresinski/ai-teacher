@@ -8,7 +8,7 @@ import { ImageView } from "./ImageView";
 
 afterEach(cleanup);
 
-const theme = getTheme("chalk");
+const theme = getTheme("splash");
 const base: ImageElement = {
   id: "i1",
   type: "image",
@@ -52,6 +52,17 @@ describe("ImageView", () => {
 });
 
 /* TEACH-247 part b: a drawn diagram's builds, one per Next in Present only. */
+describe("ImageView ground", () => {
+  test("a photo sits on the theme's surface; an svg drawing has no ground of its own", () => {
+    const frame = (src: string) =>
+      imgOf({ ...base, src }).parentElement?.parentElement as HTMLElement;
+    expect(frame("https://pics.test/hen.png").style.background).not.toBe("");
+    cleanup();
+    const icon = `data:image/svg+xml;charset=utf-8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg'/>")}`;
+    expect(frame(icon).style.background).toBe("");
+  });
+});
+
 describe("ImageView diagram builds", () => {
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect/><g data-s="1"><circle/></g><g data-s="2"><path/></g><g data-ans="1"><text>9</text></g></svg>';
@@ -132,7 +143,7 @@ describe("ImageView diagram builds: review fixes", () => {
     expect(srcOf(container)).toContain("animation");
     rerender(view(1));
     expect(srcOf(container)).not.toContain("animation");
-    rerender(view(1, { theme: getTheme("chalk") }));
+    rerender(view(1, { theme: getTheme("splash") }));
     expect(srcOf(container)).not.toContain("animation");
     rerender(view(2));
     expect(srcOf(container)).toContain("animation");

@@ -17,6 +17,7 @@ import {
   SAFE,
   SPACE,
   snapY,
+  unfixed,
 } from "@tj/slides";
 import { cloneSlide, docFromText, uid } from "../model/factories";
 import * as reducers from "../model/reducers";
@@ -392,7 +393,7 @@ function levelHeadings(slides: Slide[], theme: Theme, measure: Measurer): Slide[
     ...s,
     elements: s.elements.map((el) => {
       if (el.type !== "text" || !isHeadingText(el) || sizeOfHeading(el) === size) return el;
-      const next = { ...el, style: { ...el.style, fontSize: size } };
+      const next = { ...el, style: { ...unfixed(el.style), fontSize: size } };
       const parts = textPartsOf(next);
       if (parts?.autoHeight)
         next.h = Math.max(

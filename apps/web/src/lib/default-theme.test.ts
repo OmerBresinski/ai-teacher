@@ -1,27 +1,39 @@
 import { describe, expect, test } from "bun:test";
-import { defaultThemeFor, startingTheme } from "./default-theme";
+import { previewTheme, startingTheme } from "./default-theme";
+import { LIBRARY_THEMES } from "./library-themes";
 
-describe("defaultThemeFor (ruling 116)", () => {
+describe("startingTheme (rulings 116, 202)", () => {
+  test("the teacher's remembered theme is sent and wins", () => {
+    expect(startingTheme("beacon")).toBe("beacon");
+    expect(startingTheme("reading-room")).toBe("reading-room");
+  });
+
+  test("with no remembered theme nothing is sent, so the planner picks", () => {
+    expect(startingTheme(undefined)).toBeUndefined();
+    expect(startingTheme("")).toBeUndefined();
+  });
+
+  test("a remembered Chalk & Cream is sent as Splash, never as the retired id", () => {
+    expect(startingTheme("chalk")).toBe("splash");
+  });
+});
+
+describe("previewTheme: the key stage fallback (ruling 202)", () => {
   test.each([
-    ["Science", "Reception", "playground"],
-    ["Maths", "Year 2", "playground"],
-    ["Maths", "Year 3", "playground"],
-    ["Maths", "Year 4", "playground"],
-    ["Maths", "Year 5", "chalk"],
-    ["English", "Year 6", "chalk"],
-    ["Science", "Year 8", "reading-room"],
-    ["English", "Year 8", "reading-room"],
-    ["Maths", "Year 11", "exam-hall"],
-    ["History", "Year 12", "reading-room"],
-    [undefined, "Year 13", "exam-hall"],
-    [undefined, undefined, "chalk"],
-    ["Maths", "Mixed", "chalk"],
-  ])("%s, %s → %s", (subject, year, theme) => {
-    expect(defaultThemeFor(subject, year)).toBe(theme);
+    ["Reception", "splash"],
+    ["Year 2", "splash"],
+    ["Year 4", "splash"],
+    ["Year 6", "splash"],
+    ["Year 7", "studio"],
+    ["Year 9", "studio"],
+    ["Year 11", "studio"],
+    ["Year 13", "studio"],
+    [undefined, "splash"],
+  ])("%s → %s", (year, theme) => {
+    expect(previewTheme(year)).toBe(theme);
   });
+});
 
-  test("the teacher's last theme wins over the class default", () => {
-    expect(startingTheme("beacon", "Maths", "Year 2")).toBe("beacon");
-    expect(startingTheme("", "Maths", "Year 2")).toBe("playground");
-  });
+test("the New dialog's picker offers no Chalk & Cream", () => {
+  expect(LIBRARY_THEMES.map((t) => t.id)).not.toContain("chalk");
 });
