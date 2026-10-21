@@ -16,6 +16,8 @@ describe("worker env", () => {
       AWS_BEARER_TOKEN_BEDROCK: undefined,
       AWS_REGION: DEFAULT_REGION,
       AI_GATEWAY_API_KEY: undefined,
+      POSTHOG_API_KEY: undefined,
+      POSTHOG_HOST: undefined,
       AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
       AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,

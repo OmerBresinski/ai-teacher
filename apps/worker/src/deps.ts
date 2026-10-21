@@ -12,11 +12,13 @@ import {
   type PexelsClient,
 } from "@tj/images";
 import type { JobsContext } from "@tj/jobs";
+import type { Observability } from "@tj/observability";
 import { createStorage, type StorageKind } from "@tj/storage";
 import type { Logger } from "pino";
 import type { Env } from "./env";
 import { createPerJobFakeAi } from "./fake-ai";
 import type { DebugStore } from "./generation-debug";
+import { aiGenerationOf } from "./observability";
 import { createDailyImageCap, type DailyImageCap } from "./picture-generator";
 
 /**
@@ -58,6 +60,8 @@ export type WorkerDeps = {
    * `PICTURE_LIBRARY_REUSE=on` and `OPENAI_API_KEY` is set; absent, nothing is reused or stored.
    */
   pictureLibrary?: { embedder: Embedder };
+  /** PostHog reporting (ADR 0041); absent or disabled, nothing is sent. */
+  observability?: Observability;
   jobs?: JobsContext;
   /**
    * The per-lesson debug record (Greg, 20 Oct 2026; `generation-debug.ts`): where a lesson job
@@ -72,7 +76,13 @@ export function createWorkerDeps(
   db: Db,
   /** The debug record's own pool (max 1); absent, debug rows share `db` (tests, scripts). */
   debugDb: Db = db,
+  observability?: Observability,
 ): WorkerDeps & { storageKind: StorageKind } {
+  // ADR 0041: every model call's metadata, beside its `ai` log line. Not the scripted fake's.
+  const onCall = observability?.enabled
+    ? (call: Parameters<typeof aiGenerationOf>[0]) =>
+        observability.captureAiGeneration(aiGenerationOf(call))
+    : undefined;
   // ADR 0026: the Railway Bucket (S3) when S3_BUCKET is set, else local disk — the same call the
   // api makes. These variables are `runtimeOnly` and read from the process environment directly.
   const storage = createStorage({
@@ -88,7 +98,7 @@ export function createWorkerDeps(
     ai:
       env.AI_FAKE_SCRIPT === "pipeline"
         ? createPerJobFakeAi(env)
-        : createAi(env, { logger, route: writerRoute }),
+        : createAi(env, { logger, route: writerRoute, ...(onCall ? { onCall } : {}) }),
     db,
     caps: { capUsd: env.AI_LESSON_COST_CAP_USD, capTokens: env.AI_LESSON_TOKEN_CAP },
     worksheetCapUsd: env.AI_WORKSHEET_COST_CAP_USD,
@@ -97,6 +107,7 @@ export function createWorkerDeps(
       : {}),
     ...(env.AI_REASONING_EFFORT !== undefined ? { reasoningEffort: env.AI_REASONING_EFFORT } : {}),
     planner: env.AI_LESSON_PLANNER,
+    ...(observability ? { observability } : {}),
     costWarnUsd: env.AI_LESSON_COST_WARN_USD,
     generationDebug: (workspaceId, rows) => insertGenerationDebug(debugDb, workspaceId, rows),
     storage: storage.adapter,

@@ -21,7 +21,7 @@ import {
 import pino from "pino";
 import { cancel } from "./enqueue";
 import type { emitJobEvent } from "./events";
-import type { BossJob } from "./run-job";
+import type { BossJob, JobFailureReport } from "./run-job";
 import { dispositionForTerminal, lessonIdOf, runJob } from "./run-job";
 import { defineJob, type JobRegistry, type JobsContext, NonRetryableError } from "./types";
 
@@ -134,9 +134,11 @@ describeDb("runJob dependencies", () => {
           throw error;
         }),
       };
+      const reports: JobFailureReport[] = [];
       const outcome = await runJob({ boss, db: unsafeDb, sql }, "lesson.cascade", registry, job, {
         deps: undefined,
         logger,
+        onFailure: (report) => reports.push(report),
         ...(mode === "infrastructure"
           ? {
               emit: async () => {
@@ -157,6 +159,23 @@ describeDb("runJob dependencies", () => {
       const events = await listJobEvents(unsafeDb, { workspaceId, jobId, limit: 10 });
       expect(JSON.stringify({ outcome, events, lines })).not.toContain(marker);
       expect(lines.join("")).toContain(jobId);
+      // ADR 0041: the error tracker hears of every failed attempt, with the raw error and ids.
+      const expected = {
+        retry: { kind: "handler", willRetry: true, attempt: 0 },
+        terminal: { kind: "handler", willRetry: false, attempt: 1 },
+        "non-retryable": { kind: "handler", willRetry: false, attempt: 0 },
+        infrastructure: { kind: "infrastructure", willRetry: true, attempt: 0 },
+      }[mode as "retry"];
+      if (expected) {
+        expect(reports).toHaveLength(1);
+        expect(reports[0]).toMatchObject({
+          ...expected,
+          job: "lesson.cascade",
+          jobId,
+          workspaceId,
+        });
+        expect(reports[0]?.error).toBe(error);
+      } else expect(reports).toHaveLength(0);
       if (mode === "retry")
         expect(events.at(-1)?.payload).toMatchObject({
           type: "progress",

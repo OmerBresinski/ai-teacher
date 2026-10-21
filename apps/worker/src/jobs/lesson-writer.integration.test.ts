@@ -276,7 +276,10 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
     expect(done.lesson.generation?.stage).toBe("generated");
     // 12 written slides plus slide 9's continuation (it runs off the slide; UX-C J8, Greg 70 B).
     expect(done.lesson.slides.filter((s) => !s.answersRole).length).toBe(13);
-  });
+    // Its own timeout: the paced stream alone is about 3.2 s by design, and on CI the whole test
+    // took 3.9 to 5.0 s on master (21 Oct 2026), over bun's 5 s default once (PR #603). The pace and
+    // every assertion above stay as they are; only the ceiling is raised.
+  }, 15_000);
 
   test("flipping the flag back: a writer-stamped lesson still generates on the writer route", async () => {
     const { genAi, done } = await planAndGenerate("objectives-first");

@@ -59,6 +59,42 @@ export interface RunJobOptions<D = unknown> {
   draftMinIntervalMs?: number;
   /** Test seam: replaces `emitJobEvent` (e.g. to persist a terminal row and then fail the notify). */
   emit?: typeof emitJobEvent;
+  /**
+   * Told about every failed attempt (ADR 0041: the worker's error tracking): a handler error,
+   * retried or terminal, or an infrastructure failure. Not called for a cancel or a shutdown
+   * abort. Gets the raw error, so it must not log or send its message; a throw here is logged.
+   */
+  onFailure?: (failure: JobFailureReport) => void;
+}
+
+/** What `RunJobOptions.onFailure` receives. */
+export interface JobFailureReport {
+  error: unknown;
+  job: JobName;
+  /** Absent when the envelope did not parse (an infrastructure failure before it). */
+  jobId?: string;
+  workspaceId?: string;
+  /** pg-boss `retryCount` of this attempt (0 for the first). */
+  attempt: number;
+  /** pg-boss will run the job again. */
+  willRetry: boolean;
+  /** Which path: the handler threw, or event persistence or a pre-run step did. */
+  kind: "handler" | "infrastructure";
+}
+
+function reportFailure<D>(opts: RunJobOptions<D>, failure: JobFailureReport): void {
+  if (!opts.onFailure) return;
+  try {
+    opts.onFailure(failure);
+  } catch (err) {
+    opts.logger.warn({ err: safeError(err), job: failure.job }, "job failure reporter failed");
+  }
+}
+
+/** The envelope's ids, read without trusting the payload (for a failure report). */
+function envelopeIds(data: unknown): { jobId?: string; workspaceId?: string } {
+  const parsed = JobDataEnvelope.safeParse(data);
+  return parsed.success ? { jobId: parsed.data.jobId, workspaceId: parsed.data.workspaceId } : {};
 }
 
 /** What `runJob` decided; also the pg-boss `perJobResults` disposition for the job. */
@@ -149,6 +185,14 @@ export async function runJob<N extends JobName, D = unknown>(
       { err: safeError(error), job: name, bossJobId: bossJob.id },
       "job infrastructure failed",
     );
+    reportFailure(opts, {
+      error,
+      job: name,
+      ...envelopeIds(bossJob.data),
+      attempt: bossJob.retryCount,
+      willRetry: bossJob.retryCount < bossJob.retryLimit,
+      kind: "infrastructure",
+    });
     throw new Error(JOB_FAILURE_MESSAGE);
   } finally {
     // After the terminal event, never before it (TEACH-202 part j): see `JobContext.afterSettle`.
@@ -360,10 +404,22 @@ async function runJobAttempt<N extends JobName, D = unknown>(
   const message = shutdown
     ? "worker shut down while the job was running"
     : (opts.failureMessage?.(thrown) ?? JOB_FAILURE_MESSAGE);
+  const report = (willRetry: boolean) => {
+    if (shutdown) return;
+    reportFailure(opts, {
+      error: thrown,
+      job: name,
+      ...base,
+      attempt: bossJob.retryCount,
+      willRetry,
+      kind: "handler",
+    });
+  };
 
   if (thrown instanceof NonRetryableError) {
     const error: JobError = { message, retryable: false };
     logger.warn({ err: safeError(thrown) }, "job failed (non-retryable)");
+    report(false);
     return settle(
       { type: "failed", ...base, at: nowIso(), error },
       { id: bossJob.id, status: "deadletter", output: error, event: "failed" },
@@ -380,11 +436,13 @@ async function runJobAttempt<N extends JobName, D = unknown>(
       },
     });
     logger.warn({ err: safeError(thrown), shutdown }, "job failed; pg-boss will retry");
+    report(true);
     return { id: bossJob.id, status: "failed", output: { message }, event: "progress" };
   }
 
   const error: JobError = { message, retryable: true };
   logger.error({ err: safeError(thrown), shutdown }, "job failed; no attempts left");
+  report(false);
   return settle(
     { type: "failed", ...base, at: nowIso(), error },
     { id: bossJob.id, status: "failed", output: error, event: "failed" },

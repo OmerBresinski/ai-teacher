@@ -8,6 +8,8 @@ import { numericFindings } from "../numeric-check";
 import { type Audience, verifyFactsPrompt } from "../prompts";
 import {
   retrievalIndexOf,
+  VERIFY_FIELDS,
+  VERIFY_REASONS,
   type VerifyCorrection,
   type VerifyField,
   type VerifyReason,
@@ -104,7 +106,25 @@ export async function runVerify(
       {
         stage: "plan",
         call: "verify",
+        ev: "fact-check",
+        outcome: "checked",
+        factsChecked: countFacts(facts),
+        proposed: call.output.corrections.length,
         corrections: patched.applied.length,
+        factsChanged: new Set(patched.applied.map((c) => c.factId)).size,
+        wordsChanged: wordsChanged(facts, patched.facts),
+        // Counts under fixed names from the enums (`reason_wrong_term`, `field_answer`), never a
+        // name taken from the model's output (ADR 0041).
+        ...countsBy(
+          "reason",
+          VERIFY_REASONS,
+          patched.applied.map((c) => c.reason),
+        ),
+        ...countsBy(
+          "field",
+          VERIFY_FIELDS,
+          patched.applied.map((c) => c.field),
+        ),
         durationMs: Date.now() - startedAt,
       },
       "facts verified",
@@ -126,6 +146,10 @@ export async function runVerify(
         : { skipped: "failed", error: fullError(error) }),
     });
     if (error instanceof BudgetExceeded) {
+      deps.logger.info(
+        { stage: "plan", call: "verify", ev: "fact-check", outcome: "capped", by: error.by },
+        "fact verification capped",
+      );
       return {
         facts,
         applied: [],
@@ -136,7 +160,13 @@ export async function runVerify(
       return { facts, applied: [], findings: [] };
     }
     deps.logger.warn(
-      { stage: "plan", call: "verify", err: error instanceof StageFailure ? undefined : error },
+      {
+        stage: "plan",
+        call: "verify",
+        ev: "fact-check",
+        outcome: "dropped",
+        err: error instanceof StageFailure ? undefined : error,
+      },
       "fact verification failed; facts kept",
     );
     return { facts, applied: [], findings: [VERIFY_FAILED_FINDING, ...codeFindings(facts)] };
@@ -327,4 +357,82 @@ export function applyVerifyPatch(
     applied.push(c);
   }
   return { facts: LessonFactsSchema.parse(next), applied };
+}
+
+/** How many verifiable facts the call saw: every array entry of the facts object (ADR 0041). */
+function countFacts(facts: LessonFacts): number {
+  let n = 0;
+  for (const value of Object.values(facts)) if (Array.isArray(value)) n += value.length;
+  return n;
+}
+
+/**
+ * One count per enum member, under `<prefix>_<member>` (`-` as `_`): the names come from the enum,
+ * never from the labels, so a label outside it is not counted at all.
+ */
+export function countsBy(
+  prefix: "reason" | "field",
+  members: readonly string[],
+  labels: readonly string[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const m of members) out[`${prefix}_${m.replace(/-/g, "_")}`] = 0;
+  for (const l of labels) {
+    if (!members.includes(l)) continue;
+    const key = `${prefix}_${l.replace(/-/g, "_")}`;
+    out[key] = (out[key] ?? 0) + 1;
+  }
+  return out;
+}
+
+/** Word-level edit distance between two strings (insertions, deletions, substitutions). */
+export function wordEditDistance(a: string, b: string): number {
+  const x = a.split(/\s+/).filter(Boolean);
+  const y = b.split(/\s+/).filter(Boolean);
+  let prev = Array.from({ length: y.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= x.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= y.length; j++) {
+      cur[j] = Math.min(
+        (prev[j] ?? 0) + 1,
+        (cur[j - 1] ?? 0) + 1,
+        (prev[j - 1] ?? 0) + (x[i - 1] === y[j - 1] ? 0 : 1),
+      );
+    }
+    prev = cur;
+  }
+  return prev[y.length] ?? 0;
+}
+
+/**
+ * Words the fact check changed: the word edit distance summed over every string the patch touched.
+ * The patch clones and overwrites in place, so the two trees have the same shape; a value whose
+ * shape changed (a figure's values) counts its strings on both sides.
+ */
+export function wordsChanged(before: unknown, after: unknown): number {
+  if (typeof before === "string" || typeof after === "string") {
+    if (before === after) return 0;
+    return wordEditDistance(
+      typeof before === "string" ? before : "",
+      typeof after === "string" ? after : "",
+    );
+  }
+  if (Array.isArray(before) || Array.isArray(after)) {
+    const a = Array.isArray(before) ? before : [];
+    const b = Array.isArray(after) ? after : [];
+    let n = 0;
+    for (let i = 0; i < Math.max(a.length, b.length); i++) n += wordsChanged(a[i], b[i]);
+    return n;
+  }
+  if (before && after && typeof before === "object" && typeof after === "object") {
+    let n = 0;
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    for (const k of keys)
+      n += wordsChanged(
+        (before as Record<string, unknown>)[k],
+        (after as Record<string, unknown>)[k],
+      );
+    return n;
+  }
+  return 0;
 }
