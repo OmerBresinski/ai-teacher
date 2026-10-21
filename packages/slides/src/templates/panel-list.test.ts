@@ -489,16 +489,6 @@ describe("panel-list", () => {
       { template: "panel-list", heading: "" },
       { template: "panel-list", heading: "x", rows: [] },
       { template: "panel-list", heading: "x", rows: [{ name: "", text: "" }] },
-      {
-        template: "panel-list",
-        heading: "Supercalifragilisticexpialidocious-antidisestablishmentarianism ".repeat(4),
-        lead: "word ".repeat(80),
-        rows: Array.from({ length: 9 }, () => ({
-          name: "word ".repeat(20),
-          text: "word ".repeat(90),
-        })),
-        panel: { shares: [0, -1, Number.NaN] },
-      },
       { template: "panel-list", heading: "x", rows: ROWS, panel: { picture: { photo: "" } } },
       { template: "panel-list", heading: "x", rows: ROWS, panel: { picture: { diagram: null } } },
     ];
@@ -509,6 +499,28 @@ describe("panel-list", () => {
           expect(Array.isArray(r.slide.elements)).toBe(true);
         }
   });
+
+  // The oversized input is about 95% of the fuzz's cost (every row overflows, so each layout runs
+  // the full fit search): ~0.45 s locally for every theme at three stages, and over the 5 s default
+  // on a loaded CI runner (#600, #605). One test per stage, with its own timeout, keeps every theme
+  // and stage covered.
+  const OVERSIZED: TemplateInput = {
+    template: "panel-list",
+    heading: "Supercalifragilisticexpialidocious-antidisestablishmentarianism ".repeat(4),
+    lead: "word ".repeat(80),
+    rows: Array.from({ length: 9 }, () => ({
+      name: "word ".repeat(20),
+      text: "word ".repeat(90),
+    })),
+    panel: { shares: [0, -1, Number.NaN] },
+  };
+  for (const stage of ["ks1", "ks3", "ks5"] as Stage[])
+    test(`oversized odd input never throws at ${stage}, on every theme`, () => {
+      for (const theme of THEMES) {
+        const r = layoutTemplate(OVERSIZED, theme, stage);
+        expect(Array.isArray(r.slide.elements)).toBe(true);
+      }
+    }, 20_000);
 
   test("the capacity table is the renderer's measurement: each cap is comfortable, each hard maximum fits", () => {
     for (const [age, stage] of [
