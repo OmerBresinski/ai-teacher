@@ -4,6 +4,7 @@ import { useState } from "react";
 import { loadLayoutKit } from "../model/layout-kit";
 import { demoLibrary } from "../model/starter";
 import { THEMES } from "../model/themes";
+import { lessonPicks } from "../theme-picker/samples";
 import { displayInTheme, GeneratingThemeDialog, ThemeCallout } from "./ThemeDialog";
 import { renderEditor } from "./test-harness";
 
@@ -134,13 +135,24 @@ describe("where the theme lives (ruling 123)", () => {
     );
   });
 
-  test("each tile is the lesson's own title slide", async () => {
-    renderEditor();
+  test("the picker draws each theme's own slides with the lesson's title (decision 34)", async () => {
+    const { read } = renderEditor();
     fireEvent.click(screen.getByRole("button", { name: /^Theme:/ }));
     await screen.findByRole("dialog", { name: "Theme" });
     const tiles = screen.getAllByRole("radio");
     expect(tiles).toHaveLength(THEMES.length);
-    for (const tile of tiles) expect(tile.querySelector("[data-slide-root]")).not.toBeNull();
+    // Tiles draw lazily as they scroll in; the large preview draws the chosen theme once the
+    // template code has loaded.
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
+    expect(spot.getAttribute("data-theme-spotlight")).toBe(read().themeId);
+    // "See your lesson in this theme": the lesson's own cover and its most visual slides, never
+    // the sample lesson (review 20 Oct: a water cycle lesson showed lambs and chicks).
+    const picks = lessonPicks(read());
+    if (!picks) throw new Error("lesson has slides");
+    expect(spot.querySelectorAll("[data-slide-root]").length).toBe(1 + picks.layouts.length);
+    expect(spot.textContent).not.toContain("Animals and their young");
+    expect(spot.textContent).not.toContain("Lambs and ewes");
   });
 });
 
@@ -177,6 +189,37 @@ describe("while the lesson is being made (ruling 123)", () => {
       </>
     );
   }
+
+  test("an empty lesson opens the picker on the topic-free sample with its title, no throw", async () => {
+    const empty = { ...lesson, slides: [] };
+    render(<GeneratingThemeDialog open lesson={empty} onChange={() => {}} onClose={() => {}} />);
+    await screen.findByRole("dialog", { name: "Theme" });
+    expect(screen.getAllByRole("radio")).toHaveLength(THEMES.length);
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    const spot = document.querySelector("[data-theme-spotlight]") as HTMLElement;
+    expect(spot.textContent).toContain(lesson.title);
+    expect(spot.textContent).toContain("Key words");
+  });
+
+  test("opening the picker and hovering every theme never changes the lesson", async () => {
+    const shown = displayInTheme(lesson, lesson.themeId);
+    const before = structuredClone(shown);
+    render(<GeneratingThemeDialog open lesson={shown} onChange={() => {}} onClose={() => {}} />);
+    await screen.findByRole("dialog", { name: "Theme" });
+    await waitFor(() => expect(document.querySelector("[data-theme-spotlight]")).not.toBeNull());
+    for (const tile of screen.getAllByRole("radio")) {
+      fireEvent.pointerEnter(tile);
+      fireEvent.mouseEnter(tile);
+      fireEvent.focus(tile);
+    }
+    const last = THEMES[THEMES.length - 1];
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-theme-spotlight]")?.getAttribute("data-theme-spotlight"),
+      ).toBe(last?.id),
+    );
+    expect(shown).toEqual(before);
+  });
 
   test("a tile re-themes live, Done keeps it, Cancel goes back to the opening theme", async () => {
     const changes: string[] = [];
