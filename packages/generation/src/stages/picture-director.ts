@@ -714,19 +714,19 @@ export async function findDirected(args: {
   // paid eval can count empty photos and why. `reason` is the last failure, also on a placed
   // picture that needed a retry.
   // Tracing never touches the picture: a throw here records no kind and no trace, nothing else.
-  let pictureKind: PictureKind | undefined;
-  let trace: ReturnType<typeof traceProps> | undefined;
-  try {
-    pictureKind = pictureKindOf({
-      text: req.imagePrompt ?? req.text,
-      named: direction?.named,
-      draw: Boolean(req.draw),
-    });
-    trace = traceProps(out.trace, out.photo?.src, pictureKind);
-  } catch {
-    pictureKind = undefined;
-    trace = undefined;
-  }
+  const traced = nonFatalSync(
+    () => {
+      const kind: PictureKind = pictureKindOf({
+        text: req.imagePrompt ?? req.text,
+        named: direction?.named,
+        draw: Boolean(req.draw),
+      });
+      return { kind, props: traceProps(out.trace, out.photo?.src, kind) };
+    },
+    () => undefined,
+  );
+  const pictureKind = traced?.kind;
+  const trace = traced?.props;
   deps.logger.info(
     {
       stage: "illustrate",
