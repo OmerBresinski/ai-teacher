@@ -33,8 +33,9 @@ const artOf = (t: Theme) =>
   ].join(" ");
 
 describe("theme catalogue", () => {
-  test("nine themes, no Chalk & Cream; old chalk lessons render as Splash; unknown ids fall back to Splash (ruling 202)", () => {
-    expect(THEMES).toHaveLength(9);
+  test("sixteen themes, no Chalk & Cream; old chalk lessons render as Splash; unknown ids fall back to Splash (ruling 202)", () => {
+    // TEACH-215 part c: the ten plus the round 5 themes (16 Oct 2026).
+    expect(THEMES).toHaveLength(16);
     expect(THEMES.map((t) => t.id)).not.toContain("chalk");
     expect(isThemeId("chalk")).toBe(false);
     expect(new Set(THEMES.map((t) => t.id)).size).toBe(THEMES.length);

@@ -12,7 +12,9 @@ import { exportLessonPptx } from "./pptx";
  * renderer draws it, so a teacher's long title is not clipped or overflowing in PowerPoint either.
  */
 
-const theme = atKeyStage(getTheme("splash", null), "ks2");
+// Paper: its picture cover keeps the question under the title. Splash's photo-right picture cover
+// draws none (Greg's call 36, TEACH-215 part g), asserted below.
+const theme = atKeyStage(getTheme("paper", null), "ks2");
 
 function titleSlide(extra: string) {
   const r = layoutTemplate(
@@ -43,7 +45,7 @@ function titleSlide(extra: string) {
 }
 
 async function exported(slide: ReturnType<typeof titleSlide>) {
-  const lesson = { ...creditedLesson(), themeId: "splash", slides: [slide] } as never as Lesson;
+  const lesson = { ...creditedLesson(), themeId: "paper", slides: [slide] } as never as Lesson;
   const blob = await exportLessonPptx(lesson, theme);
   const zip = await JSZip.loadAsync(await blob.arrayBuffer());
   const xml = (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
@@ -56,8 +58,24 @@ async function exported(slide: ReturnType<typeof titleSlide>) {
 }
 
 describe("PPTX title fit (TEACH-75 part o)", () => {
+  it("Splash's picture cover draws no question (Greg's call 36, TEACH-215 part g)", () => {
+    const r = layoutTemplate(
+      {
+        template: "title",
+        heading: "The heart and circulatory system",
+        lead: "Recall: what changes in your body when you run?",
+        figure: { photo: "", aspect: 4 / 3, alt: "a runner" },
+      },
+      atKeyStage(getTheme("splash", null), "ks2"),
+      "ks2",
+    );
+    expect(r.slide.elements.some((e) => e.name === "Title")).toBe(true);
+    expect(r.slide.elements.some((e) => e.name === "Subtitle")).toBe(false);
+  });
+
   it("exports an edited title at the size the renderer draws it", async () => {
-    const slide = titleSlide("and lungs");
+    // Long enough to need fitting in Paper's wider column.
+    const slide = titleSlide("and the lungs, working together");
     const title = slide.elements.find((e) => e.name === "Title") as TextElement;
     const fitted = fittedFontSize(title, theme);
     expect(fitted).toBeDefined();

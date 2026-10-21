@@ -10,8 +10,8 @@ import {
 import { type JobId, type LessonId, newId, type WorkspaceId } from "@tj/domain";
 import { type Lesson, parseLesson, resumeBase } from "@tj/domain/documents";
 import {
-  BudgetExceeded,
   InputRejected,
+  isBudgetRefusal,
   type PipelineDeps,
   type PipelineInput,
   type PipelineOptions,
@@ -24,6 +24,9 @@ import { type JobContext, NonRetryableError } from "@tj/jobs";
 import { uid } from "@tj/slides";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
+import { captureCalls, createDebugRecorder, type DebugRecorder } from "../generation-debug";
+import { budgetFailure } from "../job-errors";
+import { lessonSummaryOf } from "../observability";
 import { createGeneratingBank, removePicture, savePicture } from "../picture-generator";
 import { createPictureLibrary } from "../picture-library";
 import { SourceUnavailable, storageSourceLoader } from "../sources";
@@ -160,13 +163,33 @@ export async function runLessonJob<K extends LessonPipelineJob>(
   const { payload, workspaceId, jobId, signal, deps, logger } = ctx;
   const ws = forWorkspace(deps.db, workspaceId);
   const lessonId = payload.lessonId;
+  // The lock is kept only for a retry pg-boss will actually run (TEACH-202 part g): on the last
+  // attempt, or for a terminal failure, it is released here, since nothing else releases it.
+  const attemptsLeft = ctx.attemptsLeft !== false;
   let keepLockForRetry = false;
   let handedOff = false;
+  // Aborted when this attempt ends however it ends, so work the pipeline left running (the
+  // writer's off-screen diagram and picture calls) makes no model call after the terminal event.
+  const settled = new AbortController();
+  const runSignal = AbortSignal.any([signal, settled.signal]);
+  let recorder: DebugRecorder | undefined;
   try {
     if (signal.aborted) {
-      keepLockForRetry = signal.reason === "shutdown";
+      keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
       return;
     }
+    // The lesson's debug record (Greg, 20 Oct 2026): fire and forget, written after the job settles.
+    // Made before the lesson loads, so a failed load is recorded too (no I/O until a row exists).
+    recorder = deps.generationDebug
+      ? createDebugRecorder({
+          store: deps.generationDebug,
+          workspaceId,
+          lessonId,
+          jobId,
+          attempt: ctx.attempt ?? 0,
+          logger,
+        })
+      : undefined;
     const stored = await loadOwnedLesson(ws, lessonId, jobId, payload.revision);
     spec.check?.(stored);
     if (deps.ai.kind === "unconfigured") {
@@ -174,14 +197,15 @@ export async function runLessonJob<K extends LessonPipelineJob>(
     }
     const priorUsage = stored.generation?.usage;
     const pipelineDeps: PipelineDeps = {
-      ai: deps.ai,
+      // Every model request of the job lands in its debug record (`model-call`), captured once.
+      ai: captureCalls(deps.ai, recorder),
       budget: createBudget(deps.caps, { spent: priorUsage }),
       ...(deps.planFrontierFromYear !== undefined
         ? { planFrontierFromYear: deps.planFrontierFromYear }
         : {}),
       ...effortOverride(deps.reasoningEffort),
       ...(deps.costWarnUsd !== undefined ? { costWarnUsd: deps.costWarnUsd } : {}),
-      signal,
+      signal: runSignal,
       logger: logger.child({
         resumed: priorUsage !== undefined,
         usagePriorUsd: priorUsage === undefined ? 0 : priorUsage.costUsd,
@@ -193,9 +217,19 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
+      // ADR 0041: the summary line's metrics to PostHog (outcome, cost, timings, findings, images).
+      ...(deps.observability?.enabled
+        ? {
+            onSummary: (summary) =>
+              deps.observability?.captureLessonSummary(lessonSummaryOf(summary)),
+          }
+        : {}),
+      // Live writing (ADR 0039): drafts ride the job's events, never the lesson row.
+      ...(ctx.draft ? { onDraft: ctx.draft } : {}),
       worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),
       images: imagePlacer(deps, workspaceId),
       ...pictureMaker(deps, workspaceId, logger),
+      ...(recorder ? { debug: recorder.sink } : {}),
     };
     let final: PipelineState;
     try {
@@ -204,13 +238,15 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       // What was persisted stays (§5). A cancel is terminal (`runJob` records `cancelled`); a
       // shutdown is retried by pg-boss, so the next attempt needs the lock.
       if (signal.aborted) {
-        keepLockForRetry = signal.reason === "shutdown";
+        keepLockForRetry = signal.reason === "shutdown" && attemptsLeft;
         return;
       }
       // Before a skeleton exists there is no certified checkpoint to finish as a partial Lesson.
       // Keep the title already persisted, release its lock and avoid repeating an unaffordable call.
-      if (error instanceof BudgetExceeded) {
-        throw new NonRetryableError(error.message, { cause: error });
+      // A streamed call (the writer) surfaces the refusal wrapped in the stream's error, so the
+      // check walks `cause` rather than testing the outer class (TEACH-202 part g).
+      if (isBudgetRefusal(error)) {
+        throw budgetFailure(error);
       }
       // The writer stopped at its token cap (TEACH-110 part b): the same request stops the same
       // way, so it fails now instead of paying for a retry.
@@ -236,18 +272,33 @@ export async function runLessonJob<K extends LessonPipelineJob>(
         logger.warn({ lessonId, sourceId: error.sourceId }, "source unavailable");
         throw new NonRetryableError(error.message, { cause: error });
       }
-      if (!(error instanceof NonRetryableError)) keepLockForRetry = true;
+      if (!(error instanceof NonRetryableError)) keepLockForRetry = attemptsLeft;
       throw error;
     }
     if (spec.after && !signal.aborted) handedOff = await spec.after(ws, final);
+  } catch (error) {
+    // The full error goes to the debug record only; logs and the job's event keep `safeError`.
+    recorder?.recordError(error, signal.aborted ? { aborted: String(signal.reason) } : undefined);
+    throw error;
   } finally {
+    settled.abort("settled");
+    if (recorder) {
+      const debug = recorder;
+      if (ctx.afterSettle) ctx.afterSettle(() => debug.close());
+      else await debug.close();
+    }
     if (keepLockForRetry) {
       logger.info({ lessonId }, "generating lock kept for the retry");
     } else if (handedOff) {
       logger.debug({ lessonId }, "generating lock handed to the next job");
     } else {
-      await clearGenerating(ws, lessonId, jobId);
-      logger.debug({ lessonId }, "generating lock released");
+      // Released after `runJob` writes the terminal event (TEACH-202 part j).
+      const release = async () => {
+        await clearGenerating(ws, lessonId, jobId);
+        logger.debug({ lessonId }, "generating lock released");
+      };
+      if (ctx.afterSettle) ctx.afterSettle(release);
+      else await release();
     }
   }
 }

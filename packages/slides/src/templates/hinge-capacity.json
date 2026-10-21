@@ -1,0 +1,77 @@
+{
+  "early": {
+    "words": 8,
+    "maxWords": 16,
+    "chars": 46,
+    "maxChars": 89,
+    "options": 3,
+    "byCount": {
+      "2": {
+        "words": 16,
+        "maxWords": 16,
+        "chars": 89,
+        "maxChars": 89
+      },
+      "3": {
+        "words": 8,
+        "maxWords": 16,
+        "chars": 46,
+        "maxChars": 89
+      }
+    }
+  },
+  "primary": {
+    "words": 9,
+    "maxWords": 9,
+    "chars": 51,
+    "maxChars": 51,
+    "options": 4,
+    "byCount": {
+      "2": {
+        "words": 18,
+        "maxWords": 18,
+        "chars": 102,
+        "maxChars": 102
+      },
+      "3": {
+        "words": 18,
+        "maxWords": 18,
+        "chars": 102,
+        "maxChars": 102
+      },
+      "4": {
+        "words": 9,
+        "maxWords": 9,
+        "chars": 51,
+        "maxChars": 51
+      }
+    }
+  },
+  "secondary": {
+    "words": 11,
+    "maxWords": 21,
+    "chars": 62,
+    "maxChars": 122,
+    "options": 4,
+    "byCount": {
+      "2": {
+        "words": 21,
+        "maxWords": 21,
+        "chars": 121,
+        "maxChars": 122
+      },
+      "3": {
+        "words": 21,
+        "maxWords": 21,
+        "chars": 121,
+        "maxChars": 122
+      },
+      "4": {
+        "words": 11,
+        "maxWords": 21,
+        "chars": 62,
+        "maxChars": 122
+      }
+    }
+  }
+}

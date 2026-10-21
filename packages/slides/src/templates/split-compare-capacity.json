@@ -1,0 +1,266 @@
+{
+  "KS1": {
+    "2": {
+      "picture": {
+        "title": {
+          "cap": 19,
+          "hardMax": 19,
+          "words": 3
+        },
+        "text": {
+          "cap": 49,
+          "hardMax": 49,
+          "words": 9
+        }
+      },
+      "quote": {
+        "title": {
+          "cap": 19,
+          "hardMax": 38,
+          "words": 3
+        },
+        "quote": {
+          "cap": 23,
+          "hardMax": 41,
+          "words": 4
+        },
+        "text": {
+          "cap": 49,
+          "hardMax": 69,
+          "words": 9
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 19,
+          "hardMax": 19,
+          "words": 3
+        },
+        "text": {
+          "cap": 125,
+          "hardMax": 139,
+          "words": 22
+        }
+      }
+    },
+    "3": {
+      "picture": {
+        "title": {
+          "cap": 17,
+          "hardMax": 19,
+          "words": 2
+        },
+        "text": {
+          "cap": 29,
+          "hardMax": 29,
+          "words": 5
+        }
+      },
+      "quote": {
+        "title": {
+          "cap": 10,
+          "hardMax": 17,
+          "words": 1
+        },
+        "quote": {
+          "cap": 5,
+          "hardMax": 12,
+          "words": 1
+        },
+        "text": {
+          "cap": 29,
+          "hardMax": 41,
+          "words": 5
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 17,
+          "hardMax": 25,
+          "words": 2
+        },
+        "text": {
+          "cap": 59,
+          "hardMax": 69,
+          "words": 12
+        }
+      }
+    }
+  },
+  "KS2": {
+    "2": {
+      "picture": {
+        "title": {
+          "cap": 22,
+          "hardMax": 42,
+          "words": 4
+        },
+        "text": {
+          "cap": 69,
+          "hardMax": 96,
+          "words": 14
+        }
+      },
+      "quote": {
+        "title": {
+          "cap": 22,
+          "hardMax": 65,
+          "words": 4
+        },
+        "quote": {
+          "cap": 25,
+          "hardMax": 48,
+          "words": 4
+        },
+        "text": {
+          "cap": 96,
+          "hardMax": 160,
+          "words": 18
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 22,
+          "hardMax": 42,
+          "words": 4
+        },
+        "text": {
+          "cap": 220,
+          "hardMax": 255,
+          "words": 39
+        }
+      }
+    },
+    "3": {
+      "picture": {
+        "title": {
+          "cap": 34,
+          "hardMax": 47,
+          "words": 6
+        },
+        "text": {
+          "cap": 38,
+          "hardMax": 59,
+          "words": 7
+        }
+      },
+      "quote": {
+        "title": {
+          "cap": 22,
+          "hardMax": 34,
+          "words": 4
+        },
+        "quote": {
+          "cap": 24,
+          "hardMax": 41,
+          "words": 4
+        },
+        "text": {
+          "cap": 18,
+          "hardMax": 38,
+          "words": 3
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 34,
+          "hardMax": 47,
+          "words": 6
+        },
+        "text": {
+          "cap": 88,
+          "hardMax": 104,
+          "words": 17
+        }
+      }
+    }
+  },
+  "KS3-5": {
+    "2": {
+      "picture": {
+        "title": {
+          "cap": 25,
+          "hardMax": 76,
+          "words": 4
+        },
+        "text": {
+          "cap": 69,
+          "hardMax": 128,
+          "words": 14
+        }
+      },
+      "quote": {
+        "title": {
+          "cap": 25,
+          "hardMax": 50,
+          "words": 4
+        },
+        "quote": {
+          "cap": 32,
+          "hardMax": 59,
+          "words": 6
+        },
+        "text": {
+          "cap": 128,
+          "hardMax": 160,
+          "words": 22
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 25,
+          "hardMax": 50,
+          "words": 4
+        },
+        "text": {
+          "cap": 255,
+          "hardMax": 285,
+          "words": 47
+        }
+      }
+    },
+    "3": {
+      "picture": {
+        "title": {
+          "cap": 25,
+          "hardMax": 41,
+          "words": 4
+        },
+        "text": {
+          "cap": 59,
+          "hardMax": 74,
+          "words": 12
+        }
+      },
+      "quote": {
+        "title": {
+          "cap": 25,
+          "hardMax": 41,
+          "words": 4
+        },
+        "quote": {
+          "cap": 29,
+          "hardMax": 41,
+          "words": 5
+        },
+        "text": {
+          "cap": 39,
+          "hardMax": 59,
+          "words": 7
+        }
+      },
+      "text": {
+        "title": {
+          "cap": 25,
+          "hardMax": 41,
+          "words": 4
+        },
+        "text": {
+          "cap": 125,
+          "hardMax": 145,
+          "words": 22
+        }
+      }
+    }
+  }
+}

@@ -10,7 +10,7 @@ import {
 import { basemap, REGIONS, placeOf, compassRose, gridRefs, scaleBar, route } from '../kit/batch-G.js';
 
 export const meta = {
-  id: 'map_skills', name: 'Map skills', kind: 'info', version: 1,
+  id: 'map_skills', name: 'Map skills', kind: 'info', version: 2,
   subjects: ['Geography'],
   years: ['Reception', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'Reading a map from above: what the key means, compass directions, grid references, routes and scale.',
@@ -530,6 +530,10 @@ export function render(root, P, ctx) {
   else if (G.m === 'uk') ukMap(mapG, G, P, taken);
   else basemap(mapG, G.m, { box: f });
   if (pic) sidePicture(root, M, { s: 0, hide: mapK });
+  // the picture and the map each say which way we are looking, so the change of view is named
+  if (pic) { const fr = G.frame;
+    T(h('g', { s: 0, hide: mapK }, root), fr.x + 18, fr.y + 40, 'Seen from the side', 'ts-label', { fill: 'var(--ink)', cls: 'halo strong' });
+    T(h('g', { s: mapK }, root), fr.x + 18, fr.y + fr.h - 18, 'Seen from above', 'ts-small', { fill: 'var(--ink)', cls: 'halo strong' }); }
   const hiG = h('g', {}, root);   // grid-square highlights, under the grid lines
   const gridG = h('g', {}, root);
   const under = h('g', {}, root); // routes and arrows, under symbols and labels
@@ -635,8 +639,14 @@ export function render(root, P, ctx) {
   }
   if (P.task === 'compass') {
     M.feats.forEach(ft => {
-      const k = bi(`dir:${ft.i}`); const A = [M.C.x, M.C.y], B = [ft.x, ft.y]; const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
-      const u = [(B[0] - A[0]) / len, (B[1] - A[1]) / len]; const p0 = [A[0] + u[0] * 30, A[1] + u[1] * 30], p1 = [B[0] - u[0] * 30, B[1] - u[1] * 30];
+      const k = bi(`dir:${ft.i}`); const A = [M.C.x, M.C.y], B0 = [ft.x, ft.y]; const len0 = Math.hypot(B0[0] - A[0], B0[1] - A[1]);
+      // the arrow points along the compass word it teaches (due east is straight across), not at the
+      // place's exact bearing; when the place sits a little off that line, a dotted line joins them
+      const deg = bearing(G, M.C, ft), step = 360 / M.pts, off = deg - Math.round(deg / step) * step, th = -off * Math.PI / 180;
+      const u0 = [(B0[0] - A[0]) / len0, (B0[1] - A[1]) / len0];
+      const u = [u0[0] * Math.cos(th) - u0[1] * Math.sin(th), u0[0] * Math.sin(th) + u0[1] * Math.cos(th)];
+      const len = len0 * Math.cos(off * Math.PI / 180), B = [A[0] + u[0] * len, A[1] + u[1] * len];
+      if (Math.hypot(B0[0] - B[0], B0[1] - B[1]) > 24) h('path', { d: `M${B[0]} ${B[1]} L${B0[0]} ${B0[1]}`, fill: 'none', stroke: 'var(--focus)', 'stroke-width': 'var(--sw-hair)', 'stroke-dasharray': '3 6', s: k, c: ctx.rc(`dir:${ft.i}`, null, 'soft') }, under); const p0 = [A[0] + u[0] * 30, A[1] + u[1] * 30], p1 = [B[0] - u[0] * 30, B[1] - u[1] * 30];
       route(under, [p0, p1], { col: 'var(--focus)', s: k, smooth: false, a: { c: ctx.rc(`dir:${ft.i}`, null, 'soft') } });
       lineObs.push(...lineBoxes([p0, p1], 7));
       legLabels.push({ k, word: dirWord(bearing(G, M.C, ft), M.pts), ats: [.5, .35, .65, .25, .75].map(t => segAt(p0, p1, t)), path: `features.${ft.i}.place`, rc: `dir:${ft.i}` });

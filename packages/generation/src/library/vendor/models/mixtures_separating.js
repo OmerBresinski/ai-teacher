@@ -41,7 +41,7 @@ export const meta = {
   id: "mixtures_separating",
   name: "Mixtures and separating",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["Science"],
   years: ["Y3", "Y4", "Y5", "Y6", "KS3"],
   teaches:
@@ -611,7 +611,7 @@ export function render(root, P, ctx) {
           ([x, y]) => ({ el: grain(g, "sand", x, y), y }),
         )
       : [];
-    ups.push((v) => {
+    const drain = (v) => {
       if (method === "evaporate") return;
       const k = 1 - v,
         lh = L0 * k,
@@ -631,7 +631,16 @@ export function render(root, P, ctx) {
       lay.forEach((o) => {
         o.el.style.opacity = -5 - o.y < sand * k ? 1 : 0;
       });
-    });
+    };
+    ups.push(drain);
+    if (method !== "evaporate") {
+      // v2: the stored drawing is the finished one, so the full beaker is kept as its own copy that
+      // leaves when the separation starts: the mixture is seen in the beaker before it is poured
+      drain(0);
+      const full = g.cloneNode(true);
+      full.dataset.h = kSep;
+      inner.insertBefore(full, g);
+    }
     if (method === "evaporate") {
       // poured out at the set-up: the beaker is empty from then on
       for (const el of [liq, surf, layer, ...bits.map((o) => o.el), ...lay.map((o) => o.el)].filter(
@@ -757,7 +766,9 @@ export function render(root, P, ctx) {
       bh = 140;
     const bk = apparatus(setupG, "beaker", AX, BY, 1, {}, { w: bw, h: bh, level: 0 });
     const inner = glassUp(bk, bw, bh);
-    const g = h("g", {}, null);
+    // v2: the filtrate, the caught sand and the drops arrive with the separation (the stored drawing
+    // is the finished one), so the set-up shows an empty beaker and a clean filter paper
+    const g = h("g", { s: kSep }, null);
     inner.insertBefore(g, inner.firstChild.nextSibling);
     const FL = 70;
     const liq = h("rect", { x: -bw / 2 + 5, width: bw - 10, fill: "var(--liquid-bg)" }, g);
@@ -775,16 +786,17 @@ export function render(root, P, ctx) {
       hw = fw / 2 - 10,
       RH = 38;
     const edgeX = (d) => AX + (fw / 2) * (1 - d / ch);
-    const res = h("path", { fill: "var(--sand)" }, setupG);
+    const sepG = h("g", { s: kSep }, setupG);
+    const res = h("path", { fill: "var(--sand)" }, sepG);
     // grains caught in the paper: they settle as the water runs through
     const inRes = (x, y) =>
       y < apexY - 4 &&
       y > apexY - RH + 4 &&
       Math.abs(x - AX) < (hw * (apexY - y)) / (apexY - paperTop) - 4;
     const caught = scatter({ x: AX - hw, y: apexY - RH, w: 2 * hw, h: RH }, inRes, 9, 21, 7).map(
-      ([x, y]) => ({ el: grain(setupG, "sand", x, y), y }),
+      ([x, y]) => ({ el: grain(sepG, "sand", x, y), y }),
     );
-    const drops = [0, 1].map(() => h("circle", { cx: AX, r: 5, fill: "var(--water)" }, setupG));
+    const drops = [0, 1].map(() => h("circle", { cx: AX, r: 5, fill: "var(--water)" }, sepG));
     ups.push((v, u) => {
       const lh = FL * v;
       liq.setAttribute("y", -5 - lh);
@@ -1073,8 +1085,13 @@ export function render(root, P, ctx) {
       13,
       9,
     );
+    // v2: the filings start mixed into the sand (their own copy, gone once the magnet pulls) and
+    // the moving filings arrive with the separation, so nothing hangs in the air before the magnet
+    const restG = h("g", { hide: kSep }, root);
+    for (const [x, y, r] of start) grain(restG, "iron", x, y, r);
+    const filG = h("g", { s: kSep }, root);
     const fil = start.map(([x, y, r], i) => ({
-      el: grain(root, "iron", 0, 0, 0),
+      el: grain(filG, "iron", 0, 0, 0),
       s: [x, y],
       t: tgt[i],
       r,

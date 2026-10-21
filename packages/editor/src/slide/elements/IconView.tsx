@@ -43,6 +43,7 @@ import {
   Equal,
   Eraser,
   Eye,
+  EyeOff,
   Fish,
   Flag,
   Flame,
@@ -227,6 +228,7 @@ export const ICONS: Record<string, LucideIcon> = {
   /* People, PSHE and behaviour */
   ear: Ear,
   eye: Eye,
+  "eye-off": EyeOff,
   frown: Frown,
   hand: Hand,
   handshake: Handshake,

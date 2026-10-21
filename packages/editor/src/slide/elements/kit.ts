@@ -3,7 +3,8 @@
  * Kept free of JSX so it can be imported from anywhere without cycles.
  */
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import type { ResolvedText } from "@tj/slides";
+import { answerKeyText, answersOffSlide, revealsOwnAnswers } from "@tj/domain/documents";
+import type { BadgeGlyph, ResolvedText } from "@tj/slides";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { fontFloor, type TextRole, textRole } from "../../model/themes";
 
@@ -45,8 +46,9 @@ export type ElementViewProps<T extends SlideElement = SlideElement> = {
    */
   answerProgress?: number;
   /**
-   * Present only: the build a drawn diagram shows (TEACH-247 part b). Unset everywhere else, where
-   * a diagram shows its last build. Only `image` reads it.
+   * The build a drawn diagram shows: Present's current build (TEACH-247 part b), or in the editor
+   * the build the teacher is paging through with the model's stepper (part u). Unset everywhere
+   * else, where a diagram shows its last build. Only `image` reads it.
    */
   diagramBuild?: number;
   /**
@@ -171,12 +173,22 @@ export function optionChipLabel(element: { label?: string }, text: string): stri
     : null;
 }
 
-/** Reveal copy shown beneath the options, if the question carries any. */
-export function explanationText(question: QuestionData | undefined): string | null {
-  if (!question) return null;
+/**
+ * Reveal copy shown beneath the options, if the question carries any. A practice or exit slide's
+ * model answer is never drawn on the slide (`answersOffSlide`): it lives on the Answers slides.
+ * Nor is the model answer of a slide that reveals its own answers (`revealsOwnAnswers`, the quick
+ * check): its answers are already on the slide, so a second copy under them would land on its
+ * last question.
+ */
+export function explanationText(
+  slide: Pick<Slide, "kind" | "question" | "elements">,
+): string | null {
+  const question = slide.question;
+  if (!question || answersOffSlide(slide)) return null;
+  if (question.type === "open-response" && revealsOwnAnswers(slide)) return null;
   if (question.type === "true-false" || question.type === "multiple-choice")
     return question.explanation?.trim() || null;
-  if (question.type === "open-response") return question.modelAnswer?.trim() || null;
+  if (question.type === "open-response") return answerKeyText(question).trim() || null;
   return null;
 }
 
@@ -222,3 +234,31 @@ export type LabelParts = {
   bodyRef?: Ref<HTMLDivElement>;
   overflowing: boolean;
 };
+
+/**
+ * Badge glyphs are set `BADGE_GLYPH_SCALE` times larger and scaled back down, so the browser's
+ * whole-pixel rounding of the line's ascent and descent (up to half a slide pixel, 0.75px at
+ * 1440 wide) shrinks to a fraction of that.
+ */
+export const BADGE_GLYPH_SCALE = 8;
+
+/**
+ * The style of a `.tj-badge-glyph` box (slide.css): absolutely centred on its shell at
+ * `BADGE_GLYPH_SCALE` times the size, its line trimmed to the glyph's band where the browser
+ * has `text-box` (else moved by the metric shift), and moved by the glyph's own ink offset.
+ */
+export function badgeGlyphVars(g: BadgeGlyph): CSSProperties {
+  const k = BADGE_GLYPH_SCALE;
+  return {
+    "--glyph-k": k,
+    "--glyph-x": `${(g.shiftX * k).toFixed(2)}px`,
+    "--glyph-y": `${(g.shiftY * k).toFixed(2)}px`,
+    "--glyph-trim-y": `${(g.trimY * k).toFixed(2)}px`,
+    "--glyph-edge": g.edge,
+  } as CSSProperties;
+}
+
+/** A badge glyph's type: `BADGE_GLYPH_SCALE` times the size, line height 1, no tracking. */
+export function badgeGlyphType(css: CSSProperties, fontSize: number): CSSProperties {
+  return { ...css, fontSize: fontSize * BADGE_GLYPH_SCALE, lineHeight: 1, letterSpacing: 0 };
+}

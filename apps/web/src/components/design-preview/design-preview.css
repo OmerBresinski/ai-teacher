@@ -1,7 +1,10 @@
+/* Top centre, between the editor's top bar and its canvas toolbar: top right sat over the docked
+   side pane (the layout items panel, TEACH-205 part b). Dev-only. */
 .design-preview {
   position: fixed;
-  top: 64px;
-  right: 12px;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 40;
   max-width: min(290px, calc(100vw - 96px));
   border: 1px solid var(--border-control);
@@ -58,6 +61,8 @@
   .design-preview {
     top: max(12px, env(safe-area-inset-top));
     right: 12px;
+    left: auto;
+    transform: none;
     bottom: auto;
     max-height: calc(100dvh - 24px - env(safe-area-inset-top));
     overflow: auto;

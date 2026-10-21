@@ -68,9 +68,10 @@ export function pvColour(e) {
   return { fill: `var(--pv-${k})`, text: `var(--pv-${k}-text)`, pale: `color-mix(in oklab, var(--pv-${k}) 20%, var(--paper))` };
 }
 
-/** A place-value digit tile centred on (x, y), in its column colour. */
+/** A place-value digit tile centred on (x, y), in its column colour: `col` is a column (as pvColour takes)
+ *  or a colour object { fill, text, pale } for a column the place-value tokens do not cover. */
 export function digitCard(p, x, y, d, col, { w = 72, h: hh = 96, edit, computedPath, placeholder = false, s, cls, a = {} } = {}) {
-  const c = pvColour(col);
+  const c = col && typeof col === 'object' ? col : pvColour(col);
   const g = h('g', Object.assign({ s, cls }, a), p);
   h('rect', { x: x - w / 2, y: y - hh / 2, width: w, height: hh, rx: 'var(--r-mark)', fill: placeholder ? 'var(--paper)' : c.pale, stroke: c.fill, 'stroke-width': 'var(--sw-struct)', 'stroke-dasharray': placeholder ? '8 6' : null, cls: 'body' }, g);
   const t = T(g, x, y, String(d), 'ts-big', { 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: c.text });

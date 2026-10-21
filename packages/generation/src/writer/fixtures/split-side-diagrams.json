@@ -1,0 +1,490 @@
+{
+  "20261016-1145-s5": {
+    "sides": [
+      {
+        "text": "Zero resultant: stays stationary.",
+        "title": "Stationary",
+        "picture": {
+          "diagram": {
+            "alt": "A stationary cart on a horizontal track with equal 5 N forces acting in opposite directions.",
+            "kind": "labelled-diagram",
+            "title": "Balanced forces",
+            "canvas": "wide",
+            "labels": [
+              {
+                "at": [52, 55],
+                "side": "top",
+                "text": "5 N left"
+              },
+              {
+                "at": [108, 55],
+                "side": "top",
+                "text": "5 N right"
+              },
+              {
+                "at": [80, 30],
+                "side": "top",
+                "text": "Stationary"
+              }
+            ],
+            "shapes": [
+              {
+                "h": 16,
+                "w": 30,
+                "x": 65,
+                "y": 47,
+                "fill": "muted",
+                "type": "rect",
+                "rounded": true
+              },
+              {
+                "r": 3,
+                "cx": 71,
+                "cy": 65,
+                "fill": "accent",
+                "type": "circle"
+              },
+              {
+                "r": 3,
+                "cx": 89,
+                "cy": 65,
+                "fill": "accent",
+                "type": "circle"
+              },
+              {
+                "type": "line",
+                "dashed": false,
+                "points": [[35, 68], [125, 68]]
+              },
+              {
+                "to": [40, 55],
+                "from": [65, 55],
+                "type": "arrow"
+              },
+              {
+                "to": [120, 55],
+                "from": [95, 55],
+                "type": "arrow"
+              },
+              {
+                "h": 10,
+                "w": 20,
+                "x": 70,
+                "y": 25,
+                "fill": "none",
+                "type": "rect",
+                "rounded": false
+              }
+            ],
+            "subject": "abstract_or_process"
+          }
+        }
+      },
+      {
+        "text": "Zero resultant: constant speed, straight line.",
+        "title": "Already moving",
+        "picture": {
+          "diagram": {
+            "alt": "A cart on a horizontal track has equal 5 N forces pointing left and right, while a separate arrow shows it moving right.",
+            "kind": "labelled-diagram",
+            "title": "Balanced forces",
+            "canvas": "wide",
+            "labels": [
+              {
+                "at": [46, 58],
+                "side": "top",
+                "text": "5 N left"
+              },
+              {
+                "at": [113, 58],
+                "side": "top",
+                "text": "5 N right"
+              },
+              {
+                "at": [83, 31],
+                "side": "top",
+                "text": "Moving right"
+              }
+            ],
+            "shapes": [
+              {
+                "type": "line",
+                "dashed": false,
+                "points": [[15, 82], [145, 82]]
+              },
+              {
+                "h": 19,
+                "w": 40,
+                "x": 60,
+                "y": 53,
+                "fill": "muted",
+                "type": "rect",
+                "rounded": true
+              },
+              {
+                "r": 4,
+                "cx": 68,
+                "cy": 75,
+                "fill": "accent",
+                "type": "circle"
+              },
+              {
+                "r": 4,
+                "cx": 92,
+                "cy": 75,
+                "fill": "accent",
+                "type": "circle"
+              },
+              {
+                "to": [34, 62],
+                "from": [60, 62],
+                "type": "arrow"
+              },
+              {
+                "to": [126, 62],
+                "from": [100, 62],
+                "type": "arrow"
+              },
+              {
+                "to": [98, 36],
+                "from": [68, 36],
+                "type": "arrow"
+              }
+            ],
+            "subject": "object_or_machine"
+          }
+        }
+      }
+    ],
+    "heading": "Balanced forces do not change motion",
+    "template": "split-compare",
+    "accentWord": "Balanced forces"
+  },
+  "20261016-1221-s3": {
+    "sides": [
+      {
+        "text": "Add forces. Resultant: 8 N right.",
+        "title": "Same direction",
+        "picture": {
+          "diagram": {
+            "alt": "A box has two right-pointing force arrows in a 5:3 length ratio; an 8 N resultant arrow points right below them, with annotations explaining force size and direction.",
+            "kind": "labelled-diagram",
+            "canvas": "wide",
+            "labels": [
+              {
+                "at": [55, 34],
+                "side": "top",
+                "text": "5 N"
+              },
+              {
+                "at": [48, 50],
+                "side": "top",
+                "text": "3 N"
+              },
+              {
+                "at": [68, 78],
+                "side": "top",
+                "text": "8 N resultant"
+              },
+              {
+                "at": [59, 20],
+                "side": "top",
+                "text": "Force in newtons"
+              },
+              {
+                "at": [59, 26],
+                "side": "top",
+                "text": "Length shows size"
+              },
+              {
+                "at": [76, 15],
+                "side": "top",
+                "text": "Arrowhead shows direction"
+              }
+            ],
+            "shapes": [
+              {
+                "h": 28,
+                "w": 24,
+                "x": 12,
+                "y": 29,
+                "fill": "muted",
+                "type": "rect",
+                "rounded": false
+              },
+              {
+                "to": [76, 34],
+                "from": [36, 34],
+                "type": "arrow"
+              },
+              {
+                "to": [60, 50],
+                "from": [36, 50],
+                "type": "arrow"
+              },
+              {
+                "to": [100, 78],
+                "from": [36, 78],
+                "type": "arrow"
+              },
+              {
+                "type": "line",
+                "dashed": false,
+                "points": [[59, 34], [59, 20]]
+              },
+              {
+                "type": "line",
+                "dashed": false,
+                "points": [[76, 34], [76, 15]]
+              }
+            ],
+            "subject": "abstract_or_process"
+          }
+        }
+      },
+      {
+        "text": "Subtract forces. Resultant: 2 N right.",
+        "title": "Opposite directions",
+        "picture": {
+          "diagram": {
+            "alt": "A box has opposing 5 N and 3 N force arrows; a separate 2 N resultant arrow points right.",
+            "kind": "labelled-diagram",
+            "canvas": "wide",
+            "labels": [
+              {
+                "at": [112, 42],
+                "side": "top",
+                "text": "5 N"
+              },
+              {
+                "at": [57, 42],
+                "side": "top",
+                "text": "3 N"
+              },
+              {
+                "at": [85, 72],
+                "side": "top",
+                "text": "2 N resultant"
+              }
+            ],
+            "shapes": [
+              {
+                "h": 20,
+                "w": 20,
+                "x": 70,
+                "y": 38,
+                "fill": "surface",
+                "type": "rect",
+                "rounded": false
+              },
+              {
+                "to": [130, 48],
+                "from": [80, 48],
+                "type": "arrow"
+              },
+              {
+                "to": [50, 48],
+                "from": [80, 48],
+                "type": "arrow"
+              },
+              {
+                "to": [100, 78],
+                "from": [70, 78],
+                "type": "arrow"
+              }
+            ],
+            "subject": "abstract_or_process"
+          }
+        }
+      }
+    ],
+    "heading": "Find the resultant force",
+    "template": "split-compare",
+    "accentWord": "resultant force"
+  },
+  "20261016-1221-s5": {
+    "sides": [
+      {
+        "text": "Zero resultant: stays still.",
+        "title": "Stationary",
+        "picture": {
+          "diagram": {
+            "alt": "A stationary box remains at its position under equal and opposite 10 N forces; the resultant force is zero.",
+            "kind": "labelled-diagram",
+            "title": "Balanced forces",
+            "canvas": "wide",
+            "labels": [
+              {
+                "at": [48, 42],
+                "side": "top",
+                "text": "10 N"
+              },
+              {
+                "at": [112, 42],
+                "side": "top",
+                "text": "10 N"
+              },
+              {
+                "at": [80, 42],
+                "side": "top",
+                "text": "Initially stationary"
+              },
+              {
+                "at": [80, 86],
+                "side": "top",
+                "text": "Resultant = 0 N"
+              }
+            ],
+            "shapes": [
+              {
+                "h": 20,
+                "w": 30,
+                "x": 65,
+                "y": 32,
+                "fill": "surface",
+                "type": "rect",
+                "rounded": false
+              },
+              {
+                "to": [35, 42],
+                "from": [65, 42],
+                "type": "arrow"
+              },
+              {
+                "to": [125, 42],
+                "from": [95, 42],
+                "type": "arrow"
+              },
+              {
+                "type": "line",
+                "dashed": true,
+                "points": [[80, 54], [80, 76]]
+              },
+              {
+                "h": 16,
+                "w": 64,
+                "x": 48,
+                "y": 78,
+                "fill": "none",
+                "type": "rect",
+                "rounded": false
+              }
+            ],
+            "subject": "abstract_or_process"
+          }
+        }
+      },
+      {
+        "text": "Zero resultant: constant speed, straight line.",
+        "title": "Moving",
+        "picture": {
+          "diagram": {
+            "alt": "A moving trolley has equal 10 N forces acting in opposite directions, a separate dotted motion arrow to the right, and a zero resultant.",
+            "kind": "labelled-diagram",
+            "title": "Balanced forces",
+            "canvas": "wide",
+            "labels": [
+              {
+                "at": [80, 51],
+                "side": "top",
+                "text": "Initially moving"
+              },
+              {
+                "at": [43, 51],
+                "side": "top",
+                "text": "10 N"
+              },
+              {
+                "at": [117, 51],
+                "side": "top",
+                "text": "10 N"
+              },
+              {
+                "at": [105, 32],
+                "side": "top",
+                "text": "Dotted arrow: motion"
+              },
+              {
+                "at": [80, 74],
+                "side": "top",
+                "text": "Resultant = 0 N"
+              },
+              {
+                "at": [80, 89],
+                "side": "top",
+                "text": "Velocity: speed, direction"
+              }
+            ],
+            "shapes": [
+              {
+                "h": 17,
+                "w": 36,
+                "x": 62,
+                "y": 43,
+                "fill": "accent",
+                "type": "rect",
+                "rounded": true
+              },
+              {
+                "r": 4,
+                "cx": 70,
+                "cy": 62,
+                "fill": "muted",
+                "type": "circle"
+              },
+              {
+                "r": 4,
+                "cx": 90,
+                "cy": 62,
+                "fill": "muted",
+                "type": "circle"
+              },
+              {
+                "to": [60, 51],
+                "from": [30, 51],
+                "type": "arrow"
+              },
+              {
+                "to": [100, 51],
+                "from": [130, 51],
+                "type": "arrow"
+              },
+              {
+                "type": "line",
+                "dashed": true,
+                "points": [[72, 32], [125, 32]]
+              },
+              {
+                "fill": "accent2",
+                "type": "polygon",
+                "points": [[125, 32], [119, 29], [119, 35]]
+              },
+              {
+                "h": 10,
+                "w": 52,
+                "x": 54,
+                "y": 69,
+                "fill": "surface",
+                "type": "rect",
+                "rounded": false
+              },
+              {
+                "h": 13,
+                "w": 70,
+                "x": 45,
+                "y": 83,
+                "fill": "surface",
+                "type": "rect",
+                "rounded": false
+              }
+            ],
+            "subject": "object_or_machine"
+          }
+        }
+      }
+    ],
+    "heading": "Balanced forces: no change in velocity",
+    "template": "split-compare",
+    "accentWord": "Balanced forces"
+  }
+}

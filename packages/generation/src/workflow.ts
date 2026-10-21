@@ -4,6 +4,7 @@ import { safeError, safeErrorWhere } from "@tj/domain";
 import type { GenerationStage, Lesson } from "@tj/domain/documents";
 import { type FitReport, fitReport } from "@tj/slides";
 import { z } from "zod";
+import { fullError, recordDebug } from "./debug";
 import { checkInput } from "./stages/check-input";
 import { evaluate } from "./stages/evaluate";
 import { facts } from "./stages/facts";
@@ -27,6 +28,7 @@ import { repair } from "./stages/repair";
 import { write } from "./stages/write";
 import {
   emptyImageCounts,
+  type GenerationSummary,
   type PipelineDeps,
   type PipelineStageName,
   type PipelineState,
@@ -63,6 +65,9 @@ const ENTERED_KEY = "entered";
 const CHECKPOINT_KEY = "checkpoint";
 
 type Ctx = { requestContext: RequestContext; runId: string };
+
+/** The steps whose output is the lesson's plan (the debug record's `plan` rows). */
+const PLANNER_STAGES: ReadonlySet<string> = new Set(["plan", "objectives", "facts"]);
 
 /**
  * Studio (`mastra.dev.ts`) starts runs from a JSON form, which cannot carry functions or an
@@ -167,12 +172,36 @@ function stageStep<S extends StepName>(
       if (!shouldRun(steps.order, stage, from, stopAfter)) return inputData;
       const entered = (requestContext.getRaw(ENTERED_KEY) as StepName[] | undefined) ?? [];
       requestContext.setRaw(ENTERED_KEY, [...entered, stage]);
+      // The stage timeline (ADR 0041): one line per stage run, start and end, never content.
+      const stageStartedAt = Date.now();
+      const timeline = (outcome: "done" | "failed") =>
+        deps.logger.info(
+          {
+            ev: "stage",
+            stage,
+            outcome,
+            startedAt: new Date(stageStartedAt).toISOString(),
+            durationMs: Date.now() - stageStartedAt,
+          },
+          "generation stage timeline",
+        );
       try {
         const next = await run(inputData, deps);
         requestContext.setRaw(CHECKPOINT_KEY, next);
+        // The planner's output in the debug record (Greg, 20 Oct 2026): the objectives or the plan
+        // as the stage saved them, so a bad lesson's plan can be read without re-running it.
+        if (PLANNER_STAGES.has(stage))
+          recordDebug(deps.debug, "plan", {
+            stage,
+            plan: next.lesson.plan ?? null,
+            facts: next.lesson.facts ?? null,
+          });
+        timeline("done");
         return next;
       } catch (error) {
+        timeline("failed");
         requestContext.setRaw(FAILURE_KEY, error);
+        recordDebug(deps.debug, "stage-error", { stage, error: fullError(error) });
         deps.logger.error(
           { stage, err: safeError(error), where: safeErrorWhere(error) },
           "generation stage failed",
@@ -380,25 +409,28 @@ export async function runLessonPipeline(
       checkpoint && hasGeneratedSlides(checkpoint.lesson)
         ? fitOf(checkpoint.lesson, deps)
         : undefined;
-    deps.logger.info(
-      {
-        generation: {
-          lessonId: deps.context.lessonId,
-          jobId: deps.context.jobId,
-          outcome,
-          planner,
-          stages,
-          ...totals,
-          findings,
-          images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
-          durationMs,
-          ...(readableMs !== undefined ? { readableMs } : {}),
-          ...(checkedMs !== undefined ? { checkedMs } : {}),
-          ...(fit ? { fit } : {}),
-        },
-      },
-      "generation summary",
-    );
+    const generation: GenerationSummary = {
+      lessonId: deps.context.lessonId,
+      jobId: deps.context.jobId,
+      outcome,
+      planner,
+      stages,
+      ...totals,
+      findings,
+      images: tracked.imageCounts ?? deps.imageCounts ?? emptyImageCounts(),
+      durationMs,
+      ...(readableMs !== undefined ? { readableMs } : {}),
+      ...(checkedMs !== undefined ? { checkedMs } : {}),
+      ...(fit ? { fit } : {}),
+    };
+    deps.logger.info({ generation }, "generation summary");
+    if (deps.onSummary) {
+      try {
+        deps.onSummary(generation);
+      } catch (err) {
+        deps.logger.warn({ err: safeError(err) }, "generation summary reporter failed");
+      }
+    }
     // FR7: a lesson over the per-lesson cost target is one warn line, never a stop
     // (`AI_LESSON_COST_WARN_USD`; the cap is `AI_LESSON_COST_CAP_USD`).
     if (

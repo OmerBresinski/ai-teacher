@@ -1,4 +1,5 @@
-import type { CalloutKind, Theme } from "@tj/domain/documents";
+import type { Theme } from "@tj/domain/documents";
+import { CALLOUT_ICONS } from "./callout-icons";
 import { type CalloutTone, calloutTones } from "./themes";
 
 /*
@@ -6,17 +7,7 @@ import { type CalloutTone, calloutTones } from "./themes";
  * load only these few constants, not the callout layout code (TEACH-75 part e, bundle budget).
  */
 
-/**
- * The drawn icon each kind carries (lucide names from the editor's icon set), drawn in the kind's
- * colour rather than set as emoji: Chalkie's warning sign for a common mistake; a lightbulb for
- * an example and an open book for key words, where Chalkie has a magnifier and a key (review
- * T75-7: the idea and the vocabulary read faster than the tools).
- */
-export const CALLOUT_ICONS: Record<CalloutKind, string> = {
-  "watch-out": "triangle-alert",
-  example: "lightbulb",
-  "key-words": "book-open",
-};
+export { CALLOUT_ICONS } from "./callout-icons";
 
 /*
  * Typed callouts on a template key card (UX ruling 203, P1; TEACH-75 part e). The writer may type

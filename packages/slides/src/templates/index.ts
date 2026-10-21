@@ -27,18 +27,88 @@ import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
 export { isPointKind, POINT_KINDS, type PointKind } from "../point-kinds";
 
+import {
+  composeCover,
+  composeCoverFallback,
+  coverDropsQuestion,
+  coverOver,
+  coverTitleDoc,
+  hasCoverFallback,
+} from "../cover-comps";
 import { uid } from "../factories";
-import { contrastRatio } from "../look";
+import { coverType } from "../layout-sizes";
+import { contrastRatio, coverColours } from "../look";
+import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
-import { atKeyStage, MIN_FONT_SIZE, optionTones, typeScale } from "../themes";
+import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
+import { surfacesOf } from "../themes/surfaces";
+import TOKENS from "../themes/tokens.json" with { type: "json" };
 import { ACTIVITY_IDS, type ActivityCard, type ActivityId, layoutActivity } from "./activities";
+import { asSidePanel, bannerOk, layoutBanner } from "./banner-text";
+import { type GridCard, layoutCardsGrid } from "./cards-grid";
+// TEACH-230 part b (B2): practice and exit ticket, the calm "work alone" slides.
+import { layoutExitTicket } from "./exit-ticket";
+// TEACH-239 part b (C7): the figure slide.
+import { layoutFigure } from "./figure";
+import { type HingeChoice, type HingeLetters, layoutHinge } from "./hinge";
+import { asPrompt, hookOk, layoutHook } from "./hook";
+import { layoutItemsRow, type RowItem, type RowMotif } from "./items-row";
+// TEACH-75 part ag (G1): myth and fact.
+import { layoutMyth, type MythInput } from "./myth";
+import { layoutPanelList, type PanelRow, type PanelVisual } from "./panel-list";
+// TEACH-75 part ae (C6).
+import { layoutPictureText, type PictureText, pictureTextOf } from "./picture-text";
+import { layoutPractice } from "./practice";
+import { isQuickCheck, layoutQuestionSet } from "./question-set";
+// TEACH-75 part ad (C5): reasons.
+import { layoutReasons, type ReasonItem } from "./reasons";
+import {
+  type RegisteredId,
+  type RegisteredInputs,
+  registeredDef,
+  registeredDefs,
+} from "./registered";
+// TEACH-75 part ab (C2): a source, a verbatim extract with notes pinned to their lines.
+import { layoutSource, type SourceForm, type SourceNote } from "./source";
+import { layoutSideBySide, layoutSplitCompare, type SplitSide } from "./split-compare";
+// TEACH-75 part ac (C4): stages.
+import { layoutStages, type StageItem } from "./stages";
+import { layoutStepModel, type StepModel, stepModelOf } from "./steps-model";
+import { withTitleBand } from "./title-band";
+// TEACH-17 part b (C1): the worked example.
+import { layoutWorked, type WorkedLine, type WorkedPanel } from "./worked";
 
 export { type ActivityFixture, activityFixtures, type FixturePhoto } from "./activity-fixtures";
-export type { ActivityCard, ActivityId };
+export { HINGE_LETTERS, HINGE_NAMES, type HingeChoice, type HingeLetters } from "./hinge";
+export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } from "./items-row";
+// TEACH-75 part ag (G1).
+export { MYTH_NAMES, type MythInput, type MythProof } from "./myth";
+export { REASON_PENDING_ICON } from "./reasons";
+export { SPLIT_SIDE_DIAGRAM_KINDS } from "./split-compare";
+// TEACH-75 part ac (C4).
+export { blankStage, STAGES_MAX, STAGES_MIN, type StageItem } from "./stages";
+export type {
+  ActivityCard,
+  ActivityId,
+  GridCard,
+  PanelRow,
+  PanelVisual,
+  ReasonItem,
+  RowItem,
+  RowMotif,
+  SourceForm,
+  SourceNote,
+  SplitSide,
+};
+/** items-row's name for a FieldReport. */
+export type RowField = FieldReport;
 
 /* ------------------------------------------------------------------ */
 /* Geometry (960 x 540)                                                */
 /* ------------------------------------------------------------------ */
+
+/** The cover's picture beside the column, as a share of its old size (UX ruling 25 A). */
+const COVER_PICTURE = 0.9;
 
 export const G = {
   margin: 64,
@@ -74,7 +144,21 @@ export function templateScale(theme: Theme, stage: Stage): Scale {
     small: s.bodySmall,
   };
 }
+/** Room past a fixed title's line boxes for its ink (descenders, accents), as a share of its size. */
+const TITLE_INK_MARGIN = 0.2;
 const LH = { title: 1.06, heading: 1.12, lead: 1.35, body: 1.4, small: 1.35 };
+/**
+ * A role's line height on a theme. A round 5 face that needs a taller title line (Scrapbook's
+ * Playpen Sans, tokens `lh-title` 1.14: its "y" and "g" hang below a 1.06 line box) takes it for
+ * the cover title, the one fixed box that clips; a heading grows with its lines and never clips.
+ * Every other theme keeps the kit's leading byte for byte.
+ */
+function lhOf(t: Theme, role: Role): number {
+  const base = LH[role];
+  if (role !== "title" || !ROUND5_THEME_IDS.has(t.id)) return base;
+  const own = Number((TOKENS as Record<string, Record<string, string>>)[t.id]?.["lh-title"]);
+  return Number.isFinite(own) && own > base ? own : base;
+}
 
 /* ------------------------------------------------------------------ */
 /* Inputs                                                              */
@@ -136,9 +220,36 @@ export type TemplateId =
   | "practice"
   | "exit-ticket"
   | "equation-hero"
+  | "cards-grid"
+  | "banner-text"
+  | "hook"
+  | "panel-list"
+  | "split-compare"
+  | "side-by-side"
+  | "items-row"
+  // TEACH-17 part b (C1).
+  | "worked"
+  // TEACH-75 part ac (C4).
+  | "stages"
+  // TEACH-239 part b (C7).
+  | "figure"
+  | "source"
+  | "reasons"
+  // TEACH-75 part ag (G1).
+  | "myth"
+  // TEACH-106 part b: every layout registered in `registered.ts`.
+  | RegisteredId
   | ActivityId;
 
-export type TemplateInput = {
+/** The registered layouts' own input fields, all optional, merged into `TemplateInput`. */
+type Both<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
+  ? I
+  : never;
+type RegisteredFields = [RegisteredId] extends [never]
+  ? unknown
+  : Both<RegisteredInputs[RegisteredId]>;
+
+export type TemplateInput = RegisteredFields & {
   template: TemplateId;
   heading: string;
   /** Title slide: the enquiry line under the title. Others: the one lead sentence. */
@@ -154,20 +265,46 @@ export type TemplateInput = {
   stem?: string;
   options?: string[];
   /** Compare: 2-3 columns, each with an optional photo over its text. */
-  columns?: { label: string; text: string; figure?: Figure }[];
+  /** `tile`: the column's picture could not be made; its band shows the label on a tile instead. */
+  columns?: { label: string; text: string; figure?: Figure; tile?: boolean }[];
   /** Picture sequence: 2-4 pictures in a row, a short caption under each, arrows between. */
-  sequence?: { caption: string; figure?: Figure }[];
+  /** `tile`: the panel's picture could not be made; the panel is a tile carrying its caption. */
+  sequence?: { caption: string; figure?: Figure; tile?: boolean }[];
+  /** Cards grid (ruling 203): 2-4 cards, each a label, a body and an optional icon. */
+  grid?: GridCard[];
+  /** Panel list (TEACH-75 part v): 2-6 rows, each a name, one line and an optional icon label. */
+  rows?: PanelRow[];
+  /** Panel list: the title panel's visual, a picture or a pie of one share per row; none: the title sits low. */
+  panel?: PanelVisual | null;
+  /** Items row (TEACH-75 part u): 2-4 named items on a connecting line, each a name, a line and an optional icon label. */
+  items?: RowItem[];
+  /** Items row: the numbers read as stages (a number badge on each icon). Default true. */
+  ordered?: boolean;
+  /** Items row: the connecting line's look: "dots" (default), "plain" (the band alone) or "none". */
+  motif?: RowMotif;
+  /**
+   * Hinge (TEACH-256 part b): the options with an optional library icon label each (all icons ->
+   * picture tiles) and, for a wrong option, the belief behind it (speaker notes only, ruling 241).
+   * Read before `options` when given.
+   */
+  choices?: HingeChoice[];
+  /** Hinge: the option letters' script (ruling 239). Default Latin. */
+  letters?: HingeLetters;
   /** The one quiet line under a question list. */
   instruction?: string;
   /** Equation hero: the formula, the slide's focal line (substitution lines go in `points`). */
   formula?: string;
   figure?: Figure;
+  /** Banner text (ruling 203): the picture strip across the top (the default) or the bottom. */
+  at?: "top" | "bottom";
   /** Hinge, choose, odd one out: the correct option or card, 1-based in the order given. */
   correct?: number;
   /** Hinge, choose, odd one out: the one-line reason shown with the revealed answer. */
   explanation?: string;
   /** Question set, practice, exit ticket: one answer per question, hidden until revealed. */
   answers?: string[];
+  /** Question set, practice, exit ticket: each answer's working, by the same index ("" for none). */
+  working?: string[];
   /**
    * Activities: the cards, each one word or phrase and one single-subject picture slot, in the
    * answer's order (pairs as given, a sequence in its right order); the template shuffles them.
@@ -179,6 +316,67 @@ export type TemplateInput = {
   targets?: { x: number; y: number; text: string }[];
   /** Label: words in the bank that no pointer wants. */
   extra?: string[];
+  /**
+   * Split compare (TEACH-75 part w): 2-3 sides in edge-to-edge colour fields, each a title and a
+   * sentence or two, with all-or-none zones (a matched picture pair, a quote each, or words only).
+   */
+  sides?: SplitSide[];
+  /**
+   * Stages (TEACH-75 part ac): 3-6 named frames of one linear process, each a name, one line, a
+   * library icon label and an optional picture. Any stage with neither: the items row's ordered look.
+   */
+  stages?: StageItem[];
+  /**
+   * Myth and fact (TEACH-75 part ag): a plain claim, its verdict (myth or true), the fact and one
+   * small proof; a vote ("True or false?") or a straight opening.
+   */
+  myth?: MythInput;
+  /** Split compare: the seam marker's word ("vs" when absent). */
+  marker?: string | null;
+  /**
+   * Steps with a model (TEACH-75 part af): one step, its number, do line and optional see line,
+   * beside the library model in `figure`. A steps slide without it lays out as before.
+   */
+  step?: StepModel;
+  // TEACH-75 part ae (C6).
+  /**
+   * Picture and text (TEACH-75 part ae): the tucked-field look, with the failed-picture icon and
+   * the key card look's cards. A picture-text slide without it lays out as before.
+   */
+  pictureText?: PictureText;
+  /** Reasons (TEACH-75 part ad): 2-4 reasons answering the heading's "why?" question, one per click. */
+  reasons?: ReasonItem[];
+  /** Reasons: a consequence chain (3 links, A led to B led to C) rather than a fan of reasons. */
+  chain?: boolean;
+  /** An exact substring of the heading shown in the accent (ignored when it is not one). */
+  accentWord?: string | null;
+  /**
+   * Practice, exit ticket (TEACH-230 part b): `short` (the default: a question, task or
+   * calculation) or `tf` (statements; no answers are drawn, the title asks for true or false).
+   */
+  kind?: "short" | "tf";
+  /** Practice (TEACH-230 part b): the picture could not be made; its card shows the caption. */
+  tile?: boolean;
+  // TEACH-17 part b (C1): the worked example.
+  /** Worked example: the working, one row per click (`{ move?, eq, answer? }`). */
+  lines?: WorkedLine[];
+  /** Worked example: the check, one equation; `*n*` marks the substituted value. */
+  check?: string;
+  /** Worked example: the letters set as variables (default x). */
+  vars?: string[];
+  /** Worked example: the writer's `panel` (algebra-bar or percent-bar); its guard falls back to text only. */
+  barPanel?: WorkedPanel | null;
+  // TEACH-239 part b (C7): the figure slide.
+  /** Figure slide: the topic's library icon label, drawn in a medal on the plate when no figure drew. */
+  icon?: string;
+  /** Source (TEACH-75 part ab): prose, verse (one line per `\n`) or a picture of a document. */
+  form?: SourceForm;
+  /** Source: where it is from, one line of at most 12 words. */
+  from?: string;
+  /** Source: the verbatim extract. */
+  extract?: string;
+  /** Source: 2-4 notes, each pinned to the row where its verbatim `anchor` ends. */
+  notes?: SourceNote[];
 };
 
 /**
@@ -197,7 +395,7 @@ export const pointLabel = (p: TemplatePoint): string | undefined => {
 };
 
 export type TemplateResult = {
-  slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
+  slide: Pick<Slide, "kind" | "elements" | "background" | "question" | "notes">;
   over: string[];
   /** Round 2: why a diagram on this slide could not draw (drawDiagram's reasons); the slide was laid out without it. */
   diagram?: string[];
@@ -211,6 +409,27 @@ export type TemplateResult = {
    * The caller treats each as a failed visual: never an empty tile (TEACH-75 part d).
    */
   lost?: number[];
+  /** Fits, but not comfortably (ruling 215): past a comfort size, cap or count. */
+  tight?: boolean;
+  /** Icon labels the icon library could not match; the slide drew numbers instead (never silent). */
+  iconMisses?: string[];
+  /** One entry per field with its length and measured limits: the live "62/80" counters. */
+  fields?: FieldReport[];
+};
+
+/** split-compare's name for a FieldReport. */
+export type FieldCount = FieldReport;
+
+/** A field's length against its measured comfortable cap and hard maximum (ruling 215). */
+export type FieldReport = {
+  field: string;
+  /** The field as a dotted input path ("rows.2.text"), the editor's LayoutRef address (TEACH-205 b). */
+  path: string;
+  chars: number;
+  cap: number;
+  hardMax: number;
+  tight: boolean;
+  over: boolean;
 };
 
 /* ------------------------------------------------------------------ */
@@ -234,12 +453,28 @@ export type Ctx = {
   pictureBand?: boolean;
   /** `LayoutOptions.optionColours` (UX ruling 203). */
   optionColours?: boolean;
+  /** `LayoutOptions.processLine` (UX ruling 203). */
+  processLine?: boolean;
+  /** `LayoutOptions.objectiveCards` (UX ruling 203). */
+  objectiveCards?: boolean;
+  /** `LayoutOptions.panelNoVisual` (TEACH-75 part v). */
+  panelNoVisual?: "plain" | "icon";
+  /** `LayoutOptions.panelIconBack` (TEACH-75 part v). */
+  panelIconBack?: "ring" | "none" | "soft";
+  /** `LayoutOptions.setTint` (TEACH-75 part w). */
+  setTint?: "accent" | "neutral";
   /** A drawing that draws only with warnings fills its room (`LayoutOptions.diagramWarnings`). */
   warnOk?: boolean;
   /** The heading's largest size, when a two-line title has no room to push the body (ruling 198). */
   headingCap?: number;
   /** The body was placed from the measured heading bottom already, so it is not moved again. */
   bodyFromHeading?: boolean;
+  /** See `TemplateResult.tight`, `iconMisses` and `fields`. */
+  tight?: boolean;
+  iconMisses?: string[];
+  fields?: FieldReport[];
+  /** Speaker notes the layout writes (the hinge's wrong-option beliefs, TEACH-256 part b). */
+  notes?: string;
 };
 
 const hex = (c: string) => [1, 3, 5].map((i) => Number.parseInt(c.slice(i, i + 2), 16));
@@ -276,8 +511,15 @@ const presetOf = (r: Role) => (r === "title" ? "title" : r === "heading" ? "head
 const weightOf = (r: Role, t: Theme) =>
   r === "title" || r === "heading" ? t.weights.heading : r === "lead" ? 700 : t.weights.body;
 
-/** Height of `text` set in `role` at width `w`. */
-function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): number {
+/** Height of `text` set in `role` at width `w` (`lh`: a layout's own line height, else the role's). */
+function measure(
+  c: Ctx,
+  text: string,
+  role: Role,
+  w: number,
+  weight?: number,
+  lh?: number,
+): number {
   const size = c.s[role];
   const lines = countLines(
     plain(text),
@@ -287,7 +529,7 @@ function measure(c: Ctx, text: string, role: Role, w: number, weight?: number): 
     weight ?? weightOf(role, c.t),
     size,
   );
-  return Math.ceil(lines * size * LH[role]);
+  return Math.ceil(lines * size * (lh ?? lhOf(c.t, role)));
 }
 
 function text(
@@ -301,9 +543,13 @@ function text(
     align?: "left" | "center";
     boldLabel?: boolean;
     name?: string;
+    /** A layout's own line height (the gold's), drawn and measured; else the role's. */
+    lineHeight?: number;
+    /** The size is the layout's gold size, drawn as given (`TextStyle.fixedSize`, ruling 21 A). */
+    fixedSize?: boolean;
   } = {},
 ): TextElement {
-  const h = measure(c, value, role, rect.w, extra.weight);
+  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight);
   const el: TextElement = {
     id: uid(),
     type: "text",
@@ -317,8 +563,9 @@ function text(
       preset: presetOf(role),
       autoHeight: true,
       fontSize: c.s[role],
-      lineHeight: LH[role],
+      lineHeight: extra.lineHeight ?? lhOf(c.t, role),
       fontWeight: extra.weight ?? weightOf(role, c.t),
+      ...(extra.fixedSize ? { fixedSize: true } : {}),
       padding: 0,
       ...(extra.color ? { color: extra.color } : {}),
       ...(extra.align ? { align: extra.align } : {}),
@@ -348,6 +595,30 @@ function box(
   };
   c.els.push(el);
   return el;
+}
+
+/**
+ * A picture that could not be made, in a row of pictures that did (LAYOUT-SEL Egypt s6): a tile in
+ * the theme's surface with the slot's own words centred on it. Never an empty frame, never words
+ * the writer did not write.
+ */
+function captionTile(c: Ctx, words: string, rect: { x: number; y: number; w: number; h: number }) {
+  box(c, rect, c.t.colors.surface, {
+    stroke: c.t.colors.line,
+    strokeWidth: 1,
+    radius: Math.min(c.t.radius, 16),
+    name: "Caption tile",
+  });
+  const pad = 16;
+  const w = rect.w - 2 * pad;
+  const h = measure(c, words, "lead", w, 700);
+  text(
+    c,
+    words,
+    "lead",
+    { x: rect.x + pad, y: rect.y + Math.max(pad, (rect.h - h) / 2), w },
+    { color: c.t.colors.ink, weight: 700, align: "center", name: "Caption" },
+  );
 }
 
 /**
@@ -383,7 +654,8 @@ function disc(c: Ctx, label: string, x: number, y: number, d: number, fill?: str
   c.els.push({
     id: uid(),
     type: "shape",
-    shape: "ellipse",
+    // A theme with hexagon badges (Geometric, THEMING.md section 6) draws every number marker so.
+    shape: surfacesOf(c.t).marks.badge === "hex" ? "hexagon" : "ellipse",
     x,
     y: Math.round(y),
     w: d,
@@ -441,7 +713,7 @@ function heading(c: Ctx, value: string) {
     { name: "Heading" },
   );
   if (el.y + el.h > G.band.y - 6)
-    c.over.push(`heading ${Math.round(el.h / (c.s.heading * LH.heading))} lines`);
+    c.over.push(`heading ${Math.round(el.h / (c.s.heading * lhOf(c.t, "heading")))} lines`);
   c.s = { ...c.s, heading: full };
   return el;
 }
@@ -1003,6 +1275,128 @@ function numbered(
   );
 }
 
+/** A step's bold label and its body: a point's own label, else the words before its first colon. */
+function stepParts(p: TemplatePoint): { label: string; body: string } {
+  const own = pointLabel(p);
+  const words = pointText(p).trim();
+  if (own) return { label: own, body: words };
+  const m = words.match(/^([^:]{1,40}):\s+([\s\S]+)$/);
+  return m
+    ? { label: (m[1] as string).trim(), body: (m[2] as string).trim() }
+    : { label: "", body: words };
+}
+
+/**
+ * Steps with no figure as a numbered process line (UX ruling 203, P9; Chalkie's L6): 3 to 5 equal
+ * columns across the slide, a numbered disc on one connecting line, then each step's bold label
+ * and its body, centred. Tried on the fit ladder; when no rung holds it (a long step in a narrow
+ * column) it returns false and the caller lays the numbered list, so capacity never drops.
+ */
+function processLine(c: Ctx, items: TemplatePoint[]): boolean {
+  const n = items.length;
+  if (n < 3 || n > 5) return false;
+  const parts = items.map(stepParts);
+  const full = c.s;
+  const gap = 20;
+  const w = Math.floor((G.width - gap * (n - 1)) / n);
+  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
+  for (const r of rungs) {
+    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+    const fits = parts.every(
+      (p) =>
+        (!p.label || wordsFit(c, p.label, "lead", w, c.s.lead)) &&
+        wordsFit(c, p.body, "body", w, c.s.body),
+    );
+    const d = Math.round(full.body * 2);
+    const below = Math.round(18 * r.space);
+    const labelH = Math.max(
+      ...parts.map((p) => (p.label ? measure(c, p.label, "lead", w, 700) + 6 : 0)),
+    );
+    const bodyH = Math.max(...parts.map((p) => measure(c, p.body, "body", w)));
+    const total = d + below + labelH + bodyH;
+    if (!fits || total > G.band.h) continue;
+    const y0 = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+    const cx = (k: number) => G.margin + k * (w + gap) + Math.round(w / 2);
+    box(
+      c,
+      { x: cx(0), y: y0 + Math.round(d / 2) - 2, w: cx(n - 1) - cx(0), h: 4 },
+      c.t.colors.accent,
+      { name: "Process line", shape: "rect", radius: 0 },
+    );
+    parts.forEach((p, k) => {
+      const x = G.margin + k * (w + gap);
+      disc(c, String(k + 1), cx(k) - Math.round(d / 2), y0, d);
+      const top = y0 + d + below;
+      if (p.label)
+        text(
+          c,
+          p.label,
+          "lead",
+          { x, y: top, w },
+          { weight: 700, align: "center", color: c.t.colors.ink, name: "Step label" },
+        );
+      text(
+        c,
+        p.body,
+        "body",
+        { x, y: top + labelH, w },
+        { align: "center", color: c.t.colors.ink, name: "Item" },
+      );
+    });
+    c.s = full;
+    return true;
+  }
+  c.s = full;
+  return false;
+}
+
+/**
+ * The objectives as Chalkie's numbered cards (UX ruling 203, P12): one card per objective with an
+ * accent outline, a filled numbered disc and the objective beside it, stacked. On the fit ladder;
+ * when no rung holds them it returns false and the caller lays the numbered list, so the measured
+ * objectives capacity never drops.
+ */
+function objectiveCards(c: Ctx, items: string[], x: number, w: number): boolean {
+  if (!items.length) return false;
+  const full = c.s;
+  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
+  for (const r of rungs) {
+    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
+    const d = Math.round(c.s.body * 1.5);
+    const pad = Math.round(c.s.body * 0.55 * r.space);
+    const gap = Math.round(c.s.body * 0.5 * r.space);
+    const tx = pad + d + Math.round(c.s.body * 0.6);
+    const tw = w - tx - pad;
+    const hs = items.map((q) => Math.max(d, measure(c, q, "body", tw)) + 2 * pad);
+    const total = hs.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+    if (total > G.band.h) continue;
+    let y = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+    items.forEach((q, k) => {
+      const h = hs[k] ?? 0;
+      box(c, { x, y, w, h }, c.t.colors.surface, {
+        stroke: c.t.colors.accent,
+        strokeWidth: 2,
+        radius: Math.min(c.t.radius, 14),
+        name: "Objective card",
+      });
+      disc(c, String(k + 1), x + pad, y + Math.round((h - d) / 2), d);
+      const th = measure(c, q, "body", tw);
+      text(
+        c,
+        q,
+        "body",
+        { x: x + tx, y: y + Math.round((h - th) / 2), w: tw },
+        { color: c.t.colors.ink, name: "Item" },
+      );
+      y += h + gap;
+    });
+    c.s = full;
+    return true;
+  }
+  c.s = full;
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /* The templates                                              */
 /* ------------------------------------------------------------------ */
@@ -1044,12 +1438,35 @@ const KIND: Record<TemplateId, SlideKind> = {
   practice: "open-response",
   "exit-ticket": "exit-ticket",
   "equation-hero": "worked-example",
+  "cards-grid": "content",
+  "panel-list": "content",
+  "items-row": "content",
+  "banner-text": "image-text",
+  hook: "image-text",
+  "split-compare": "content",
+  "side-by-side": "content",
+  // TEACH-17 part b (C1).
+  worked: "worked-example",
+  // TEACH-75 part ac (C4).
+  stages: "content",
+  // TEACH-239 part b (C7).
+  figure: "diagram",
+  // TEACH-75 part ab (C2).
+  source: "content",
+  reasons: "content",
+  // TEACH-75 part ag (G1): the vote is a prompt, never the lesson's check.
+  myth: "content",
   pair: "image-match",
   "group-sort": "fill-gap",
   sequence: "sort",
   choose: "multiple-choice",
   "odd-one-out": "multiple-choice",
   label: "fill-gap",
+  // TEACH-106 part b: the registered layouts' kinds.
+  ...(Object.fromEntries(registeredDefs().map(([id, d]) => [id, d.kind])) as Record<
+    RegisteredId,
+    SlideKind
+  >),
 };
 
 /**
@@ -1307,7 +1724,12 @@ function withoutFailedFigures(c: Ctx, input: TemplateInput): TemplateInput {
   const big = input.template === "big-diagram" ? bigRect(c, input) : undefined;
   // The side panel's reasons are kept only when the figure goes (they are the harness's fault).
   const sideFails: string[] = [];
-  const dropped = !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
+  // TEACH-230 part b: practice keeps a figure that cannot draw and shows its caption card in its
+  // place (the gold's fallback; ruling 215, nothing is lost); the reasons are still reported.
+  // TEACH-239 part b (C7): the figure slide places its own drawn model or shows its icon plate.
+  const keeps = input.template === "practice" || input.template === "figure";
+  const dropped =
+    !keeps && !!f && !("photo" in f) && !figureDraws(c, f, big, sideFails) && !below();
   if (dropped) c.fails?.push(...sideFails);
   if (dropped) {
     const { figure: _, ...rest } = input;
@@ -1353,6 +1775,16 @@ export type LayoutOptions = {
   pictureBand?: boolean;
   /** A colour per hinge option disc (P8). Off by default: old lessons and the default writer render as before. */
   optionColours?: boolean;
+  /** Steps as a numbered process line (P9). Off by default: old lessons and the default writer render as before. */
+  processLine?: boolean;
+  /** Objectives as numbered disc cards, beside a figure (P12). Off by default: old lessons and the default writer render as before. */
+  objectiveCards?: boolean;
+  /** Panel list with no visual: the title alone in the panel (the default) or the group's icon large in it. */
+  panelNoVisual?: "plain" | "icon";
+  /** Panel list: what sits behind each row's icon, a coloured ring (the default), nothing, or a soft disc. */
+  panelIconBack?: "ring" | "none" | "soft";
+  /** Side by side: the cards in the theme's soft neutral, its sand (the default), or the accent's soft tint. */
+  setTint?: "accent" | "neutral";
 };
 
 /**
@@ -1365,6 +1797,21 @@ export function layoutTemplate(
   theme: Theme,
   stage: Stage,
   opts: LayoutOptions = {},
+): TemplateResult {
+  return banded(layoutFitted(input, theme, stage, opts), theme);
+}
+
+/** The theme's title band under a content slide's heading, measured on the laid slide. */
+function banded(r: TemplateResult, theme: Theme): TemplateResult {
+  withTitleBand(r.slide.elements, theme, r.slide.kind);
+  return r;
+}
+
+function layoutFitted(
+  input: TemplateInput,
+  theme: Theme,
+  stage: Stage,
+  opts: LayoutOptions,
 ): TemplateResult {
   const { result, bodyFromHeading } = layoutOnce(input, theme, stage, opts);
   if (bodyFromHeading) return result;
@@ -1421,8 +1868,13 @@ function headingFit(
   if (foot > SLIDE_H) return { shift: 0, holds: false, gap };
   const c: Ctx = { t: atKeyStage(theme, stage), s: templateScale(theme, stage), over: [], els: [] };
   // The largest size that keeps the body above the safe foot; failing that, above the slide's edge.
+  // Only the sizes a heading draws at: the renderer snaps a heading to its role's steps (display,
+  // heading, body), so a size between them is measured at one size and drawn at the next step down,
+  // its box keeping lines it does not draw (TEACH-215 part d).
+  const sc = typeScale(c.t);
+  const sizes = sc ? [sc.heading, sc.body] : [];
   for (const limit of [SAFE_FOOT, SLIDE_H])
-    for (let size = full - 2; size >= c.s.body; size -= 2) {
+    for (const size of sizes.filter((s) => s < full && s >= c.s.body)) {
       const h = measure({ ...c, s: { ...c.s, heading: size } }, words, "heading", G.width);
       if (foot + shiftAt(h) <= limit) return { shift, holds: true, gap, cap: size };
     }
@@ -1457,6 +1909,11 @@ function layoutOnce(
     ...(opts.diagramWarnings ? { warnOk: true } : {}),
     ...(opts.pictureBand ? { pictureBand: true } : {}),
     ...(opts.optionColours ? { optionColours: true } : {}),
+    ...(opts.processLine ? { processLine: true } : {}),
+    ...(opts.objectiveCards ? { objectiveCards: true } : {}),
+    ...(opts.panelNoVisual ? { panelNoVisual: opts.panelNoVisual } : {}),
+    ...(opts.panelIconBack ? { panelIconBack: opts.panelIconBack } : {}),
+    ...(opts.setTint ? { setTint: opts.setTint } : {}),
     ...(headingCap ? { headingCap } : {}),
   };
   // Ruling 194: a full-width diagram with points carries them as key cards under it. When the
@@ -1471,49 +1928,80 @@ function layoutOnce(
     };
   }
   input = withoutFailedFigures(c, input);
+  // Ruling 203 (P4): a photo that cannot fill the banner strip without a blind cut goes beside the
+  // words instead; a banner whose picture failed is the words alone. Never an empty strip.
+  if (input.template === "banner-text" && !bannerOk(input)) input = asSidePanel(input);
+  // Ruling 203 (P5): a hook whose picture failed is a discussion prompt, never an empty dark slide.
+  if (input.template === "hook" && !hookOk(input)) input = asPrompt(input);
   const tpl = input.template;
   let background: Slide["background"];
   const raw = input.points ?? [];
   const pts = raw.map(pointText);
   switch (tpl) {
     case "title": {
+      // Greg's call 36: no question on a photo-right or Beacon picture cover (`coverDropsQuestion`).
+      if (input.lead && input.figure && "photo" in input.figure && coverDropsQuestion(c.t))
+        input = { ...input, lead: undefined };
       // Full-bleed hue ground (homepage). The photo is a full-height side panel at its own
       // shape (no crop: a portrait archive photo keeps its faces); the title wraps in what is left.
-      background = { color: c.t.colors.accent };
-      const on = c.t.colors.onAccent;
+      // The ground is the look's cover colour: the accent, or a v2 theme's deep (Paper's wine).
+      const cover = coverColours(c.t);
+      background = { color: cover.fill };
+      const on = cover.ink;
       const f = input.figure;
       const aspect = f && "photo" in f ? (f.aspect ?? 1) : 0;
-      let ph = 444;
-      let pw = Math.round(ph * aspect);
-      if (pw > 520) {
-        pw = 520;
-        ph = Math.max(300, Math.round(pw / aspect));
-      }
-      if (aspect && pw < 240) pw = 240;
+      // UX ruling 25 A (Greg, 18 Oct): the picture beside the column is 10% smaller than it was
+      // (444pt tall, 520pt widest) and the column takes the room it frees (Paper's 300pt -> 352pt).
+      const box = (k: number) => {
+        let h = Math.round(444 * k);
+        let bw = Math.round(h * aspect);
+        if (bw > Math.round(520 * k)) {
+          bw = Math.round(520 * k);
+          h = Math.max(Math.round(300 * k), Math.round(bw / aspect));
+        }
+        if (aspect && bw < Math.round(240 * k)) bw = Math.round(240 * k);
+        return { pw: bw, ph: h };
+      };
+      const was = box(1);
+      const { pw, ph } = box(COVER_PICTURE);
       const px = G.right - pw;
-      const w = f ? Math.max(300, px - G.margin - 44) : 640;
-      // The title steps down from the stage's title size until its words fit the column (6 lines max).
-      let size = c.s.title;
+      // Today's column, plus every point the smaller picture gives back (its gap kept as it was).
+      const w = f ? Math.max(300, G.right - was.pw - G.margin - 44) + (was.pw - pw) : 640;
+      // The title steps down from the cover's size (ruling 21 A: the gold's, by age, the same in
+      // every theme, `coverType`) until its words fit the column in the gold's three lines.
+      const cv = coverType(c.t);
+      let size = cv.title;
       // ...and until every word fits its line whole: a title never breaks inside a word (y9
       // "hyperinfla/tion"). Stepping down is the design, not a fault.
       // Round 2 (y10 title 521/444): the title and subtitle together must fit the 444pt column,
       // so a long title keeps stepping down (words whole) to the floor; only past it is it flagged.
-      const height = () => {
-        const t = Math.ceil(
-          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) * size * LH.title,
+      const titleH = () =>
+        Math.ceil(
+          countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) *
+            size *
+            cv.titleLineHeight,
         );
-        return t + (input.lead ? 20 + measure(c, input.lead, "lead", w, 400) : 0);
-      };
+      // The question under the title at the cover's question size, regular weight.
+      const leadH = input.lead
+        ? Math.ceil(
+            countLines(plain(input.lead), "body", c.t, w, 400, cv.question) *
+              cv.question *
+              cv.questionLineHeight,
+          )
+        : 0;
+      // The gold's question is two lines (`questionLines`): the writer's cap holds it there
+      // (`cover-capacity.json`); a longer saved one still lays out, its box as tall as it needs.
+      const height = () => titleH() + (input.lead ? 20 + leadH : 0);
       const fits = () =>
-        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= (f ? 6 : 3) &&
+        countLines(input.heading, "title", c.t, w, c.t.weights.heading, size) <= cv.titleLines &&
         wordsFit(c, input.heading, "title", w, size) &&
         height() <= 444;
-      const floor = Math.round(c.s.heading * 0.8);
-      while (size > floor && !fits()) size -= 2;
+      while (size > cv.titleFloor + 0.01 && !fits())
+        size = Math.max(cv.titleFloor, size - cv.titleStep);
       c.s = { ...c.s, title: size };
-      if (!fits()) c.over.push(`title does not fit at ${size}pt`);
-      const tH = measure(c, input.heading, "title", w);
-      const lH = input.lead ? measure(c, input.lead, "lead", w, 400) : 0;
+      if (!fits()) c.over.push(`title does not fit at ${Math.round(size * 10) / 10}pt`);
+      const tH = titleH();
+      const lH = leadH;
       const total = tH + (lH ? 20 + lH : 0);
       const y = Math.round(270 - total / 2);
       const titleEl = text(
@@ -1523,25 +2011,108 @@ function layoutOnce(
         { x: G.margin, y, w },
         { color: on, name: "Title" },
       );
+      titleEl.h = tH;
+      titleEl.style = {
+        ...titleEl.style,
+        fontSize: size,
+        fixedSize: true,
+        lineHeight: cv.titleLineHeight,
+      };
       // The ruler measures a line or so more than the browser may draw: the title sits on the
       // foot of its measured box, so any spare room falls above it, not between it and the subtitle.
       if (input.lead) titleEl.style = { ...titleEl.style, valign: "bottom", autoHeight: false };
-      if (input.lead)
-        text(
+      // A fixed box clips at its edge, and the title's 1.06 line box is shorter than the face's
+      // ascent plus descent: the last line's "g" and "y" were cut flat. The box grows by a margin
+      // on every side, padded by the same, so the words wrap and sit exactly where they did and
+      // only the clip edge moves clear of the descenders (TEACH-152 part b). v2 themes only: an
+      // old lesson on a v1 theme stays byte-identical (typed-callout guard).
+      if (input.lead && (c.t.v2 || ROUND5_THEME_IDS.has(c.t.id))) {
+        const m = Math.ceil(size * TITLE_INK_MARGIN);
+        Object.assign(titleEl, {
+          x: titleEl.x - m,
+          y: titleEl.y - m,
+          w: titleEl.w + 2 * m,
+          h: titleEl.h + 2 * m,
+        });
+        titleEl.style = { ...titleEl.style, padding: m };
+      }
+      if (input.lead) {
+        const q = text(
           c,
           input.lead,
           "lead",
           { x: G.margin, y: y + tH + 20, w },
           { color: on, weight: 400, name: "Subtitle" },
         );
+        q.h = lH;
+        q.style = {
+          ...q.style,
+          fontSize: cv.question,
+          fixedSize: true,
+          lineHeight: cv.questionLineHeight,
+        };
+      }
       if (total > 444) c.over.push(`title ${total}/444pt`);
       if (f) figurePanel(c, f, { x: px, y: Math.round(270 - ph / 2), w: pw, h: ph });
+      // The accent word (cover5 `.title em`) in the accent: each composition recolours it to its
+      // own (the title accent, a band's yellow). The flat type card has no accent word (it is set
+      // on the accent), and Geometric's cover is pinned to its gold check (post-582) as it is.
+      const comp = surfacesOf(c.t).marks.cover;
+      const photo = !!f && "photo" in f;
+      const fallback = !photo && hasCoverFallback(c.t);
+      if (input.accentWord && comp !== "shape" && ((photo && comp !== "type") || fallback))
+        titleEl.doc = coverTitleDoc(input.heading, input.accentWord, c.t.colors.accent);
+      // A picture-failed cover takes the theme's own fallback (round 5 `coverFallback`).
+      if (fallback) {
+        const plain = c.els.map((e) =>
+          e.type === "text" && (e.name === "Title" || e.name === "Subtitle")
+            ? { ...e, style: { ...e.style, color: undefined, valign: "top" as const } }
+            : e,
+        );
+        const own = composeCoverFallback(
+          { id: "cover", kind: "title", elements: plain, background: {} } as Slide,
+          c.t,
+        );
+        if (own) {
+          background = own.background;
+          c.els.splice(0, c.els.length, ...own.elements);
+        }
+      }
+      // A theme with its own cover composition (Geometric's hexagon, `marks.cover`) sets a
+      // generated cover in it, as the look does a hand-made one: on its own ground (dot grid), the
+      // title and question in the theme's ink, the photo in the composition's frame.
+      if (photo && comp !== "type") {
+        background = {};
+        const plain = c.els.map((e) =>
+          e.type === "text" && (e.name === "Title" || e.name === "Subtitle")
+            ? { ...e, style: { ...e.style, color: undefined, valign: "top" as const } }
+            : e,
+        );
+        const composed = composeCover(
+          { id: "cover", kind: "title", elements: plain, background: {} } as Slide,
+          c.t,
+        );
+        c.els.splice(0, c.els.length, ...composed.elements);
+      }
+      // A composed cover (not Geometric's, pinned as it was) reports on its own boxes: the plain
+      // column's measure above no longer describes what is drawn (TEACH-215 part g).
+      if ((fallback || (photo && comp !== "type")) && comp !== "shape") {
+        const kept = c.over.filter((o) => !o.startsWith("title "));
+        c.over.splice(0, c.over.length, ...kept, ...coverOver(c.els, c.t));
+      }
       break;
     }
-    case "objectives":
+    case "objectives": {
       heading(c, input.heading);
-      numbered(c, pts, G.margin, 720, "objectives");
+      // Ruling 203, P12: numbered disc cards, with the figure beside them when one is given.
+      const fig =
+        !!c.objectiveCards && !!input.figure && figureDraws(c, input.figure, undefined, c.fails);
+      const x = G.margin;
+      const w = fig ? G.left.w : 720;
+      if (!(c.objectiveCards && objectiveCards(c, pts, x, w))) numbered(c, pts, x, w, "objectives");
+      if (fig) figurePanel(c, input.figure);
       break;
+    }
     case "explain": {
       heading(c, input.heading);
       const mark = c.els.length;
@@ -1558,6 +2129,12 @@ function layoutOnce(
     }
     case "picture-text":
     case "diagram-text": {
+      // TEACH-75 part ae (C6): the tucked field and the key card look.
+      const pt = pictureTextOf(input);
+      if (pt) {
+        layoutPictureText(c, input, pt, stage);
+        break;
+      }
       heading(c, input.heading);
       const mark = c.els.length;
       const overMark = c.over.length;
@@ -1661,7 +2238,7 @@ function layoutOnce(
       const colW = Math.floor((G.width - gap * (cols.length - 1)) / Math.max(1, cols.length));
       // Every card has its picture or none does (round 2 y9 s6: one picture over three cards left
       // two blank picture bands). Cards without a picture for every column are text cards.
-      const pics = cols.length > 0 && cols.every((col) => col.figure);
+      const pics = cols.length > 0 && cols.every((col) => col.figure || col.tile);
       if (pics) {
         // Picture first (Greg 6 Oct): equal columns across the content width from the heading's
         // left edge; each card is a 4:3 picture band at the card's full inner width, then the label
@@ -1740,6 +2317,7 @@ function layoutOnce(
             if (col.figure && "photo" in col.figure)
               photoBox(c, col.figure, band, true, PICTURE_RANGES.compare);
             else if (col.figure) figurePanel(c, col.figure, band, true);
+            else if (col.tile) captionTile(c, col.label, band);
             const lab = text(
               c,
               caps(col),
@@ -1890,13 +2468,16 @@ function layoutOnce(
             "bottom",
           );
         else if (s.figure) figurePanel(c, s.figure, { x, y, w, h: picH });
-        text(
-          c,
-          s.caption,
-          "body",
-          { x, y: y + picH + 14, w },
-          { color: c.t.colors.ink, weight: 600, align: "center", name: "Caption" },
-        );
+        else if (s.tile) captionTile(c, s.caption, { x, y, w, h: picH });
+        // A caption tile carries its caption already: none under it.
+        if (!s.tile)
+          text(
+            c,
+            s.caption,
+            "body",
+            { x, y: y + picH + 14, w },
+            { color: c.t.colors.ink, weight: 600, align: "center", name: "Caption" },
+          );
         if (k < n - 1)
           c.els.push({
             id: uid(),
@@ -1918,129 +2499,37 @@ function layoutOnce(
     case "equation-hero":
       equationHero(c, input);
       break;
-    case "steps":
+    case "steps": {
+      // TEACH-75 part af: one step with its library model (title, one line, stage).
+      const step = stepModelOf(input);
+      if (step) {
+        layoutStepModel(c, input, step, stage);
+        break;
+      }
       heading(c, input.heading);
       if (input.figure) {
         numbered(c, pts, G.left.x, G.left.w, "steps");
         figurePanel(c, input.figure);
-      } else numbered(c, pts, G.margin, 720, "steps");
-      break;
-    case "hinge": {
-      heading(c, input.heading);
-      const opts = input.options ?? [];
-      const stem = input.stem;
-      // A hinge about a figure (TEACH-75 part d: y2 asked about a square pupils could not see):
-      // the stem and options sit in the left column and the figure in the panel beside them.
-      const hasFig = figureDraws(c, input.figure, undefined, c.fails);
-      const X = hasFig ? G.left.x : G.margin;
-      let W: number = hasFig ? G.left.w : G.width;
-      // Round 2 (y11 s11 ran to the foot): the hinge is on the fit ladder. Full size first, then
-      // closer gaps and padding, then body (stem and options) one step down; flagged only past that.
-      const full = c.s;
-      let gap = 18;
-      let pad = 20;
-      let d = 0;
-      let sH = 0;
-      // Options never leave a hole: 2 in a row, 4 as 2x2, 3 as a row of 3 when they fit it,
-      // else one column (fit2: three options as 2 + 1 left a gap).
-      const grid = (perRow: number) => {
-        const w = Math.floor((W - gap * (perRow - 1)) / perRow);
-        const iw = w - 2 * pad - d - 14;
-        const rowH = Math.max(...opts.map((o) => measure(c, o, "body", iw)), d) + 2 * pad;
-        const rows = Math.ceil(opts.length / perRow);
-        return { perRow, w, iw, rowH, rows, total: sH + rows * rowH + (rows - 1) * gap };
-      };
-      let g = grid(1);
-      const ladder = () => {
-        for (const [k, r] of RUNGS.entries()) {
-          c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
-          gap = Math.round(18 * r.space);
-          pad = Math.max(10, Math.round(20 * r.space));
-          d = markerDisc(c);
-          sH = stem ? measure(c, stem, "lead", W) + Math.round(22 * r.space) : 0;
-          g = grid(hasFig ? 1 : opts.length === 3 ? 3 : opts.length === 1 ? 1 : 2);
-          // Beside a figure the options stack; four that do not fit stack as 2x2.
-          if (hasFig && g.total > G.band.h && opts.length >= 3 && grid(2).total < g.total)
-            g = grid(2);
-          if (opts.length === 3 && !hasFig) {
-            const twoLines = Math.ceil(c.s.body * LH.body * 2) + 2 * pad;
-            if (g.rowH > twoLines || g.total > G.band.h) g = grid(1);
-            // Three options in one column that do not fit may fit as a row of three.
-            if (g.total > G.band.h && grid(3).total < g.total) g = grid(3);
-          }
-          if (g.total <= G.band.h || k === RUNGS.length - 1) break;
-        }
-      };
-      ladder();
-      // Options that do not fit beside the figure at the last rung take a wider column and the
-      // figure a narrower panel, when it still draws there (KS1's large type on chalk, crayon).
-      let figRect: { x: number; y: number; w: number; h: number } = {
-        x: G.panel.x,
-        y: G.band.y,
-        w: G.panel.w,
-        h: G.band.h,
-      };
-      const narrow = { x: G.left.x + 544, y: G.band.y, w: G.right - G.left.x - 544, h: G.band.h };
-      if (hasFig && g.total > G.band.h && figureDraws(c, input.figure, narrow)) {
-        const was = { W, g, s: c.s, gap, pad, d, sH };
-        W = 520;
-        ladder();
-        if (g.total < was.g.total) figRect = narrow;
-        else {
-          ({ W, g, gap, pad, d, sH } = was);
-          c.s = was.s;
-        }
-      }
-      if (g.total > G.band.h) c.over.push(`hinge ${g.total}/${G.band.h}pt`);
-      let y = Math.max(G.band.y, Math.round(bandMid - g.total / 2 - 4));
-      if (stem) {
-        text(c, stem, "lead", { x: X, y, w: W }, { color: c.t.colors.ink, name: "Stem" });
-        y += sH;
-      }
-      const optionIds: string[] = [];
-      opts.forEach((o, k) => {
-        const x = X + (k % g.perRow) * (g.w + gap);
-        const yy = y + Math.floor(k / g.perRow) * (g.rowH + gap);
-        const card = box(c, { x, y: yy, w: g.w, h: g.rowH }, c.t.colors.surface, {
-          stroke: c.t.colors.line,
-          strokeWidth: 1,
-          radius: Math.min(c.t.radius, 16),
-          name: "Option",
-        });
-        optionIds.push(card.id);
-        const tones = optionColours(c.t);
-        disc(
-          c,
-          String.fromCharCode(65 + k),
-          x + pad,
-          yy + g.rowH / 2 - d / 2,
-          d,
-          c.optionColours ? tones[k % tones.length] : undefined,
-        );
-        const th = measure(c, o, "body", g.iw);
-        text(
-          c,
-          o,
-          "body",
-          { x: x + pad + d + 14, y: yy + g.rowH / 2 - th / 2, w: g.iw },
-          { color: c.t.colors.ink, name: "Option text" },
-        );
-      });
-      c.s = full;
-      if (hasFig) figurePanel(c, input.figure, figRect);
-      // The answer is question data on the option cards, so present hides it until the reveal.
-      const right = Number(input.correct);
-      if (Number.isInteger(right) && right >= 1 && right <= optionIds.length)
-        c.question = {
-          type: "multiple-choice",
-          options: optionIds.map((id, k) => ({ id, correct: k === right - 1 })),
-          ...(input.explanation?.trim() ? { explanation: input.explanation.trim() } : {}),
-        };
+      } else if (!(c.processLine && processLine(c, raw))) numbered(c, pts, G.margin, 720, "steps");
       break;
     }
-    case "question-set":
-    case "exit-ticket":
-    case "practice": {
+    case "hinge":
+      layoutHinge(c, input);
+      break;
+    // TEACH-17 part b (C1).
+    case "worked":
+      layoutWorked(c, input, stage);
+      break;
+    // TEACH-239 part b (C7).
+    case "figure":
+      layoutFigure(c, input, stage);
+      break;
+    case "question-set": {
+      // TEACH-101 part g: a question set whose every question has its answer is the quick check.
+      if (isQuickCheck(input)) {
+        layoutQuestionSet(c, input);
+        break;
+      }
       heading(c, input.heading);
       const qs = input.questions ?? [];
       if (input.figure) {
@@ -2053,10 +2542,16 @@ function layoutOnce(
           ruled: true,
           ...(input.instruction ? { after: input.instruction } : {}),
         });
-      c.question = listAnswers(qs, input.answers);
+      c.question = listAnswers(qs, input.answers, input.working);
       if (!c.question) delete c.question;
       break;
     }
+    case "practice":
+      layoutPractice(c, input);
+      break;
+    case "exit-ticket":
+      layoutExitTicket(c, input);
+      break;
     case "pair":
     case "group-sort":
     case "sequence":
@@ -2064,6 +2559,41 @@ function layoutOnce(
     case "odd-one-out":
     case "label":
       layoutActivity(c, input as TemplateInput & { template: ActivityId });
+      break;
+    case "cards-grid":
+      layoutCardsGrid(c, input);
+      break;
+    case "panel-list":
+      layoutPanelList(c, input);
+      break;
+    case "items-row":
+      layoutItemsRow(c, input);
+      break;
+    case "banner-text":
+      layoutBanner(c, input);
+      break;
+    case "hook":
+      layoutHook(c, input);
+      break;
+    case "split-compare":
+      layoutSplitCompare(c, input);
+      break;
+    case "side-by-side":
+      layoutSideBySide(c, input);
+      break;
+    // TEACH-75 part ac (C4).
+    case "stages":
+      layoutStages(c, input);
+      break;
+    case "source":
+      layoutSource(c, input);
+      break;
+    case "reasons":
+      layoutReasons(c, input);
+      break;
+    // TEACH-75 part ag (G1).
+    case "myth":
+      layoutMyth(c, input);
       break;
     case "discussion": {
       heading(c, input.heading);
@@ -2091,6 +2621,10 @@ function layoutOnce(
       }
       break;
     }
+    // TEACH-106 part b: a layout registered in `registered.ts`.
+    default:
+      registeredDef(tpl)?.layout(c, input);
+      break;
   }
   const result: TemplateResult = {
     slide: {
@@ -2098,10 +2632,14 @@ function layoutOnce(
       elements: c.els,
       ...(background ? { background } : {}),
       ...(c.question ? { question: c.question } : {}),
+      ...(c.notes ? { notes: c.notes } : {}),
     },
     over: c.over,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
     ...(c.lost?.length ? { lost: c.lost } : {}),
+    ...(c.tight !== undefined ? { tight: c.tight } : {}),
+    ...(c.iconMisses?.length ? { iconMisses: c.iconMisses } : {}),
+    ...(c.fields ? { fields: c.fields } : {}),
   };
   const warned = [...new Set(c.els.flatMap((e) => WARNED.get(e) ?? []))];
   if (warned.length) result.diagramWarnings = warned;
@@ -2115,12 +2653,15 @@ function layoutOnce(
 export function listAnswers(
   questions: string[],
   answers: string[] | undefined,
+  working?: string[],
 ): QuestionData | undefined {
   const got = (answers ?? []).slice(0, Math.max(1, questions.length)).map((a) => a.trim());
   if (!got.some(Boolean)) return undefined;
   const modelAnswer =
     got.length > 1 ? got.map((a, i) => `${i + 1}. ${a || "…"}`).join("\n") : (got[0] ?? "");
-  return { type: "open-response", modelAnswer };
+  // The working stays its own field, one per answer line, never joined into the answer.
+  const work = got.map((a, i) => (a ? (working?.[i] ?? "").trim() : ""));
+  return { type: "open-response", modelAnswer, ...(work.some(Boolean) ? { working: work } : {}) };
 }
 
 /** Whether a template is one of the activity layouts (cards, groups, pointers). */

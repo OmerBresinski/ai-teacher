@@ -1,8 +1,11 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { answerRevealSteps, diagramBuildAt, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
+  footStrip,
   growFixedText,
   isDiagramMark,
+  mathFaceOf,
+  quoteFaceOf,
   slideArtVariant,
   slideBackground,
   withoutDiagramSlot,
@@ -18,15 +21,22 @@ import {
   useState,
 } from "react";
 import { ImageOriginProvider, useResolvedImageSrc } from "../images/image-origin";
-import { hasExplanationPanel } from "../layout/explanation";
-import { SAFE } from "../model/grid";
+import {
+  ANSWER_LINE_GAP,
+  ANSWER_LINE_RULE_W,
+  answerLineLayout,
+  hasExplanationPanel,
+} from "../layout/explanation";
 import { docToPlainText } from "../text/static";
-import { choiceMarks } from "./elements/choice";
+import { choiceMarks, HINGE_KEY } from "./elements/choice";
+
+/** The hinge reveal (TEACH-256 part b) loads on demand: its surface roles stay out of these chunks. */
+const HingeMarks = lazy(() => import("./elements/HingeMarks"));
+
 import { ElementFrame, type ElementTransform } from "./elements/ElementFrame";
 import { ExplanationPanel } from "./elements/ExplanationPanel";
 import {
   explanationText,
-  fontFloor,
   isStatic,
   optionPositions,
   resolveFontSize,
@@ -61,6 +71,11 @@ export type SlideViewProps = {
    */
   transformOverride?: ReadonlyMap<string, ElementTransform>;
   /**
+   * Edit mode only: a drawn model the teacher is paging through (TEACH-247 part u) shows `build`,
+   * as Present would; every other model shows its finished drawing.
+   */
+  diagramPreview?: { id: string; build: number } | null;
+  /**
    * Edit mode: let content past the bottom edge show instead of clipping it. The canvas sets it
    * while a text box is being typed into, so the teacher sees the lines that run off the slide;
    * sideways overflow stays clipped. Ignored in every other mode.
@@ -91,6 +106,7 @@ export function SlideView({
   answerProgress = 0,
   className,
   transformOverride,
+  diagramPreview,
   spill = false,
   imageOrigin,
 }: SlideViewProps) {
@@ -156,7 +172,7 @@ export function SlideView({
 
   const sortIndex = useMemo(() => sortPositions(slide), [slide]);
   const optionIndex = useMemo(() => optionPositions(slide), [slide]);
-  const explanation = revealAnswer ? explanationText(slide.question) : null;
+  const explanation = revealAnswer ? explanationText(slide) : null;
   /**
    * True-false and multiple choice get the "Why?" panel (Chalkie inventory line
    * 10). In the editor it is drawn even when empty, so there is somewhere to type;
@@ -169,6 +185,8 @@ export function SlideView({
   useLayoutEffect(() => {
     if (mode === "edit" && root.current) applySlideClip(root.current, spill);
   }, [mode, spill]);
+  const quote = quoteFaceOf(theme);
+  const math = mathFaceOf(theme);
   const rootStyle: CSSProperties = {
     position: "relative",
     width: SLIDE_W,
@@ -192,6 +210,12 @@ export function SlideView({
     ["--td-accent-soft" as string]: withAlpha(theme.colors.accent, 0.18),
     ["--td-line" as string]: theme.colors.line,
     ["--td-surface" as string]: theme.colors.surface,
+    // A run in the quote face (`font: "quote"`, TEACH-205 part c): the theme's quote serif.
+    ["--td-font-quote" as string]: quote.family,
+    ["--td-quote-style" as string]: quote.italic ? "italic" : "normal",
+    // A maths variable (`font: "math"`): the theme's maths face (Geometric's Source Serif italic).
+    ["--td-font-math" as string]: math.family,
+    ["--td-math-style" as string]: math.italic ? "italic" : "normal",
     ...(mode === "thumb"
       ? { contentVisibility: "auto", containIntrinsicSize: `${SLIDE_W}px ${SLIDE_H}px` }
       : null),
@@ -229,7 +253,17 @@ export function SlideView({
               revealAnswer={revealAnswer}
               answerProgress={answerProgress}
               diagramBuild={
-                mode === "present" && step !== undefined ? diagramBuildAt(slide, step) : undefined
+                mode === "present" && step !== undefined
+                  ? diagramBuildAt(slide, step, el)
+                  : mode === "edit" && diagramPreview?.id === el.id
+                    ? diagramPreview.build
+                    : // A diagram on rows (`buildFrom`) follows the editor's step preview too.
+                      mode === "edit" &&
+                        el.type === "image" &&
+                        el.buildFrom !== undefined &&
+                        Number.isFinite(effectiveStep)
+                      ? diagramBuildAt(slide, effectiveStep, el)
+                      : undefined
               }
               diagramAnswer={
                 mode === "present"
@@ -246,6 +280,8 @@ export function SlideView({
             />
           ),
         )}
+
+        <FootStrip theme={theme} slide={slide} zIndex={drawn.length + 1} />
 
         {revealAnswer && slide.question?.type === "matching" ? (
           <MatchingLines slide={slide} theme={theme} question={slide.question} animate={!still} />
@@ -325,16 +361,34 @@ function SlideBackground({ theme, slide }: { theme: Theme; slide: Slide }) {
   );
 }
 
+/**
+ * The theme's accent strip along the foot (`footStrip`): over the slide's elements, as the gold's
+ * `.footbar` (z-index 6), under the reveal chrome.
+ */
+function FootStrip({ theme, slide, zIndex }: { theme: Theme; slide: Slide; zIndex: number }) {
+  const strip = footStrip(theme, slide);
+  if (!strip) return null;
+  return (
+    <div
+      aria-hidden
+      data-foot-strip=""
+      style={{
+        position: "absolute",
+        left: strip.x,
+        top: strip.y,
+        width: strip.w,
+        height: strip.h,
+        background: strip.fill,
+        zIndex,
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Question reveal chrome                                              */
 /* ------------------------------------------------------------------ */
-
-const bottomOf = (el: SlideElement) => el.y + el.h;
-
-/** Gap between the lowest card and the explanation, and the smallest lane worth having. */
-const EXPLANATION_GAP = 19;
-const EXPLANATION_MIN_LANE = 48;
-const RULE_W = 3;
 
 /**
  * Reveal copy, under the options. Never overlaps them and never moves a card — and when
@@ -352,49 +406,41 @@ function Explanation({
   text: string;
   mode: SlideMode;
 }) {
-  const options = slide.elements.filter((e) => e.type === "option");
-  const anchors = options.length > 0 ? options : slide.elements;
-  const below = anchors.reduce<number>((m, e) => Math.max(m, bottomOf(e)), SAFE.y);
-  const top = Math.min(below + EXPLANATION_GAP, SLIDE_H - SAFE.y - EXPLANATION_MIN_LANE);
-  const available = SLIDE_H - SAFE.y - top;
-
-  const lineHeight = theme.lineHeights.small;
-  const width = SAFE.w - RULE_W - EXPLANATION_GAP;
-  // Deterministic in every mode: no measurement, so capture and SSR agree with the
-  // editor. ~0.5em average advance is close enough to pick a stop.
-  const heightAt = (size: number) =>
-    Math.ceil(
-      Math.max(1, Math.ceil(text.length / Math.max(1, Math.floor(width / (size * 0.5))))) *
-        size *
-        lineHeight,
-    );
-
-  const base = resolveFontSize(theme, "small");
-  const floor = fontFloor("small");
-  const stepped = Math.max(floor, Math.round(base * 0.86));
-  const size = heightAt(base) <= available ? base : stepped;
-  const overflowing = heightAt(size) > available;
+  const {
+    x,
+    y: top,
+    w,
+    available,
+    size,
+    lineHeight,
+    overflowing,
+  } = answerLineLayout({
+    slide,
+    theme,
+    text,
+  });
 
   return (
     <div
       data-answer-anim=""
+      data-answer-line=""
       style={{
         position: "absolute",
-        left: SAFE.x,
+        left: x,
         top,
-        width: SAFE.w,
+        width: w,
         maxHeight: available,
         overflow: "hidden",
         display: "flex",
-        gap: EXPLANATION_GAP,
+        gap: ANSWER_LINE_GAP,
         zIndex: 900,
       }}
     >
       <span
         aria-hidden
         style={{
-          flex: `0 0 ${RULE_W}px`,
-          width: RULE_W,
+          flex: `0 0 ${ANSWER_LINE_RULE_W}px`,
+          width: ANSWER_LINE_RULE_W,
           background: theme.colors.accent,
           borderRadius: 2,
         }}
@@ -462,6 +508,12 @@ function ChoiceMarks({
   );
   if (marks.length === 0) return null;
   const placed = placedById(slide.elements);
+  if (slide.elements.some((e) => e.name === HINGE_KEY))
+    return (
+      <Suspense fallback={null}>
+        <HingeMarks slide={slide} theme={theme} marks={marks} placed={placed} />
+      </Suspense>
+    );
   return (
     <>
       {marks.map(({ id, state }) => {

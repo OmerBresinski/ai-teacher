@@ -13,7 +13,7 @@ import {
 import { volcano, ashCloud, earthInterior, LAYER_FILLS } from '../kit/batch-F.js';
 
 export const meta = {
-  id: 'volcano_earthquake', name: 'Volcanoes and earthquakes', kind: 'scene', version: 1,
+  id: 'volcano_earthquake', name: 'Volcanoes and earthquakes', kind: 'scene', version: 2,
   subjects: ['Geography', 'Science'],
   years: ['Y3', 'Y4', 'Y5', 'Y6', 'KS3'],
   teaches: 'What happens under the ground when a volcano erupts or an earthquake strikes, and why they happen where plates meet.',
@@ -233,9 +233,10 @@ function varrow(ctx, p, x, y1, y2, col, a = {}) {
   h('path', { d: headD(x, y2, -Math.PI / 2, hs), fill: col }, g);
   return g;
 }
-// crust: warm grey rock; mantle: solid rock, a clear terracotta that is never the magma colour
+// crust: warm grey rock; mantle: solid rock, a darker brown rock that is never the magma colour
 const CRUST = 'color-mix(in oklab, var(--stone-shade) 78%, var(--soil))';
-const MANTLE = 'color-mix(in oklab, var(--tile) 58%, var(--paper))';
+// (a muted brown-red rock: the salmon it used to be read as molten next to the magma red)
+const MANTLE = 'color-mix(in oklab, var(--soil) 62%, var(--stone-shade))';
 const P2 = (x, y) => `${x.toFixed(1)} ${y.toFixed(1)}`;
 // lava lying on a surface: a centre line thickened upwards, tapering from t0 to t1
 function flowD(pts, t0, t1) { const n = pts.length, up = [], dn = [];
@@ -483,6 +484,8 @@ export function render(root, P0, ctx) {
       if (shield) for (let i = 1; i <= 4; i++) lavaA.push([vx + w / 2 + 12 * i, yG]);
       for (const [pts, d] of shield ? [[lavaA, 500], [lavaB, 700]] : [[lavaA, 500]])
         h('path', { d: flowD(pts, shield ? 5 : 5, shield ? 13 : 16), fill: 'var(--heat)', cls: 'rise', s: ke, hide: kl, delay: d }, top);
+      // when the lava cools it stays where it flowed, now dark rock on the new layer (it does not vanish)
+      for (const [pts] of shield ? [[lavaA], [lavaB]] : [[lavaA]]) h('path', { d: flowD(pts, 5, shield ? 13 : 16), fill: 'color-mix(in oklab, var(--heat) 22%, var(--ink-2))', s: kl }, top);
       const le = lavaA[lavaA.length - 1], ls = shield ? 1 : -cloudSide;
       if (shield) put(lbl, le[0], yG + 50, txt(P, 'label:lava', simple ? 'Runny lava' : 'Lava flow'), { edit: 'text.label:lava', anchor: 'middle', maxW: 220, a: { s: ke, hide: kl, cls: 'rise', delay: 900 } },
         [{ x: GRID.right, anchor: 'end', maxW: 190 }, ...[yG - 60, yG - 100, yG - 140].map(y => ({ x: GRID.right, y, anchor: 'end', maxW: 200 })), { y: yG + 200 }, { x: GRID.right, y: yG + 200, anchor: 'end', maxW: 200 }]);

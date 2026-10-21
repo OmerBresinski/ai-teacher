@@ -8,6 +8,7 @@ import { WRITER_PLANNED_VERSION } from "../stages/objectives-first";
 import { write } from "../stages/write";
 import {
   callLimitedBudget,
+  EXIT_ANSWERS,
   initialState,
   recordingDeps,
   sampleBriefLesson,
@@ -20,6 +21,7 @@ import { writerIncomplete } from "./fixes";
 import { recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 import { isFatal, WRITER_MAX_TOKENS, writerMaxTokens } from "./services";
 import { WriterIncompleteError } from "./stage";
+import { waveCLibraryLine } from "./wave-c";
 
 /*
  * The writer stage's stops (TEACH-110 part b review): a cancel or a budget stop is never
@@ -63,6 +65,26 @@ const fakeAi = (on: (name: string, call: FakeCall) => string | undefined = () =>
     },
   });
 
+describe("the exit ticket written in close (TEACH-110 part ab)", () => {
+  test("it is the deck's last written slide, and the Answers slides carry its answers", async () => {
+    const close = (JSON.parse(fixture.main) as { close: { questions: string[] } }).close;
+    const out = await write(initialState(planned()), recordingDeps(fakeAi()));
+    const slides = out.lesson.slides;
+    const answers = slides.filter((sl) => sl.answersRole);
+    const written = slides.filter((sl) => !sl.answersRole);
+    const text = (sl: unknown) => JSON.stringify(sl);
+    // The exit ticket's first question is on the last written slide (or its continuation).
+    expect(written.slice(-2).some((sl) => text(sl).includes(close.questions[0] as string))).toBe(
+      true,
+    );
+    expect(answers.length).toBeGreaterThan(0);
+    // The Answers slides carry the exit ticket's answers, after the practice slides' answers.
+    const all = answers.map(text).join("");
+    for (const a of EXIT_ANSWERS) expect(all).toContain(a);
+    expect(all).toContain("EXIT");
+  });
+});
+
 describe("a stop is never swallowed", () => {
   test("a cancel after the editable save: the stage rejects, no deck is saved as ready", async () => {
     const deps = recordingDeps(fakeAi(), { abortAfterPersist: 1 });
@@ -103,7 +125,9 @@ describe("a stop is never swallowed", () => {
     expect(out.lesson.generation?.stage).toBe("generated");
     // TEACH-251: with no image placer every picture slot fails, so its slide is restaged
     // text-only (one overflowed into a continuation slide) and no placeholder ships.
-    expect(out.lesson.slides.filter((sl) => !/c\d+$/.test(sl.id)).length).toBe(12);
+    expect(out.lesson.slides.filter((sl) => !sl.answersRole && !/c\d+$/.test(sl.id)).length).toBe(
+      12,
+    );
     const srcs = out.lesson.slides.flatMap((sl) =>
       sl.elements.flatMap((e) => (e.type === "image" ? [e.src] : [])),
     );
@@ -217,7 +241,11 @@ describe("the diagram library is on for the writer (TEACH-247 part m)", () => {
     expect(lesson).toHaveLength(1);
     const system = lesson[0]?.systemText ?? "";
     expect(system).toContain("Diagram kinds:");
-    expect(system).toContain(WRITER_WORDS.menuLine);
+    // Production's pack offers wave C (TEACH-110 part v): a model may go to figure-slide or step-model.
+    expect(system).toContain(waveCLibraryLine(WRITER_WORDS.menuLine));
+    // With models, step-model's line joins the menu (never sent without one).
+    expect(system).toContain("\n- steps step-model: ");
+    expect(system).not.toContain(WRITER_WORDS.menuLine);
     expect(system).toContain(WRITER_WORDS.header);
   });
 });

@@ -90,7 +90,10 @@ describe("the stage lays a long table over continuation slides (y8 French replay
         .split(" ")
         .map((x: string, k: number) => [String(k + 1), x]);
     // A later slide's words point at a slide after the table: it must follow the inserted slides.
-    w.slides[4].instruction = "Use the numbers from slide 8.";
+    // It sits in a task: the slide is a practice slide, whose `where` line (instruction) is kept in
+    // the data and not drawn (TEACH-230 part b; Greg, 15 Oct).
+    const qs = w.slides[4].questions as string[];
+    qs[0] = `${qs[0]} Use the numbers from slide 8.`;
     const out = await runWriter({
       brief: read("brief.json"),
       objectives: read("objectives.json").objectives.map((o: { teacher: string }) => o.teacher),

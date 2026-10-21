@@ -1,20 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Lesson } from "@tj/domain/documents";
-import type { LessonEditorHandle } from "@tj/editor/lesson";
+import type { DraftStore } from "@tj/editor/live-draft";
 import { Button } from "@tj/ui";
-import { type RefObject, useCallback, useEffect, useImperativeHandle, useRef } from "react";
-import { useJobEvents } from "@/hooks/use-job-events";
+import { useEffect } from "react";
+import { useFeedDrafts, useJobEvents } from "@/hooks/use-job-events";
 import { api } from "@/lib/api";
-import { libraryCache } from "@/lib/library";
 import { apiErrorFromResponse } from "@/lib/query";
-import { sessionIsCurrent, sessionMutation, sessionRequest } from "@/lib/session-boundary";
+import { sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./job-sync";
 
 /**
  * Whether the editor opens while the lesson still fills (ADR 0037). Never for a guest: a guest's
  * lesson is read-only anyway, and the generating view keeps its progress and its Stop. Never once
- * the job was stopped (the page keeps the stopped view), for a proposed plan, or before a slide's
- * words are done.
+ * the job was stopped (the page opens the plain editor on what was written instead), for a
+ * proposed plan, or before a slide's words are done.
  */
 export function opensFillingEditor(state: {
   anonymous: boolean;
@@ -25,88 +23,68 @@ export function opensFillingEditor(state: {
   return !state.anonymous && !state.stopped && !state.proposed && state.editableSlides;
 }
 
-/** What the page may ask of the follower: fold the job's newest row in now (a save went stale). */
-export type FillingFollowerHandle = { pull: () => Promise<Lesson | undefined> };
-
 /**
  * The editor is open while the lesson still fills (ADR 0037, UX ruling 189). This follows the job
- * the way the generating view did, but never refetches into the editor's working copy: each newer
- * row is read on the side and folded into the open document by `receiveGenerated`, a three-way
- * merge on the copy last received, so the teacher's typing survives every slide the job adds. At
- * the job's end one last pull lands the finished row and the released lock together, which turns
- * the page into the plain editor without remounting it.
+ * the way the generating view did, but never refetches into the editor's working copy: on each
+ * persist the stream reports, on a poll, and at the job's end it asks the page to `fold` the
+ * newest row into the open document (`receiveGenerated`, a three-way merge on the copy last
+ * folded), so the teacher's typing survives every slide the job adds. The page owns the fold
+ * because its saves fold first too: a save always carries the row it was merged onto. At the
+ * job's end one last fold lands the finished row and the released lock together, which turns the
+ * page into the plain editor without remounting it.
  */
 export function FillingFollower({
-  lessonId,
   jobId,
-  base,
-  editorRef,
-  followerRef,
+  fold,
   onStopped,
+  drafts,
 }: {
-  lessonId: string;
   jobId: string;
-  /** The row the editor opened on: the base of the first merge. */
-  base: Lesson;
-  editorRef: RefObject<LessonEditorHandle | null>;
-  followerRef: RefObject<FillingFollowerHandle | null>;
+  /** Read the newest row and fold it into the editor (the page's `fold`). */
+  fold: () => Promise<unknown>;
   /**
-   * The job failed or was cancelled: the page shows the stopped view for it (its message, what
-   * was written, the way back), as it does when the job stops before any slide is done.
+   * The job failed or was cancelled: the page keeps the editor open on what was written and says
+   * so (UX-A), after the last fold has landed the row the job left.
    */
-  onStopped?: (jobId: string) => void;
+  onStopped?: (jobId: string, outcome: "failed" | "cancelled", message?: string) => void;
+  /** Live writing (ADR 0039): the job's slide drafts go here, for the editor's canvas to show. */
+  drafts?: DraftStore;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId, queryClient);
+  useFeedDrafts(drafts, stream.drafts, stream.terminal !== null);
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
-  const baseRef = useRef(base);
-  const inFlight = useRef<Promise<Lesson | undefined> | null>(null);
-
-  const pull = useCallback((): Promise<Lesson | undefined> => {
-    if (inFlight.current) return inFlight.current;
-    const run = (async () => {
-      const row = await libraryCache.readFilling(queryClient, lessonId);
-      if (!row || !sessionIsCurrent(queryClient)) return undefined;
-      const merged = editorRef.current?.receiveGenerated(baseRef.current, row.body);
-      baseRef.current = row.body;
-      libraryCache.setMetaIfNewer(queryClient, lessonId, row.meta);
-      return merged;
-    })().finally(() => {
-      inFlight.current = null;
-    });
-    inFlight.current = run;
-    return run;
-  }, [queryClient, lessonId, editorRef]);
-  useImperativeHandle(followerRef, () => ({ pull }), [pull]);
 
   // Each persist the stream reports, debounced like the generating view's refetch.
   useEffect(() => {
     if (documentUpdatedAt === undefined) return;
-    const timer = window.setTimeout(() => void pull().catch(() => undefined), REFETCH_DEBOUNCE_MS);
+    const timer = window.setTimeout(() => void fold().catch(() => undefined), REFETCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [documentUpdatedAt, pull]);
-  // The end of the job, and a poll in case the stream missed it: the last pull carries the
+  }, [documentUpdatedAt, fold]);
+  // The end of the job, and a poll in case the stream missed it: the last fold carries the
   // released lock into the row state, which hands the page to the plain editor.
   const terminal = stream.terminal?.type;
+  const failure = stream.terminal?.type === "failed" ? stream.terminal.error?.message : undefined;
   useEffect(() => {
     if (!terminal) return;
-    void pull()
+    void fold()
       .catch(() => undefined)
       .then(() => {
-        if (terminal !== "completed") onStopped?.(jobId);
+        if (terminal !== "completed")
+          onStopped?.(jobId, terminal === "failed" ? "failed" : "cancelled", failure);
       });
-  }, [terminal, pull, onStopped, jobId]);
+  }, [terminal, failure, fold, onStopped, jobId]);
   useEffect(() => {
-    const timer = window.setInterval(() => void pull().catch(() => undefined), JOB_POLL_MS);
+    const timer = window.setInterval(() => void fold().catch(() => undefined), JOB_POLL_MS);
     return () => window.clearInterval(timer);
-  }, [pull]);
+  }, [fold]);
   return null;
 }
 
 /**
  * Stop, while the editor is open on a lesson that still fills (ADR 0037): the generating view's
  * Stop moves into the editor's top bar, so the teacher can end the job from either view. What was
- * written is kept; the follower's last pull releases the page into the plain editor.
+ * written is kept; the follower's last fold releases the page into the plain editor.
  */
 export function StopFillingButton({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient();

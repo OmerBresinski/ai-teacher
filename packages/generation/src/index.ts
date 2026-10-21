@@ -7,6 +7,8 @@
  * The dev Studio entry lives in `./mastra.dev.ts` and is never imported from here.
  */
 
+import "./icons-ready";
+
 export {
   type CallResult,
   type CallStructuredOptions,
@@ -27,6 +29,7 @@ export {
   curriculumBlock,
   curriculumFor,
 } from "./curriculum";
+export * from "./debug";
 export {
   EDIT_FAST_EFFORT,
   EDIT_FAST_MODEL_ID,
@@ -63,6 +66,7 @@ export {
   RULE_FIELDS,
   type RuleField,
 } from "./parse-brief";
+export { FICTION_IN_PERIOD_IS_HISTORICAL, isHistoricalLesson } from "./period";
 // The objectives-first planner (TEACH-91) as the lab runs it; production runs its two steps as
 // workflow steps behind `AI_LESSON_PLANNER` (TEACH-93).
 export {
@@ -172,5 +176,5 @@ export * from "./worksheet";
 export { WRITER_VERSION, writerRoute } from "./writer/ai-services";
 export { DIAGRAM_CONTRACT, writerDrawerSystem } from "./writer/diagram-contract.gen";
 export { type DraftOptions, peekPartial, type SlideDraft } from "./writer/draft";
-export { SMALL_MODEL, WRITER_EFFORT, WRITER_MODEL } from "./writer/services";
+export { isBudgetRefusal, SMALL_MODEL, WRITER_EFFORT, WRITER_MODEL } from "./writer/services";
 export { runWriter, WriterIncompleteError } from "./writer/stage";

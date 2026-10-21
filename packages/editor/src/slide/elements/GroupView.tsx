@@ -4,6 +4,12 @@ import { ElementFrame } from "./ElementFrame";
 import type { ElementViewProps } from "./kit";
 
 const FRAME = { position: "relative", width: "100%", height: "100%" } as const;
+/**
+ * An adaptive layout group (TEACH-205 part b, ruling 215) never draws outside its frame: words
+ * past what the layout holds are hidden at its edge (the field is marked over in the editor).
+ * Editor only: view, present and print draw the group as master did, unclipped.
+ */
+const LAYOUT_FRAME = { ...FRAME, overflow: "hidden" } as const;
 
 /**
  * Children live in the group's local space, so the frame is just a positioned box. A group with
@@ -58,6 +64,11 @@ export function GroupView({
       {children}
     </div>
   ) : (
-    <div style={FRAME}>{children}</div>
+    <div
+      style={element.layout && mode === "edit" ? LAYOUT_FRAME : FRAME}
+      data-layout-frame={element.layout && mode === "edit" ? "" : undefined}
+    >
+      {children}
+    </div>
   );
 }

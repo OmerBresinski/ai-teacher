@@ -1,0 +1,326 @@
+{
+  "early": {
+    "practice": [
+      {
+        "n": 2,
+        "cap": 158,
+        "hardMax": 158,
+        "words": 32,
+        "hardWords": 32
+      },
+      {
+        "n": 3,
+        "cap": 88,
+        "hardMax": 88,
+        "words": 17,
+        "hardWords": 17
+      },
+      {
+        "n": 4,
+        "cap": 63,
+        "hardMax": 63,
+        "words": 11,
+        "hardWords": 11
+      },
+      {
+        "n": 5,
+        "cap": 33,
+        "hardMax": 33,
+        "words": 6,
+        "hardWords": 6
+      },
+      {
+        "n": 6,
+        "cap": 33,
+        "hardMax": 33,
+        "words": 6,
+        "hardWords": 6
+      }
+    ],
+    "practice+picture": [
+      {
+        "n": 2,
+        "cap": 116,
+        "hardMax": 116,
+        "words": 23,
+        "hardWords": 23
+      },
+      {
+        "n": 3,
+        "cap": 57,
+        "hardMax": 57,
+        "words": 10,
+        "hardWords": 10
+      },
+      {
+        "n": 4,
+        "cap": 27,
+        "hardMax": 27,
+        "words": 5,
+        "hardWords": 5
+      }
+    ],
+    "practice+figure": [
+      {
+        "n": 2,
+        "cap": 116,
+        "hardMax": 116,
+        "words": 23,
+        "hardWords": 23
+      },
+      {
+        "n": 3,
+        "cap": 57,
+        "hardMax": 57,
+        "words": 10,
+        "hardWords": 10
+      },
+      {
+        "n": 4,
+        "cap": 27,
+        "hardMax": 27,
+        "words": 5,
+        "hardWords": 5
+      }
+    ],
+    "exit": [
+      {
+        "n": 1,
+        "cap": 158,
+        "hardMax": 158,
+        "words": 32,
+        "hardWords": 32
+      },
+      {
+        "n": 2,
+        "cap": 75,
+        "hardMax": 75,
+        "words": 14,
+        "hardWords": 14
+      },
+      {
+        "n": 3,
+        "cap": 33,
+        "hardMax": 33,
+        "words": 6,
+        "hardWords": 6
+      }
+    ]
+  },
+  "primary": {
+    "practice": [
+      {
+        "n": 2,
+        "cap": 231,
+        "hardMax": 231,
+        "words": 45,
+        "hardWords": 45
+      },
+      {
+        "n": 3,
+        "cap": 116,
+        "hardMax": 116,
+        "words": 23,
+        "hardWords": 23
+      },
+      {
+        "n": 4,
+        "cap": 97,
+        "hardMax": 97,
+        "words": 19,
+        "hardWords": 19
+      },
+      {
+        "n": 5,
+        "cap": 45,
+        "hardMax": 45,
+        "words": 8,
+        "hardWords": 8
+      },
+      {
+        "n": 6,
+        "cap": 45,
+        "hardMax": 45,
+        "words": 8,
+        "hardWords": 8
+      }
+    ],
+    "practice+picture": [
+      {
+        "n": 2,
+        "cap": 130,
+        "hardMax": 130,
+        "words": 26,
+        "hardWords": 26
+      },
+      {
+        "n": 3,
+        "cap": 63,
+        "hardMax": 63,
+        "words": 11,
+        "hardWords": 11
+      },
+      {
+        "n": 4,
+        "cap": 27,
+        "hardMax": 27,
+        "words": 5,
+        "hardWords": 5
+      }
+    ],
+    "practice+figure": [
+      {
+        "n": 2,
+        "cap": 130,
+        "hardMax": 130,
+        "words": 26,
+        "hardWords": 26
+      },
+      {
+        "n": 3,
+        "cap": 63,
+        "hardMax": 63,
+        "words": 11,
+        "hardWords": 11
+      },
+      {
+        "n": 4,
+        "cap": 27,
+        "hardMax": 27,
+        "words": 5,
+        "hardWords": 5
+      }
+    ],
+    "exit": [
+      {
+        "n": 1,
+        "cap": 185,
+        "hardMax": 185,
+        "words": 37,
+        "hardWords": 37
+      },
+      {
+        "n": 2,
+        "cap": 141,
+        "hardMax": 141,
+        "words": 28,
+        "hardWords": 28
+      },
+      {
+        "n": 3,
+        "cap": 92,
+        "hardMax": 92,
+        "words": 18,
+        "hardWords": 18
+      }
+    ]
+  },
+  "secondary": {
+    "practice": [
+      {
+        "n": 2,
+        "cap": 257,
+        "hardMax": 257,
+        "words": 50,
+        "hardWords": 50
+      },
+      {
+        "n": 3,
+        "cap": 146,
+        "hardMax": 146,
+        "words": 29,
+        "hardWords": 29
+      },
+      {
+        "n": 4,
+        "cap": 121,
+        "hardMax": 121,
+        "words": 24,
+        "hardWords": 24
+      },
+      {
+        "n": 5,
+        "cap": 63,
+        "hardMax": 63,
+        "words": 11,
+        "hardWords": 11
+      },
+      {
+        "n": 6,
+        "cap": 63,
+        "hardMax": 63,
+        "words": 11,
+        "hardWords": 11
+      }
+    ],
+    "practice+picture": [
+      {
+        "n": 2,
+        "cap": 158,
+        "hardMax": 158,
+        "words": 32,
+        "hardWords": 32
+      },
+      {
+        "n": 3,
+        "cap": 116,
+        "hardMax": 116,
+        "words": 23,
+        "hardWords": 23
+      },
+      {
+        "n": 4,
+        "cap": 75,
+        "hardMax": 75,
+        "words": 14,
+        "hardWords": 14
+      }
+    ],
+    "practice+figure": [
+      {
+        "n": 2,
+        "cap": 158,
+        "hardMax": 158,
+        "words": 32,
+        "hardWords": 32
+      },
+      {
+        "n": 3,
+        "cap": 116,
+        "hardMax": 116,
+        "words": 23,
+        "hardWords": 23
+      },
+      {
+        "n": 4,
+        "cap": 75,
+        "hardMax": 75,
+        "words": 14,
+        "hardWords": 14
+      }
+    ],
+    "exit": [
+      {
+        "n": 1,
+        "cap": 219,
+        "hardMax": 219,
+        "words": 43,
+        "hardWords": 43
+      },
+      {
+        "n": 2,
+        "cap": 219,
+        "hardMax": 219,
+        "words": 43,
+        "hardWords": 43
+      },
+      {
+        "n": 3,
+        "cap": 108,
+        "hardMax": 108,
+        "words": 22,
+        "hardWords": 22
+      }
+    ]
+  }
+}

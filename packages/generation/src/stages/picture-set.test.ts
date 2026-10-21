@@ -2,18 +2,28 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { directedImagePrompt, encodePng, type ImageGenerator } from "@tj/images";
+import {
+  directedImagePrompt,
+  encodePng,
+  ImageGenerationError,
+  type ImageGenerator,
+  retryLine,
+} from "@tj/images";
 import { BudgetExceeded } from "../types";
+import { mustShowOf } from "./photo-bank";
 import {
   gridImagePrompt,
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
   type PictureSetDeps,
+  panelBrief,
   type SetAsk,
+  SOLO_ATTEMPTS,
   STRIP_ATTEMPTS,
   setImagePrompt,
   setIsGenerated,
+  setLookFor,
   setMode,
   setSize,
   soloImagePrompt,
@@ -183,10 +193,14 @@ function stripPng(sizes: number[], w = 120, h = 120): Uint8Array {
 function fakes(opts: {
   strips: Uint8Array[];
   panelOk?: (ask: SetAsk, call: number) => boolean;
-  set?: { same: boolean; odd: number[] };
+  set?: { same: boolean; odd: number[]; why?: string };
   allow?: boolean;
+  /** The panel judge's reason when it fails a panel (by call). */
+  why?: (ask: SetAsk, call: number) => string | undefined;
 }) {
   const prompts: string[] = [];
+  /** Every prompt whole (the retry line is its last line). */
+  const full: string[] = [];
   const judged: string[] = [];
   const logs: Record<string, unknown>[] = [];
   let made = 0;
@@ -195,6 +209,7 @@ function fakes(opts: {
     model: "gpt-image-2.5-sunburst",
     async generate({ prompt, size }) {
       prompts.push(`${size} ${prompt.split("\n")[0]}`);
+      full.push(prompt);
       const bytes = opts.strips[Math.min(made, opts.strips.length - 1)] ?? new Uint8Array();
       made += 1;
       return {
@@ -215,13 +230,16 @@ function fakes(opts: {
     },
     judgePanel: async (ask) => {
       judged.push(ask.key);
-      return { ok: opts.panelOk?.(ask, calls++) ?? true };
+      const call = calls++;
+      const ok = opts.panelOk?.(ask, call) ?? true;
+      const why = ok ? undefined : opts.why?.(ask, call);
+      return { ok, ...(why ? { why } : {}) };
     },
     judgeSet: async () => opts.set,
     ...(opts.allow === undefined ? {} : { allow: () => opts.allow as boolean }),
     log: (e) => logs.push(e),
   };
-  return { deps, prompts, judged, logs, made: () => made };
+  return { deps, prompts, full, judged, logs, made: () => made };
 }
 
 const asks = (n: number): SetAsk[] =>
@@ -291,7 +309,8 @@ describe("the set flow", () => {
     });
     const out = await makePictureSet(asks(2), f.deps);
     expect(out.map((p) => p?.key)).toEqual(["p0", undefined]);
-    expect(f.made()).toBe(2);
+    // The strip, then SOLO_ATTEMPTS solos for the odd panel.
+    expect(f.made()).toBe(3);
   });
   test("3 or 4 panels by default: single pictures, judged alone and as a set, never a strip", async () => {
     const f = fakes({
@@ -331,24 +350,27 @@ describe("the set flow", () => {
       expect(f.logs.filter((l) => l.ev === "set-capped")).toHaveLength(1);
     }
   });
-  test("named things and history are not generated sets (ruling 163)", () => {
-    expect(setIsGenerated(asks(2), "science")).toBe(true);
-    expect(setIsGenerated(asks(2), "history")).toBe(false);
-    expect(
-      setIsGenerated(
-        asks(2).map((a, k) => (k === 0 ? { ...a, named: true } : a)),
-        "science",
-      ),
-    ).toBe(false);
+  test("ruling 210: only a set naming a specific real thing is not generated", () => {
+    expect(setIsGenerated(asks(2), { subject: "science" })).toBe(true);
+    // Historical scenes and processes are generated (in one drawn style: `setLookFor`).
+    expect(setIsGenerated(asks(2), { subject: "history" })).toBe(true);
     expect(
       setIsGenerated(
         [
           { key: "a", index: 1, shows: "The high street in 1900", mustSee: [] },
           { key: "b", index: 1, shows: "The same street in 2000", mustSee: [] },
         ],
-        "geography",
+        { subject: "geography" },
+      ),
+    ).toBe(true);
+    expect(
+      setIsGenerated(
+        asks(2).map((a, k) => (k === 0 ? { ...a, named: true } : a)),
+        { subject: "science" },
       ),
     ).toBe(false);
+    expect(setLookFor({ subject: "history" }, ["A chick"])?.style).toBe("illustration");
+    expect(setLookFor({ subject: "science" }, ["A chick"])).toBeUndefined();
   });
 });
 
@@ -527,5 +549,295 @@ describe("card pictures are made at their slot's shape (TEACH-110 part h)", () =
     expect(new Set(sizes)).toEqual(new Set(["1536x1024"]));
     const strip = await sizesFor(2, 184 / 138, (a) => a.key !== "p1");
     expect(strip).toEqual(["2048x1152", "1536x1024"]);
+  });
+});
+
+describe("solo panels settle one by one (TEACH-251 part h, LAYOUT-SEL Egypt s6)", () => {
+  /** The fakes' generator, throwing on the given calls (0-based). */
+  const throwing = (f: ReturnType<typeof fakes>, bad: (call: number) => unknown) => {
+    let n = 0;
+    const gen = f.deps.generator;
+    const deps: PictureSetDeps = {
+      ...f.deps,
+      generator: {
+        model: gen.model,
+        generate: async (req) => {
+          const e = bad(n++);
+          if (e) throw e;
+          return gen.generate(req);
+        },
+      },
+    };
+    return { deps, calls: () => n };
+  };
+  const pngs = [stripPng([30]), stripPng([50]), stripPng([70]), stripPng([60]), stripPng([40])];
+
+  test("one panel's error keeps the three paid panels; only that panel is made again", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n === 1 ? new Error("UnknownError") : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(5);
+    expect(out.map((p) => p?.set)).toEqual([
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo1",
+      "p0+p1+p2+p3#solo",
+      "p0+p1+p2+p3#solo",
+    ]);
+    expect(f.logs.some((l) => l.ev === "set-error")).toBe(false);
+    expect(f.logs).toContainEqual(expect.objectContaining({ ev: "set-panel-error", key: "p1" }));
+  });
+
+  test("every panel errors: each is made alone once, within the one-retry budget", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n < 4 ? new Error("UnknownError") : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(8);
+    expect(out.map((p) => p?.set)).toEqual([0, 1, 2, 3].map((k) => `p0+p1+p2+p3#solo${k}`));
+  });
+
+  test("a failed panel's retry that errors again gets one more; a third error leaves only that slot empty", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => ([1, 4, 5].includes(n) ? new Error("UnknownError") : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(6);
+    expect(out.map(Boolean)).toEqual([true, false, true, true]);
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({
+        ev: "picture-outcome",
+        key: "p1",
+        outcome: "empty",
+        attempts: 3,
+        reason: "error",
+      }),
+    );
+  });
+
+  test("a panel refused for safety twice gets no solo with the same prompt", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const refused = () =>
+      new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    const t = throwing(f, (n) => (n === 1 || n === 4 ? refused() : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(5);
+    expect(out.map(Boolean)).toEqual([true, false, true, true]);
+  });
+
+  test("a safety-refused strip: each panel gets one solo with the safety line, then stops", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])], set: { same: true, odd: [] } });
+    const refused = () =>
+      new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    const prompts: string[] = [];
+    const deps: PictureSetDeps = {
+      ...f.deps,
+      generator: {
+        model: "m",
+        generate: async (req) => {
+          prompts.push(req.prompt);
+          throw refused();
+        },
+      },
+    };
+    const out = await makePictureSet(asks(2), deps);
+    expect(out).toEqual([undefined, undefined]);
+    // The strip, then one solo per panel (never a second safety retry).
+    expect(prompts).toHaveLength(3);
+    expect(prompts.slice(1).every((p) => p.includes("school textbook"))).toBe(true);
+    expect(
+      f.logs
+        .filter((l) => l.ev === "picture-outcome")
+        .map((l) => [l.outcome, l.attempts, l.reason]),
+    ).toEqual([
+      ["empty", 2, "refused-safety"],
+      ["empty", 2, "refused-safety"],
+    ]);
+  });
+
+  test("a connection that never left counts no attempt", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const unsent = () =>
+      new ImageGenerationError("image generation failed (network)", "network", 0);
+    const t = throwing(f, (n) => (n === 1 ? unsent() : undefined));
+    await makePictureSet(asks(4), t.deps);
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({ ev: "picture-outcome", key: "p1", outcome: "placed", attempts: 1 }),
+    );
+  });
+
+  test("a provider still down after its own retries gets no second solo", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const down = () =>
+      new ImageGenerationError(
+        "image generation failed (503): server-error",
+        "server-error",
+        3,
+        503,
+      );
+    const t = throwing(f, (n) => (n === 1 || n === 4 ? down() : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(t.calls()).toBe(5);
+    expect(out.map(Boolean)).toEqual([true, false, true, true]);
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({ ev: "set-solo-error", key: "p1", reason: "server-error" }),
+    );
+  });
+
+  test("a safety refusal is never retried with the same prompt: the solo carries the refusal's line", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const refused = () =>
+      new ImageGenerationError(
+        "image generation failed (400): refused-safety",
+        "refused-safety",
+        1,
+        400,
+      );
+    const t = throwing(f, (n) => (n === 1 ? refused() : undefined));
+    const out = await makePictureSet(asks(4), t.deps);
+    expect(out.map(Boolean)).toEqual([true, true, true, true]);
+    // The fakes saw calls 0, 2, 3 and then p1's solo (call 1 threw before reaching them).
+    const solo = f.full[3] ?? "";
+    expect(solo).toContain("A growing young chicken");
+    expect(solo.split("\n").at(-1)).toBe(retryLine({ reason: "refused-safety" }));
+    expect(f.full.filter((p) => p.includes("A growing young chicken"))).toHaveLength(1);
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({ ev: "set-panel-error", key: "p1", reason: "refused-safety" }),
+    );
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({
+        ev: "picture-outcome",
+        key: "p1",
+        outcome: "placed",
+        attempts: 2,
+        reason: "refused-safety",
+      }),
+    );
+  });
+
+  test("a budget stop while the panels are made still stops the set", async () => {
+    const f = fakes({ strips: pngs, set: { same: true, odd: [] } });
+    const t = throwing(f, (n) => (n === 1 ? new BudgetExceeded("usd") : undefined));
+    await expect(makePictureSet(asks(4), t.deps)).rejects.toBeInstanceOf(BudgetExceeded);
+  });
+});
+
+describe("a set panel is judged on its subject only (TEACH-251 part h)", () => {
+  test("the writer's stage details are not the panel's must-show", () => {
+    const ask: SetAsk = {
+      key: "seq.1",
+      index: 5,
+      shows: "Canopic jars holding the organs",
+      mustSee: ["the four jars open", "a coffin lid nearby"],
+      aspect: 1,
+    };
+    const b = panelBrief(ask, 1.11);
+    expect(b.mustShow).toEqual(mustShowOf(ask.shows).slice(0, 1));
+    expect(b.request).toBe(ask.shows);
+    expect(JSON.stringify(b)).not.toMatch(/coffin lid|jars open/);
+  });
+});
+
+describe("a frame's second retry carries the reason (picture retries)", () => {
+  test("judge refuses the strip panel and the first solo: the second solo names the latest reason", async () => {
+    const f = fakes({
+      strips: [stripPng([30, 50]), stripPng([60]), stripPng([70])],
+      // judge calls: 0 p0 strip, 1 p1 strip, 2 p1 solo 1, 3 p1 solo 2
+      panelOk: (ask, call) => !(ask.key === "p1" && call < 3),
+      why: (_ask, call) => (call === 1 ? "no beak visible" : "the chick is orange, not yellow"),
+      set: { same: true, odd: [] },
+    });
+    const out = await makePictureSet(asks(2), f.deps);
+    expect(SOLO_ATTEMPTS).toBe(2);
+    expect(f.made()).toBe(3);
+    expect(out.map((p) => p?.set)).toEqual(["p0+p1", "p0+p1#solo1"]);
+    expect(f.full[1]).toContain(retryLine({ reason: "judge", why: "no beak visible." }));
+    expect(f.full[2]).toContain(
+      retryLine({ reason: "judge", why: "the chick is orange, not yellow." }),
+    );
+    expect(f.full[2]).not.toBe(f.full[1]);
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({ ev: "set-solo", key: "p1", try: 2, retry: "judge", ok: true }),
+    );
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({
+        ev: "picture-outcome",
+        kind: "set",
+        key: "p1",
+        outcome: "placed",
+        attempts: 3,
+        reason: "judge",
+      }),
+    );
+    expect(f.logs).toContainEqual(
+      expect.objectContaining({ ev: "picture-outcome", key: "p0", outcome: "placed", attempts: 1 }),
+    );
+    expect(
+      f.logs.find((l) => l.ev === "picture-outcome" && l.key === "p0")?.reason,
+    ).toBeUndefined();
+  });
+
+  test("the sameness judge's odd panel is remade with the set judge's reason", async () => {
+    const f = fakes({
+      strips: [stripPng([30, 50]), stripPng([60])],
+      set: { same: false, odd: [1], why: "panel 2 is a different breed" },
+    });
+    const out = await makePictureSet(asks(2), f.deps);
+    expect(out.map(Boolean)).toEqual([true, true]);
+    expect(f.full[1]?.split("\n").at(-1)).toBe(
+      retryLine({ reason: "odd", why: "panel 2 is a different breed" }),
+    );
+  });
+
+  test("every try refused: the frame is empty and its outcome line says why and how often", async () => {
+    const f = fakes({
+      strips: [stripPng([30, 50]), stripPng([60])],
+      panelOk: (ask) => ask.key !== "p1",
+      set: { same: true, odd: [] },
+    });
+    const out = await makePictureSet(asks(2), f.deps);
+    expect(out.map(Boolean)).toEqual([true, false]);
+    const lines = f.logs.filter((l) => l.ev === "picture-outcome");
+    expect(lines).toEqual([
+      {
+        ev: "picture-outcome",
+        kind: "set",
+        set: "p0+p1",
+        key: "p0",
+        outcome: "placed",
+        attempts: 1,
+      },
+      {
+        ev: "picture-outcome",
+        kind: "set",
+        set: "p0+p1",
+        key: "p1",
+        outcome: "empty",
+        attempts: 3,
+        reason: "judge",
+      },
+    ]);
+    // ADR 0015: no prompt in any log line.
+    expect(JSON.stringify(f.logs)).not.toContain("growing young chicken");
+  });
+
+  test("the daily cap: each frame's outcome is empty, reason capped, no attempts", async () => {
+    const f = fakes({ strips: [stripPng([30, 50])], allow: false });
+    await makePictureSet(asks(2), f.deps);
+    expect(
+      f.logs
+        .filter((l) => l.ev === "picture-outcome")
+        .map((l) => [l.outcome, l.attempts, l.reason]),
+    ).toEqual([
+      ["empty", 0, "capped"],
+      ["empty", 0, "capped"],
+    ]);
   });
 });

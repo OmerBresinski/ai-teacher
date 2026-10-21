@@ -52,6 +52,17 @@ describe("ImageView", () => {
 });
 
 /* TEACH-247 part b: a drawn diagram's builds, one per Next in Present only. */
+describe("ImageView ground", () => {
+  test("a photo sits on the theme's surface; an svg drawing has no ground of its own", () => {
+    const frame = (src: string) =>
+      imgOf({ ...base, src }).parentElement?.parentElement as HTMLElement;
+    expect(frame("https://pics.test/hen.png").style.background).not.toBe("");
+    cleanup();
+    const icon = `data:image/svg+xml;charset=utf-8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg'/>")}`;
+    expect(frame(icon).style.background).toBe("");
+  });
+});
+
 describe("ImageView diagram builds", () => {
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect/><g data-s="1"><circle/></g><g data-s="2"><path/></g><g data-ans="1"><text>9</text></g></svg>';

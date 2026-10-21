@@ -1,0 +1,26 @@
+{
+  "early": {
+    "words": 40,
+    "lines": 7,
+    "comfortWords": 40,
+    "maxWords": 40,
+    "comfortLines": 7,
+    "maxLines": 7
+  },
+  "primary": {
+    "words": 55,
+    "lines": 8,
+    "comfortWords": 55,
+    "maxWords": 55,
+    "comfortLines": 9,
+    "maxLines": 9
+  },
+  "secondary": {
+    "words": 90,
+    "lines": 10,
+    "comfortWords": 65,
+    "maxWords": 95,
+    "comfortLines": 10,
+    "maxLines": 11
+  }
+}

@@ -3,6 +3,11 @@ import { Button } from "@tj/ui";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
+import { LiveSlide, useWritingPicture } from "./live-draft";
+import { useProposals } from "./proposals-context";
+
+/** Keys that scroll the list (a focused scroll region): pressing one is the teacher scrolling. */
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
 
 /** One native scroll surface; inactive slides never mount editing or drag handlers. */
 export function MobileSlideList({
@@ -14,6 +19,7 @@ export function MobileSlideList({
   footer,
   hidden = false,
   followArrivals = false,
+  followId,
 }: {
   slides: readonly Slide[];
   theme: Theme;
@@ -23,6 +29,12 @@ export function MobileSlideList({
   footer?: ReactNode;
   hidden?: boolean;
   followArrivals?: boolean;
+  /**
+   * The slide being written while the editor follows the writing (UX audit J7): its card scrolls
+   * into view as it changes, as the desktop strip and canvas follow it. Absent once the teacher
+   * has taken over (any click or key press ends the follow).
+   */
+  followId?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
   const following = useRef(true);
@@ -40,7 +52,33 @@ export function MobileSlideList({
       initial.current = undefined;
     } else if (followArrivals && following.current) el.scrollTop = el.scrollHeight;
   }, [count, hidden, followArrivals]);
+  // The teacher's own scroll (a wheel, a swipe, momentum after it, a scrolling key) ends this
+  // follow on the list: it is never pulled back to the writing slide under their finger. A later
+  // follow (the editor resumes following the writing) starts afresh.
+  const taken = useRef(false);
+  const wasFollowing = useRef(false);
+  const takeOver = () => {
+    taken.current = true;
+  };
+  useLayoutEffect(() => {
+    const starts = followId !== undefined && !wasFollowing.current;
+    wasFollowing.current = followId !== undefined;
+    if (starts) taken.current = false;
+    const el = ref.current;
+    if (!el || hidden || !followId || taken.current) return;
+    const card = Array.from(el.querySelectorAll<HTMLElement>("[data-mobile-slide]")).find(
+      (node) => node.dataset.mobileSlide === followId,
+    );
+    if (!card) return;
+    const still =
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const top = card.offsetTop - el.offsetTop;
+    if (typeof el.scrollTo === "function")
+      el.scrollTo({ top, behavior: still ? "auto" : "smooth" });
+    else el.scrollTop = top;
+  }, [followId, hidden]);
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the focusable scroll region hears its own scroll gestures and keys (they end the follow); it adds no action.
     <section
       ref={ref}
       hidden={hidden}
@@ -49,6 +87,12 @@ export function MobileSlideList({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the named scroll region must support keyboard scrolling.
       tabIndex={0}
       className="mobile-lesson-list"
+      onWheel={takeOver}
+      onTouchStart={takeOver}
+      onTouchMove={takeOver}
+      onKeyDown={(event) => {
+        if (SCROLL_KEYS.has(event.key)) takeOver();
+      }}
       onScroll={(event) => {
         const el = event.currentTarget;
         following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
@@ -88,14 +132,14 @@ export function MobileSlideList({
             >
               <div inert>
                 <SlideScaler zoom="fit">
-                  <SlideView slide={slide} theme={theme} mode="view" />
+                  <WritingSlideView slide={slide} theme={theme} />
                 </SlideScaler>
               </div>
             </button>
           ) : (
             <div className="mobile-lesson-paper">
               <SlideScaler zoom="fit">
-                <SlideView slide={slide} theme={theme} mode="view" />
+                <WritingSlideView slide={slide} theme={theme} />
               </SlideScaler>
             </div>
           )}
@@ -103,5 +147,29 @@ export function MobileSlideList({
       ))}
       {footer}
     </section>
+  );
+}
+
+/**
+ * A card while the lesson is written: a planned slide as its outline, a new lesson's first two
+ * slides typing out (live-draft `useWritingPicture`), and the slide being written typing in from
+ * its draft as it does on the desktop canvas (Greg's answer 68). `LiveSlide` keeps the last draft
+ * until the saved copy catches up, so a card never flashes an older copy at the hand-over.
+ */
+function WritingSlideView({ slide, theme }: { slide: Slide; theme: Theme }) {
+  const { drafts, reveal, writingSlideIds } = useProposals();
+  const pictured = useWritingPicture(slide, false);
+  if (!drafts) return <SlideView slide={pictured} theme={theme} mode="view" />;
+  // One `LiveSlide` owns the card's outline, the first-slides reveal and the draft, so a draft that
+  // takes over from the reveal carries on from the words already typed, caret and all.
+  return (
+    <LiveSlide
+      store={drafts}
+      slideId={slide.id}
+      slide={slide}
+      writing={writingSlideIds?.has(slide.id) ?? false}
+      reveal={reveal}
+      render={(shown) => <SlideView slide={shown ?? slide} theme={theme} mode="view" />}
+    />
   );
 }

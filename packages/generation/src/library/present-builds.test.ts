@@ -54,7 +54,7 @@ function selectors(svg: string): string[] {
 afterAll(() => endDrawThread());
 
 describe("library models play their builds in Present", () => {
-  test("every shipped model opens on a picture with words, then builds; hist_map falls back", async () => {
+  test("every shipped model opens on a picture with words, then builds", async () => {
     const report: string[] = [];
     const stills: string[] = [];
     const failed: string[] = [];
@@ -73,29 +73,36 @@ describe("library models play their builds in Present", () => {
       );
       if (!d.builds) stills.push(id);
       for (const sel of selectors(d.svg)) structural.push(`${id}: ${sel}`);
-      expect(open.words.length).toBeGreaterThan(0);
-      expect(open.marks).toBeGreaterThan(2);
+      // A model that builds up from a small first mark on purpose (an empty ten frame, a court)
+      // may open on it without words (TEACH-247 part x); every other model opens with words.
+      const m = await loadModel(id);
+      if (m?.opensOnFirstBuild) expect(open.marks).toBeGreaterThan(0);
+      else {
+        expect(open.words.length).toBeGreaterThan(0);
+        expect(open.marks).toBeGreaterThan(2);
+      }
       expect(buildCount(d.svg)).toBe(d.builds);
     }
     console.log(report.join("\n"));
-    // hist_map's coastline is over the slide's byte limit: the drawer draws that slide.
-    expect(failed).toEqual(["hist_map"]);
+    // hist_map's world coastline is thinned to fit the slide's byte limit (TEACH-247 part x).
+    expect(failed).toEqual([]);
     expect(stills).toEqual([]);
     expect(structural).toEqual([]);
   }, 120_000);
 
   test("the stored drawing is the finished picture: marks that come and go are hidden there", async () => {
-    // counting_subitising counts "1, 2, 3 ..." on the dots and takes the numbers away at the end.
-    const d = await renderLibraryModel("counting_subitising", await params("counting_subitising"));
+    // earth_sun_moon's day and night shows words on its way that the finished picture has let go.
+    // (counting_subitising was the example until TEACH-247 part x kept its count with the total.)
+    const d = await renderLibraryModel("earth_sun_moon", await params("earth_sun_moon"));
     expect(d.svg).toContain(' data-f="');
     expect(d.svg).toContain(PASSING_HIDDEN);
     const end = frame(d.svg, d.builds);
-    const opening = frame(d.svg, 0);
-    expect(opening.words).toContain("1");
-    expect(end.words).not.toContain("1");
+    const all = [...Array(d.builds).keys()].map((k) => frame(d.svg, k));
+    const passing = all.findIndex((f) => f.words.some((w) => !end.words.includes(w)));
+    expect(passing).toBeGreaterThanOrEqual(0);
     // Present shows a passing mark in its frames only.
-    expect(svgAtBuild(d.svg, 0, { answer: false, motion: false })).toContain(
-      '.slide [data-f~="0"][data-f][data-f]{opacity:1}',
+    expect(svgAtBuild(d.svg, passing, { answer: false, motion: false })).toContain(
+      `.slide [data-f~="${passing}"][data-f][data-f]{opacity:1}`,
     );
     // Words that never share a frame are not an overlap.
     expect(overlappingWords(d.svg)).toEqual([]);
@@ -106,13 +113,16 @@ describe("library models play their builds in Present", () => {
 
   test("a mark the kit takes away for a build is away in that frame only (number_bonds)", async () => {
     const d = await renderLibraryModel("number_bonds", await params("number_bonds"));
-    // The "Bonds to 5" list takes the stage for one build; the tree steps aside, then returns.
+    // The swap: the parts in their first order step aside for the swap frame only, then return.
+    expect(d.svg).toMatch(/data-x="\d+"/);
+    // number_bonds v2 ends on the "Bonds to 5" list, and the list keeps the bond's words: the last
+    // click still names the whole and the parts the captions talk about.
     const all = [...Array(d.builds + 1).keys()].map((k) => frame(d.svg, k));
     const list = all.findIndex((f) => f.words.some((w) => w.startsWith("Bonds to")));
-    expect(list).toBeGreaterThan(0);
-    expect(all[list]?.words).not.toContain("whole");
-    expect(all[d.builds]?.words).toContain("whole");
-    expect(all[d.builds]?.words.some((w) => w.startsWith("Bonds to"))).toBe(false);
+    expect(list).toBe(d.builds);
+    expect(all[list - 1]?.words).toContain("whole");
+    expect(all[list]?.words).toContain("whole");
+    expect(all[list]?.words.some((w) => /part/.test(w))).toBe(true);
   });
 
   test("no kit class shares a mark with the attribute Present hides it by (column_methods)", async () => {

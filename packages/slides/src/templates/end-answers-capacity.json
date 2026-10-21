@@ -1,0 +1,26 @@
+{
+  "ks1": {
+    "numbers": 19,
+    "phrases": 8,
+    "worked": 8,
+    "true/false + why": 8,
+    "12-word sentences": 5,
+    "20-word sentences": 3
+  },
+  "ks2": {
+    "numbers": 21,
+    "phrases": 10,
+    "worked": 10,
+    "true/false + why": 10,
+    "12-word sentences": 6,
+    "20-word sentences": 4
+  },
+  "ks3": {
+    "numbers": 21,
+    "phrases": 10,
+    "worked": 10,
+    "true/false + why": 10,
+    "12-word sentences": 6,
+    "20-word sentences": 4
+  }
+}

@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { costUsd, createAi, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi, type FakeAi } from "@tj/ai/testing";
 import {
@@ -28,6 +28,7 @@ import {
   scriptedPipelineAi,
 } from "@tj/generation/testing";
 import { NonRetryableError, type ProgressExtra } from "@tj/jobs";
+import { createObservability } from "@tj/observability";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { SOURCE_UNAVAILABLE_MESSAGE } from "../sources";
@@ -145,6 +146,82 @@ describeDb("lesson.plan job", () => {
     expect(h.stages).toContain("plan");
     expect(h.stages).toContain("generate");
   });
+
+  test.each(["refused", "hanging"])(
+    "a PostHog transport that is %s never fails or slows the lesson job (ADR 0041)",
+    async (mode) => {
+      const jobId = newId<JobId>();
+      const lessonId = await briefLesson(jobId);
+      const ai = scriptedPipelineAi();
+      const bodies: string[] = [];
+      // The transport is this stub, never the network. posthog-core prints each failed batch with
+      // console.error (whatever listeners are set), so that output is held here and checked below.
+      const consoleError = spyOn(console, "error").mockImplementation(() => {});
+      // The hanging requests, released when the test ends so none outlives it (no stray timer
+      // printing into a later test file's output).
+      const hanging: Array<(error: Error) => void> = [];
+      const observability = createObservability({
+        apiKey: "phc_test_key",
+        logger: quiet,
+        service: "worker",
+        flushAt: 1,
+        requestTimeoutMs: 60_000,
+        flushTimeoutMs: 100,
+        fetch: async (_url, options) => {
+          const body = options.body as unknown;
+          // A string, or bytes (a Blob or a Uint8Array), gzipped when the header says so.
+          const bytes =
+            typeof body === "string"
+              ? new TextEncoder().encode(body)
+              : body instanceof Blob
+                ? new Uint8Array(await body.arrayBuffer())
+                : new Uint8Array(body as ArrayBuffer);
+          bodies.push(
+            new TextDecoder().decode(
+              options.headers["Content-Encoding"] === "gzip" ? Bun.gunzipSync(bytes) : bytes,
+            ),
+          );
+          if (mode === "refused") throw new Error("stub transport: connection refused");
+          return new Promise((_resolve, reject) => void hanging.push(reject));
+        },
+      });
+      const end = observability.beginJob(jobId, { job: "lesson.plan", workspaceId, lessonId });
+      const h = ctx(jobId, lessonId, { ...depsWith(ai), observability });
+
+      const started = Date.now();
+      let printed: unknown[][] = [];
+      try {
+        await lessonPlanJob(h.ctx);
+        end();
+        await observability.shutdown();
+      } finally {
+        for (const reject of hanging) reject(new Error("stub transport: test over"));
+        await Bun.sleep(20);
+        printed = [...consoleError.mock.calls];
+        consoleError.mockRestore();
+      }
+      // Whatever reached console.error is PostHog's own output (a failed batch, its `[PostHog]`
+      // logger), nothing else.
+      for (const [first] of printed) {
+        expect(String(first)).toMatch(/^(Error while flushing PostHog|\[PostHog\])/);
+      }
+
+      expect(Date.now() - started).toBeLessThan(30_000);
+      const row = await getDocument(ws(), lessonId);
+      expect(row?.generatingJobId).toBeNull();
+      const done = parseLesson(row?.body);
+      expect(done.generation?.stage).toBe("repaired");
+      // The summary was handed to the transport, metadata only.
+      const sent = bodies.join("\n");
+      expect(sent).toContain('"gen_lesson"');
+      expect(sent).toContain('"outcome":"success"');
+      expect(sent).not.toContain(workspaceId);
+      // No lesson content: neither the title nor the brief's topic.
+      expect(done.title.length).toBeGreaterThan(0);
+      expect(sent).not.toContain(done.title);
+      expect(sent).not.toContain(done.brief?.topic ?? "<no topic>");
+    },
+  );
 
   test("stopAfter planned: Plan and Verify only, the stamped checkpoint, the lock released", async () => {
     const jobId = newId<JobId>();

@@ -1661,8 +1661,9 @@ export function render(root, P, ctx) {
         layers.lines,
         X(p.x) + (ux / ul) * cut,
         Y(p.y) + (uy / ul) * cut,
-        X(q.x) - (ux / ul) * cut,
-        Y(q.y) - (uy / ul) * cut,
+        // the head stops clear of the moved corner's dot and its ring (TEACH-75 part x)
+        X(q.x) - (ux / ul) * (cut + 6),
+        Y(q.y) - (uy / ul) * (cut + 6),
         "var(--ink-2)",
         "var(--sw-lead)",
         { draw: kMove, k: 0.7 },

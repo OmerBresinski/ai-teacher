@@ -141,3 +141,74 @@ describe("presentReducer", () => {
     expect(presentReducer(s, { type: "reset", at: 0 }).pillCollapsed).toBe(false);
   });
 });
+
+/*
+ * TEACH-191 part b (UX ruling 240, gold r2 behaviour rules 1-3): Answers slides sit behind the
+ * guard. With "Show answers to class" off the class never reaches them: "next" on the guard stays
+ * put (no blank, no end of show) and says why on the teacher's chrome; the toggle opens them and
+ * resets for every new session.
+ */
+describe("end-of-deck answers behind the guard", () => {
+  // lesson, practice, guard, Answers (1 of 2), Answers (2 of 2)
+  const answersDeck = (): PresentState =>
+    presentReducer(initialPresentState(0), {
+      type: "setDeck",
+      slideIds: ["l", "p", "g", "a1", "a2"],
+      steps: [0, 0, 0, 0, 0],
+      teacherOnly: [false, false, false, true, true],
+    });
+
+  test("next on the guard stays on the guard, holds, and never ends the show", () => {
+    const s = run(
+      answersDeck(),
+      { type: "next" },
+      { type: "next" },
+      { type: "next" },
+      { type: "next" },
+    );
+    expect(s.index).toBe(2);
+    expect(s.ended).toBe(false);
+    expect(s.answersHeld).toBe(true);
+    expect(s.showAnswers).toBe(false);
+    // Back clears the hint first, then moves.
+    expect(run(s, { type: "prev" }).index).toBe(2);
+    expect(run(s, { type: "prev" }).answersHeld).toBe(false);
+  });
+
+  test("jumping (overview, number, End) never lands on an Answers slide while answers are off", () => {
+    expect(run(answersDeck(), { type: "goTo", index: 4 }).index).toBe(0);
+    expect(run(answersDeck(), { type: "last" }).index).toBe(2);
+  });
+
+  test("Show answers to class lets next go guard -> Answers (1 of N) -> ...", () => {
+    const s = run(
+      answersDeck(),
+      { type: "goTo", index: 2 },
+      { type: "setShowAnswers", on: true },
+      { type: "next" },
+      { type: "next" },
+    );
+    expect(s.index).toBe(4);
+    expect(run(s, { type: "next" }).ended).toBe(true);
+  });
+
+  test("turning the toggle off on an Answers slide takes the class back to the guard", () => {
+    const s = run(answersDeck(), { type: "setShowAnswers", on: true }, { type: "goTo", index: 3 });
+    expect(s.index).toBe(3);
+    const off = run(s, { type: "setShowAnswers", on: false });
+    expect(off.index).toBe(2);
+    expect(off.showAnswers).toBe(false);
+  });
+
+  test("the toggle is off for every new session", () => {
+    const s = run(answersDeck(), { type: "setShowAnswers", on: true }, { type: "reset", at: 1 });
+    expect(s.showAnswers).toBe(false);
+    expect(initialPresentState(0).showAnswers).toBe(false);
+  });
+
+  test("a deck without answers is unchanged", () => {
+    const s = run(deck([0, 0]), { type: "next" }, { type: "next" });
+    expect(s.ended).toBe(true);
+    expect(s.answersHeld).toBe(false);
+  });
+});

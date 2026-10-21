@@ -64,7 +64,7 @@ describe("NewDocumentDialog", () => {
       target: { value: "  Water  " },
     });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Playground" }));
+    fireEvent.click(await screen.findByRole("radio", { name: "Playground" }));
     fireEvent.click(screen.getByRole("tab", { name: "Blank" }));
     fireEvent.click(screen.getByRole("button", { name: "Create lesson" }));
 
@@ -81,6 +81,25 @@ describe("NewDocumentDialog", () => {
     );
   });
 
+  it("preselects Paper for a blank lesson (decision 35 B)", async () => {
+    const onCreate = mock();
+    renderDialog(onCreate);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByRole("radio", { name: "Paper" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: "Playground" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create lesson" }));
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ themeId: "paper" })),
+    );
+  });
+
   it("uses an untitled lesson when title is blank", async () => {
     const onCreate = mock();
     renderDialog(onCreate);
@@ -91,15 +110,59 @@ describe("NewDocumentDialog", () => {
     await waitFor(() => expect(onCreate.mock.calls[0]?.[0]?.title).toBe("Untitled lesson"));
   });
 
-  it("filters themes and clears a selection excluded by the filter", () => {
-    renderDialog();
+  it("draws all sixteen themes with the slide renderer, each described by fonts and who it suits", async () => {
+    // happy-dom's observer never reports: this one says every tile is in view as it is observed.
+    const real = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = class {
+      constructor(private cb: IntersectionObserverCallback) {}
+      observe() {
+        this.cb([{ isIntersecting: true } as IntersectionObserverEntry], this as never);
+      }
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof IntersectionObserver;
+    try {
+      renderDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      const radios = await screen.findAllByRole("radio");
+      expect(radios).toHaveLength(16);
+      // Real slides, not swatches: every tile carries the renderer's fluid slide.
+      await waitFor(() =>
+        expect(
+          [...document.querySelectorAll("[data-theme-preview]")].filter((tile) =>
+            tile.querySelector("[data-slide-fluid]"),
+          ),
+        ).toHaveLength(16),
+      );
+      // The cover carries the first step's title and nothing else: no placeholder line.
+      expect(document.body.textContent).not.toContain("Add the class and the date");
+      const treehouse = screen.getByRole("radio", { name: "Treehouse" });
+      expect(treehouse).toHaveAccessibleDescription(
+        /KS2.*Fonts: Figtree and Nunito.*Early learners/,
+      );
+    } finally {
+      globalThis.IntersectionObserver = real;
+    }
+  });
+
+  it("filters themes by who they suit and keeps the chosen theme", async () => {
+    const onCreate = mock();
+    renderDialog(onCreate);
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Playground" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Calm" }));
+    fireEvent.click(await screen.findByRole("radio", { name: "Playground" }));
+    const dark = screen.getByRole("button", { name: /^Dark room/ });
+    fireEvent.click(dark);
 
-    expect(screen.queryByRole("radio", { name: "Playground" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create lesson" })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: "Reading Room" })).toBeVisible();
+    expect(dark).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual([
+      "Slate",
+      "Ember",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Create lesson" }));
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ themeId: "playground" })),
+    );
   });
 });

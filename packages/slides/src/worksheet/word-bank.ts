@@ -1,5 +1,5 @@
 import { fillGapRun, type Id, orderedGaps, type WorksheetBlock } from "@tj/domain/documents";
-import { shuffled } from "../templates/activities";
+import { shuffled } from "../layouts";
 
 /*
  * A word bank must not give the answers away by its order (the block guide's "in mixed order").

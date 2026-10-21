@@ -26,7 +26,7 @@ export const meta = {
   id: "algorithm_grid",
   name: "Algorithm grid",
   kind: "scene",
-  version: 1,
+  version: 2,
   subjects: ["Computing"],
   years: ["Reception", "Y1", "Y2", "Y3", "Y4"],
   teaches:
@@ -567,8 +567,8 @@ export function notes(P) {
 
 /* ------------------------------------------------------------------ render */
 /** A bee seen from above, head first, the same pose interface as the kit robot. No wheels. */
-function bee(p, { x = 0, y = 0, size = 64, dir = "N" } = {}) {
-  const outer = h("g", {}, p);
+function bee(p, { x = 0, y = 0, size = 64, dir = "N", a = {} } = {}) {
+  const outer = h("g", a, p);
   const pose = h("g", {}, outer);
   const body = h("g", { transform: `scale(${size / 64})` }, pose);
   const dark = "var(--hull)";
@@ -840,6 +840,17 @@ export function render(root, P, ctx) {
     return s;
   };
   const restBefore = (k) => (bug && k === bi("rerun") ? good.start : restAt(k));
+  // the start square is named on the mat from the first build (the mat step then has a word, so it is
+  // its own frame before the program arrives)
+  { const below = cy(P.start.row) + cell / 2 + 26, fits = below < GRID.foot - 8; // else just above the square, haloed
+    T(root, cx(P.start.col), fits ? below : cy(P.start.row) - cell / 2 - 8, "Start", "ts-small", { "text-anchor": "middle", fill: "var(--ink-2)", cls: fits ? "strong" : "strong halo" }); }
+  // Present shows each build as a still, so the mover is drawn where each build leaves it: on the start
+  // square first, then one pose per moving build. The animated one is a motion cue only (live).
+  bot.setAttribute("class", `${bot.getAttribute("class") || ""} live`.trim());
+  const stops = [{ s: null, at: good.start, until: ks.length ? ks[0] : null }];
+  ks.forEach((j, q) => stops.push({ s: j, at: moves[j][moves[j].length - 1], until: q + 1 < ks.length ? ks[q + 1] : null }));
+  for (const st of stops)
+    (isBee ? bee : robot)(root, { x: cx(st.at.c), y: cy(st.at.r), size: cell * 0.76, dir: st.at.deg ?? P.start.facing, a: { s: st.s, hide: st.until } });
 
   /* program cards */
   const px = x0 + mw + GAP;
@@ -958,7 +969,7 @@ export function render(root, P, ctx) {
           fill: "var(--ink-2)",
           cls: "strong",
           s: k0,
-          hide: k1,
+          hide: k1 < N ? k1 : null, // the last round's tag stays (no empty extra click)
         }),
         "repeat",
       );
@@ -1077,7 +1088,7 @@ export function render(root, P, ctx) {
           stroke: "color-mix(in oklab,var(--focus) 55%,var(--paper))",
           "stroke-width": "var(--sw-rule)",
           s: k,
-          hide: k + 1,
+          hide: k + 1 < N ? k + 1 : null, // the last instruction run stays lit on the final view
         },
         card,
       );

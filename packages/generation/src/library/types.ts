@@ -18,6 +18,12 @@ export type LibModel = {
   presets: LibPreset[];
   validate: (p: J) => { ok: boolean; refusals: LibRefusal[]; warnings: string[] };
   builds?: (p: J) => { steps: { key: string; caption?: string }[] };
+  /**
+   * The model builds up from a small first mark on purpose (a seed, an empty ten frame, a target
+   * to make): Present opens on its first build instead of the first that spans the picture, so
+   * every caption keeps a frame of its own (TEACH-247 part x).
+   */
+  opensOnFirstBuild?: boolean;
 };
 /** The kit's mounted slide (kit/build.js `mountSlide`), the parts production reads. */
 export type LibStage = {

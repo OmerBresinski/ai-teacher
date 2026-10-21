@@ -118,6 +118,7 @@ export function renderRealCourse(root, P, ctx) {
   const around = [[w => 14, h => -h - 10], [w => 14, h => 10], [w => -w - 14, h => -h - 10], [w => -w - 14, h => 10], [w => -w / 2, h => -h - 18], [w => -w / 2, h => 18],
     [w => 30, h => -h / 2], [w => -w - 30, h => -h / 2], [w => 40, h => -h - 50], [w => -w - 40, h => 40], [w => 60, h => 60], [w => -w - 60, h => -h - 60]];
 
+  const TRIB_AROUND = [[w => -w / 2, h => 14], [w => -w / 2, h => -h - 14], [w => 14, h => 10], [w => 14, h => -h - 10]];
   const S = R.source || { x: main[0][0], y: main[0][1] };
   const srcG = h('g', { s: 0, c: ctx.rc('source', null, 'rc-gone') }, root);
   h('circle', { cx: S.x, cy: S.y, r: 9, fill: 'var(--water)', stroke: 'var(--paper)', 'stroke-width': 3 }, srcG);
@@ -125,7 +126,10 @@ export function renderRealCourse(root, P, ctx) {
 
   tribs.forEach(({ m, i }) => {
     const g = h('g', { s: bi('tributaries'), c: ctx.rc('tributaries', null, 'rc-gone') }, root); const st = m.pts[0];
-    place(g, st[0], st[1], [{ text: P.tributaries[i].name, fill: W0, edit: `tributaries.${i}.name` }], around, 240);
+    // a tributary rises inland: its source gets a dot, and its name sits just above or below that dot
+    // (first choice), so the name never reads as belonging to a nearby coast
+    h('circle', { cx: st[0], cy: st[1], r: 6, fill: 'var(--water)', stroke: 'var(--paper)', 'stroke-width': 2 }, g);
+    place(g, st[0], st[1], [{ text: P.tributaries[i].name, fill: W0, edit: `tributaries.${i}.name` }], TRIB_AROUND.concat(around), 240);
   });
 
   if (P.showMeander) {

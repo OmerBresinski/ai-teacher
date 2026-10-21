@@ -1,4 +1,5 @@
 import {
+  SLIDE_H,
   SLIDE_W,
   type Slide,
   type SlideArt,
@@ -7,10 +8,11 @@ import {
   type ThemeArtLayer,
   type ThemeArtRole,
 } from "@tj/domain/documents";
-import { artOf } from "./art";
+import { artOf, artPlacement, cropArt, groundArt, isGroundArt, mirrorArt } from "./art";
 import { figureGroupOf } from "./figures";
 import { AGENDA_DIVIDER } from "./layouts";
-import { DIAGRAM_NAME } from "./look";
+import { ACCENT_BAR_NAME, DIAGRAM_NAME } from "./look";
+import { surfacesOf } from "./themes/surfaces";
 
 /*
  * Theme art per slide role (UX ruling 107). The title slide wears the theme's fullest art, the
@@ -37,8 +39,11 @@ const FULL_SHARE = 0.62;
  */
 function pictureBoxes(slide: Slide): ArtBox[] {
   const figure = figureGroupOf(slide);
+  const marks = artPlacement(slide.kind).marks ?? [];
   return slide.elements.filter(
-    (e) => (e.type === "image" && e.name !== DIAGRAM_NAME) || e === figure,
+    (e) =>
+      (e.type === "image" && e.name !== DIAGRAM_NAME && !marks.includes(e.name ?? "")) ||
+      e === figure,
   );
 }
 
@@ -48,6 +53,10 @@ function pictureBoxes(slide: Slide): ArtBox[] {
  * so the motif follows it).
  */
 export function slideArtRole(slide: Slide): { role: ThemeArtRole; side?: ArtSide } {
+  // Decision 41 A: a slide type whose approved slides wear the content art keeps it (`art.ts`).
+  if (slide.kind !== "title" && artPlacement(slide.kind).role === "content") {
+    return { role: "content" };
+  }
   const boxes = pictureBoxes(slide);
   if (boxes.length > 0 || PICTURE_KINDS.has(slide.kind)) {
     if (boxes.length === 0) return { role: "picture", side: "full" };
@@ -72,7 +81,7 @@ export function themeArt(
   if (side === "full" && role === "picture") return [];
   const layers = artOf(theme)?.[role] ?? [];
   if (role !== "picture" || side !== "right") return layers;
-  return layers.map((l) => ({ ...l, image: l.flipped ?? l.image, x: SLIDE_W - l.x - l.w }));
+  return layers.map((l) => mirrorArt(l, SLIDE_W));
 }
 
 const meets = (a: ArtBox, b: ArtBox) =>
@@ -86,7 +95,7 @@ export function elementBoxes(slide: Slide): ArtBox[] {
 /** The layers of `art` that meet an element on the slide. */
 export function artCollisions(art: ThemeArtLayer[], slide: Slide): ThemeArtLayer[] {
   const boxes = elementBoxes(slide);
-  return art.filter((l) => boxes.some((b) => meets(l, b)));
+  return art.filter((l) => !isGroundArt(l) && boxes.some((b) => meets(l, b)));
 }
 
 /** The role a slide's art choice asks for, or null for the plain ground. */
@@ -104,13 +113,51 @@ export function slideArtVariant(slide: Slide): ThemeArtRole | "plain" {
   return requested(slide)?.role ?? "plain";
 }
 
-/** The layers a slide draws: its chosen role's art, less any layer that would meet an element. */
+/** The layers a slide draws: its chosen role's art, less any layer that would meet an element, then the ground texture. */
 export function slideArtLayers(theme: Theme, slide: Slide): ThemeArtLayer[] {
   const want = requested(slide);
   if (!want) return [];
   const art = themeArt(theme, want.role, want.side);
   const hit = new Set(artCollisions(art, slide));
-  return art.filter((l) => !hit.has(l));
+  // Decision 41 A: on a slide type that crops (`ART_PLACEMENT`), the content art a panel meets
+  // keeps the rows the panel leaves showing, as the approved slides draw it behind the panel.
+  const crop = want.role === "content" && artPlacement(slide.kind, theme.id).fit === "crop";
+  const boxes = elementBoxes(slide);
+  const drawn = art.flatMap((l) => {
+    if (!hit.has(l)) return [l];
+    const cut = crop ? clearBand(l, boxes) : null;
+    return cut ? [cut] : [];
+  });
+  // The theme's ground texture (Geometric's dot grid) goes last, under the art: it is the ground,
+  // drawn under every element, so it never counts as a collision.
+  const ground = groundArt(theme, want.role);
+  return [...drawn, ...(ground ? [ground] : [])];
+}
+
+/** Room kept between cut art and the panel that stops it, in slide points. */
+const CROP_GAP = 6;
+/** A cut layer keeps at least this share of its height on the slide, or it is left out. */
+const CROP_MIN = 0.35;
+/** The safe area's foot: a layer reaching below it stands on the slide's foot. */
+const FOOT = 498;
+
+/**
+ * The part of a layer that a panel leaves showing: a layer hanging from the top edge keeps the
+ * rows above the first element it meets, one standing on the foot the rows below the last. Null
+ * when what is left is under `CROP_MIN` of its visible height, or would still meet an element.
+ */
+function clearBand(l: ThemeArtLayer, boxes: ArtBox[]): ThemeArtLayer | null {
+  const met = boxes.filter((b) => meets(l, b));
+  const top = l.y <= 0;
+  const foot = l.y + l.h >= FOOT;
+  if (!met.length || top === foot) return null;
+  const cut = top
+    ? cropArt(l, l.y, Math.min(...met.map((b) => b.y)) - CROP_GAP)
+    : cropArt(l, Math.max(...met.map((b) => b.y + b.h)) + CROP_GAP, l.y + l.h);
+  if (!cut) return null;
+  const shown = (r: ArtBox) => Math.min(r.y + r.h, SLIDE_H) - Math.max(r.y, 0);
+  if (shown(cut) < CROP_MIN * shown(l)) return null;
+  return boxes.some((b) => meets(cut, b)) ? null : cut;
 }
 
 /** One layer as a CSS `background` layer. */
@@ -149,4 +196,21 @@ export function artChoices(theme: Theme, slide: Slide): SlideArt[] {
     return art.length > 0 && art !== autoArt && artCollisions(art, slide).length === 0;
   });
   return ["auto", ...roles, "plain"];
+}
+
+/**
+ * The theme's accent strip along the slide's foot (round 3 themes3.css `.footbar`: 14px at 1440,
+ * the accent, over everything, on every slide but the cover), or null: a theme without one, the
+ * cover, or a stored slide that already carries the look's own accent bar element. It is chrome,
+ * not an element, so a re-theme adds or removes it with no edit to the slide. The editor renderer
+ * and the PPTX export both draw it from here.
+ */
+export function footStrip(
+  theme: Theme,
+  slide: Pick<Slide, "kind" | "elements">,
+): { x: number; y: number; w: number; h: number; fill: string } | null {
+  const h = surfacesOf(theme).marks.footBar;
+  if (h <= 0 || slide.kind === "title") return null;
+  if (slide.elements.some((e) => e.name === ACCENT_BAR_NAME)) return null;
+  return { x: 0, y: SLIDE_H - h, w: SLIDE_W, h, fill: theme.colors.accent };
 }

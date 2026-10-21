@@ -96,6 +96,26 @@ test("concurrent structured calls reserve before dispatch and expose BudgetExcee
   expect(budget.totals().calls).toBe(1);
 });
 
+test("a streamed call refused by the budget is still BudgetExceeded (TEACH-202 part g)", async () => {
+  // Guards the stream path (`onPartial`): the class must survive so the job fails for good instead
+  // of retrying a call it cannot afford. The writer's own stream call is covered in the worker.
+  const ai = createFakeAi({ text: JSON.stringify({ answer: "unused" }) });
+  await expect(
+    callStructured({
+      deps: deps(ai, { budget: createBudget({ capUsd: 0, capTokens: 100_000 }) }),
+      stage: "plan",
+      cls: "standard",
+      effort: "medium",
+      prompt,
+      input: "hi",
+      schema,
+      maxOutputTokens: 100,
+      onPartial: () => {},
+    }),
+  ).rejects.toBeInstanceOf(BudgetExceeded);
+  expect(ai.calls).toHaveLength(0);
+});
+
 test("zero budget dispatches no provider call", async () => {
   const ai = createFakeAi({ text: JSON.stringify({ answer: "unused" }) });
   await expect(

@@ -20,7 +20,8 @@ import {
 } from "./activities";
 import { writerBundle } from "./bundle";
 import { checkSlide } from "./checks";
-import { type Brief, promptStage } from "./fixes";
+import { ANSWER_FIRST, PINNED_LINES } from "./contract";
+import { answerFirstMain, type Brief, promptStage } from "./fixes";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
 import { repairable } from "./guards";
 import {
@@ -112,7 +113,7 @@ describe("schema", () => {
 
   test("the fixture lesson is a valid strict answer to the KS1 schema", () => {
     const s = withActivities(writerSchema("KS1", fixture.brief.slides), "KS1");
-    expect(validate(s, fixture.main)).toEqual([]);
+    expect(validate(s, answerFirstMain(fixture.main))).toEqual([]);
     const tooMany = {
       ...writerActivity("pair"),
       cards: Array(5).fill({ label: "a", picture: "b" }),
@@ -341,7 +342,7 @@ describe("ruling 163: the card's subject reaches the director", () => {
             cards: Array.from({ length: 4 }, (_, k) => ({ label: `c${k}`, picture })),
           },
           "KS2",
-          subject,
+          { subject },
         ).slide.cards as { picture: { subject: string } }[]
       ).map((c) => c.picture.subject);
     expect(pics("History", "a ship")).toEqual(Array(4).fill("named"));
@@ -357,7 +358,7 @@ describe("ruling 163: the card's subject reaches the director", () => {
         ],
       },
       "KS2",
-      "Science",
+      { subject: "Science" },
     ).slide;
     const asks = visualsOf(s, 3, ctxFor());
     expect(asks.map((a) => a.type === "photo" && a.named)).toEqual([true, true, false]);
@@ -515,24 +516,34 @@ describe("the writer stage on a fake model", () => {
    */
   // Repinned for TEACH-110 part k: the contract lines (contract.ts) and the teaches enum.
   // Schema repinned for TEACH-110 part m: table rows capped at 32, fraction shapes up to 6 (writerCaps).
+  /**
+   * [system, schema] sha256 as master sent them before answer first (ANSWER-BUG.md), then as
+   * sent now. The system text differs only by the hinge line: swapping it back gives master's.
+   */
+  // Schema repinned for TEACH-75 part u: the items row is live (no off switch).
+  // Schema hashes include the required `close` field (TEACH-110 part ab); the system text is unchanged.
+  // KS1 schema repinned for TEACH-68 part b: the items-row lead is measured (was 2360cda4).
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
-      "6c2aef8e7bb0b37d3629f418f4da12d9d0953ae3aaab4e2117417514bbae0d4c",
+      "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
+      // TEACH-215 part c: KS1 items-row lead 30 -> 26 chars on the round 5 themes (was 91d913cd).
+      "53148fca5b7a31d9da98c27b530d8f81ef92f12eaa758ec0d780d4e2a97e9376",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
-      "12f84564cb1219e3a826034d77c76b298a42a0a4576ab944535df3bfda4c40c1",
+      "039d00abcdf890722c81fe1fe49497627837af90433f5ae941bf96e2b6503d9b",
+      "c4b100f07cacac1e0d4e90e071693b36e8c71d92730e88ef38b9410cced89d69",
     ],
     ks4: [
       "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
-      "32ef0397c356a16045d5a9490d7a999884d1f0a3a4dcd959e18748ba14c38ea6",
+      "3356aab2aa28b79288afc5925c853ed3302d92d06f4e361061508a28072fd430",
+      "f21aebc3ac2c4f56f5337310eb537259ba16eb9a1502b4917a2413652c0d8acd",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");
-
   test("activities off: the writer is sent master's system text and schema, byte for byte", async () => {
-    for (const [keyStage, [system, schema]] of Object.entries(MASTER)) {
+    for (const [keyStage, [before, system, schema]] of Object.entries(MASTER)) {
       const seen: { writer?: WriterReq; chats: ChatReq[] } = { chats: [] };
       const out = await runWriter({
         brief: { ...brief, keyStage, slides: { min: 9, max: 12 } } as Brief,
@@ -542,7 +553,9 @@ describe("the writer stage on a fake model", () => {
         activities: false,
       });
       expect(out.slides.length).toBeGreaterThan(2);
-      expect(sha(seen.writer?.system ?? "")).toBe(system);
+      const sent = seen.writer?.system ?? "";
+      expect(sha(sent)).toBe(system);
+      expect(sha(sent.split(ANSWER_FIRST.hingeKey).join(PINNED_LINES.hingeKey))).toBe(before);
       expect(sha(JSON.stringify(seen.writer?.schema))).toBe(schema);
     }
   });

@@ -13,7 +13,7 @@ import { organism, ORGANISM_SIZE } from '../kit/batch-D.js';
 import { ICONS } from './climate_biomes/life.js';
 
 export const meta = {
-  id: 'climate_biomes', name: 'Climate zones and biomes', kind: 'scene', version: 1,
+  id: 'climate_biomes', name: 'Climate zones and biomes', kind: 'scene', version: 2,
   subjects: ['Geography', 'Science'],
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
   teaches: 'Why places near the equator are hot and places near the poles are cold, the climate zones, and the plants and animals of one biome.',
@@ -319,6 +319,12 @@ export function render(root, P, ctx) {
   }
   band(90, POLAR, C.cap, night ? .4 : .62, { s: coldK, cls: 'rise' }); band(-POLAR, -90, C.cap, night ? .4 : .62, { s: coldK, cls: 'rise' });
   if (midK != null) { band(POLAR, TROPIC, 'var(--life)', .14, { s: midK }); band(-TROPIC, -POLAR, 'var(--life)', .14, { s: midK }); }
+  // hot and cold only: the bands in between get their own mild green once both ends are shown, so the
+  // UK does not sit in a band that reads as cold sea
+  const mildK = midK == null && P.view === 'hot-cold' ? coldK : null;
+  if (mildK != null) { band(POLAR, TROPIC, 'var(--life)', .16, { s: mildK }); band(-TROPIC, -POLAR, 'var(--life)', .16, { s: mildK }); }
+  // with a close-up the map is small: it is named from the first build, so that build is a frame of its own
+  if (split) T(h('g', { hide: offAtFocus }, root), mp.x, mp.y + mp.h + 30, 'Map of the world', 'ts-small', { fill: 'var(--ink-2)' });
   const dashed = (la, k) => h('line', { x1: mp.x, x2: mp.x + mp.w, y1: Y(la), y2: Y(la), stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-hair)', 'stroke-dasharray': '6 6', s: k }, clipG);
   for (const la of [TROPIC, -TROPIC]) dashed(la, hotK); for (const la of [POLAR, -POLAR]) dashed(la, coldK);
   h('rect', { x: mp.x, y: mp.y, width: mp.w, height: mp.h, fill: 'none', stroke: 'var(--rule)', 'stroke-width': 'var(--sw-rule)' }, mapG);
@@ -356,6 +362,8 @@ export function render(root, P, ctx) {
     { key: 'cold', la0: 90, la1: POLAR, fill: 'var(--s-cool)', tcol: 'var(--s-cool-text)', text: M.L.cold, edit: 'text.label:cold' },
     { key: 'cold', la0: -POLAR, la1: -90, fill: 'var(--s-cool)', tcol: 'var(--s-cool-text)', text: M.L.cold, edit: 'text.label:cold' },
   ];
+  if (mildK != null) items.push({ key: 'cold', la0: POLAR, la1: TROPIC, fill: 'var(--life)', tcol: 'var(--ink)', text: 'In between' },
+    { key: 'cold', la0: -TROPIC, la1: -POLAR, fill: 'var(--life)', tcol: 'var(--ink)', text: 'In between' });
   if (midK != null) items.push({ key: 'mid', la0: POLAR, la1: TROPIC, fill: 'var(--life)', tcol: 'var(--ink)', text: M.L.mid, edit: 'text.label:temperate' },
     { key: 'mid', la0: -TROPIC, la1: -POLAR, fill: 'var(--life)', tcol: 'var(--ink)', text: M.L.mid, edit: 'text.label:temperate' });
   const placed = [];

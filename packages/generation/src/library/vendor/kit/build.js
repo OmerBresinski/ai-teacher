@@ -167,6 +167,8 @@ export function mountSlide(container, model, params, opts = {}) {
       uid: "m" + ++uidN,
       N,
       b,
+      /** a numeric token (px) read from the slide's theme, e.g. a stroke width for the arrow primitive */
+      tok,
       tk: {
         head: tok("--head"),
         pillH: tok("--pill-h"),

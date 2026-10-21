@@ -12,18 +12,29 @@ export {
   embedCostUsd,
   expectedImageCostUsd,
   familyOf,
+  IMAGE_ATTEMPT_TIMEOUT_MS,
+  IMAGE_BACKOFF_MS,
   IMAGE_MODEL,
   IMAGE_QUALITY,
+  IMAGE_RETRIES,
+  IMAGE_RETRY_BUDGET_MS,
   IMAGE_TERMS,
+  type ImageFailReason,
+  ImageGenerationError,
   type ImageGenerator,
   type ImageSize,
   imageCostUsd,
+  imageFailReason,
   numbersAgree,
   numbersIn,
   pickReuse,
   REUSE_THRESHOLD,
+  type RetryHint,
+  requestsSent,
   requestText,
+  retryLine,
   sizeForAspect,
+  withRetryLine,
 } from "./bank";
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
 export {
@@ -50,6 +61,7 @@ export {
   rankCommons,
 } from "./commons";
 export { type CountArray, countArraySvg } from "./count-array";
+export { extendRaster } from "./extend";
 export * from "./panels";
 export {
   type CreatePexelsClientOptions,
@@ -68,6 +80,14 @@ export {
   PEXELS_PER_SECOND,
   type PexelsLimitOptions,
 } from "./pexels-limit";
+export {
+  detectSubjectBox,
+  type EdgePlainness,
+  edgePlainness,
+  type PictureFactsFound,
+  pictureFacts,
+  type SubjectBox,
+} from "./picture-facts";
 export { anchorQueries, normaliseQuery, queryCandidates } from "./query";
 export {
   FETCH_TIMEOUT_MS,

@@ -54,6 +54,7 @@ export interface BudgetReport {
 }
 
 export const DEFAULT_MANIFEST = path.join("apps", "web", "dist", ".vite", "manifest.json");
+// 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
 export const DEFAULT_BUDGET_KB = 250;
 export const DEFAULT_WARN_KB = 200;
 export const SKIP_MESSAGE =
@@ -141,14 +142,25 @@ export const BUNDLE_CHUNK_BUDGETS: readonly ChunkBudget[] = [
   // now draw `presentedSlide` / `withoutDiagramSlot`, which relays an open slot's words with the
   // look and fit engine from `@tj/slides`). Measured: editor 254.1, present 132.7, view 125.7,
   // print 92.9, worksheet editor 198.6 KB.
-  { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 305 },
-  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 160 },
-  { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 151 },
+  // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
+  // 17 Oct 2026: editor 315→410 (about 30% headroom; Greg 17 Oct: raise editor budget when needed).
+  // Theme marks and surfaces (TEACH-215 part c): master 310.4 KB, this branch 323.8 KB.
+  { name: "lesson-editor", match: /src\/routes\/lesson-editor\.page\.tsx$/, budgetKb: 410 },
+  // 16 Oct 2026: present 160→210 (about 30% headroom, Greg 15 Oct standing rule)
+  { name: "lesson-present", match: /src\/routes\/lesson-present\.page\.tsx$/, budgetKb: 210 },
+  // Re-pinned 2026-10-15: Paper theme font and age-size tables (TEACH-152 part b), about 2.5 KB; approved by Greg
+  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
+  { name: "lesson-view", match: /src\/routes\/lesson-viewer\.page\.tsx$/, budgetKb: 200 },
   // Re-pinned 2026-10-09 at measured + 20% (TEACH-101 part b: print draws the revealed state of
   // card-choice and sequence activities). Measured: print 112.7 KB.
-  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 115 },
-  { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 239 },
-  { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 36 },
+  // 15 Oct 2026: print 118→125, editor 305→315 (Greg), headroom for rich text, arrows and the B layout wave (TEACH-113 part b).
+  // 16 Oct 2026: print 125→160 (about 30% headroom, Greg 15 Oct standing rule): measured 125.5 KB with the wave C layouts.
+  { name: "lesson-print", match: /src\/routes\/lesson-print\.page\.tsx$/, budgetKb: 160 },
+  // 17 Oct 2026: worksheet editor 239→310 (about 30% headroom; Greg 17 Oct: raise editor budget
+  // when needed). Theme marks and surfaces (TEACH-215 part c): master 232.7 KB, this branch 246.0 KB.
+  { name: "worksheet-editor", match: /src\/routes\/worksheet-editor\.page\.tsx$/, budgetKb: 310 },
+  // 15 Oct 2026: view 153→200, worksheet-print 38→50 (about 30% headroom) (Greg)
+  { name: "worksheet-print", match: /src\/routes\/worksheet-print\.page\.tsx$/, budgetKb: 50 },
 ];
 
 /**

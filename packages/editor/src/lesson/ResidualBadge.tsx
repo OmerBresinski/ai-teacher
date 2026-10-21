@@ -11,6 +11,7 @@ import {
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useLesson } from "./document-context";
+import { useProposals } from "./proposals-context";
 import { thingsToCheck, useResidualFindings } from "./residual-findings";
 import { useSessionActions } from "./use-editor-session";
 
@@ -18,7 +19,8 @@ import { useSessionActions } from "./use-editor-session";
  * The canvas footer's residual entry (ADR 0025 §12): "N things to check" opens a popover listing
  * every finding's message, with "Go to slide" where the finding points at one. A `budget` finding
  * — generation stopped at the cap — is listed first and set apart, so the teacher sees why the
- * lesson is shorter than planned before any smaller point. Renders nothing when there is nothing.
+ * lesson is shorter than planned before any smaller point. Renders nothing when there is nothing, or while the generating job is
+ * still writing the deck.
  */
 
 export function ResidualBadge({ className }: { className?: string }) {
@@ -26,7 +28,10 @@ export function ResidualBadge({ className }: { className?: string }) {
   const lesson = useLesson();
   const { setActiveSlide } = useSessionActions();
   const [open, setOpen] = useState(false);
-  if (findings.length === 0) return null;
+  // A deck still being written is not checked yet: counts on half a lesson rise and fall for
+  // nothing (UX audit J9). The entry arrives once, at Ready, growing leftwards from the zoom row.
+  const { writingSlideIds } = useProposals();
+  if (findings.length === 0 || writingSlideIds !== undefined) return null;
 
   const budget = findings.filter((f) => f.check === "budget");
   const rest = findings.filter((f) => f.check !== "budget");

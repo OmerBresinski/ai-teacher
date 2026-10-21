@@ -4,6 +4,7 @@
  * `useDocumentHistory` to get undo/redo and transactions over the TanStack Query cache.
  */
 
+export * from "./answers";
 export * from "./arrange";
 export {
   findElement,
@@ -14,6 +15,7 @@ export {
 } from "./core";
 export * from "./elements";
 export * from "./facts";
+export * from "./layout";
 export * from "./lesson";
 export * from "./question";
 export * from "./slides";

@@ -1,4 +1,5 @@
 import type { Figure, TemplateInput } from "./index";
+import { registeredDefs } from "./registered";
 
 /**
  * One filled sample per writer template (a Year 1 life-cycles lesson, short enough for KS1's
@@ -109,7 +110,9 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
         "What does a tadpole grow into?",
         "Name one animal whose young change shape.",
       ],
+      // TEACH-101 part g: with its answers, the question set is the quick check.
       instruction: "Answer in full sentences.",
+      answers: ["A lamb", "A frog", "A butterfly"],
     },
     {
       template: "discussion",
@@ -137,5 +140,109 @@ export function templateSamples(photo: (label: string) => string = () => ""): Te
       formula: "1/4 of 20 = 20 ÷ 4 = 5",
       points: ["Divide by the denominator.", "Multiply by the numerator."],
     },
+    {
+      template: "panel-list",
+      heading: "Baby animals",
+      rows: [
+        { name: "Chick", text: "A young hen.", icon: "bird" },
+        { name: "Puppy", text: "A young dog.", icon: "dog" },
+        { name: "Kitten", text: "A young cat.", icon: "cat" },
+      ],
+      panel: { picture: ph("a hen with her chicks") },
+    },
+    {
+      template: "split-compare",
+      heading: "Hen and chick",
+      accentWord: "chick",
+      sides: [
+        { title: "Hen", text: "A hen is big.", picture: ph("a hen") },
+        { title: "Chick", text: "A chick is small.", picture: ph("a chick") },
+      ],
+    },
+    {
+      template: "items-row",
+      heading: "Three parts work together",
+      accentWord: "work together",
+      items: [
+        { name: "Heart", text: "A muscle that pumps blood.", icon: "heart" },
+        { name: "Blood", text: "Carries oxygen and nutrients.", icon: "blood" },
+        { name: "Blood vessels", text: "Tubes that blood travels through.", icon: "vessels" },
+      ],
+    },
+    // TEACH-17 part b (C1): the worked example.
+    {
+      template: "worked",
+      heading: "Solve 3x + 5 = 20",
+      lines: [
+        { eq: "3x + 5 = 20" },
+        { move: "Subtract 5 from both sides", eq: "3x = 15" },
+        { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+      ],
+      check: "3 × *5* + 5 = 20",
+    },
+    // TEACH-75 part ac (C4).
+    {
+      template: "stages",
+      heading: "Where a river goes",
+      stages: [
+        { name: "Starts", line: "Up in the hills.", icon: "mountain-spring" },
+        { name: "Falls", line: "Over the rocks.", icon: "waterfall" },
+        { name: "Ends", line: "In the sea.", icon: "estuary" },
+      ],
+    },
+    // TEACH-239 part b (C7): the figure slide (a library model's drawing, its caption).
+    {
+      template: "figure",
+      heading: "The water cycle in a town",
+      accentWord: "water cycle",
+      lead: "The same water goes round and round.",
+      figure: {
+        drawn: {
+          src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" class="slide tk theme-primary" viewBox="0 0 1280 564"><rect width="1280" height="564"/></svg>')}`,
+          aspect: 2.27,
+          alt: "The water cycle",
+          bare: true,
+        },
+      },
+    },
+    // TEACH-75 part ab (C2): a source with notes pinned to their lines.
+    {
+      template: "source",
+      heading: "",
+      form: "prose",
+      from: "from The Wind in the Willows, Kenneth Grahame (1908)",
+      extract:
+        "The Mole had been working very hard all the morning, spring-cleaning his little home. Spring was moving in the air above and in the earth below and around him.",
+      notes: [
+        { anchor: "working very hard", label: "busy", text: "He never stops." },
+        { anchor: "moving in the air", label: "spring", text: "It feels alive." },
+      ],
+    },
+    // TEACH-75 part ad (C5): reasons.
+    {
+      template: "reasons",
+      heading: "Why do plants need water?",
+      reasons: [
+        { head: "To stand up", line: "Without water, a plant droops.", icon: "without-water" },
+        { head: "To grow", line: "Water helps a plant grow.", icon: "growth-over-time" },
+        { head: "To make food", line: "Leaves use water.", icon: "leaf" },
+      ],
+    },
+    // TEACH-75 part ag (G1).
+    {
+      template: "myth",
+      heading: "How things fall",
+      myth: {
+        claim: "Heavier objects fall faster.",
+        fact: "Without air resistance, all objects fall at the same rate.",
+        factEm: "the same rate.",
+        proof: {
+          line: "On the Moon, a hammer and a feather **land together.**",
+          icons: ["hammer", "bird-feather"],
+        },
+      },
+    },
+    // TEACH-106 part b: the registered layouts' samples, after the hand-kept ones.
+    ...registeredDefs().flatMap(([, d]) => d.samples?.(photo) ?? []),
   ];
 }

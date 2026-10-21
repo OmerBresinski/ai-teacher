@@ -13,6 +13,12 @@ export {
   withGenerationBudget,
 } from "./budget-middleware";
 export {
+  type CallCapture,
+  type CapturedCall,
+  createCaptureMiddleware,
+  withCallCapture,
+} from "./capture-middleware";
+export {
   createAi,
   DEFAULT_MODEL_IDS,
   DEFAULT_REGION,
@@ -28,6 +34,7 @@ export { costUsd, isPriced, type ModelPrice, PRICES, type TokenUsage } from "./p
 export type { FakeCall } from "./testing";
 export type {
   AiCallContext,
+  AiCallRecord,
   AiEnv,
   ConfiguredAi,
   CreateAiOptions,

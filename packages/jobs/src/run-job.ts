@@ -4,6 +4,7 @@ import {
   JOB_EVENTS_ONE_TERMINAL_PER_JOB_INDEX,
   type JobEventRow,
   notifyJobEvent,
+  pruneEphemeralJobEvents,
 } from "@tj/db";
 import {
   JOB_FAILURE_MESSAGE,
@@ -20,6 +21,7 @@ import {
 import type { JobResult, JobWithMetadata } from "pg-boss";
 import type { Logger } from "pino";
 import { z } from "zod";
+import { createDraftEmitter, DRAFT_MIN_INTERVAL_MS } from "./drafts";
 import { emitJobEvent, nowIso } from "./events";
 import { createProgressEmitter, PROGRESS_MIN_INTERVAL_MS } from "./progress";
 import {
@@ -53,8 +55,46 @@ export interface RunJobOptions<D = unknown> {
   cancelPollIntervalMs?: number;
   /** Test seam. */
   progressMinIntervalMs?: number;
+  /** Test seam. */
+  draftMinIntervalMs?: number;
   /** Test seam: replaces `emitJobEvent` (e.g. to persist a terminal row and then fail the notify). */
   emit?: typeof emitJobEvent;
+  /**
+   * Told about every failed attempt (ADR 0041: the worker's error tracking): a handler error,
+   * retried or terminal, or an infrastructure failure. Not called for a cancel or a shutdown
+   * abort. Gets the raw error, so it must not log or send its message; a throw here is logged.
+   */
+  onFailure?: (failure: JobFailureReport) => void;
+}
+
+/** What `RunJobOptions.onFailure` receives. */
+export interface JobFailureReport {
+  error: unknown;
+  job: JobName;
+  /** Absent when the envelope did not parse (an infrastructure failure before it). */
+  jobId?: string;
+  workspaceId?: string;
+  /** pg-boss `retryCount` of this attempt (0 for the first). */
+  attempt: number;
+  /** pg-boss will run the job again. */
+  willRetry: boolean;
+  /** Which path: the handler threw, or event persistence or a pre-run step did. */
+  kind: "handler" | "infrastructure";
+}
+
+function reportFailure<D>(opts: RunJobOptions<D>, failure: JobFailureReport): void {
+  if (!opts.onFailure) return;
+  try {
+    opts.onFailure(failure);
+  } catch (err) {
+    opts.logger.warn({ err: safeError(err), job: failure.job }, "job failure reporter failed");
+  }
+}
+
+/** The envelope's ids, read without trusting the payload (for a failure report). */
+function envelopeIds(data: unknown): { jobId?: string; workspaceId?: string } {
+  const parsed = JobDataEnvelope.safeParse(data);
+  return parsed.success ? { jobId: parsed.data.jobId, workspaceId: parsed.data.workspaceId } : {};
 }
 
 /** What `runJob` decided; also the pg-boss `perJobResults` disposition for the job. */
@@ -135,8 +175,9 @@ export async function runJob<N extends JobName, D = unknown>(
   bossJob: JobWithMetadata<unknown>,
   opts: RunJobOptions<D>,
 ): Promise<RunJobOutcome> {
+  const afterSettle: (() => Promise<void>)[] = [];
   try {
-    return await runJobAttempt(ctx, name, registry, bossJob, opts);
+    return await runJobAttempt(ctx, name, registry, bossJob, opts, afterSettle);
   } catch (error) {
     // Event persistence/notification and pre-run failures also escape to pg-boss. Its error
     // output serializer must never see SQL parameters, provider bodies or nested causes.
@@ -144,7 +185,25 @@ export async function runJob<N extends JobName, D = unknown>(
       { err: safeError(error), job: name, bossJobId: bossJob.id },
       "job infrastructure failed",
     );
+    reportFailure(opts, {
+      error,
+      job: name,
+      ...envelopeIds(bossJob.data),
+      attempt: bossJob.retryCount,
+      willRetry: bossJob.retryCount < bossJob.retryLimit,
+      kind: "infrastructure",
+    });
     throw new Error(JOB_FAILURE_MESSAGE);
+  } finally {
+    // After the terminal event, never before it (TEACH-202 part j): see `JobContext.afterSettle`.
+    for (const hook of afterSettle) {
+      await hook().catch((err: unknown) =>
+        opts.logger.error(
+          { err: safeError(err), job: name, bossJobId: bossJob.id },
+          "after-settle hook failed",
+        ),
+      );
+    }
   }
 }
 
@@ -154,6 +213,7 @@ async function runJobAttempt<N extends JobName, D = unknown>(
   registry: JobRegistry<D>,
   bossJob: JobWithMetadata<unknown>,
   opts: RunJobOptions<D>,
+  afterSettle: (() => Promise<void>)[],
 ): Promise<RunJobOutcome> {
   const envelope = JobDataEnvelope.safeParse(bossJob.data);
   if (!envelope.success) {
@@ -165,16 +225,33 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     return { id: bossJob.id, status: "deadletter", event: "failed" };
   }
   const { jobId, workspaceId } = envelope.data;
-  const logger = opts.logger.child({ job: name, jobId, workspaceId, attempt: bossJob.retryCount });
+  // Every line of a lesson job carries its lesson (pino drops an undefined `lessonId`).
+  const logger = opts.logger.child({
+    job: name,
+    jobId,
+    workspaceId,
+    lessonId: lessonIdOf(envelope.data.payload),
+    attempt: bossJob.retryCount,
+  });
   const base = { jobId, workspaceId } as const;
   const emit = (event: JobEvent) => (opts.emit ?? emitJobEvent)(ctx, event);
 
   // Pre-run guard: a job already settled by an earlier attempt never runs (or emits) again.
   const terminal = await getTerminalJobEvent(ctx.db, base);
+  // Drafts an earlier attempt left behind (a worker killed before its prune) go first (ADR 0039).
+  await pruneDrafts();
   if (terminal) {
     logger.info({ type: terminal.type, eventId: terminal.id }, "job already terminal, skipping");
     await notifyJobEvent(ctx.sql, { id: terminal.id, ...base });
     return dispositionForTerminal(bossJob.id, terminal);
+  }
+
+  async function pruneDrafts(): Promise<void> {
+    try {
+      await pruneEphemeralJobEvents(ctx.db, base);
+    } catch (err) {
+      logger.warn({ err: safeError(err) }, "slide draft prune failed");
+    }
   }
 
   /**
@@ -242,13 +319,26 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     onError: (err) => logger.warn({ err: safeError(err) }, "progress event failed"),
   });
 
+  // Live writing (ADR 0039): slide drafts, never awaited by the handler, pruned when it settles.
+  const drafts = createDraftEmitter({
+    minIntervalMs: opts.draftMinIntervalMs ?? DRAFT_MIN_INTERVAL_MS,
+    emit: (draft) => emit({ type: "slide-draft", ...base, at: nowIso(), draft }).then(() => {}),
+    onError: (err) => logger.warn({ err: safeError(err) }, "slide draft event failed"),
+  });
+
   const jobCtx: JobContext<N, D> = {
     ...base,
     payload,
     signal: abort.signal,
     progress: progress.emit,
+    draft: drafts.emit,
     logger,
     deps: opts.deps,
+    attemptsLeft: bossJob.retryCount < bossJob.retryLimit,
+    attempt: bossJob.retryCount,
+    afterSettle: (hook) => {
+      afterSettle.push(hook);
+    },
   };
 
   let thrown: unknown;
@@ -270,6 +360,10 @@ async function runJobAttempt<N extends JobName, D = unknown>(
     clearInterval(cancelPoll);
     opts.shutdown?.removeEventListener("abort", onShutdown);
   }
+
+  // Drafts end with the handler: nothing pending is written, and what was written goes (ADR 0039).
+  await drafts.stop();
+  await pruneDrafts();
 
   // Flush any coalesced progress before the terminal event so ordering is preserved.
   await progress.flush();
@@ -310,18 +404,29 @@ async function runJobAttempt<N extends JobName, D = unknown>(
   const message = shutdown
     ? "worker shut down while the job was running"
     : (opts.failureMessage?.(thrown) ?? JOB_FAILURE_MESSAGE);
+  const report = (willRetry: boolean) => {
+    if (shutdown) return;
+    reportFailure(opts, {
+      error: thrown,
+      job: name,
+      ...base,
+      attempt: bossJob.retryCount,
+      willRetry,
+      kind: "handler",
+    });
+  };
 
   if (thrown instanceof NonRetryableError) {
     const error: JobError = { message, retryable: false };
     logger.warn({ err: safeError(thrown) }, "job failed (non-retryable)");
+    report(false);
     return settle(
       { type: "failed", ...base, at: nowIso(), error },
       { id: bossJob.id, status: "deadletter", output: error, event: "failed" },
     );
   }
 
-  const attemptsLeft = bossJob.retryCount < bossJob.retryLimit;
-  if (attemptsLeft) {
+  if (jobCtx.attemptsLeft) {
     await emit({
       type: "progress",
       ...base,
@@ -331,15 +436,23 @@ async function runJobAttempt<N extends JobName, D = unknown>(
       },
     });
     logger.warn({ err: safeError(thrown), shutdown }, "job failed; pg-boss will retry");
+    report(true);
     return { id: bossJob.id, status: "failed", output: { message }, event: "progress" };
   }
 
   const error: JobError = { message, retryable: true };
   logger.error({ err: safeError(thrown), shutdown }, "job failed; no attempts left");
+  report(false);
   return settle(
     { type: "failed", ...base, at: nowIso(), error },
     { id: bossJob.id, status: "failed", output: error, event: "failed" },
   );
+}
+
+/** The payload's `lessonId` when it has a string one (every lesson job), read before validation. */
+export function lessonIdOf(payload: unknown): string | undefined {
+  const id = (payload as { lessonId?: unknown } | null | undefined)?.lessonId;
+  return typeof id === "string" ? id : undefined;
 }
 
 /** Narrow a pg-boss job to the envelope type without trusting it (use `runJob` for validation). */

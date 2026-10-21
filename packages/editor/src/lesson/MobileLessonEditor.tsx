@@ -12,10 +12,13 @@ export function MobileLessonEditor({
   canvas,
   insert,
   initialSlideId,
+  followId,
 }: {
   canvas: CanvasProps;
   insert: InsertRailProps;
   initialSlideId?: string;
+  /** The slide being written while the editor follows it (see `MobileSlideList`). */
+  followId?: string;
 }) {
   const lesson = useLesson();
   const session = useSessionActions();
@@ -47,6 +50,7 @@ export function MobileLessonEditor({
         onEdit={edit}
         hidden={editing}
         initialSlideId={initialSlideId}
+        followId={followId}
       />
       {editing ? (
         <section data-mobile-editor-focus className="mobile-editor-focus" aria-label="Edit slide">

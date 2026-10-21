@@ -9,6 +9,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tj/ui";
+import { Eye } from "lucide-react";
 import { type ReactElement, type ReactNode, useMemo, useRef, useState } from "react";
 import { PanelLabel } from "../kit/Panel";
 import { Segmented } from "../kit/Segmented";
@@ -27,6 +28,7 @@ import { SLIDE_KIND_DESCRIPTIONS, SLIDE_KIND_LABELS, SLIDE_KIND_ORDER } from "..
 import { getTheme } from "../model/themes";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
+import { ANSWERS_HIDDEN_NOTE, SHOW_ANSWERS_LABEL } from "./answers-slides";
 
 const PREVIEW_W = 144;
 const PREVIEW_H = 81;
@@ -47,6 +49,7 @@ export function AddSlidePicker({
   facts,
   onPick,
   onInsert,
+  onShowAnswers,
   trigger,
   side = "top",
   align = "start",
@@ -59,6 +62,8 @@ export function AddSlidePicker({
   onPick: (kind: SlideKind) => void;
   /** Activities tab: insert this built slide. */
   onInsert: (slide: Slide) => void;
+  /** Set while the Answers slides are hidden: a footer offers them back (ruling 260). */
+  onShowAnswers?: () => void;
   trigger: ReactElement;
   side?: "top" | "bottom" | "right";
   align?: "start" | "end";
@@ -98,6 +103,25 @@ export function AddSlidePicker({
             />
           </TabsContent>
         </Tabs>
+        {onShowAnswers ? (
+          <div
+            data-show-answers-footer
+            className="flex items-center justify-between gap-2 border-border border-t px-3 py-2"
+          >
+            <span className="text-muted-foreground text-sm">{ANSWERS_HIDDEN_NOTE}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onShowAnswers();
+                setOpen(false);
+              }}
+            >
+              <Eye aria-hidden size={16} strokeWidth={1.5} />
+              {SHOW_ANSWERS_LABEL}
+            </Button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

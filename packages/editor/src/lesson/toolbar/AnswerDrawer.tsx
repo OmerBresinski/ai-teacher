@@ -1,4 +1,4 @@
-import type { QuestionData, Slide } from "@tj/domain/documents";
+import { answerKeyText, type QuestionData, type Slide } from "@tj/domain/documents";
 import {
   Checkbox,
   IconButton,
@@ -21,8 +21,9 @@ import type { AnswerSelectProps } from "./AnswerSelect";
 import { BarButton, ICON_SM, PanelSection } from "./shared";
 
 // The pickers (a Radix Select) load on the drawer's first hover, focus or open.
-const answerSelect = lazyLoader<AnswerSelectProps>(() =>
-  import("./AnswerSelect").then((m) => m.AnswerSelect),
+const answerSelect = lazyLoader(
+  () => import("./AnswerSelect"),
+  (m) => m.AnswerSelect,
 );
 const preloadAnswerSelect = answerSelect.preload;
 
@@ -292,11 +293,11 @@ export function AnswerDrawer({ slide, question }: { slide: Slide; question: Ques
             {question.type === "open-response" ? (
               <Textarea
                 rows={4}
-                value={question.modelAnswer ?? ""}
+                value={answerKeyText(question)}
                 aria-label="Model answer"
                 placeholder="What a strong answer contains."
                 onBlur={typing.end}
-                onChange={(e) => type({ ...question, modelAnswer: e.target.value })}
+                onChange={(e) => type(reducers.withAnswerKey(question, e.target.value))}
               />
             ) : question.type === "true-false" || question.type === "multiple-choice" ? (
               <Textarea

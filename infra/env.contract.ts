@@ -732,6 +732,34 @@ const CONTRACT = [
       "Model ID for the F13 §7 small class: items, glossary, variants and summaries. Default `openai/gpt-6-luna` (OpenAI direct, `OPENAI_API_KEY`); a value set on Railway overrides it.",
   },
 
+  // --- observability (PostHog EU, ADR 0041) -----------------------------------------------------
+  {
+    name: "POSTHOG_API_KEY",
+    services: ["worker"],
+    scope: "secret",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "string",
+    files: ["worker"],
+    description:
+      "PostHog project API key (`phc_…`, ADR 0041): the worker reports job errors and model-call metrics (tokens, cost, latency) to PostHog EU, metadata only, never prompt text, model output or lesson content. Unset: nothing is sent (dev, tests and CI). Set on Railway, never in git.",
+  },
+  {
+    name: "POSTHOG_HOST",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "prod",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "url",
+    files: ["worker"],
+    description:
+      "PostHog ingestion host for the worker (ADR 0041). Default `https://eu.i.posthog.com` (EU cloud); set it to that value on Railway so the region is explicit.",
+  },
+
   // --- images (Pexels, Images project) ----------------------------------------------------------
   {
     name: "PEXELS_API_KEY",
@@ -899,7 +927,7 @@ const CONTRACT = [
     values: ["legacy", "objectives-first", "writer"],
     files: ["worker"],
     description:
-      "Which planner plans a new lesson (TEACH-93, ADR 0033). `objectives-first` (default since the decision of 25–26 Sept 2026, SHIP-H-PLAN §3 item 9): `lesson.plan` makes the objectives call only and stops for the teacher; `lesson.generate` writes the facts in waves and the outline in code, then the slides. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. `legacy`: the skeleton and facts calls in `lesson.plan`. `writer` (TEACH-110 part b, off until TEACH-238): `lesson.plan` makes the same objectives call, stamped for the writer; `lesson.generate` runs the base4 lesson writer (one streamed `gpt-6.1-sol` call) and its own checks, repair and notes. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `legacy`.",
+      "Which planner plans a new lesson (TEACH-93, ADR 0033). `writer` (TEACH-110 part b; production defaults to it from 20 Oct 2026, Greg): `lesson.plan` makes the objectives call only, stamped for the writer, and stops for the teacher; `lesson.generate` runs the lesson writer (one streamed `gpt-6.1-sol` call on `OPENAI_API_KEY`, the bundle pinned in code) and its own checks, repair and notes. `objectives-first` (the default from 25–26 Sept to 20 Oct 2026): the same objectives call; `lesson.generate` writes the facts in waves and the outline in code, then the slides. `legacy`: the skeleton and facts calls in `lesson.plan`. Both stay selectable for rollback. A lesson already planned keeps the planner its `promptVersions.planned` stamp names, so flipping this never strands one. Anything else stops the worker at boot. Not set on Railway: the default is the shipped value; rollback is setting `objectives-first`.",
   },
   {
     name: "AI_LESSON_COST_WARN_USD",
@@ -912,7 +940,20 @@ const CONTRACT = [
     format: "number",
     files: ["worker"],
     description:
-      "Per-lesson cost target in USD (TEACH-93, default 0.03): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`.",
+      "Per-lesson cost target in USD (TEACH-93, default 0.12): a lesson that finishes above it logs one `lesson cost above target` warn line with its cost and planner. Never stops a lesson; the stop is `AI_LESSON_COST_CAP_USD`. The default is about 1.5x the median real writer lesson ($0.079 over 20 lab lessons on writer pack v4.8, 20 Oct 2026); the old 0.03 fired on every writer lesson.",
+  },
+  {
+    name: "GENERATION_DEBUG_TTL_DAYS",
+    services: ["worker"],
+    scope: "config",
+    local: null,
+    railway: "n/a",
+    vercel: "n/a",
+    setBy: "manual",
+    format: "int",
+    files: ["worker"],
+    description:
+      "Days a lesson's debug record (`generation_debug`: the writer's raw output, checks, repairs, splits, picture decisions, model calls, a failed job's full error) is kept; the worker's daily `generation.debug-cleanup` job deletes older rows (Greg, 20 Oct 2026; ADR 0015 amendment). Default 30.",
   },
   {
     name: "AI_MODEL_JUDGE",

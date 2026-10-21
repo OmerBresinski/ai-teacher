@@ -16,6 +16,12 @@ export {
   type PgBossSchema,
 } from "./boss";
 export {
+  createDraftEmitter,
+  DRAFT_MIN_INTERVAL_MS,
+  type DraftEmitter,
+  type DraftEmitterOptions,
+} from "./drafts";
+export {
   type CancelOptions,
   type CancelResult,
   cancel,
@@ -29,10 +35,12 @@ export {
   type ProgressEmitter,
   type ProgressEmitterOptions,
 } from "./progress";
+export { REAP_INTERVAL_MS, reapOrphanedLocks } from "./reap";
 export {
   type BossJob,
   CANCEL_POLL_INTERVAL_MS,
   dispositionForTerminal,
+  type JobFailureReport,
   type RunJobOptions,
   type RunJobOutcome,
   runJob,

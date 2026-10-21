@@ -65,13 +65,57 @@ describe("round 1: text fit and fallbacks", () => {
         lead: "What happens when money loses its value?",
         figure: { photo: "/x.jpg", aspect: 0.9 },
       },
-      studio,
+      // Paper: Studio's photo-right picture cover draws no question (Greg's call 36, TEACH-215 g).
+      getTheme("paper"),
       "ks3",
     );
     const t = r.slide.elements.find((e) => e.name === "Title");
     const s = r.slide.elements.find((e) => e.name === "Subtitle");
     expect(r.over).toEqual([]);
     expect(t && s && s.y >= t.y + t.h).toBe(true);
+  });
+  test("a title over a subtitle keeps room in its clip box for the last line's descenders", () => {
+    for (const stage of ["ks1", "ks2", "ks3"] as const) {
+      const r = layoutTemplate(
+        {
+          template: "title",
+          heading: "Animals and their young",
+          lead: "How do young animals change as they grow?",
+        },
+        getTheme("paper"),
+        stage,
+      );
+      const t = r.slide.elements.find((e) => e.name === "Title");
+      const s = r.slide.elements.find((e) => e.name === "Subtitle");
+      if (t?.type !== "text" || s?.type !== "text") throw new Error("no title or subtitle");
+      const size = t.style.fontSize ?? 0;
+      const pad = t.style.padding ?? 0;
+      // The box clips (fixed height), so its edge must sit past a descender (about 0.2 of the size)
+      // below the bottom-aligned last line box.
+      expect(t.style.autoHeight).toBe(false);
+      expect(pad).toBeGreaterThanOrEqual(Math.ceil(size * 0.2));
+      // The words keep the column they wrap in, and the box never reaches the subtitle.
+      expect(t.x + pad).toBe(s.x);
+      expect(t.w - 2 * pad).toBe(s.w);
+      expect(t.y + t.h).toBeLessThanOrEqual(s.y);
+    }
+  });
+  // TEACH-215 part g: a picture-failed cover takes the theme's round 5 fallback on its own ground
+  // (Paper's cream, its title ink), no longer the deep wine or a v1 accent card.
+  test("paper's title template is on its own ground with its title ink, not the bright red", () => {
+    const paper = getTheme("paper");
+    const r = layoutTemplate(
+      { template: "title", heading: "Coastal erosion", lead: "How fast does the coast retreat?" },
+      paper,
+      "ks3",
+    );
+    expect(r.slide.background?.color).toBeUndefined();
+    const title = r.slide.elements.find((e) => e.name === "Title");
+    expect(title?.type === "text" && title.style.color).toBe("#22152B");
+    expect(
+      layoutTemplate({ template: "title", heading: "Heating" }, studio, "ks3").slide.background
+        ?.color,
+    ).toBeUndefined();
   });
   test("a diagram that fails leaves no panel: the slide is words only", () => {
     const r = layoutTemplate(
@@ -204,7 +248,9 @@ describe("round 2: title, hinge and compare fit", () => {
       "ks4",
     );
     expect(r.over).toEqual([]);
-    for (const e of r.slide.elements) expect(e.y).toBeGreaterThanOrEqual(40);
+    // The cover's photograph bleeds full height (TEACH-215 part g); the words keep clear of the top.
+    for (const e of r.slide.elements.filter((x) => x.type === "text"))
+      expect(e.y).toBeGreaterThanOrEqual(40);
   });
   test("a hinge with long options closes up or steps down instead of running to the foot (y11 s11)", () => {
     const o = "Collisions are more frequent, and more of them exceed the activation energy needed.";
@@ -219,7 +265,9 @@ describe("round 2: title, hinge and compare fit", () => {
       "ks4",
     );
     expect(r.over).toEqual([]);
-    for (const e of r.slide.elements) expect(e.y + e.h).toBeLessThanOrEqual(500);
+    // The sand stage is full bleed by design (TEACH-256 part b); everything on it stops short of the foot.
+    for (const e of r.slide.elements)
+      if (e.name !== "surface:field-b") expect(e.y + e.h).toBeLessThanOrEqual(500);
   });
 });
 

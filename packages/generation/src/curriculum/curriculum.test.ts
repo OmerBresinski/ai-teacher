@@ -14,6 +14,7 @@ import {
   curriculumYear,
   curriculumYears,
   SUBJECT_ALIASES,
+  schoolYears,
 } from "./index";
 
 const Y6_ANIMALS = [
@@ -249,6 +250,10 @@ describe("curriculumFor", () => {
     for (const none of ["Reception", "EYFS", "Nursery", "Year 12", "Years 6-5", "Year 0", ""]) {
       expect(curriculumYears(none)).toBeUndefined();
     }
+    expect(schoolYears("Year 12")).toEqual([12, 12]);
+    expect(schoolYears("Y13")).toEqual([13, 13]);
+    expect(schoolYears("Reception")).toEqual([0, 0]);
+    for (const none of ["Year 0", "Year 14", "EYFS", ""]) expect(schoolYears(none)).toBeUndefined();
     expect(curriculumYear("Year 10")).toBe(10);
     expect(curriculumYear("Years 5-6")).toBeUndefined();
     expect(curriculumYear("Reception")).toBeUndefined();

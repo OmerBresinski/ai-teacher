@@ -1,0 +1,5 @@
+{
+  "early": { "base": 5, "panel": 4, "titleWords": 8, "moveWords": 6 },
+  "primary": { "base": 5, "panel": 4, "titleWords": 8, "moveWords": 6 },
+  "secondary": { "base": 6, "panel": 4, "titleWords": 8, "moveWords": 6 }
+}

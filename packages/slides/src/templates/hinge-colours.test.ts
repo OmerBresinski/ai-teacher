@@ -1,18 +1,32 @@
 import { describe, expect, test } from "bun:test";
+import type { Theme } from "@tj/domain/documents";
 import { contrastRatio } from "../look";
+import { optionTones } from "../option-tones";
 import { THEMES } from "../themes";
-import { layoutTemplate, optionColours, type Stage, type TemplateInput } from "./index";
-
-const on = (...a: Parameters<typeof layoutTemplate>) =>
-  layoutTemplate(a[0], a[1], a[2], { ...a[3], optionColours: true });
+import {
+  dimGround,
+  dimInk,
+  markLook,
+  SURFACE_TOKEN_SETS,
+  surfaceStyle,
+  surfacesOf,
+} from "../themes/surfaces";
+import { HINGE_NAMES, HINGE_TONED_KEYS } from "./hinge";
+import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 
 /*
- * UX ruling 203, P8 (TEACH-75 part f): each hinge option's letter disc has its own colour, from
- * the theme's tokens, and the existing reveal (multiple-choice question data, the correct ring in
- * present) is unchanged.
+ * TEACH-256 part b (rulings 161, 230): every hinge letter key is the card's ink (the gold's
+ * ink key), a rounded square (never the round number badge), its letter readable on it; the reveal
+ * stays the multiple-choice question data, counted from 1. Replaces part f's per-option disc
+ * colours (P8), which the v13 gold retired.
  */
-type El = { id: string; name?: string; fill?: string; textStyle?: { color?: string } };
-const ratio = contrastRatio;
+type El = {
+  id: string;
+  name?: string;
+  fill?: string;
+  shape?: string;
+  textStyle?: { color?: string };
+};
 const hinge = (n: number): TemplateInput => ({
   template: "hinge",
   heading: "Quick check",
@@ -22,53 +36,98 @@ const hinge = (n: number): TemplateInput => ({
   explanation: "Red cells carry oxygen.",
 });
 
-describe("hinge option colours", () => {
-  test("2, 3 and 4 options fit on every theme, each disc its own colour, letters readable", () => {
+describe("hinge letter keys", () => {
+  test("2, 3 and 4 options fit on every theme; each key is the card's ink, its letter readable", () => {
     for (const stage of ["ks1", "ks2", "ks3"] as Stage[])
       for (const theme of THEMES)
         for (const n of [2, 3, 4]) {
-          const r = on(hinge(n), theme, stage);
+          const r = layoutTemplate(hinge(n), theme, stage);
           expect({ stage, theme: theme.id, n, over: r.over }).toEqual({
             stage,
             theme: theme.id,
             n,
             over: [],
           });
-          const discs = (r.slide.elements as El[]).filter((e) => e.name === "Marker");
-          expect(discs.map((d) => d.fill)).toEqual(optionColours(theme).slice(0, n));
-          expect(new Set(discs.map((d) => d.fill)).size).toBe(n);
-          // Clear of the reveal's correct and incorrect hues, as the token table promises.
-          for (const d of discs)
-            expect([theme.colors.correct, theme.colors.incorrect]).not.toContain(String(d.fill));
-          for (const d of discs) {
-            const at = { theme: theme.id, fill: d.fill };
-            expect({
-              ...at,
-              letter: ratio(String(d.fill), String(d.textStyle?.color)) >= 4.5,
-            }).toMatchObject({ letter: true });
-            expect({ ...at, edge: ratio(String(d.fill), theme.colors.surface) >= 3 }).toMatchObject(
-              { edge: true },
+          const keys = (r.slide.elements as El[]).filter((e) => e.name === HINGE_NAMES.key);
+          expect(keys).toHaveLength(n);
+          // The gold's key: the card's ink, the letter in the card's fill (never the key role's red);
+          // a theme whose key family is the accent (Geometric's gold) takes the key role's fill.
+          const card = surfaceStyle(theme, "card");
+          const accent = surfacesOf(theme).marks.keyFill === "accent";
+          const fill = accent ? surfaceStyle(theme, "key").fill : card.ink;
+          // TEACH-215 part i: a theme whose gold colours each letter (round 3's option tones, the
+          // round 5 darks) takes that letter's tone, its letter at 4.5:1. Part k: the key's family
+          // (an outline ring on the card, a sticky note) keeps its look.
+          const toned = HINGE_TONED_KEYS.has(theme.id);
+          const look = markLook(theme, "key", 30, fill ?? "#000", card.fill);
+          keys.forEach((k, i) => {
+            expect(k.shape).toBe(look.shape);
+            const want = toned ? optionTones(theme)[i] : look.fill;
+            expect(k.fill).toBe(want);
+            const under = k.fill === "transparent" ? card.fill : (k.fill as string);
+            expect(contrastRatio(k.textStyle?.color as string, under)).toBeGreaterThanOrEqual(
+              accent || toned ? 4.5 : 3,
             );
-          }
+          });
         }
   });
 
   test("the reveal is the existing question data: the right option card is marked correct", () => {
-    const r = on(hinge(4), THEMES[0] as (typeof THEMES)[number], "ks2");
-    const cards = (r.slide.elements as El[]).filter((e) => e.name === "Option");
+    const r = layoutTemplate(hinge(4), THEMES[0] as (typeof THEMES)[number], "ks2");
+    const cards = (r.slide.elements as El[]).filter((e) => e.name === HINGE_NAMES.card);
     expect(r.slide.question?.type).toBe("multiple-choice");
     const q = r.slide.question as { options: { id: string; correct: boolean }[] };
     expect(q.options.map((o) => o.correct)).toEqual([true, false, false, false]);
     expect(q.options.map((o) => o.id)).toEqual(cards.map((c) => c.id));
   });
+});
 
-  test("off by default: discs keep the accent and its onAccent letter", () => {
+/*
+ * TEACH-256 part d (rulings 258, 248): after the reveal a wrong card takes the theme's ground (quieter
+ * than a card) and its words the dim tone, never an opacity fade, so a pupil still reads them at
+ * 4.5:1 or better on every theme. The tones are tested here; the redrawn cards themselves, each
+ * card's own fill against each of its words, in `@tj/editor`'s `hinge-dim.test.ts`.
+ */
+describe("hinge reveal: the wrong options' dim tone", () => {
+  test("every token set: the dim tone reads at 4.5:1 or better on the wrong card's ground", () => {
+    for (const [id, t] of Object.entries(SURFACE_TOKEN_SETS)) {
+      const ratio = contrastRatio(t.dim as string, t.bg as string);
+      expect({ id, ok: ratio >= 4.5 }).toEqual({ id, ok: true });
+    }
+  });
+
+  /*
+   * A theme outside the table (a teacher's own, or one added later) gets its dim tone from its own
+   * palette, measured on its own ground, not Paper's or Slate's tokens on a ground they never met.
+   */
+  const custom = (id: string, dark: boolean, colors: Partial<Theme["colors"]>): Theme => {
+    const base = THEMES.find((t) => Boolean(t.dark) === dark) as Theme;
+    return { ...base, id, dark, colors: { ...base.colors, ...colors } };
+  };
+  test.each([
+    [
+      "custom-cream: a faint muted is stepped toward the ink",
+      custom("custom-cream", false, { background: "#F3E6CF", muted: "#C9B79A", ink: "#3B2F2F" }),
+    ],
+    [
+      "custom-ink: a dark ground",
+      custom("custom-ink", true, { background: "#14213D", muted: "#3C4A66", ink: "#E5E5E5" }),
+    ],
+    [
+      "custom-mid: neither muted nor ink reads",
+      custom("custom-mid", false, { background: "#808080", muted: "#8A8A8A", ink: "#999999" }),
+    ],
+  ])("%s: the dim tone reads at 4.5:1 on that theme's own ground", (_, theme) => {
+    expect(theme.id in SURFACE_TOKEN_SETS).toBe(false);
+    expect(dimGround(theme)).toBe(theme.colors.background);
+    expect(contrastRatio(dimInk(theme), dimGround(theme))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("a theme in the table keeps its own tested tokens", () => {
     for (const theme of THEMES) {
-      const r = layoutTemplate(hinge(4), theme, "ks2");
-      for (const d of (r.slide.elements as El[]).filter((e) => e.name === "Marker")) {
-        expect(d.fill).toBe(theme.colors.accent);
-        expect(d.textStyle?.color).toBe(theme.colors.onAccent);
-      }
+      const t = SURFACE_TOKEN_SETS[theme.id];
+      if (!t) continue;
+      expect([dimInk(theme), dimGround(theme)]).toEqual([t.dim as string, t.bg as string]);
     }
   });
 });

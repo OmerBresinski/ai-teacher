@@ -116,12 +116,13 @@ const KEY_STAGE_YEARS: Readonly<Record<string, readonly [number, number]>> = {
 };
 
 /**
- * The first and last year in a year group: "Year 6", "Y6", "6" -> [6, 6]; "Years 5-6",
- * "Year 5/6", "Y5/6" -> [5, 6]; "KS2", "Key Stage 2" -> [3, 6]. Undefined for Reception, EYFS,
- * Nursery, anything outside years 1 to 11, or text it cannot read.
+ * The first and last school year in a year group: "Year 6", "Y6", "6" -> [6, 6]; "Years 5-6",
+ * "Year 5/6", "Y5/6" -> [5, 6]; "KS2", "Key Stage 2" -> [3, 6]; "Reception" -> [0, 0]. Years 1
+ * to 13; undefined for EYFS, Nursery, "Year 0", anything past 13 or text it cannot read.
  */
-export function curriculumYears(yearGroup: string): [number, number] | undefined {
+export function schoolYears(yearGroup: string): [number, number] | undefined {
   const g = norm(yearGroup);
+  if (g === "reception" || g === "yr") return [0, 0];
   const ks = /^(?:ks|key stage)\s*([1-4])$/.exec(g);
   if (ks) {
     const r = KEY_STAGE_YEARS[ks[1] as string] as readonly [number, number];
@@ -134,7 +135,13 @@ export function curriculumYears(yearGroup: string): [number, number] | undefined
   if (!m) return undefined;
   const lo = Number(m[1]);
   const hi = m[2] === undefined ? lo : Number(m[2]);
-  return lo >= 1 && hi <= 11 && lo <= hi ? [lo, hi] : undefined;
+  return lo >= 1 && hi <= 13 && lo <= hi ? [lo, hi] : undefined;
+}
+
+/** The curriculum's years in a year group (`schoolYears` within years 1 to 11, the data's span). */
+export function curriculumYears(yearGroup: string): [number, number] | undefined {
+  const r = schoolYears(yearGroup);
+  return r && r[0] >= 1 && r[1] <= 11 ? r : undefined;
 }
 
 /** The year number of a single year group ("Year 6", "Y6", "6"); undefined for a range or none. */

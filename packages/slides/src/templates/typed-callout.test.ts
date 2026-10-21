@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { POINT_KIND_ICONS, POINT_KIND_LABELS, POINT_KINDS, pointTone } from "../callout";
-import { THEMES } from "../themes";
+import { getTheme, THEMES } from "../themes";
 import { OLD_LESSON_INPUTS, OLD_LESSON_STAGES } from "./fixtures/old-lesson-inputs";
 import MASTER from "./fixtures/old-lesson-master.json";
 import { layoutTemplate, type Stage, type TemplateInput, type TemplatePoint } from "./index";
@@ -192,11 +192,24 @@ describe("typed callout card", () => {
         }
   });
 
+  // 18 Oct 2026 (GOLD-THROUGH-PROD.md): hinge hashes re-pinned; only the field reports' cap and
+  // hardMax moved (measured per option count, to the character); the layout is unchanged.
+  // TEACH-230 part b: practice and the exit ticket are the "work alone" slides by design (ruling
+  // 231), so their hashes were re-pinned to the new layout; stored decks keep their elements.
+  // Ruling 21 A (TEACH-215 part e): the cover and the hinge take the golds' sizes, so their hashes
+  // were re-pinned too. TEACH-215 part k: the round 3 themes' corners became the golds' px / 1.5,
+  // so their hinge and exit-ticket hashes were re-pinned (review item 47). TEACH-215 part r2: a
+  // field that bleeds off the slide is square (the golds' field radius 0), so the hinge's
+  // full-bleed stage lost its corners in the nine rounded themes; those 45 hinge hashes were
+  // re-pinned by script (recompute, write the moved keys), nothing else moved.
   test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
     const want = MASTER as Record<string, string>;
     let n = 0;
+    // Theme v2 (TEACH-152 part b) and the round 5 themes (TEACH-215 part c) are new: no old lesson
+    // was laid out on them. The themes are the ones the pins name, Night Lab included (16 Oct 2026).
+    const pinned = [...new Set(Object.keys(want).map((k) => k.split("/")[1] as string))];
     for (const stage of OLD_LESSON_STAGES)
-      for (const theme of THEMES)
+      for (const theme of pinned.map((id) => getTheme(id)))
         OLD_LESSON_INPUTS.forEach((input, i) => {
           const key = `${stage}/${theme.id}/${i}-${input.template}`;
           const j = JSON.stringify(layoutTemplate(input, theme, stage), (k, v) =>
@@ -209,7 +222,8 @@ describe("typed callout card", () => {
           n++;
         });
     expect(n).toBe(Object.keys(want).length);
-  });
+    // Every old input on every theme and stage: about 6 s when the turbo run is loaded.
+  }, 30_000);
 
   test("the first typed point goes under the text; a later one stays, labelled with its type", () => {
     expect(

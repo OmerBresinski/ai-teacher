@@ -2,7 +2,7 @@ import type { FakeCall } from "@tj/ai";
 import { createFakeAi, type FakeReply, type FakeScriptEntry } from "@tj/ai/testing";
 import type { Lesson } from "@tj/domain/documents";
 import romans from "../fixtures/objective-facts.y4-history-romans.json";
-import { FIXTURES, sampleBriefLesson } from "../testing";
+import { checkInputAnswer, FIXTURES, sampleBriefLesson } from "../testing";
 
 /*
  * Test helpers for the objectives-first planner (TEACH-91, TEACH-93): a fake answering every call
@@ -133,7 +133,7 @@ export function labAi(
     const own = options.extra?.(call);
     if (own !== undefined) return own;
     const version = call.context?.promptVersion ?? "";
-    if (version.startsWith("check-input")) return json(options.checkInput ?? { findings: [] });
+    if (version.startsWith("check-input")) return json(checkInputAnswer(options.checkInput));
     if (version.startsWith("plan-objectives"))
       return json({
         objectives:

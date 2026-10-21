@@ -161,6 +161,11 @@ export type SlideDraft = {
   template: string;
   /** Every other field so far; an open string is cut where the stream is. */
   fields: Record<string, unknown>;
+  /**
+   * Where the open string sits (`["items", 2, "name"]`), absent when no string is open. A string
+   * anywhere else is whole, so a draft can act on a name the moment it closes.
+   */
+  open?: (string | number)[];
 };
 
 export type DraftOptions = {
@@ -177,6 +182,8 @@ export type DraftOptions = {
  */
 export class SlideDrafts {
   private slide = -1;
+  /** How many `slides` entries the stream has opened: `close` is the next index after them. */
+  private slidesSeen = 0;
   private last = "";
   private at = Number.NEGATIVE_INFINITY;
   /** When the open slide was last peeked before its template closed. */
@@ -199,9 +206,14 @@ export class SlideDrafts {
     const one = p.frameAt(1);
     if (one?.kind === "obj" && one.path.length === 1 && one.path[0] === "title")
       return { index: 0, start: one.start };
+    // `close` (TEACH-110 part ab) is the lesson's last slide, straight after `slides`.
+    if (one?.kind === "obj" && one.path.length === 1 && one.path[0] === "close")
+      return { index: this.slidesSeen + 2, start: one.start };
     const two = p.frameAt(2);
-    if (two?.kind === "obj" && two.path[0] === "slides" && typeof two.path[1] === "number")
+    if (two?.kind === "obj" && two.path[0] === "slides" && typeof two.path[1] === "number") {
+      this.slidesSeen = Math.max(this.slidesSeen, two.path[1] + 1);
       return { index: two.path[1] + 2, start: two.start };
+    }
     return undefined;
   }
 
@@ -232,12 +244,14 @@ export class SlideDrafts {
     const template = v.template;
     if (typeof template !== "string" || peeked?.open?.[0] === "template") return;
     const { template: _t, ...fields } = v;
+    const openAt = peeked?.open as (string | number)[] | undefined;
     const key = JSON.stringify(fields);
-    const sent = `${template}\n${key}`;
+    // A string that closes with no new characters is still news: a name is whole from then on.
+    const sent = `${template}\n${key}\n${JSON.stringify(openAt ?? null)}`;
     if (sent === this.last) return;
     this.last = sent;
     this.at = now;
     this.stats.drafts++;
-    this.onDraft(open.index, { template, fields });
+    this.onDraft(open.index, { template, fields, ...(openAt ? { open: openAt } : {}) });
   }
 }

@@ -1,0 +1,14 @@
+{
+  "KS1": {
+    "oneLine": 11,
+    "twoLines": 20
+  },
+  "KS2": {
+    "oneLine": 12,
+    "twoLines": 22
+  },
+  "KS3-5": {
+    "oneLine": 14,
+    "twoLines": 27
+  }
+}

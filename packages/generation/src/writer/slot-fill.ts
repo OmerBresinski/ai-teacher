@@ -1,5 +1,8 @@
+import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
 import { charsOver, fitTable } from "./fixes";
+import { capWords, fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
+import { waveCCountCaps } from "./wave-c";
 
 /*
  * Slot-fill (lab/slotfill round 2, 3a26ce97; on with writer bundle base4g): layout first, then
@@ -35,6 +38,8 @@ type FitVariant = {
   stem?: number;
   keyLabel?: number;
   columnLabel?: number;
+  /** The layout's own heading cap (the cover's title, `cover-fits.ts`), over the group's. */
+  heading?: number;
 };
 
 /** Labels the fit table measured with a fixed length (fit-table.ts KEY_LABEL, COLUMN_LABEL). */
@@ -42,14 +47,20 @@ const KEY_LABEL = 16;
 const COLUMN_LABEL = 12;
 /**
  * Characters per word (spaces included) used to turn a `maxLength` cap into the words the writer
- * is shown. On-slide strings average about 6 characters a word but reach 8 at the 95th
- * percentile, so at 8 a field written to its word budget fits its cap; the schema's `maxLength`
- * stays the hard backstop.
+ * is shown on a non-pack run (base4g, unchanged from master). On a pack run a cap becomes words
+ * only through `shown-cap.ts` (per-stage characters a word, about 75% of a body cap shown). The
+ * schema's `maxLength` stays the hard backstop either way.
  */
 export const CHARS_PER_WORD = 8;
-const LISTS = ["points", "questions", "options", "columns", "sequence"] as const;
+/** A non-pack run's words for a cap (master's rule). */
+const baseWords = (chars: number) => Math.max(1, Math.floor(chars / CHARS_PER_WORD));
+const LISTS = ["points", "questions", "options", "columns", "sequence", "items"] as const;
 
 const REF = (n: string): J => ({ $ref: `#/$defs/${n}` });
+const NUL = (x: J): J => ({ anyOf: [x, { type: "null" }] });
+/** An items row's accent words and icon label (the writer schema's own limits). */
+const ACCENT_WORD = 40;
+const ICON_LABEL = 23;
 const isNull = (x: J) => x.type === "null";
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 const capped = (n: number): J => ({ type: "string", maxLength: n });
@@ -124,7 +135,10 @@ function variantDef(
     heading,
   );
   if ("heading" in p) p.heading = capped(caps.heading);
-  if ("lead" in p && caps.lead !== undefined) p.lead = capped(caps.lead);
+  // The items row's lead is optional (null), so its cap keeps the null branch.
+  if ("lead" in p && caps.lead !== undefined)
+    p.lead = layout === "items-row" ? NUL(capped(caps.lead)) : capped(caps.lead);
+  if ("accentWord" in p) p.accentWord = NUL(capped(ACCENT_WORD));
   if ("stem" in p && caps.stem !== undefined) p.stem = capped(caps.stem);
   if ("instruction" in p)
     p.instruction =
@@ -158,6 +172,14 @@ function variantDef(
       cp.text = capped(item);
       cp.picture = v.figure ? nonNull(cp.picture as J, defs) : { type: "null" };
       it = card;
+    } else if (k === "items") {
+      // Items row (TEACH-75 part u): a name at the measured name room, a line, an icon label.
+      const row = clone(list.items as J);
+      const rp = row.properties as Record<string, J>;
+      rp.name = capped(v.columnLabel ?? COLUMN_LABEL);
+      rp.text = capped(item);
+      rp.icon = NUL(capped(ICON_LABEL));
+      it = row;
     } else if (k === "sequence") {
       const seq = clone(list.items as J);
       const capCaption = (b: J) => {
@@ -167,10 +189,15 @@ function variantDef(
       };
       it = seq.anyOf ? { anyOf: (seq.anyOf as J[]).map(capCaption) } : capCaption(seq);
     } else it = capped(item);
-    p[k] = { type: "array", items: it, minItems: n, maxItems: n };
+    const description = (p[k] as J | undefined)?.description;
+    p[k] = {
+      type: "array",
+      items: it,
+      minItems: n,
+      maxItems: n,
+      ...(description ? { description } : {}),
+    };
   }
-  if (layout === "hinge" && v.counts.options)
-    p.correct = { type: "integer", minimum: 1, maximum: v.counts.options };
   const { template, ...rest } = p;
   const props = { template, fit: { type: "string", enum: [fitKey(v)] }, ...rest };
   return { ...base, required: Object.keys(props), properties: props };
@@ -203,7 +230,7 @@ export function withSlotFill(schema0: J, stage: string): J {
     if (!base || !vs?.length) return undefined;
     const refs: J[] = [];
     for (const v of vs) {
-      const d = variantDef(layout, base, v, F.heading, formula, defs);
+      const d = variantDef(layout, base, v, v.heading ?? F.heading, formula, defs);
       if (!d) continue;
       const name = variantDefName(layout, fitKey(v));
       defs[name] = d;
@@ -281,10 +308,84 @@ export const SHAPES = [
 const sfIntro = (heading: number, label?: number) =>
   `Layouts. A heading is up to ${heading} words${label ? `, a label ${label}` : ""}. Fits gives each fit's most words: its lead or stem, then "each" item, a phrase or one short sentence, never cut off. More words take a fit with fewer items; never cram.`;
 
-const words = (chars: number) => Math.max(1, Math.floor(chars / CHARS_PER_WORD));
+/**
+ * A fit layout field's key in the content-need table (`content-need.json`): its lead, or its
+ * points (a key card's text when the fit is a key fit). Headings, labels and formulas have none.
+ */
+export { fitNeedKey };
+
+/**
+ * A body cap as the writer is shown it (`shownFor`, need-aware); `label` for headings and labels
+ * (their measured words). `layout` and `fitKey` name the field's need row. Off a pack run, master's
+ * characters-per-word rule (`baseWords`) for every field.
+ */
+const wordsAt = (stage: string, pack: boolean, layout = "", fitKey = "") => {
+  if (!pack) return (chars: number, _label = false, _path = "") => baseWords(chars);
+  const ws = writerStageOfKey(stage);
+  return (chars: number, label = false, path = "") =>
+    Math.max(
+      1,
+      label ? wordsWithin(chars, ws) : shownFor(chars, ws, fitNeedKey(layout, path, fitKey)),
+    );
+};
+
+/**
+ * The fit layouts' defs with each cap set to the measured fit table (`variantCaps`, the same
+ * mapping fit-fits.test pins), so the caps code checks and the Fits the writer reads follow the
+ * slides' tables when they move (18 Oct 2026: master's title sizes left v4.5's title lead at 100
+ * and 240 characters where 48-56 and 104-106 fit). The hook keeps its own (a listed exception).
+ */
+export function measuredFitDefs(defs: Record<string, J>, stage: string): Record<string, J> {
+  const heading = (fitTable()[stage] as J | undefined)?.heading as number;
+  const out: Record<string, J> = {};
+  for (const [layout, vs] of Object.entries(slotLayouts(stage))) {
+    if (layout === "hook") continue;
+    for (const v of vs) {
+      const name = `${layout}~${fitKey(v)}`;
+      const def = defs[name];
+      if (!def) continue;
+      const p = (def.properties ?? {}) as J;
+      const c = variantCaps(
+        layout,
+        v,
+        { lead: "lead" in p, stem: "stem" in p, instruction: "instruction" in p },
+        heading,
+      ) as J;
+      const want = (path: string, n: number): number =>
+        ((path === "heading"
+          ? c.heading
+          : path === "lead"
+            ? c.lead
+            : path.endsWith(".label")
+              ? c.label
+              : path === "formula"
+                ? n
+                : c.item) as number | undefined) ?? n;
+      const copy = structuredClone(def);
+      setCaps(copy, "", want);
+      out[name] = copy;
+    }
+  }
+  return out;
+}
+
+/** Walks a def as `defCaps` does, setting each positive `maxLength` to `want(path, n)`. */
+function setCaps(x: unknown, path: string, want: (path: string, n: number) => number): void {
+  if (!x || typeof x !== "object") return;
+  const s = x as J;
+  if (typeof s.maxLength === "number") {
+    if (s.maxLength > 0) s.maxLength = want(path, s.maxLength);
+    return;
+  }
+  if (s.properties)
+    for (const [k, v] of Object.entries(s.properties as J))
+      setCaps(v, path ? `${path}.${k}` : k, want);
+  if (s.items) setCaps(s.items, `${path}[]`, want);
+  if (Array.isArray(s.anyOf)) for (const b of s.anyOf) setCaps(b, path, want);
+}
 
 /** A variant def's caps, in field order: `[path, maxLength]`, e.g. `["points[].text", 92]`. */
-function defCaps(x: unknown, path = ""): [string, number][] {
+export function defCaps(x: unknown, path = ""): [string, number][] {
   if (!x || typeof x !== "object") return [];
   const s = x as J;
   if (typeof s.maxLength === "number") return [[path, s.maxLength]];
@@ -302,7 +403,12 @@ function defCaps(x: unknown, path = ""): [string, number][] {
  * One fit's budget in words, from its strict def: `points-1-key-fig 22, each 15`. The lead or
  * stem goes unnamed; a card or column label is named only when labels differ across the menu.
  */
-function fitBudget(key: string, def: J, namedLabels: boolean): string {
+function fitBudget(
+  key: string,
+  def: J,
+  namedLabels: boolean,
+  words: (chars: number, label?: boolean, path?: string) => number,
+): string {
   const parts: string[] = [];
   const props = (def.properties ?? {}) as Record<string, J>;
   for (const [path, n] of defCaps(def)) {
@@ -312,12 +418,12 @@ function fitBudget(key: string, def: J, namedLabels: boolean): string {
     // A list held at 0 items has no slot to describe.
     if (leaf !== undefined && props[list as string]?.maxItems === 0) continue;
     if (leaf === "label") {
-      if (namedLabels) parts.push(`each label ${words(n)}`);
+      if (namedLabels) parts.push(`each label ${words(n, true)}`);
     } else if (leaf === "text" && parts.at(-1)?.startsWith("each label"))
-      parts.push(`${parts.pop()} + text ${words(n)}`);
-    else if (leaf !== undefined) parts.push(`each ${words(n)}`);
-    else if (path === "lead" || path === "stem") parts.push(`${words(n)}`);
-    else parts.push(`${path} ${words(n)}`);
+      parts.push(`${parts.pop()} + text ${words(n, false, path)}`);
+    else if (leaf !== undefined) parts.push(`each ${words(n, false, path)}`);
+    else if (path === "lead" || path === "stem") parts.push(`${words(n, false, path)}`);
+    else parts.push(`${path} ${words(n, false, path)}`);
   }
   return parts.length ? `${key} ${parts.join(", ")}` : key;
 }
@@ -327,11 +433,17 @@ function fitBudget(key: string, def: J, namedLabels: boolean): string {
  * budgets the writer reads are the caps it is held to. A layout whose budgets equal an earlier
  * layout's points to it. `label` is set when every label in the menu has one word budget.
  */
-export function fitsLines(schema: J): {
+export function fitsLines(
+  schema: J,
+  stage: string,
+  opts: { namedLabels?: boolean; pack?: boolean } = {},
+): {
   heading?: number;
   label?: number;
   lines: Record<string, string>;
 } {
+  const pack = !!opts.pack;
+  const words = wordsAt(stage, pack);
   const defs = (schema.$defs ?? {}) as Record<string, J>;
   const variants = Object.entries(defs).flatMap(([name, def]) => {
     const [layout, key] = name.split("~");
@@ -341,17 +453,22 @@ export function fitsLines(schema: J): {
   const labels = new Set<number>();
   for (const { def } of variants) {
     for (const [path, n] of defCaps(def)) {
-      if (path === "heading") heading = Math.max(heading ?? 0, words(n));
-      if (path.endsWith("[].label")) labels.add(words(n));
+      if (path === "heading") heading = Math.max(heading ?? 0, words(n, true));
+      if (path.endsWith("[].label")) labels.add(words(n, true));
     }
   }
-  const label = labels.size === 1 ? [...labels][0] : undefined;
+  const label = labels.size === 1 && !opts.namedLabels ? [...labels][0] : undefined;
   // Per layout: budget -> its fit keys, so fits with one budget share it (`bare, fig 31`).
   const fits: Record<string, Map<string, string[]>> = {};
   for (const { layout, key, def } of variants) {
     const m = fits[layout] ?? new Map<string, string[]>();
     fits[layout] = m;
-    const budget = fitBudget("", def, label === undefined).trim();
+    const budget = fitBudget(
+      "",
+      def,
+      label === undefined,
+      wordsAt(stage, pack, layout, key),
+    ).trim();
     m.set(budget, [...(m.get(budget) ?? []), key]);
   }
   const pairs = (m: Map<string, string[]>) =>
@@ -375,8 +492,8 @@ export function fitsLines(schema: J): {
  * schema, the menu intro by the slot rules; step 2 names each slide's shape and plans what does
  * not fit one slide, and step 3 fits shape first.
  */
-export function slotFillSystem(system: string, schema: J): string {
-  const { heading, label, lines } = fitsLines(schema);
+export function slotFillSystem(system: string, schema: J, stage: string, pack = false): string {
+  const { heading, label, lines } = fitsLines(schema, stage, { pack });
   return system
     .split("\n")
     .map((line) => {
@@ -402,7 +519,8 @@ export function slotFillSystem(system: string, schema: J): string {
 }
 
 /** A string that ends a sentence. */
-const SENTENCE_END = /[.!?)"'’”]$/;
+// An ellipsis ends a completion stem on purpose ("An artery always carries blood…"), not a cut.
+const SENTENCE_END = /[.!?)"'’”…]$/;
 /** Fields written as sentences, by name; a lead is a caption on title and big-visual. */
 const SENTENCE_FIELD = /(^|\.)(lead|stem|instruction)$/;
 const CAPTION_LEAD = new Set(["title", "big-visual"]);
@@ -419,8 +537,12 @@ export type Arrival = {
    * holding more than one sentence) that does not end a sentence. Logged `cut: true`.
    */
   cuts: string[];
-  /** Every capped field's length against its cap, in words. */
-  fields: { path: string; words: number; capWords: number }[];
+  /**
+   * Every capped field's length against its cap, in words, in the shape the fill scorer reads
+   * (`build/writer-smoke/fill.py`: path, words, capWords): `capWords` is the measured cap in words
+   * (the hard limit), `shownWords` what the writer was shown for it (`shown-cap.ts`).
+   */
+  fields: { path: string; words: number; capWords: number; shownWords?: number }[];
   /** The writer's measure (`charsOver`): the slide overflows its layout. Logged, not repaired. */
   over: string[];
   route: "as-written" | "writer-fault";
@@ -431,32 +553,92 @@ export type Arrival = {
  * rest of the stage sees today's slide shape. A breach, cut or overflow is a writer fault: logged,
  * never silently accepted, and never repaired here (slot-fill never drops or rewrites words).
  */
-export function slotFillArrival(raw: J, stage: string, schema: J): Arrival {
+/** Layouts written as one def, without a `fit` (the pilot pack). */
+const PILOT_LAYOUTS = new Set([
+  "items-row",
+  "panel-list",
+  "split-compare",
+  // TEACH-110 part v: the question layouts, one def each.
+  "hinge",
+  "question-set",
+  "practice",
+  "exit-ticket",
+  // TEACH-110 part v: wave C, one def each, measured by its own layout.
+  "worked",
+  "stages",
+  "reasons",
+  "myth",
+  "figure",
+]);
+/** A one-def layout whose def is named apart from its template (wave C's figure slide). */
+const DEF_OF_TEMPLATE: Record<string, string> = { figure: "figure-slide" };
+/** Wave C fits of an older layout, measured by their own build (picture-text cards, step model). */
+const OWN_MEASURE_FITS = new Set(["visual-text~key-card-fig", "steps~step-model"]);
+
+export function slotFillArrival(
+  raw: J,
+  stage: string,
+  schema: J,
+  caps?: J,
+  /** A pack run: fields logged as the caps were measured, and the hinge held to each count's room. */
+  pack = false,
+): Arrival {
   const { fit, ...slide } = raw;
   const layout = String(raw.template ?? "");
   const key = typeof fit === "string" ? fit : undefined;
   const defs = (schema.$defs ?? {}) as Record<string, J>;
-  const def = key ? defs[variantDefName(layout, key)] : undefined;
+  // A pilot layout (TEACH-110 part s) is one def with no per-fit variants: it carries no `fit`,
+  // is checked against its own def here and measured at its drawn size later (pilot-fit.ts).
+  const own = DEF_OF_TEMPLATE[layout] ?? layout;
+  const pilot = !key && PILOT_LAYOUTS.has(layout) && !!defs[own];
+  const def = key ? defs[variantDefName(layout, key)] : pilot ? defs[own] : undefined;
   const breaches: string[] = [];
   const cuts: string[] = [];
   const fields: Arrival["fields"] = [];
   const wordsIn = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
-  if (!key) breaches.push("fit: missing");
+  if (!key && !pilot) breaches.push("fit: missing");
   else if (!def) breaches.push(`fit: no variant ${layout}~${key}`);
   else {
     breaches.push(...validate(def, raw, schema));
+    // An uncapped request (pilot v4.6) is checked against a capped one with the same defs: the
+    // writer never sees a cap, code still reads each field's room from the cap table.
+    const capDefs = ((caps ?? schema).$defs ?? {}) as Record<string, J>;
+    // Wave C at its own count (stages, reasons, worked rows, picture-text points): pack runs only.
+    const atCount = pack
+      ? waveCCountCaps(layout, key, raw, writerStageOfKey(stage))
+      : { caps: {}, cuts: [] };
+    cuts.push(...atCount.cuts);
     const walk = (s: J, v: unknown, path: string) => {
-      if (s.$ref) return walk(defs[String(s.$ref).replace("#/$defs/", "")] ?? {}, v, path);
+      if (s.$ref) return walk(capDefs[String(s.$ref).replace("#/$defs/", "")] ?? {}, v, path);
       if (s.anyOf) {
         for (const b of s.anyOf as J[]) walk(b, v, path);
         return;
       }
-      if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
-        fields.push({
-          path,
-          words: wordsIn(v),
-          capWords: Math.floor(s.maxLength / CHARS_PER_WORD),
-        });
+      // A word cap (wave C, `maxWords`): the field's words as the caps were measured, no characters.
+      if (pack && s.type === "string" && typeof v === "string" && typeof s.maxWords === "number") {
+        const words = capWords(v);
+        const cap =
+          (atCount.caps as Record<string, number>)[path.replace(/\[\d+\]/g, "[]")] ?? s.maxWords;
+        fields.push({ path, words, capWords: cap, shownWords: cap });
+        const t = v.trim();
+        const sentence = SENTENCE_FIELD.test(path) || INNER_SENTENCE.test(t);
+        if (words > cap || (sentence && t && !SENTENCE_END.test(t))) cuts.push(path);
+      } else if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
+        fields.push(
+          pack
+            ? {
+                path,
+                // Logged as the caps were measured: maths operators and letter terms are not words.
+                words: capWords(v),
+                capWords: wordsWithin(s.maxLength, writerStageOfKey(stage)),
+                shownWords: shownFor(
+                  s.maxLength,
+                  writerStageOfKey(stage),
+                  fitNeedKey(layout, path, key ?? ""),
+                ),
+              }
+            : { path, words: wordsIn(v), capWords: Math.floor(s.maxLength / CHARS_PER_WORD) },
+        );
         const t = v.trim();
         const sentence =
           (SENTENCE_FIELD.test(path) && !(path === "lead" && CAPTION_LEAD.has(layout))) ||
@@ -468,9 +650,28 @@ export function slotFillArrival(raw: J, stage: string, schema: J): Arrival {
         for (const [k, p] of Object.entries((s.properties ?? {}) as Record<string, J>))
           walk(p, (v as J)[k], path ? `${path}.${k}` : k);
     };
-    walk(def, raw, "");
+    walk((caps && capDefs[key ? variantDefName(layout, key) : own]) || def, raw, "");
   }
-  const over = charsOver(slide, stage);
+  // The hinge's one def carries the loosest offered count's option cap; each count has its own
+  // measured room (hinge-capacity.json `byCount`), so an option past its own count's is a cut.
+  // A pack run only: base4g keeps master's routing.
+  if (pack && layout === "hinge" && Array.isArray(raw.options)) {
+    const age = ({ KS1: "early", KS2: "primary" } as Record<string, string>)[
+      writerStageOfKey(stage)
+    ];
+    const cap = (HINGE_CAPACITY as unknown as Record<string, J>)[age ?? "secondary"];
+    const cell = ((cap?.byCount as J | undefined)?.[String(raw.options.length)] ?? cap) as
+      | J
+      | undefined;
+    const max = cell?.maxChars as number | undefined;
+    raw.options.forEach((o: unknown, i: number) => {
+      const t = typeof o === "string" ? o : String((o as J)?.text ?? "");
+      if (max !== undefined && t.length > max && !cuts.includes(`options[${i}]`))
+        cuts.push(`options[${i}]`);
+    });
+  }
+  // A pilot slide's room is measured by its layout (pilot-fit.ts), not the old per-fit tables.
+  const over = pilot || OWN_MEASURE_FITS.has(`${layout}~${key}`) ? [] : charsOver(slide, stage);
   const route = breaches.length || cuts.length || over.length ? "writer-fault" : "as-written";
   return { slide, ...(key ? { fit: key } : {}), breaches, cuts, fields, over, route };
 }

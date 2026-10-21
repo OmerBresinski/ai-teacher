@@ -16,15 +16,18 @@ describe("worker env", () => {
       AWS_BEARER_TOKEN_BEDROCK: undefined,
       AWS_REGION: DEFAULT_REGION,
       AI_GATEWAY_API_KEY: undefined,
+      POSTHOG_API_KEY: undefined,
+      POSTHOG_HOST: undefined,
       AI_MODEL_FRONTIER: DEFAULT_MODEL_IDS.frontier,
       AI_MODEL_STANDARD: DEFAULT_MODEL_IDS.standard,
       AI_MODEL_SMALL: DEFAULT_MODEL_IDS.small,
       AI_LESSON_COST_CAP_USD: 0.5,
       ANONYMOUS_USER_TTL_DAYS: 14,
+      GENERATION_DEBUG_TTL_DAYS: 30,
       AI_LESSON_TOKEN_CAP: 300_000,
       AI_WORKSHEET_COST_CAP_USD: 0.1,
-      AI_LESSON_PLANNER: "objectives-first",
-      AI_LESSON_COST_WARN_USD: 0.03,
+      AI_LESSON_PLANNER: "writer",
+      AI_LESSON_COST_WARN_USD: 0.12,
       AI_REASONING_EFFORT: "low",
       MASTRA_TELEMETRY_DISABLED: undefined,
       PEXELS_API_KEY: undefined,
@@ -204,10 +207,10 @@ describe("worker env", () => {
   });
 
   describe("AI_LESSON_PLANNER and AI_LESSON_COST_WARN_USD (TEACH-93)", () => {
-    test("unset: the objectives-first planner and a 0.03 cost target", () => {
+    test("unset: the writer planner and a 0.12 cost target", () => {
       const env = parseEnv({ DATABASE_URL: DB });
-      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
-      expect(env.AI_LESSON_COST_WARN_USD).toBe(0.03);
+      expect(env.AI_LESSON_PLANNER).toBe("writer");
+      expect(env.AI_LESSON_COST_WARN_USD).toBe(0.12);
     });
 
     test("accepts legacy and a numeric target", () => {
@@ -218,6 +221,11 @@ describe("worker env", () => {
       });
       expect(env.AI_LESSON_PLANNER).toBe("legacy");
       expect(env.AI_LESSON_COST_WARN_USD).toBe(0);
+    });
+
+    test("accepts objectives-first, the rollback from the writer default", () => {
+      const env = parseEnv({ DATABASE_URL: DB, AI_LESSON_PLANNER: "objectives-first" });
+      expect(env.AI_LESSON_PLANNER).toBe("objectives-first");
     });
 
     test("another planner stops the worker at boot with one line naming the variable", () => {

@@ -1,4 +1,5 @@
 import type { TemplateInput } from "../index";
+import { REGISTERED } from "../registered";
 import { templateSamples } from "../samples";
 
 /**
@@ -15,8 +16,29 @@ const flow = {
   },
 };
 const photo = { photo: "", aspect: 4 / 3, alt: "a lamb" };
+/** Templates added since the snapshot: an old lesson cannot hold them, so they are not in it. */
+// `worked` (TEACH-17 part b) is new: no saved lesson can hold one, so it has no master hash.
+// `figure` (TEACH-239 part b) is new too: no saved lesson holds one.
+// `source` (TEACH-75 part ab) likewise.
+const NEWER = new Set<string>([
+  "panel-list",
+  "split-compare",
+  "items-row",
+  "worked",
+  "stages",
+  "figure",
+  "source",
+  "myth",
+]);
+// TEACH-75 part ad (C5): reasons came after the snapshot too; kept out of the old-lesson set.
+NEWER.add("reasons");
+// TEACH-106 part b: every layout registered in `registered.ts` came after the snapshot too.
+for (const id of Object.keys(REGISTERED)) NEWER.add(id);
 export const OLD_LESSON_INPUTS: TemplateInput[] = [
-  ...templateSamples(),
+  ...templateSamples()
+    .filter((s) => !NEWER.has(s.template))
+    // The question-set sample gained answers (the quick check, TEACH-101 part g); master's had none.
+    .map((s) => (s.template === "question-set" ? { ...s, answers: undefined } : s)),
   {
     template: "picture-text",
     heading: "Lambs",

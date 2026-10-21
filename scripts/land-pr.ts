@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// bun run land <pr-number> [--no-deploy] [--no-smoke] [--timeout-min <n>]
+// bun run land <pr-number> [--no-deploy] [--no-smoke] [--timeout-min <n>] [--expect-sha <sha>]
 //
 // Lands a reviewed pull request without making the main agent poll CI or deploys one turn at a
 // time. It refuses to make review-thread decisions: resolve or explicitly defer those first.
@@ -8,6 +8,11 @@
 // timestamp, so a log read later says where the time went. The merge happens as soon as the
 // required checks are green; a deploy that outlives the watch is reported in the summary (exit 1)
 // rather than hiding the fact that the PR is already merged.
+//
+// --expect-sha <sha> (TEACH-110 part af): land exactly the commit that was tested. The PR's head
+// must be that full SHA, the script never rebases (a BEHIND or conflicting PR is refused, since a
+// rebase makes a new, untested head), and the merge is `gh pr merge --match-head-commit <sha>`,
+// so GitHub refuses it if the branch moved after the check.
 
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
@@ -59,6 +64,8 @@ export interface LandPrOptions {
   deploy?: boolean;
   smoke?: boolean;
   timeoutMin?: number;
+  /** The tested head: no rebase, and the merge only if the PR's head is still this commit. */
+  expectSha?: string;
 }
 
 export interface CheckSummary {
@@ -92,7 +99,7 @@ interface RailwayDeployment {
 
 interface ParsedLandPrArgs {
   pr: number;
-  options: Required<LandPrOptions>;
+  options: Required<Omit<LandPrOptions, "expectSha">> & Pick<LandPrOptions, "expectSha">;
 }
 
 function output(result: CommandResult): string {
@@ -443,15 +450,25 @@ async function prState(pr: number, deps: LandPrDeps): Promise<PrState> {
 async function rebaseBranch(state: PrState, deps: LandPrDeps): Promise<void> {
   const restore = await startingCheckout(state, deps);
   try {
-    for (const args of [
-      ["fetch", "origin"],
-      ["checkout", state.headRefName],
-      ["rebase", "origin/master"],
-      ["push", "--force-with-lease"],
-    ]) {
+    // The push leases against the head GitHub reported (`headRefOid`), not the ref the fetch just
+    // moved: a commit pushed to the branch after land read it is refused, never overwritten.
+    const branch = state.headRefName;
+    const steps: [string[], string][] = [
+      [["fetch", "origin"], "Could not fetch origin"],
+      [["checkout", branch], `Could not check out ${branch}`],
+      [
+        ["rebase", "origin/master"],
+        `${branch} has merge conflicts a local rebase could not resolve`,
+      ],
+      [
+        ["push", `--force-with-lease=${branch}:${state.headRefOid}`],
+        `Could not push the rebased ${branch}: the remote branch is no longer ${state.headRefOid} (or the push failed)`,
+      ],
+    ];
+    for (const [args, why] of steps) {
       const result = await deps.git(args);
       if (result.exitCode !== 0 && args[0] === "rebase") await deps.git(["rebase", "--abort"]);
-      requireSuccess(result, `git ${args.join(" ")}`);
+      requireSuccess(result, `${why}: git ${args.join(" ")}`);
     }
   } finally {
     // Cleanup must never replace the error that brought us here: a failed restore is reported,
@@ -681,6 +698,26 @@ async function watchDeploys(
 /** Railway statuses that mean the deployment is live (or was correctly not rebuilt). */
 const RAILWAY_DONE = new Set(["SUCCESS", "SKIPPED", "SLEEPING"]);
 
+/** A full 40-hex commit SHA: `gh pr merge --match-head-commit` compares the whole id. */
+const FULL_SHA = /^[0-9a-f]{40}$/;
+
+/**
+ * `--expect-sha`: the PR's head is the tested commit, and nothing will move it. A BEHIND or DIRTY
+ * PR would need a rebase, which makes a new head nobody tested, so it is refused, not rebased.
+ */
+function requireExpectedHead(pr: number, state: PrState, expectSha: string): void {
+  if (state.headRefOid !== expectSha) {
+    throw new UserFacingError(
+      `PR #${pr} head is ${state.headRefOid}, not the tested ${expectSha}: re-test the new head and land with its SHA.`,
+    );
+  }
+  if (state.mergeStateStatus === "BEHIND" || state.mergeStateStatus === "DIRTY") {
+    throw new UserFacingError(
+      `PR #${pr} is ${state.mergeStateStatus}; --expect-sha never rebases (a rebase is an untested head). Rebase, re-test, and land with the new SHA.`,
+    );
+  }
+}
+
 export async function landPr(
   pr: number,
   options: LandPrOptions,
@@ -705,6 +742,7 @@ export async function landPr(
     log.timed(`merge state: ${state.mergeStateStatus}`);
     if (state.state !== "OPEN") throw new UserFacingError(`PR #${pr} is ${state.state}, not open.`);
     if (state.isDraft) throw new UserFacingError(`PR #${pr} is a draft and cannot be landed.`);
+    if (options.expectSha !== undefined) requireExpectedHead(pr, state, options.expectSha);
     if (state.mergeStateStatus === "BEHIND") {
       if (rebaseRounds >= MAX_REBASE_ROUNDS) {
         throw new UserFacingError(
@@ -717,7 +755,19 @@ export async function landPr(
       continue;
     }
     if (state.mergeStateStatus === "DIRTY") {
-      throw new UserFacingError(`PR #${pr} has merge conflicts.`);
+      // GitHub merges without `.gitattributes` drivers, so two layout PRs that each add a block to
+      // a union-merged registry (TEACH-106 part b) show DIRTY there. A local rebase applies the
+      // driver; a real conflict still stops the rebase, and the PR is refused as before.
+      if (rebaseRounds >= MAX_REBASE_ROUNDS) {
+        throw new UserFacingError(`PR #${pr} has merge conflicts.`);
+      }
+      rebaseRounds += 1;
+      log.step(
+        `GitHub reports conflicts; rebasing ${state.headRefName} onto origin/master locally`,
+      );
+      // Each failed step names itself (fetch, checkout, conflicts, a refused push).
+      await rebaseBranch(state, deps);
+      continue;
     }
     if (state.mergeStateStatus === "BLOCKED") {
       const checks = await statusChecks(pr, deps);
@@ -755,7 +805,14 @@ export async function landPr(
     : { railway: { api: null, worker: null }, vercel: null };
   log.step(`Squash-merging PR #${pr}`);
   requireSuccess(
-    await deps.gh(["pr", "merge", String(pr), "--squash", "--delete-branch"]),
+    await deps.gh([
+      "pr",
+      "merge",
+      String(pr),
+      "--squash",
+      "--delete-branch",
+      ...(options.expectSha !== undefined ? ["--match-head-commit", options.expectSha] : []),
+    ]),
     "Merge",
   );
   const mergeCommit = await deps.gh([
@@ -814,7 +871,12 @@ export function formatLandPrSummary(summary: LandPrSummary): string {
 }
 
 export function parseLandPrArgs(argv: string[]): ParsedLandPrArgs {
-  let values: { "no-deploy"?: boolean; "no-smoke"?: boolean; "timeout-min"?: string };
+  let values: {
+    "no-deploy"?: boolean;
+    "no-smoke"?: boolean;
+    "timeout-min"?: string;
+    "expect-sha"?: string;
+  };
   let positionals: string[];
   try {
     ({ values, positionals } = parseArgs({
@@ -825,11 +887,12 @@ export function parseLandPrArgs(argv: string[]): ParsedLandPrArgs {
         "no-deploy": { type: "boolean", default: false },
         "no-smoke": { type: "boolean", default: false },
         "timeout-min": { type: "string", default: String(DEFAULT_TIMEOUT_MIN) },
+        "expect-sha": { type: "string" },
       },
     }));
   } catch (error) {
     throw new UserFacingError(
-      `${error instanceof Error ? error.message : String(error)}\nUsage: bun run land <pr-number> [--no-deploy] [--no-smoke] [--timeout-min <n>]`,
+      `${error instanceof Error ? error.message : String(error)}\nUsage: bun run land <pr-number> [--no-deploy] [--no-smoke] [--timeout-min <n>] [--expect-sha <sha>]`,
       ExitCode.Usage,
     );
   }
@@ -842,16 +905,22 @@ export function parseLandPrArgs(argv: string[]): ParsedLandPrArgs {
     !Number.isSafeInteger(pr) ||
     pr <= 0 ||
     !Number.isFinite(timeoutMin) ||
-    timeoutMin <= 0
+    timeoutMin <= 0 ||
+    (values["expect-sha"] !== undefined && !FULL_SHA.test(values["expect-sha"]))
   ) {
     throw new UserFacingError(
-      "Usage: bun run land <pr-number> [--no-deploy] [--no-smoke] [--timeout-min <n>]",
+      "Usage: bun run land <pr-number> [--no-deploy] [--no-smoke] [--timeout-min <n>] [--expect-sha <sha>]",
       ExitCode.Usage,
     );
   }
   return {
     pr,
-    options: { deploy: !values["no-deploy"], smoke: !values["no-smoke"], timeoutMin },
+    options: {
+      deploy: !values["no-deploy"],
+      smoke: !values["no-smoke"],
+      timeoutMin,
+      ...(values["expect-sha"] !== undefined ? { expectSha: values["expect-sha"] } : {}),
+    },
   };
 }
 
