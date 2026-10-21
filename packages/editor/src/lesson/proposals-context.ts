@@ -1,5 +1,6 @@
 import type { Id, RichDoc, Slide } from "@tj/domain/documents";
 import { createContext, useContext } from "react";
+import type { FirstSlidesReveal } from "./first-slides-reveal";
 import type { DraftStore } from "./live-draft";
 import type { RegenerateTarget } from "./use-editor-session";
 
@@ -76,6 +77,8 @@ export type ProposalsApi = {
   writingNowId?: Id;
   /** The generating job's slide drafts (live writing, ADR 0039): the strip's thumbnails show them. */
   drafts?: DraftStore;
+  /** A new lesson's title and objectives typing out (first-slides-reveal.ts): thumbnails follow it. */
+  reveal?: FirstSlidesReveal;
   /**
    * Fact ids the worksheet's blocks derive from; `addFact` never mints one of these again. `null`
    * while the lesson has a worksheet the app has not fetched yet — adding facts waits for it.
