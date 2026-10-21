@@ -81,6 +81,8 @@ describe("label floor", () => {
     const base = await drawLibraryModel("heart_circulation", p);
     const grown = await drawLibraryModel("heart_circulation", p, { typeScale: 1.342 });
     expect(grownTextFault(base.svg, base.svg)).toBeUndefined();
-    expect(grownTextFault(base.svg, grown.svg)).toContain("split");
+    // v2's compact key breaks differently when grown (its lines collide rather than split): any
+    // text fault is what the floor must catch
+    expect(grownTextFault(base.svg, grown.svg)).toMatch(/split|on top of one another/);
   });
 });

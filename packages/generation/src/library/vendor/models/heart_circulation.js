@@ -9,7 +9,7 @@ import {
 import { bodyOutline, organ } from '../kit/batch-D.js';
 
 export const meta = {
-  id: 'heart_circulation', name: 'Heart, blood and exercise', kind: 'scene', version: 1,
+  id: 'heart_circulation', name: 'Heart, blood and exercise', kind: 'scene', version: 2,
   subjects: ['Science', 'PE'],
   years: ['Y2', 'Y6'],
   teaches: 'The heart pumps blood round the body in vessels, to the lungs for oxygen and out to the body, and beats faster when we exercise.',
@@ -41,9 +41,12 @@ export const params = {
       properties: Object.fromEntries(CARRY.map(k => [k, { type: 'boolean', title: CARRY_WORDS[k], default: false }])),
     },
     showBody: { type: 'boolean', title: 'Show where the heart is in the body', default: true, 'x-panel': 'advanced' },
+    // the teacher's switches for older classes (KS3 and up); the writer never sees or sets them ('x-fill': false)
+    gasLabels: { type: 'boolean', title: 'Label the gases at the lungs', description: 'For older classes: oxygen in and carbon dioxide out, beside the lungs. Heart and lungs loop only.', default: false, 'x-panel': 'advanced', 'x-fill': false },
+    sides: { type: 'boolean', title: 'Name the right and left sides of the heart', description: 'For older classes: the person’s right and left, which are on the other side as you look. Heart and lungs loop only.', default: false, 'x-panel': 'advanced', 'x-fill': false },
     // names on the slide are labels (40 letters); the body card holds a short phrase (60)
     text: TEXT_PARAM_FOR(Object.assign({ body: 'phrase' }, Object.fromEntries(
-      ['heart', 'lungs', 'artery', 'vein', 'artery-lungs', 'vein-lungs', 'rich', 'poor', 'o2in', 'co2out', 'pulse', 'rest', 'running', 'carries']
+      ['heart', 'lungs', 'artery', 'vein', 'artery-lungs', 'vein-lungs', 'rich', 'poor', 'o2in', 'co2out', 'pulse', 'rest', 'running', 'carries', 'side-right', 'side-left', 'side-whose']
         .concat(CARRY.map(c => 'carry-' + c)).map(id => [id, 'label'])))),
   },
 };
@@ -67,15 +70,18 @@ export const presets = [
 function model(P) {
   const dbl = P.detail !== 'simple', run = P.exercise === 'running';
   const pulse = run || !!P.showPulse;
-  const carries = CARRY.filter(k => P.carries && P.carries[k]);
+  // the simple loop is for Year 2, where oxygen is not taught: it never lists oxygen among what blood carries
+  const carries = CARRY.filter(k => P.carries && P.carries[k] && (dbl || k !== 'oxygen'));
   const rest = (P.pulse && P.pulse.rest) ?? 85, active = (P.pulse && P.pulse.active) ?? 150;
   const L = id => txt(P, 'label:' + id, DEF[id]);
-  return { dbl, run, pulse, carries, rest, active, names: P.vesselNames !== false, L };
+  // the gas labels and the heart's sides are drawn on the double loop only (the simple loop has no lungs)
+  return { dbl, run, pulse, carries, rest, active, names: P.vesselNames !== false, L, gas: dbl && !!P.gasLabels, sides: dbl && !!P.sides };
 }
 const DEF = {
-  heart: 'Heart', lungs: 'Lungs', body: 'The rest of the body', artery: 'Artery', vein: 'Vein', 'artery-lungs': 'Artery', 'vein-lungs': 'Vein',
+  heart: 'Heart', lungs: 'Lungs', body: 'The rest of the body', artery: 'Artery', vein: 'Vein', 'artery-lungs': 'Artery to lungs', 'vein-lungs': 'Vein from lungs',
   rich: 'Oxygen-rich blood', poor: 'Oxygen-poor blood', o2in: 'Oxygen in', co2out: 'Carbon dioxide out',
   pulse: 'Beats a minute', rest: 'At rest', running: 'Running', carries: 'Blood carries',
+  'side-right': 'Right side', 'side-left': 'Left side', 'side-whose': '(the person’s)',
 };
 const listWords = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
 
@@ -102,23 +108,28 @@ function plan(P) {
   const art = M.names ? ' in arteries' : '', vn = M.names ? ' in veins' : '';
   S.push({ key: 'heart', caption: 'Your heart is a muscle in your chest. It pumps blood all the way round your body.',
     note: 'Ask pupils to put a hand on the middle of their chest, a little to the left. The heart is about the size of their fist.' });
-  S.push({ key: 'out', caption: `Blood leaves the heart${art} and carries oxygen out to every part of the body.`,
-    note: M.names ? 'Arteries always carry blood away from the heart. A way to remember it: A for artery, A for away.' : 'Blood travels in tubes called blood vessels. It never leaves them.' });
-  S.push({ key: 'back', caption: `The body uses up the oxygen. Oxygen-poor blood comes back to the heart${vn}.`,
-    note: (M.names ? 'Veins carry blood back to the heart. ' : '') + 'Oxygen-poor blood is dark red, not blue. Veins only look blue through the skin. The colours here are a key, not real colours.' });
+  // version 2: the double loop follows one drop of blood in journey order, lungs first, so blood is
+  // never shown leaving for the body "oxygen-rich" before it has been to the lungs
   if (M.dbl) {
-    S.push({ key: 'lungs', caption: `The heart pumps the oxygen-poor blood to the lungs${art ? ', in an artery' : ''}.`,
-      note: 'The heart is two pumps side by side: one side sends blood to the lungs, the other to the body. The two sides never mix.' });
-    S.push({ key: 'oxygen', caption: 'In the lungs, blood picks up oxygen and gets rid of carbon dioxide.',
+    S.push({ key: 'lungs', caption: `One side of the heart pumps oxygen-poor blood to the lungs${art ? ', in an artery' : ''}.`,
+      note: 'The heart is two pumps side by side: one side sends blood to the lungs, the other to the body. The two sides never mix. The side that pumps to the lungs is the right side, the person’s right, which is on your left as you look.' });
+    S.push({ key: 'oxygen', caption: `In the lungs, blood picks up oxygen and gets rid of carbon dioxide. It flows back to the heart${M.names ? ' in a vein' : ''}.`,
       note: 'We breathe in air with oxygen and breathe out carbon dioxide. Blood goes through the heart twice on every trip round the body.' });
   }
+  // version 2 (TEACH-247 part w, curriculum review): the simple loop is for Year 2, where oxygen is not
+  // taught, so its captions carry no oxygen words and its blood is one colour
+  S.push({ key: 'out', caption: M.dbl ? `The other side of the heart pumps the oxygen-rich blood out to the body${art}.` : `Blood leaves the heart${art} and carries what your body needs to every part of you.`,
+    note: M.names ? 'Arteries always carry blood away from the heart. A way to remember it: A for artery, A for away.' : 'Blood travels in tubes called blood vessels. It never leaves them.' });
+  S.push({ key: 'back', caption: M.dbl ? `Cells all over the body use up the oxygen. Oxygen-poor blood comes back to the heart${vn}.` : `Then the blood comes back to the heart${vn}, ready to go round again.`,
+    note: (M.names ? 'Veins carry blood back to the heart. ' : '') + (M.dbl ? 'Oxygen-poor blood is dark red, not blue. Veins only look blue through the skin. The colours here are a key, not real colours.'
+      : 'It is the same blood going round and round: it is not used up. Blood is red all the way round; veins only look blue through the skin.') });
   if (M.carries.length) S.push({ key: 'carries', caption: `Blood carries ${listWords(M.carries.map(k => CARRY_LOWER[k]))} round the body.`,
     note: 'Food (nutrients) is taken into the blood from the gut, and water too. Carbon dioxide is a waste gas taken back to the lungs.' });
   if (M.pulse) S.push({ key: 'pulse', caption: `Each squeeze of the heart is a beat, felt as your pulse: about ${M.rest} a minute at rest.`,
     note: 'Find the pulse on the inside of the wrist or the side of the neck. Count for 15 seconds and multiply by 4.' });
-  if (M.run) S.push({ key: 'run', caption: `${M.L('running')}: muscles need more oxygen, so the heart beats faster, about ${M.active} a minute.`,
+  if (M.run) S.push({ key: 'run', caption: M.dbl ? `${M.L('running')}: muscles need more oxygen, so the heart beats faster, about ${M.active} a minute.` : `${M.L('running')}: your muscles work harder, so the heart beats faster, about ${M.active} a minute.`,
     note: `Pupils can measure their own pulse before and after a minute of exercise, then see how long it takes to fall back to about ${M.rest}. Breathing gets faster too.` });
-  const summary = M.run ? `Exercise makes the heart beat faster (${M.rest} to ${M.active} a minute) to get more oxygen to muscles.`
+  const summary = M.run ? `Exercise makes the heart beat faster (${M.rest} to ${M.active} a minute) to get more ${M.dbl ? 'oxygen' : 'blood'} to muscles.`
     : M.dbl ? 'Two loops: the heart sends blood to the lungs to pick up oxygen, then out to the body.'
       : 'The heart pumps blood out to the body and back again, round and round, all day and all night.';
   return { M, S, summary };
@@ -139,12 +150,221 @@ const BODY = { x: 110, w: 850, y: 588, h: 52 };
 const LY = 186;                       // lung centre line
 const heartD = (x, y, k) => `M${x - k} ${y - 13 * k} C ${x + 5 * k} ${y - 18 * k} ${x + 19 * k} ${y - 15 * k} ${x + 19 * k} ${y - 3 * k} C ${x + 19 * k} ${y + 8 * k} ${x + 9 * k} ${y + 15 * k} ${x + 2 * k} ${y + 19 * k} C ${x - 6 * k} ${y + 15 * k} ${x - 18 * k} ${y + 6 * k} ${x - 18 * k} ${y - 4 * k} C ${x - 18 * k} ${y - 14 * k} ${x - 7 * k} ${y - 17 * k} ${x - k} ${y - 13 * k} Z`;
 // one lung; s = +1 when its outer side faces right
+const lungDAt = (cx, s, y) => `M${cx - s * 8} ${y - 60} C ${cx + s * 40} ${y - 56} ${cx + s * 66} ${y + 2} ${cx + s * 62} ${y + 52} Q ${cx + s * 20} ${y + 70} ${cx - s * 48} ${y + 60} C ${cx - s * 56} ${y + 30} ${cx - s * 38} ${y + 14} ${cx - s * 42} ${y - 14} C ${cx - s * 44} ${y - 42} ${cx - s * 30} ${y - 60} ${cx - s * 8} ${y - 60} Z`;
 const lungD = (cx, s) => { const y = LY; return `M${cx - s * 8} ${y - 60} C ${cx + s * 40} ${y - 56} ${cx + s * 66} ${y + 2} ${cx + s * 62} ${y + 52} Q ${cx + s * 20} ${y + 70} ${cx - s * 48} ${y + 60} C ${cx - s * 56} ${y + 30} ${cx - s * 38} ${y + 14} ${cx - s * 42} ${y - 14} C ${cx - s * 44} ${y - 42} ${cx - s * 30} ${y - 60} ${cx - s * 8} ${y - 60} Z`; };
 
-export function render(root, P, ctx) {
-  const { M } = plan(P); const b = ctx.b, N = ctx.N; const bi = k => b[k];
+/* ------------------------------------------------------------------ render: the double loop (version 2) */
+// The school figure-of-eight: lungs at the top, the heart in the middle, the body at the bottom. The
+// top loop is heart -> lungs -> heart, the bottom loop heart -> body -> heart; no tube crosses or runs
+// beside another, and every vessel joins the heart's outline. Blood changes colour across the lungs
+// (oxygen picked up) and across the body (oxygen used), so the picture shows where without extra words.
+// "Blood carries" and the pulse, when shown, are their own builds in a right column beside the loop, which
+// steps back while they are the point and is whole again in the summary (the editor's view), so the last
+// picture a class sees is always the whole double loop (TEACH-247 part w, curriculum review Q4 and Q5).
+function renderDouble(root, P, ctx, M) {
+  const b = ctx.b; const bi = k => b[k];
   const g0 = h('g', { style: '--o2-rich:var(--heat);--o2-rich-text:var(--heat-text);--o2-poor:var(--focus);--o2-poor-text:var(--focus-text)' }, root);
   const RICH = 'var(--o2-rich)', POOR = 'var(--o2-poor)';
+  const VW = 'calc(var(--sw-arrow) * 3.2)';
+  const recede = k => ctx.rc(k, null, 'soft');
+  const tb = (p, x, y, s, o) => {
+    const r = textBlock(p, x, y, s, o); const last = r.lines[r.lines.length - 1] || '';
+    if (last.endsWith('…') && !String(s).trim().endsWith('…')) ctx.warn(`“${String(s).slice(0, 40)}” is too long for its space, so it is cut short. Shorten it.`);
+    return r;
+  };
+  const LAST = Math.max(...Object.values(b));
+  const phased = (par, k, x, y, s, o, col) => {
+    // the last build's words are drawn once, in ink, so they never add a frame after the last step
+    if (bi(k) >= LAST) { tb(h('g', { s: bi(k), cls: 'rise' }, par), x, y, s, Object.assign({}, o, { a: { fill: 'var(--ink-2)', cls: 'strong halo' } })); return; }
+    textBlock(h('g', { s: bi(k) + 1 }, par), x, y, s, Object.assign({}, o, { a: { fill: 'var(--ink-2)', cls: 'halo' } }));
+    tb(h('g', { s: bi(k), hide: bi(k) + 1, cls: 'rise', style: 'pointer-events:none' }, par), x, y, s, Object.assign({}, o, { a: { fill: col, cls: 'strong halo' } }));
+  };
+  const panel = M.carries.length ? 'carries' : M.pulse ? 'pulse' : null;
+  // the loop sits left of a right column that holds the key, then any panel; the corner left of the
+  // lungs holds the artery's name and, for older classes, the gas labels
+  const SX = 930, SW = GRID.right - SX, RIGHT = SX - 24;
+  const circ = h('g', panel ? { c: ctx.rc(bi(panel), null, 'quiet') } : {}, g0);
+  const defs = h('defs', {}, circ);
+  const grad = (id, x0, x1, from, to) => {
+    const lg = h('linearGradient', { id, gradientUnits: 'userSpaceOnUse', x1: x0, x2: x1, y1: 0, y2: 0 }, defs);
+    h('stop', { offset: '0.25', style: `stop-color:${from}` }, lg); h('stop', { offset: '0.75', style: `stop-color:${to}` }, lg);
+    return `url(#${id})`;
+  };
+
+  /* geometry */
+  const HX = 490, HY = 392, k = 4.8;
+  const LY = 172, LB = LY + 60, LXL = HX - 112, LXR = HX + 112;
+  const LX = HX - 250, RX = HX + 250, AY = HY + 4 * k;
+  const BX0 = HX - 125, BX1 = HX + 125, BY0 = 520, BY1 = 576, BM = (BY0 + BY1) / 2;
+  const pax = HX - 9 * k, pvx = HX + 10 * k, heartTop = HY - 17 * k;
+
+  /* where the heart is: a small figure for the first build, before the loop is drawn */
+  if (P.showBody !== false) {
+    const fig = h('g', { s: bi('heart'), hide: bi('lungs'), cls: 'rise' }, circ);
+    const body = bodyOutline(fig, { age: 'child', x: HX - 330, top: 130, height: 380 });
+    organ(fig, body, 'heart', { s: bi('heart'), cls: 'pop', delay: 300 });
+  }
+
+  /* lungs: one pair, outlined so they read at slide size; blood turns from oxygen-poor to oxygen-rich across
+     each lung alike (never one lung "poor" and the other "rich"); the windpipe is drawn in a neutral air colour */
+  const lg = h('g', { s: bi('lungs'), cls: 'pop' }, circ);
+  h('path', { d: `M${HX} ${LY - 60} V ${LY - 34} M${HX} ${LY - 34} Q ${LXL + 70} ${LY - 34} ${LXL + 36} ${LY - 6} M${HX} ${LY - 34} Q ${LXR - 70} ${LY - 34} ${LXR - 36} ${LY - 6}`, fill: 'none', stroke: 'var(--ink-3)', 'stroke-width': 'calc(var(--sw-arrow) * 2.2)', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, lg);
+  const lobes = [[LXL, -1], [LXR, 1]];
+  for (const [cx, sd] of lobes) h('path', { d: lungDAt(cx, sd, LY), fill: 'var(--ear)', stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)' }, lg);
+  const lgx = h('g', { s: bi('oxygen'), cls: 'pop' }, circ);
+  for (const [cx, sd] of lobes) h('path', { d: lungDAt(cx, sd, LY), fill: grad(`${ctx.uid}-lg${sd}`, cx - 56, cx + 56, POOR, RICH), stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)' }, lgx);
+  const air = h('g', { s: bi('lungs') }, circ);
+  for (const [cx, sd] of lobes) h('path', { d: `M${cx - sd * 36} ${LY - 6} L ${cx + sd * 8} ${LY - 30} M${cx - sd * 36} ${LY - 6} L ${cx + sd * 30} ${LY + 4} M${cx - sd * 36} ${LY - 6} L ${cx - sd * 4} ${LY + 38}`, fill: 'none', stroke: 'var(--paper)', 'stroke-width': 'var(--sw-struct)', 'stroke-linecap': 'round' }, air);
+  tb(lg, LXR + 74, LY + 10, M.L('lungs'), { cls: 'ts-label', maxW: RIGHT - (LXR + 74), maxLines: 2, lh: 30, a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:lungs' });
+
+  /* the body: an organ-like shape with tiny vessels; blood turns from oxygen-rich to oxygen-poor across it */
+  const bodyFill = grad(`${ctx.uid}-bg`, BX1, BX0, RICH, POOR);
+  const bodyD = `M${BX0 + 34} ${BY0} H ${BX1 - 34} Q ${BX1} ${BY0} ${BX1} ${BM} Q ${BX1} ${BY1} ${BX1 - 34} ${BY1} H ${BX0 + 34} Q ${BX0} ${BY1} ${BX0} ${BM} Q ${BX0} ${BY0} ${BX0 + 34} ${BY0} Z`;
+  const bg = h('g', { s: bi('out'), cls: 'rise' }, circ);
+  h('path', { d: bodyD, fill: 'var(--ear)', stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)' }, bg);
+  h('path', { d: bodyD, fill: bodyFill, stroke: 'var(--berry-shade)', 'stroke-width': 'var(--sw-struct)', s: bi('back'), cls: 'pop' }, circ);
+  const cap = h('g', { s: bi('out') }, circ);
+  for (const dy of [-14, 0, 14]) {
+    let d = `M${BX0 + 30} ${BM + dy}`;
+    for (let x = BX0 + 30; x < BX1 - 30; x += 40) d += ` q 10 -8 20 0 t 20 0`;
+    h('path', { d, fill: 'none', stroke: 'var(--paper)', 'stroke-width': 'var(--sw-rule)', 'stroke-linecap': 'round' }, cap);
+  }
+  tb(bg, HX, BY1 + 44, M.L('body'), { cls: 'ts-label', maxW: 2 * (RX - HX) + 40, maxLines: 1, anchor: 'middle', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:body' });
+
+  /* vessels: each draws in its own build, arrowhead at the destination; earlier ones step back */
+  const flows = [];
+  const vessel = (kk, d, ex, ey, ang, col) => {
+    arrow(ctx, circ, d, ex, ey, ang, col, VW, { draw: bi(kk), k: 1.5, g: { c: recede(kk) } });
+    const mp = h('path', { d, fill: 'none', stroke: 'none' }, circ); const L = mp.getTotalLength();
+    const gap = 46, n = Math.max(1, Math.floor((L - 30) / gap));
+    const g = h('g', { s: bi(kk), delay: 900, c: recede(kk) }, circ);
+    const dots = Array.from({ length: n }, () => h('circle', { r: 4, fill: 'var(--paper)' }, g));
+    const place = off => dots.forEach((c, i) => { const p = mp.getPointAtLength((i * gap + off) % (n * gap)); c.setAttribute('cx', p.x.toFixed(1)); c.setAttribute('cy', p.y.toFixed(1)); });
+    place(gap / 2); flows.push({ place, gap });
+  };
+  // blood enters each lung's oxygen-poor (purple) end and leaves its oxygen-rich (red) end: in at the
+  // left lung's outer side, out at the right lung's outer side, so the colour turn matches the vessels
+  // the kit's arrow straightens the last 1.5 head-lengths of a vessel (about 90 px at this width), so
+  // each vessel ends in a straight run at least that long: diagonal runs into the lungs and the heart
+  const ry = LB + 50, lin = LXL - 40, rout = LXR + 40, ang = (x0, y0, x1, y1) => Math.atan2(y1 - y0, x1 - x0);
+  vessel('lungs', `M${pax} ${HY - 12 * k} L ${pax} ${ry} L ${lin} ${LB - 6}`, lin, LB - 6, ang(pax, ry, lin, LB - 6), POOR);
+  vessel('oxygen', `M${rout} ${LB - 6} L ${rout} ${LB + 14} L ${pvx} ${heartTop - 4}`, pvx, heartTop - 4, ang(rout, LB + 14, pvx, heartTop - 4), RICH);
+  vessel('out', `M${HX + 12 * k} ${AY} L ${RX - 24} ${AY} Q ${RX} ${AY} ${RX} ${AY + 24} L ${RX} ${BM - 24} Q ${RX} ${BM} ${RX - 24} ${BM} L ${BX1 + 8} ${BM}`, BX1 + 8, BM, Math.PI, RICH);
+  vessel('back', `M${BX0} ${BM} L ${LX + 24} ${BM} Q ${LX} ${BM} ${LX} ${BM - 24} L ${LX} ${AY + 24} Q ${LX} ${AY} ${LX + 24} ${AY} L ${HX - 17 * k - 6} ${AY}`, HX - 17 * k - 6, AY, 0, POOR);
+
+  /* the heart: a muscle with two sides that never mix */
+  const hg = h('g', { s: bi('heart'), cls: 'pop' }, circ);
+  h('path', { d: heartD(HX, HY, k), fill: 'var(--berry-shade)', cls: 'body' }, hg);
+  const cid = `${ctx.uid}-hc`; const cp = h('clipPath', { id: cid }, h('defs', {}, hg));
+  h('path', { d: heartD(HX + .6 * k, HY + 1.4 * k, k * .8) }, cp);
+  const inner = h('g', { 'clip-path': `url(#${cid})` }, hg);
+  const sep = HX + .6 * k, x0 = HX - 15 * k, w = 31.5 * k, iy = HY - 14 * k, ih = 31.5 * k;
+  h('rect', { x: x0, y: iy, width: w, height: ih, fill: 'var(--ear)' }, inner);
+  h('rect', { x: x0, y: iy, width: sep - x0, height: ih, fill: POOR, s: bi('lungs'), cls: 'pop' }, inner);
+  h('rect', { x: sep, y: iy, width: x0 + w - sep, height: ih, fill: RICH, s: bi('oxygen'), cls: 'pop' }, inner);
+  h('rect', { x: sep - .9 * k, y: iy, width: 1.8 * k, height: ih, fill: 'var(--berry-shade)' }, inner);
+  tb(hg, HX - 18 * k - 14, HY - 10 * k, M.L('heart'), { cls: 'ts-label', maxW: HX - 18 * k - 14 - LX - 20, maxLines: 2, lh: 30, anchor: 'end', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:heart' });
+
+  /* vessel names, each beside its own line: artery = away, vein = back */
+  if (M.names) {
+    const nm = (maxW, anchor) => ({ cls: 'ts-label', maxW, maxLines: 1, anchor });
+    const ly = LB + 50, by = (AY + BM) / 2 + 10, two = { maxLines: 2, lh: 30 };
+    phased(circ, 'lungs', lin - 14, ly, M.L('artery-lungs'), Object.assign(nm(lin - 14 - GRID.left, 'end'), two, { edit: 'text.label:artery-lungs' }), 'var(--o2-poor-text)');
+    phased(circ, 'oxygen', rout + 14, ly, M.L('vein-lungs'), Object.assign(nm(RIGHT - rout - 14, 'start'), two, { edit: 'text.label:vein-lungs' }), 'var(--o2-rich-text)');
+    phased(circ, 'back', LX - 14, by, M.L('vein'), Object.assign(nm(LX - 14 - GRID.left, 'end'), { edit: 'text.label:vein' }), 'var(--o2-poor-text)');
+    phased(circ, 'out', RX + 14, by, M.L('artery'), Object.assign(nm(RIGHT - RX - 14, 'start'), { edit: 'text.label:artery' }), 'var(--o2-rich-text)');
+  }
+
+  /* the heart's two sides, named for older classes: the person's right and left (on the other side as
+     you look), each beside its own half, below the vessel that enters or leaves it, and whose they are under the tip */
+  if (M.sides) {
+    const sy = HY + 18 * k, xr = HX - 9 * k - 8, xl = HX + 12 * k + 8;
+    const so = (maxW, anchor, col) => ({ cls: 'ts-cap', maxW, maxLines: 1, anchor, a: { fill: col, cls: 'strong' } });
+    const rg = h('g', { s: bi('lungs'), cls: 'rise' }, circ), lg2 = h('g', { s: bi('out'), cls: 'rise' }, circ);
+    tb(rg, xr, sy, M.L('side-right'), Object.assign(so(xr - LX - 20, 'end', 'var(--o2-poor-text)'), { edit: 'text.label:side-right' }));
+    tb(lg2, xl, sy, M.L('side-left'), Object.assign(so(RX - 20 - xl, 'start', 'var(--o2-rich-text)'), { edit: 'text.label:side-left' }));
+    // whose sides they are, once, under the heart's tip
+    tb(rg, HX + 2 * k, HY + 19 * k + 26, M.L('side-whose'), Object.assign(so(2 * (BX1 - HX), 'middle', 'var(--ink-2)'), { edit: 'text.label:side-whose' }));
+  }
+
+  /* gases at the lungs, for older classes: oxygen in, carbon dioxide out, in the corner left of the lungs */
+  if (M.gas) {
+    const gx = h('g', { s: bi('oxygen'), cls: 'rise' }, circ);
+    const ax1 = LXL - 72, ax0 = ax1 - 48, gw = ax0 - 12 - GRID.left;
+    arrow(ctx, gx, `M${ax0} ${LY - 22} L ${ax1 - 12} ${LY - 22}`, ax1 - 12, LY - 22, 0, 'var(--ink-2)', 'var(--sw-struct)', { k: .9 });
+    arrow(ctx, gx, `M${ax1} ${LY + 22} L ${ax0 + 12} ${LY + 22}`, ax0 + 12, LY + 22, Math.PI, 'var(--ink-2)', 'var(--sw-struct)', { k: .9 });
+    tb(gx, ax0 - 12, LY - 14, M.L('o2in'), { cls: 'ts-label', maxW: gw, maxLines: 1, anchor: 'end', a: { fill: 'var(--o2-rich-text)', cls: 'strong' }, edit: 'text.label:o2in' });
+    tb(gx, ax0 - 12, LY + 34, M.L('co2out'), { cls: 'ts-label', maxW: gw, maxLines: 2, lh: 30, anchor: 'end', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:co2out' });
+  }
+
+  /* one compact key, in journey order, at the top of the right column */
+  let yC = GRID.top + 24; const KX = SX, KW = SW;
+  [['poor', POOR, 'lungs'], ['rich', RICH, 'oxygen']].forEach(([id, col, kk]) => {
+    const g = h('g', { s: bi(kk), cls: 'rise' }, circ);
+    h('line', { x1: KX, x2: KX + 26, y1: yC - 10, y2: yC - 10, stroke: col, 'stroke-width': VW, 'stroke-linecap': 'round' }, g);
+    const r = tb(g, KX + 40, yC, M.L(id), { cls: 'ts-label', maxW: KW - 40, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:${id}` });
+    yC += r.h + 14;
+  });
+  const yList = yC + 24;
+
+  /* what blood carries: its own build, in the right column beside the loop (then gives way to the pulse) */
+  if (M.carries.length) {
+    const cg = h('g', Object.assign({ s: bi('carries'), cls: 'rise' }, M.pulse ? { hide: bi('pulse') } : {}), g0);
+    const ch = tb(cg, SX, yList + 30, M.L('carries'), { cls: 'ts-label', maxW: SW, maxLines: 2, lh: 32, a: { fill: 'var(--ink-2)', cls: 'strong' }, edit: 'text.label:carries' });
+    let yy = yList + 30 + ch.h - ch.lh;
+    M.carries.forEach(c => {
+      yy += 50;
+      h('circle', { cx: SX + 12, cy: yy - 11, r: 12, fill: c === 'oxygen' ? RICH : c === 'carbonDioxide' ? POOR : 'var(--ink-3)' }, cg);
+      const r = tb(cg, SX + 36, yy, txt(P, 'label:carry-' + c, CARRY_WORDS[c]), { cls: 'ts-label', maxW: SW - 36, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:carry-${c}` });
+      yy += r.h - r.lh;
+    });
+    if (yy > GRID.bottom + 4) ctx.warn('“Blood carries” list runs past the stage.');
+  }
+
+  /* the pulse: its own builds in the right column, at rest and then exercising */
+  const counters = []; const BXs = scale(0, 200, 0, SW);
+  if (M.pulse) {
+    const pg = h('g', { s: bi('pulse'), cls: 'rise' }, g0);
+    const ht = tb(pg, SX, yList + 30, M.L('pulse'), { cls: 'ts-label', maxW: SW, maxLines: 2, lh: 32, a: { fill: 'var(--ink-2)', cls: 'strong' }, edit: 'text.label:pulse' });
+    let y0 = yList + 30 + ht.h - ht.lh + 8;
+    const row = (g, id, val, path, col, yy) => {
+      const lab = tb(g, SX, yy + 36, M.L(id), { cls: 'ts-label', maxW: SW, maxLines: 2, lh: 30, a: { fill: 'var(--ink)' }, edit: `text.label:${id}` });
+      const dy = lab.h - lab.lh;
+      const n = computed(T(g, SX, yy + 92 + dy, String(val), 'ts-big', { fill: 'var(--ink)' }), path);
+      h('rect', { x: SX, y: yy + 106 + dy, width: SW, height: 18, fill: 'none', stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-hair)' }, g);
+      const bar = h('rect', { x: SX, y: yy + 106 + dy, width: BXs(clamp(val, 0, 200)), height: 18, fill: col }, g);
+      return { n, bar, dy };
+    };
+    y0 += row(pg, 'rest', M.rest, 'pulse.rest', 'var(--ink-2)', y0).dy + 136;
+    if (M.run) {
+      const rg = h('g', { s: bi('run'), cls: 'rise' }, g0);
+      const r = row(rg, 'running', M.active, 'pulse.active', 'var(--energy)', y0);
+      counters.push({ k: bi('run'), ...r });
+      y0 += r.dy + 136;
+    }
+    if (y0 > GRID.bottom + 4) ctx.warn('The pulse panel runs past the stage.');
+  }
+  const setRun = (c, v) => { c.n.textContent = String(Math.round(v)); c.bar.setAttribute('width', BXs(clamp(v, 0, 200))); };
+  const flowAt = t => flows.forEach(f => f.place((t * 55) % f.gap));
+  return {
+    dur: { run: 1800 },
+    still() { counters.forEach(c => setRun(c, M.active)); flows.forEach(f => f.place(f.gap / 2)); },
+    reset() { counters.forEach(c => setRun(c, M.rest)); },
+    tick(kk, u, t) {
+      for (const c of counters) { if (kk === c.k) setRun(c, lerp(M.rest, M.active, eIO(u))); else if (kk > c.k) setRun(c, M.active); }
+      if (t != null) flowAt(t);
+    },
+  };
+}
+
+export function render(root, P, ctx) {
+  const { M } = plan(P);
+  if (M.dbl) return renderDouble(root, P, ctx, M);
+  const b = ctx.b, N = ctx.N; const bi = k => b[k];
+  const g0 = h('g', { style: '--o2-rich:var(--heat);--o2-rich-text:var(--heat-text);--o2-poor:var(--focus);--o2-poor-text:var(--focus-text)' }, root);
+  // the simple loop (Year 2) draws blood in one colour with no key: oxygen is not taught there, and a
+  // heart half one colour and half another, with no lungs, would say the heart changes the blood
+  const RICH = 'var(--o2-rich)', POOR = M.dbl ? 'var(--o2-poor)' : RICH;
   const VW = 'calc(var(--sw-arrow) * 2)', SW = 'calc(var(--sw-arrow) * 2.75)'; // vessels thinned with VW so their open heads clear the labels (TEACH-75 part x)
   const recede = k => ctx.rc(k, null, 'soft');
   // every label: wraps, then shrinks; if it still has to be cut, say so
@@ -162,16 +382,10 @@ export function render(root, P, ctx) {
   /* geometry: the heart is the focal point and fills the middle */
   const dbl = M.dbl;
   const k = dbl ? 6.2 : 7.2, HX = 540, HY = dbl ? 454 : 392;
-  const heartTop = HY - 16 * k, stubTop = heartTop - 12, TOPY = stubTop - 42;
+  // the vein's last straight run into the heart is longer than the kit arrow's straightened end (1.5 head-lengths)
+  const heartTop = HY - 16 * k, stubTop = heartTop - 12, TOPY = stubTop - (dbl ? 42 : 110);
   const vc = HX - 10.5 * k, pa = HX - 3 * k, pv = HX + 4.5 * k, ao = HX + 12 * k;
   const LXL = HX - 120, LXR = HX + 120, LB = LY + 60;
-
-  /* where the heart is: a small figure, first build only */
-  if (P.showBody !== false) {
-    const fig = h('g', { s: bi('heart'), hide: bi('heart') + 1, cls: 'rise' }, g0);
-    const body = bodyOutline(fig, { age: 'child', x: COLX + COLW / 2, top: 150, height: 420 });
-    organ(fig, body, 'heart', { s: bi('heart'), cls: 'pop', delay: 300 });
-  }
 
   /* the body: where blood delivers oxygen (flat card, plain outline) */
   const bodyG = h('g', { s: bi('out'), cls: 'rise' }, g0);
@@ -180,6 +394,7 @@ export function render(root, P, ctx) {
   const BY = BODY.y, nb = bo.maxLines === 1 ? 1 : 2, bh = nb === 1 ? BODY.h : 2 * 26 + 20;
   h('rect', { x: BODY.x, y: BY, width: BODY.w, height: bh, rx: 'var(--r-mark)', fill: 'var(--paper)', stroke: 'var(--ink-3)', 'stroke-width': 'var(--sw-hair)' }, bodyG);
   tb(bodyG, BODY.x + BODY.w / 2, nb === 1 ? BY + BODY.h / 2 + 10 : BY + 33, M.L('body'), Object.assign({ maxW: BODY.w - 40, anchor: 'middle', a: { fill: 'var(--ink)' }, edit: 'text.label:body' }, bo));
+
 
   /* lungs: lobed, with the windpipe and airways */
   if (dbl) {
@@ -236,36 +451,48 @@ export function render(root, P, ctx) {
   const inner = h('g', { 'clip-path': `url(#${cid})` }, hg);
   const sep = HX + .6 * k, x0 = HX - 15 * k, w = 31.5 * k, iy = HY - 14 * k, ih = 31.5 * k;
   h('rect', { x: x0, y: iy, width: w, height: ih, fill: 'var(--ear)' }, inner);
-  h('rect', { x: x0, y: iy, width: sep - x0, height: ih, fill: POOR, s: bi('back'), cls: 'pop' }, inner);
+  h('rect', { x: x0, y: iy, width: sep - x0, height: ih, fill: POOR, s: bi(dbl ? 'lungs' : 'back'), cls: 'pop' }, inner);
   h('rect', { x: sep, y: iy, width: x0 + w - sep, height: ih, fill: RICH, s: bi(dbl ? 'oxygen' : 'out'), cls: 'pop' }, inner);
   h('rect', { x: sep - .9 * k, y: iy, width: 1.8 * k, height: ih, fill: 'var(--berry-shade)' }, inner);
-  const hlx = HX - 18 * k - 18;
+  const hlx = HX - 18 * k - 12;
   const ho = { cls: 'ts-label', maxW: hlx - OL - 24, maxLines: 3, lh: 30 };
   const th = h('g', {}, g0); const hm = textBlock(th, 0, 0, M.L('heart'), ho); th.remove();
-  tb(hg, hlx, HY + 12 * k - (hm.lines.length - 1) * hm.lh, M.L('heart'), { ...ho, anchor: 'end', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:heart' });
+  tb(hg, hlx, HY - 4 * k + 10 - (hm.lines.length - 1) * hm.lh / 2, M.L('heart'), { ...ho, anchor: 'end', a: { fill: 'var(--ink)', cls: 'strong' }, edit: 'text.label:heart' });
 
   /* vessel names: artery = away, vein = back (placed by the direction the code draws) */
   if (M.names) {
     const nmo = (maxW, anchor) => ({ cls: 'ts-label', maxW, maxLines: 2, lh: 30, anchor });
     const vy = TOPY + 64;
-    phased('back', OL + 22, vy, M.L('vein'), Object.assign(nmo(HX - 18 * k - OL - 50, 'start'), { edit: 'text.label:vein' }), 'var(--o2-poor-text)');
+    phased('back', OL + 22, vy, M.L('vein'), Object.assign(nmo(HX - 18 * k - OL - 50, 'start'), { edit: 'text.label:vein' }), dbl ? 'var(--o2-poor-text)' : 'var(--o2-rich-text)');
     phased('out', OR - 22, vy, M.L('artery'), Object.assign(nmo(OR - (HX + 19 * k) - 50, 'end'), { edit: 'text.label:artery' }), 'var(--o2-rich-text)');
     if (dbl) {
       // the vessels to and from the lungs have their own names, so renaming the body's never renames these
-      phased('lungs', pa - 60, TOPY - 16, M.L('artery-lungs'), Object.assign(nmo(pa - 60 - GRID.left, 'end'), { maxLines: 1, edit: 'text.label:artery-lungs' }), 'var(--o2-poor-text)');
-      phased('oxygen', pv + 58, TOPY - 16, M.L('vein-lungs'), Object.assign(nmo(COLX - 24 - pv - 58, 'start'), { maxLines: 1, edit: 'text.label:vein-lungs' }), 'var(--o2-rich-text)');
+      phased('lungs', LXL + 30, TOPY - 16, M.L('artery-lungs'), Object.assign(nmo(LXL + 30 - GRID.left, 'end'), { maxLines: 1, edit: 'text.label:artery-lungs' }), 'var(--o2-poor-text)');
+      phased('oxygen', LXR - 30, TOPY - 16, M.L('vein-lungs'), Object.assign(nmo(COLX - 24 - LXR + 30, 'start'), { maxLines: 1, edit: 'text.label:vein-lungs' }), 'var(--o2-rich-text)');
     }
   }
 
   /* right column: the key, then the pulse at rest and when exercising, or what blood carries */
   let yC = GRID.top + 24;
-  [['rich', RICH, 'out'], ['poor', POOR, 'back']].forEach(([id, col, kk]) => {
+  // the key lists the colours in the order the journey shows them
+  const keyRows = [['rich', RICH, 'out'], ['poor', POOR, 'back']];
+  if (dbl) { keyRows.reverse(); keyRows[0][2] = 'lungs'; keyRows[1][2] = 'oxygen'; }
+  if (dbl) keyRows.forEach(([id, col, kk]) => {
     const g = h('g', { s: bi(kk), cls: 'rise' }, g0);
     h('line', { x1: COLX, x2: COLX + 26, y1: yC - 10, y2: yC - 10, stroke: col, 'stroke-width': VW, 'stroke-linecap': 'round' }, g);
     const r = tb(g, COLX + 40, yC, M.L(id), { cls: 'ts-label', maxW: COLW - 40, maxLines: 2, lh: 32, a: { fill: 'var(--ink)' }, edit: `text.label:${id}` });
     yC += r.h + 14;
   });
   yC += 4;
+  /* where the heart is: a small figure below the key for the whole journey (version 2: it never
+     vanishes), receded after build 1; it gives way only to the pulse or "blood carries" panel */
+  if (P.showBody !== false) {
+    const panel = M.pulse ? 'pulse' : M.carries.length ? 'carries' : null;
+    const fig = h('g', Object.assign({ s: bi('heart'), cls: 'rise', c: recede('heart') }, panel ? { hide: bi(panel) } : {}), g0);
+    const fh = Math.min(420, GRID.bottom - yC - 8);
+    const body = bodyOutline(fig, { age: 'child', x: COLX + COLW / 2, top: yC + 8, height: fh });
+    organ(fig, body, 'heart', { s: bi('heart'), cls: 'pop', delay: 300 });
+  }
   const counters = []; const yList = yC;
   const BX = scale(0, 200, 0, COLW);
   if (M.pulse) {

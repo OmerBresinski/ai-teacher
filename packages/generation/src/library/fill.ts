@@ -100,7 +100,17 @@ export function orderedParams(id: string, own: J): J {
   return { ...own, fractions: [fr[1], fr[0]] };
 }
 
-/** The model's params schema as the filler sees it: no title or wording overrides, no $schema or x- keys. */
+/**
+ * A param the model marks `'x-fill': false` is the teacher's alone (an editor switch, such as the
+ * heart's gas labels): the filler is never shown it and never sets it, so adding one leaves the
+ * writer's surface unchanged.
+ */
+const editorOnly = (params: J): string[] =>
+  Object.entries((params.properties ?? {}) as J)
+    .filter(([, v]) => (v as J | null)?.["x-fill"] === false)
+    .map(([k]) => k);
+
+/** The model's params schema as the filler sees it: no title or wording overrides, no editor-only params, no $schema or x- keys. */
 export function fillSchema(params: J, id?: string): J {
   const strip = (n: unknown): unknown => {
     if (Array.isArray(n)) return n.map(strip);
@@ -111,8 +121,9 @@ export function fillSchema(params: J, id?: string): J {
     return o;
   };
   const s = strip(params) as J & { properties: J; required?: string[] };
-  for (const k of NOT_FILLED) delete s.properties[k];
-  if (s.required) s.required = s.required.filter((k) => !NOT_FILLED.includes(k));
+  const skip = [...NOT_FILLED, ...editorOnly(params)];
+  for (const k of skip) delete s.properties[k];
+  if (s.required) s.required = s.required.filter((k) => !skip.includes(k));
   const always = (id && DRAWING_PARAMS[id]?.always) || [];
   if (always.length) s.required = [...new Set([...(s.required ?? []), ...always])];
   return s;
@@ -148,7 +159,7 @@ export async function checkParams(
     return { refusals: [{ path: "(all)", reason: "no params object" }], warnings: [] };
   const k = await kit();
   let own = { ...(out as J) };
-  for (const key of NOT_FILLED) delete own[key];
+  for (const key of [...NOT_FILLED, ...editorOnly(m.params)]) delete own[key];
   own = orderedParams(id, own);
   const shape = k.schemaCheck(fillSchema(m.params, id), own);
   if (shape.length) return { refusals: shape, warnings: [] };
@@ -156,9 +167,16 @@ export async function checkParams(
   // never clamped: a clamp would draw a different number from the one the slide asked for.
   const bounds = boundsRefusals(fillSchema(m.params), own);
   if (bounds.length) return { refusals: bounds, warnings: [] };
+  // a stored lesson's editor-only switches (a teacher set them) survive a pass back through here
+  const kept: J = {};
+  const props = (m.params.properties ?? {}) as J;
+  for (const key of editorOnly(m.params)) {
+    const v = (out as J)[key];
+    if (v !== undefined && typeof v === (props[key] as J)?.type) kept[key] = v;
+  }
   const params = k.withDefaults(
     m.params,
-    intent === undefined ? own : { ...own, ...panelsOff(id, own, intent) },
+    intent === undefined ? { ...own, ...kept } : { ...own, ...kept, ...panelsOff(id, own, intent) },
   );
   const missing = missingDrawingParams(id, own, params);
   if (missing.length) return { refusals: missing, warnings: [] };
