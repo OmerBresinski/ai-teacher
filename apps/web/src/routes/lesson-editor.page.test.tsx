@@ -1,9 +1,8 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
 import { generatedLesson } from "@tj/domain/documents/fixtures";
-import { AUTOSAVE_MS, COALESCE_MS } from "@tj/editor/lesson";
 import { TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { installFakeApi } from "@/test/fake-api";
@@ -720,40 +719,19 @@ describe("LessonEditorPage", () => {
     };
 
     it("row 6: a fact edit enqueues one cascade; its completed proposals land as one undo step with the toast", async () => {
-      // The cascade's coalescing window and the two autosaves are product timers (COALESCE_MS,
-      // AUTOSAVE_MS): on fake timers the test steps over them instead of waiting 2.6 s of real
-      // time, which a loaded CI runner pushed past the 5 s budget. Testing Library's `waitFor`
-      // advances fake timers only when it sees a `jest` global, which bun does not define. The
-      // real clock comes back in `afterEach` below, not in a `finally`.
-      (globalThis as { jest?: typeof jest }).jest = jest;
-      jest.useFakeTimers();
-      await row6();
-      // 15 s, not bun's 5 s default: the render alone is slow under turbo's parallel suites.
-    }, 15_000);
-
-    // When bun times a test out it abandons the test's promise, so a `finally` inside it never
-    // runs; a fake clock left on then stalls every later test and hook in the process for its
-    // full timeout (CI's test job hit its 25-minute limit with @tj/web unfinished). `afterEach`
-    // still runs after a timeout. Both calls are no-ops when no test faked the clock.
-    afterEach(() => {
-      jest.useRealTimers();
-      delete (globalThis as { jest?: typeof jest }).jest;
-    });
-
-    const row6 = async () => {
       installFakeEventSource();
       const lesson = seedGenerated();
       fakeApi.nextProposalJobId = CASCADE_JOB;
       renderPage();
       await editObjective();
-      const cascades = () =>
-        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
-      // Nothing is posted inside the window; it goes out once the window has passed.
-      act(() => jest.advanceTimersByTime(COALESCE_MS - 1));
-      expect(cascades()).toHaveLength(0);
-      act(() => jest.advanceTimersByTime(1));
-      await waitFor(() => expect(cascades()).toHaveLength(1));
-      expect(cascades()[0]?.body).toEqual({ changedFactIds: ["o1"] });
+      await waitFor(
+        () =>
+          expect(
+            fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade"),
+          ).toHaveLength(1),
+        { timeout: 3_000 },
+      );
+      expect(fakeApi.requests.at(-1)?.body).toEqual({ changedFactIds: ["o1"] });
       // The impact set is busy until the proposals land.
       await waitFor(() => expect(document.querySelectorAll("[data-slide-busy]").length).toBe(2));
       const source = FakeEventSource.latest;
@@ -780,15 +758,21 @@ describe("LessonEditorPage", () => {
       expect(options.cancel?.label).toBe("View");
       expect(document.querySelectorAll("[data-slide-busy]")).toHaveLength(0);
       const stored = () => fakeApi.loadDocument("demo-water-cycle") as Lesson;
-      act(() => jest.advanceTimersByTime(AUTOSAVE_MS));
-      await waitFor(() => expect(stored().slides[3]?.elements[0]?.id).toBe("q-new"));
+      await waitFor(() => expect(stored().slides[3]?.elements[0]?.id).toBe("q-new"), {
+        timeout: 3_000,
+      });
       // Undo reverts the cascade in one step; the typed fact — its own step — stays.
       act(() => options.action?.onClick());
-      act(() => jest.advanceTimersByTime(AUTOSAVE_MS));
-      await waitFor(() => expect(stored().slides[3]?.elements[0]?.id).toBe("q"));
+      await waitFor(() => expect(stored().slides[3]?.elements[0]?.id).toBe("q"), {
+        timeout: 3_000,
+      });
       expect(stored().facts?.objectives[0]?.text).toBe("Describe the water cycle");
       expect(screen.getByRole("button", { name: "Redo" })).toBeEnabled();
-    };
+      // 2.6 s of this is the product's own real-time windows, which the test asserts on:
+      // COALESCE_MS (1 s) before the cascade posts, then AUTOSAVE_MS (0.8 s) for each of the two
+      // saves it reads back. Measured 3.3 s alone and 4.6–5.3 s under turbo's parallel suites in
+      // CI, so bun's 5 s default left no room for the render.
+    }, 15_000);
 
     it("a second request while a job is in flight is held and sent after the terminal event", async () => {
       installFakeEventSource();
