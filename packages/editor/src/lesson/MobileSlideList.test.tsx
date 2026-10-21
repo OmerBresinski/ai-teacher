@@ -224,4 +224,34 @@ describe("MobileSlideList review fixes", () => {
       proto.scrollTo = was;
     }
   });
+
+  test("a scrolling key ends the follow too, and a later follow starts afresh", () => {
+    const lesson = seededLesson();
+    const theme = renderTheme(lesson);
+    const ids = lesson.slides.map((s) => s.id);
+    const scrollTo = mock();
+    const proto = HTMLElement.prototype as unknown as { scrollTo: unknown };
+    const was = proto.scrollTo;
+    proto.scrollTo = scrollTo;
+    const at = (followId: string | undefined) => (
+      <MobileSlideList slides={lesson.slides} theme={theme} followId={followId} />
+    );
+    try {
+      const view = render(at(ids[0]));
+      const list = view.container.querySelector("[data-mobile-lesson-list]") as HTMLElement;
+      // A key that does not scroll leaves the follow on.
+      fireEvent.keyDown(list, { key: "a" });
+      view.rerender(at(ids[1]));
+      expect(scrollTo).toHaveBeenCalledTimes(2);
+      fireEvent.keyDown(list, { key: "PageDown" });
+      view.rerender(at(ids[2]));
+      expect(scrollTo).toHaveBeenCalledTimes(2);
+      // The follow ends, then the editor follows the writing again: the list follows once more.
+      view.rerender(at(undefined));
+      view.rerender(at(ids[1]));
+      expect(scrollTo).toHaveBeenCalledTimes(3);
+    } finally {
+      proto.scrollTo = was;
+    }
+  });
 });

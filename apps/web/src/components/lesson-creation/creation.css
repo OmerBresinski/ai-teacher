@@ -68,6 +68,11 @@
   white-space: nowrap;
   pointer-events: none;
 }
+/* The saving line sits out of the flow under the fieldset, where a Turnstile challenge would start:
+   a container with a widget in it starts below the line (review of #613). */
+[data-turnstile]:not(:empty) {
+  padding-top: 28px;
+}
 .creation-objectives {
   display: flex;
   flex-direction: column;
@@ -616,7 +621,7 @@
 /* The phone's companion leaves without moving the slides' layout (UX audit, CLS at 390): its slot
  * keeps its height and fades, and the slide list rises over it by a transform (not a layout
  * change), growing at the foot by the same amount so its bottom stays at the screen's edge. */
-[data-editor-companion="mobile"] + * {
+.creation-editor-preview [data-editor-companion="mobile"] + :has([data-mobile-lesson-list]) {
   transition: transform 300ms ease;
 }
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
@@ -626,12 +631,14 @@
     opacity 250ms ease,
     visibility 0s 250ms;
 }
-.creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] + * {
+.creation-editor-preview[data-story-finished="true"]
+  [data-editor-companion="mobile"]
+  + :has([data-mobile-lesson-list]) {
   transform: translateY(calc(-1 * var(--companion-slot)));
   margin-bottom: calc(-1 * var(--companion-slot));
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-editor-companion="mobile"] + *,
+  .creation-editor-preview [data-editor-companion="mobile"] + :has([data-mobile-lesson-list]),
   .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
     transition: none;
   }

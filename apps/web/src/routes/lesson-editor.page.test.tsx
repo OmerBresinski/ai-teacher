@@ -253,6 +253,20 @@ describe("LessonEditorPage", () => {
     expect(document.querySelector('[data-canvas] [contenteditable="true"]')).toBeNull();
   });
 
+  it("polish 1: when the editor takes over, focus lands once on the hidden line naming the lesson", async () => {
+    seedStarting();
+    renderPage();
+    await screen.findByRole("button", { name: "Rename lesson" });
+    const anchor = document.querySelector<HTMLElement>("[data-editor-anchor]");
+    await waitFor(() => expect(document.activeElement).toBe(anchor));
+    // Once only: focus moved elsewhere stays there across later renders.
+    const rename = screen.getByRole("button", { name: "Rename lesson" });
+    rename.focus();
+    fireEvent.click(document.body);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(document.activeElement).toBe(rename);
+  });
+
   it("answer 66: while starting, Stop posts one cancel", async () => {
     seedStarting();
     renderPage();

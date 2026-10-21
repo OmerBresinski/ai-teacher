@@ -6,6 +6,9 @@ import { SlideView } from "../slide/SlideView";
 import { LiveSlide, useWritingPicture } from "./live-draft";
 import { useProposals } from "./proposals-context";
 
+/** Keys that scroll the list (a focused scroll region): pressing one is the teacher scrolling. */
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+
 /** One native scroll surface; inactive slides never mount editing or drag handlers. */
 export function MobileSlideList({
   slides,
@@ -49,13 +52,18 @@ export function MobileSlideList({
       initial.current = undefined;
     } else if (followArrivals && following.current) el.scrollTop = el.scrollHeight;
   }, [count, hidden, followArrivals]);
-  // The teacher's own scroll (a wheel, a swipe, momentum after it) ends the follow on this list for
-  // good: the list is never pulled back to the writing slide under their finger.
+  // The teacher's own scroll (a wheel, a swipe, momentum after it, a scrolling key) ends this
+  // follow on the list: it is never pulled back to the writing slide under their finger. A later
+  // follow (the editor resumes following the writing) starts afresh.
   const taken = useRef(false);
+  const wasFollowing = useRef(false);
   const takeOver = () => {
     taken.current = true;
   };
   useLayoutEffect(() => {
+    const starts = followId !== undefined && !wasFollowing.current;
+    wasFollowing.current = followId !== undefined;
+    if (starts) taken.current = false;
     const el = ref.current;
     if (!el || hidden || !followId || taken.current) return;
     const card = Array.from(el.querySelectorAll<HTMLElement>("[data-mobile-slide]")).find(
@@ -70,6 +78,7 @@ export function MobileSlideList({
     else el.scrollTop = top;
   }, [followId, hidden]);
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the focusable scroll region hears its own scroll gestures and keys (they end the follow); it adds no action.
     <section
       ref={ref}
       hidden={hidden}
@@ -81,6 +90,9 @@ export function MobileSlideList({
       onWheel={takeOver}
       onTouchStart={takeOver}
       onTouchMove={takeOver}
+      onKeyDown={(event) => {
+        if (SCROLL_KEYS.has(event.key)) takeOver();
+      }}
       onScroll={(event) => {
         const el = event.currentTarget;
         following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;

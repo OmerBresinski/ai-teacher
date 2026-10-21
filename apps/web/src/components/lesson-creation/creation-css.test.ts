@@ -30,7 +30,7 @@ afterAll(() => {
 });
 
 function page() {
-  document.body.innerHTML = `<div class="creation-editor-preview" data-story-finished="false"><aside data-editor-companion="mobile"><div class="creation-generation-anchor"></div></aside><div data-list></div></div>`;
+  document.body.innerHTML = `<div class="creation-editor-preview" data-story-finished="false"><aside data-editor-companion="mobile"><div class="creation-generation-anchor"></div></aside><div data-list><section data-mobile-lesson-list></section></div></div>`;
   const root = document.querySelector(".creation-editor-preview") as HTMLElement;
   const slot = document.querySelector("aside") as HTMLElement;
   const list = document.querySelector("[data-list]") as HTMLElement;
@@ -55,5 +55,12 @@ describe("phone companion exit", () => {
     root.dataset.storyFinished = "true";
     expect(getComputedStyle(list).transform).toBe("translateY(calc(-1 * 152px))");
     expect(getComputedStyle(list).marginBottom).toBe("calc(-1 * 152px)");
+  });
+
+  test("only the editor's slide list moves: another sibling (the viewer's swipe area) does not", () => {
+    document.body.innerHTML = `<div class="creation-editor-preview" data-story-finished="true"><aside data-editor-companion="mobile"></aside><div data-swipe></div></div>`;
+    const swipe = document.querySelector("[data-swipe]") as HTMLElement;
+    expect(getComputedStyle(swipe).transform).toMatch(/^(none|)$/);
+    expect(getComputedStyle(swipe).marginBottom).toMatch(/^(0px|)$/);
   });
 });

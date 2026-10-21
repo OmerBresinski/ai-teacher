@@ -182,7 +182,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // Under it a refused save is the job's own writing racing the editor's, never the teacher's
   // conflict: it is deferred and tried again (`useSaveWithConflictToast`), never toasted.
   const followed = useRef<{ jobId: string; until: number } | null>(null);
-  const handoffFocus = useRef({ pending: false, done: false });
+  const handoffFocused = useRef(false);
   const ownJob = useCallback(() => {
     const f = followed.current;
     return f && Date.now() < f.until ? f.jobId : undefined;
@@ -429,18 +429,20 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // on the page body (the button the teacher pressed is gone). It lands on a hidden line naming the
   // lesson, just before the editor (so Tab goes on to its bar), once, and only when nothing
   // else holds focus. A control would show its tooltip; the line shows nothing.
+  // It runs once per editor session, when the filling job unlocks the editor (`unlocked`), and
+  // never for an anonymous visitor, whose editor has no anchor.
+  const handoffJob = unlocked?.jobId;
+  const slideCount = data && "slides" in data ? data.slides.length : 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `slideCount` re-runs it when the first slide arrives, which is when the anchor mounts.
   useEffect(() => {
-    if (!handoffFocus.current.pending) return;
-    const active = document.activeElement;
-    if (active && active !== document.body) {
-      handoffFocus.current.pending = false;
-      return;
-    }
+    if (!handoffJob || anonymous || handoffFocused.current) return;
     const name = document.querySelector<HTMLElement>("[data-editor-anchor]");
     if (!name) return;
-    handoffFocus.current.pending = false;
+    handoffFocused.current = true;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
     name.focus({ preventScroll: true });
-  });
+  }, [handoffJob, anonymous, slideCount]);
   if (!data || !isFullDocument(data) || !meta) return <RoutePendingPage />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
@@ -551,7 +553,6 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       folded.current = { jobId: fillingJobId, body: startingJobBase(data), at: meta.updatedAt };
   }
   const filling = !!fillingJobId && unlocked?.jobId === fillingJobId;
-  if (filling && !handoffFocus.current.done) handoffFocus.current = { pending: true, done: true };
   // The filling editor follows the job's end itself (`FillingFollower`), so it needs no latch.
   if (fillingJobId && !filling && watchedJobId !== fillingJobId) setWatchedJobId(fillingJobId);
   if (filling && watchedJobId !== null) setWatchedJobId(null);

@@ -198,7 +198,7 @@ describe("a draft box that moves glides by a transform, never by its left or top
     const left = Object.getOwnPropertyDescriptor(proto, "offsetLeft");
     const top = Object.getOwnPropertyDescriptor(proto, "offsetTop");
     const animate = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
-    const calls: { id: string; frames: Keyframe[] }[] = [];
+    const calls: { id: string; frames: Keyframe[]; options?: KeyframeAnimationOptions }[] = [];
     Object.defineProperty(proto, "offsetLeft", {
       configurable: true,
       get(this: HTMLElement) {
@@ -213,8 +213,8 @@ describe("a draft box that moves glides by a transform, never by its left or top
     });
     Object.defineProperty(Element.prototype, "animate", {
       configurable: true,
-      value(this: HTMLElement, frames: Keyframe[]) {
-        calls.push({ id: this.dataset.elementId ?? "", frames });
+      value(this: HTMLElement, frames: Keyframe[], options?: KeyframeAnimationOptions) {
+        calls.push({ id: this.dataset.elementId ?? "", frames, options });
         return { cancel() {}, finished: Promise.resolve() };
       },
     });
@@ -231,6 +231,18 @@ describe("a draft box that moves glides by a transform, never by its left or top
       const glide = calls.find((c) => c.id === "d-card" && "translate" in (c.frames[0] ?? {}));
       expect(glide?.frames[0]?.translate).toBe("-336px 0px");
       expect(glide?.frames[1]?.translate).toBe("0 0");
+      // The glide leaves nothing behind: no fill holds its last frame and no inline transform stays.
+      expect(glide?.options?.fill ?? "none").toBe("none");
+      expect(glide?.options?.duration).toBe(220);
+      expect(box?.style.translate ?? "").toBe("");
+      expect(box?.style.transition ?? "").toBe("");
+      // A draft that does not move the box plays no glide.
+      calls.length = 0;
+      act(() => store.set([{ index: 1, slideId: id, slide: at(400) }]));
+      await act(() => settle());
+      expect(calls.some((c) => c.id === "d-card" && "translate" in (c.frames[0] ?? {}))).toBe(
+        false,
+      );
     } finally {
       if (left) Object.defineProperty(proto, "offsetLeft", left);
       if (top) Object.defineProperty(proto, "offsetTop", top);

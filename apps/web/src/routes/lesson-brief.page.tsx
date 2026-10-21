@@ -499,8 +499,9 @@ function LessonIntake({
               ) : null}
             </p>
           </fieldset>
-          {/* Turnstile's interactive challenge, when Cloudflare asks for one (signed out only). */}
-          {signedOut ? <div ref={turnstile.containerRef} /> : null}
+          {/* Turnstile's interactive challenge, when Cloudflare asks for one (signed out only). Once it
+              has content it starts below the saving line, which never covers it. */}
+          {signedOut ? <div ref={turnstile.containerRef} data-turnstile /> : null}
           {step === "brief" && !lessonId && !guest ? (
             <Button variant="link" size="sm" onClick={() => setBlank(true)}>
               Blank lesson
