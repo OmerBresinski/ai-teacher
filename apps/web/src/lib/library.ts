@@ -611,6 +611,16 @@ export const libraryMutations = {
         if (input.yearGroup) body.yearGroup = input.yearGroup;
         if (input.readingLevel) body.readingLevel = input.readingLevel;
         if (input.language) body.language = input.language;
+        if ("slides" in body) {
+          // Decision 75: a blank lesson's cover is the theme's cover with its picture slot open
+          // (the one the theme picker drew), not the older text-only cover.
+          const at = body.slides.findIndex((slide) => slide.kind === "title");
+          if (at >= 0) {
+            const { blankCover } = await import("@tj/editor/theme-picker/samples");
+            const words = [input.yearGroup, input.subject?.trim()].filter(Boolean).join(" · ");
+            body.slides[at] = await blankCover(input.themeId, body.title, words);
+          }
+        }
         return summaryOf(await postDocument(queryClient, input.kind, body));
       },
       onSuccess: () => invalidateLibrary(queryClient),

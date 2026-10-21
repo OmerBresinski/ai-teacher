@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { Lesson, Slide, SlideElement, Theme } from "@tj/domain/documents";
-import { getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
+import { atKeyStage, getTheme, slideArtLayers, slideBackground, THEMES } from "@tj/slides";
 import {
   paintSurface,
   SURFACE_TOKEN_SETS,
@@ -8,6 +8,7 @@ import {
   surfaceStyle,
   surfacesOf,
 } from "@tj/slides/surfaces";
+import { layoutTemplate } from "@tj/slides/templates";
 import JSZip from "jszip";
 import { exportLessonPptx } from "./pptx";
 
@@ -230,6 +231,69 @@ describe("T10: PowerPoint keeps the theme's look (row 5)", () => {
         expect({ id: t.id, kind, drawn }).toEqual({ id: t.id, kind, drawn: layers.length });
       }
     }
+  });
+
+  it("decision 41 A: the PPTX ground draws the vine where the editor does, cut at the panel", () => {
+    const t = atKeyStage(getTheme("treehouse"), "ks2");
+    const { slide: laid } = layoutTemplate(
+      {
+        template: "question-set",
+        heading: "Quick check: the heart",
+        questions: ["Which organ pumps blood?", "Which vessels carry blood away?"],
+        answers: ["The heart", "Arteries"],
+      },
+      t,
+      "ks2",
+    );
+    const quick: Slide = { id: "q", ...laid };
+    const [vine] = slideArtLayers(t, quick);
+    expect(vine && vine.x === 906 && vine.y === 0 && vine.h < 330).toBe(true);
+    const body = decodeURIComponent(
+      (groundArtSvg(t, quick) ?? "").slice("data:image/svg+xml,".length),
+    );
+    expect(body).toContain(`x="906" y="0" width="54" height="${vine?.h}"`);
+  });
+
+  it("decision 41 A: a layer standing on the foot is cut from the top, in the PPTX as in the editor (Splash)", () => {
+    const t = getTheme("splash");
+    const card = {
+      id: "c",
+      type: "shape",
+      shape: "rect",
+      x: 860,
+      y: 250,
+      w: 100,
+      h: 150,
+      fill: "#FFFFFF",
+    } as SlideElement;
+    const sl = slide("f", [card], { kind: "starter" });
+    const [bubbles] = slideArtLayers(t, sl);
+    // The bubbles (908,300 48x226) keep the rows below the card plus the 6pt gap: 406 to 526.
+    expect(bubbles && [bubbles.x, bubbles.y, bubbles.w, bubbles.h]).toEqual([908, 406, 48, 120]);
+    const body = decodeURIComponent(
+      (groundArtSvg(t, sl) ?? "").slice("data:image/svg+xml,".length),
+    );
+    expect(body).toContain(`x="908" y="406" width="48" height="120"`);
+  });
+
+  it("decision 41 A: Crayon's quick check exports its star top-right and the margin line, unmirrored", () => {
+    const t = atKeyStage(getTheme("crayon"), "ks2");
+    const { slide: laid } = layoutTemplate(
+      {
+        template: "question-set",
+        heading: "Quick check: the heart",
+        questions: ["Which organ pumps blood?", "Which vessels carry blood away?"],
+        answers: ["The heart", "Arteries"],
+      },
+      t,
+      "ks2",
+    );
+    const body = decodeURIComponent(
+      (groundArtSvg(t, { id: "q", ...laid }) ?? "").slice("data:image/svg+xml,".length),
+    );
+    expect(body).toContain(`x="912" y="4" width="36" height="34"`);
+    expect(body).toContain(`x="40" y="0" width="3" height="531"`);
+    expect(body).not.toContain(`x="12" y="4"`);
   });
 
   it("without a DOM to rasterise with, the slide keeps its plain ground and the export still works", async () => {

@@ -200,15 +200,6 @@ html[data-design="lessonco"][data-theme="light"] {
     overflow-y: auto;
   }
 
-  [data-theme-dialog] [role="radiogroup"] {
-    grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
-  }
-
-  [data-theme-tile] {
-    max-width: 184px;
-    justify-self: center;
-  }
-
   [data-sonner-toaster] {
     --normal-bg: var(--foreground);
     --normal-text: var(--background);
