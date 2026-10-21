@@ -67,6 +67,8 @@
     const f1 = (n) => Math.round(n * 10) / 10;
     function fitClip() {
       const box = svg.getBoundingClientRect(), r = region(), k = box.width / svg.viewBox.baseVal.width;
+      // No width, no scale (UX audit J13): skip rather than write Infinity/NaN into the clip.
+      if (!(k > 0) || !Number.isFinite(k)) return;
       clipRect.setAttribute("x", f1((r.left - box.left) / k)); clipRect.setAttribute("y", f1((r.top - box.top) / k));
       clipRect.setAttribute("width", f1(r.width / k)); clipRect.setAttribute("height", f1(r.height / k));
     }

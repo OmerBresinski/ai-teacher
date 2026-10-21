@@ -28,6 +28,14 @@ const actualUi = await import("@tj/ui");
 // `toast.error` and `toast.dismiss` too, so code that calls them never meets a bare spy.
 const toastSpy = Object.assign(mock(), { error: mock(), dismiss: mock() });
 mock.module("@tj/ui", () => ({ ...actualUi, toast: toastSpy }));
+// The story companion (gsap) as a button that ends the story, so a test can finish it on demand.
+mock.module("@/components/lesson-creation/generation-companion", () => ({
+  GenerationCompanion: ({ onExited }: { onExited: () => void }) => (
+    <button type="button" onClick={onExited}>
+      End the story
+    </button>
+  ),
+}));
 
 const { LessonEditorPage, holdsFitStamp, onlyFitStampDiffers } = await import(
   "./lesson-editor.page"
@@ -214,6 +222,126 @@ describe("LessonEditorPage", () => {
     expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
     expect(await screen.findByTestId("generating-shell")).toBeVisible();
     expect(fakeApi.requests.filter((request) => request.method === "PUT")).toHaveLength(0);
+  });
+
+  /** The demo lesson as Continue leaves it: plan confirmed, the job locked on, no slide marked yet. */
+  function seedStarting() {
+    installFakeEventSource();
+    const stored = fakeApi.get("demo-water-cycle");
+    if (!stored) throw new Error("fake api has no demo lesson");
+    const body = stored.body as Lesson;
+    const { slideStates: _states, ...generation } = body.generation ?? ({} as never);
+    stored.body = {
+      ...body,
+      plan: { revision: 1, state: "confirmed", jobId: crypto.randomUUID() },
+      generation: { ...generation, stage: "planned" },
+    } as Lesson;
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    return body.slides.length;
+  }
+
+  it("answer 66 (UX audit J2): a confirmed plan opens the editor at once, every slide read-only and marked writing", async () => {
+    const count = seedStarting();
+    renderPage();
+    // One bar from Continue on: the editor's, never the generating shell's first.
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
+    expect(document.querySelectorAll("[data-navigator] [data-navigator-thumb]").length).toBe(count);
+    expect(document.querySelectorAll("[data-navigator] [data-slide-writing]").length).toBe(count);
+    // Ruling 189: a slide being written is read-only; a double-click opens no text for editing.
+    const slide = document.querySelector("[data-canvas] [data-element-id]");
+    if (slide) fireEvent.doubleClick(slide);
+    expect(document.querySelector('[data-canvas] [contenteditable="true"]')).toBeNull();
+  });
+
+  it("polish 1: when the editor takes over, focus lands once on the hidden line naming the lesson", async () => {
+    seedStarting();
+    renderPage();
+    await screen.findByRole("button", { name: "Rename lesson" });
+    const anchor = document.querySelector<HTMLElement>("[data-editor-anchor]");
+    await waitFor(() => expect(document.activeElement).toBe(anchor));
+    // Once only: focus moved elsewhere stays there across later renders.
+    const rename = screen.getByRole("button", { name: "Rename lesson" });
+    rename.focus();
+    fireEvent.click(document.body);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(document.activeElement).toBe(rename);
+  });
+
+  it("answer 66: while starting, Stop posts one cancel", async () => {
+    seedStarting();
+    renderPage();
+    await screen.findByRole("button", { name: "Rename lesson" });
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.filter((r) => r.method === "POST" && r.path === `/jobs/${JOB_ID}/cancel`),
+      ).toHaveLength(1),
+    );
+  });
+
+  it("answer 66: a job that fails while starting keeps the editor, and Try again resumes it", async () => {
+    seedStarting();
+    renderPage();
+    await screen.findByRole("button", { name: "Rename lesson" });
+    const source = FakeEventSource.latest;
+    act(() => source.open());
+    fakeApi.setGenerating("demo-water-cycle", null);
+    act(() =>
+      source.emit(
+        "failed",
+        jobEvent("failed", { error: { message: "The model timed out.", retryable: true } }),
+        "1",
+      ),
+    );
+    const line = await waitFor(() => {
+      const el = document.querySelector("[data-stopped-notice]");
+      if (!el) throw new Error("no notice yet");
+      return el as HTMLElement;
+    });
+    expect(line).toHaveAttribute("data-stopped-notice", "failed");
+    expect(screen.queryByTestId("generating-shell")).toBeNull();
+    fakeApi.nextProposalJobId = "01a06a15-1849-7000-ac6a-c07e27fe3998";
+    fireEvent.click(within(line).getByRole("button", { name: TRY_AGAIN_LABEL }));
+    await waitFor(() =>
+      expect(
+        fakeApi.requests.filter(
+          (r) => r.method === "POST" && r.path === "/lessons/demo-water-cycle/resume",
+        ),
+      ).toHaveLength(1),
+    );
+  });
+
+  it("on a phone the companion's slot stays in place when the story ends (no layout shift)", async () => {
+    const was = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 760px"),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      seedStarting();
+      renderPage();
+      const end = await screen.findByRole("button", { name: "End the story" });
+      const slot = () => document.querySelector('[data-editor-companion="mobile"]');
+      expect(slot()?.querySelector(".creation-generation-anchor")).not.toBeNull();
+      fireEvent.click(end);
+      await waitFor(() =>
+        expect(document.querySelector(".creation-editor-preview")).toHaveAttribute(
+          "data-story-finished",
+          "true",
+        ),
+      );
+      // The slot keeps its box (creation.css fades it and lifts the list by a transform).
+      expect(slot()?.querySelector(".creation-generation-anchor")).not.toBeNull();
+    } finally {
+      window.matchMedia = was;
+    }
   });
 
   it("a locked lesson shows the generating banner, follows the job and unlocks on completion", async () => {
