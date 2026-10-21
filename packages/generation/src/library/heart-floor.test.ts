@@ -130,7 +130,9 @@ describe("the heart's key lists only colours drawn (HEART1 D)", () => {
       if (!r.ok) return;
       const drawn = drawnColours(r.drawing.svg);
       const key = keyColours(r.drawing.svg);
-      expect(key.length).toBeGreaterThan(0);
+      // the simple loop (Year 2) draws blood in one colour and has no key (curriculum review, PR #500)
+      if (name === "simple") expect(key).toEqual([]);
+      else expect(key.length).toBeGreaterThan(0);
       for (const c of key) expect(drawn).toContain(c);
     });
 });
@@ -197,5 +199,101 @@ describe("the heart builds in journey order (heart_circulation v2)", () => {
     const d = await renderLibraryModel("heart_circulation", P);
     expect(d.builds).toBeGreaterThan(3);
     expect(d.warnings).toEqual([]);
+  });
+});
+
+/*
+ * TEACH-247 part w, curriculum review (PR #500): the editor's view is the whole loop, with "Blood
+ * carries" and the pulse beside it; the Year 2 simple loop has one blood colour and no oxygen words;
+ * the gas labels and the heart's sides are the teacher's switches for older classes, unseen by the writer.
+ */
+describe("the heart after the curriculum review (heart_circulation v2)", () => {
+  const draw = async (p: Record<string, unknown>) => {
+    const { renderLibraryModel, kit, loadModel } = await import("./render");
+    const m = await loadModel("heart_circulation");
+    if (!m) throw new Error("no heart_circulation");
+    const P = (await kit()).withDefaults(m.params, p);
+    return { m, P, d: await renderLibraryModel("heart_circulation", P) };
+  };
+  const preset = async (id: string) => {
+    const { loadModel } = await import("./render");
+    const m = await loadModel("heart_circulation");
+    return (m?.presets.find((x: { id: string }) => x.id === id)?.params ?? {}) as Record<
+      string,
+      unknown
+    >;
+  };
+  const LOOP = ["Heart", "Lungs", "Artery to lungs", "Vein from lungs", "Artery", "Vein"];
+
+  test("y6-circulatory and y6-running: the editor's view keeps the whole loop beside the panel", async () => {
+    for (const [id, panel] of [
+      ["y6-circulatory", "Blood carries"],
+      ["y6-running", "Beats a minute"],
+    ] as const) {
+      const { d } = await draw(await preset(id));
+      expect(d.warnings).toEqual([]);
+      for (const w of [...LOOP, panel]) expect(d.svg).toContain(`>${w}<`);
+      // the loop's vessels are drawn in the stored drawing, not hidden by the panel
+      expect((d.svg.match(/stroke: var\(--o2-rich\)/g) ?? []).length).toBeGreaterThan(1);
+    }
+  });
+
+  test("y2-exercise: one blood colour, no key, no 'Oxygen used', no oxygen in its captions", async () => {
+    const { m, P, d } = await draw(await preset("y2-exercise"));
+    expect(d.warnings).toEqual([]);
+    expect(d.svg).not.toMatch(/(stroke|fill)(: |=")var\(--o2-poor\)/);
+    expect(d.svg).toMatch(/stroke: var\(--o2-rich\)/);
+    for (const w of ["Oxygen-rich blood", "Oxygen-poor blood", "Oxygen used"])
+      expect(d.svg).not.toContain(w);
+    const b = m.builds?.(P) as
+      | { steps: { caption?: string }[]; summary?: { caption?: string } }
+      | undefined;
+    const caps = [...(b?.steps ?? []).map((s) => s.caption), b?.summary?.caption];
+    for (const c of caps) expect(c).not.toMatch(/oxygen/i);
+  });
+
+  test("gas labels and the heart's sides: off by default, drawn when the teacher turns them on", async () => {
+    const base = await preset("y6-circulatory");
+    const off = await draw(base);
+    for (const w of ["Oxygen in", "Carbon dioxide out", "Right side", "Left side", ">(the person"])
+      expect(off.d.svg).not.toContain(w);
+    const on = await draw({ ...base, gasLabels: true, sides: true });
+    expect(on.d.warnings).toEqual([]);
+    expect(on.d.svg).toContain(">Oxygen in<");
+    expect(on.d.svg).toMatch(/>Carbon( dioxide out)?</);
+    for (const w of [">Right side<", ">Left side<", ">(the person"]) expect(on.d.svg).toContain(w);
+    // both stay off on the simple loop, which has no lungs
+    const simple = await draw({ ...(await preset("y2-exercise")), gasLabels: true, sides: true });
+    for (const w of ["Oxygen in", "Right side"]) expect(simple.d.svg).not.toContain(w);
+  });
+
+  test("the lungs note names the right side as the person's right", async () => {
+    const { m, P } = await draw(await preset("y6-circulatory"));
+    const notes = (m as unknown as { notes: (p: unknown) => { steps: string[] } }).notes;
+    expect(notes(P).steps[1]).toContain("the person’s right, which is on your left as you look");
+  });
+
+  test("the writer never sees or sets the teacher's switches", async () => {
+    const { fillSchema, checkParams } = await import("./fill");
+    const { loadModel } = await import("./render");
+    const m = await loadModel("heart_circulation");
+    const s = fillSchema(m?.params ?? {}, "heart_circulation") as { properties: object };
+    expect(Object.keys(s.properties)).toEqual([
+      "detail",
+      "exercise",
+      "showPulse",
+      "pulse",
+      "vesselNames",
+      "carries",
+      "showBody",
+    ]);
+    const r = await checkParams("heart_circulation", {
+      ...(await preset("y6-circulatory")),
+      gasLabels: true,
+      sides: true,
+    });
+    expect(r.refusals).toEqual([]);
+    expect(r.params?.gasLabels).toBe(false);
+    expect(r.params?.sides).toBe(false);
   });
 });
