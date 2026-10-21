@@ -963,6 +963,23 @@ export async function placeWriterPicture(args: {
         const map = await stock({ ...b, specific: true });
         if (map) {
           args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
+          deps.logger.info(
+            {
+              stage: "illustrate",
+              ev: "picture-outcome",
+              kind: "single",
+              slideIndex: ask.index,
+              outcome: "placed",
+              via: "fetched",
+              attempts: 0,
+              director: "map-first",
+              route: "real",
+              sourceKind: sourceKindOf("fetched", map),
+              lessonSubject: lessonSubjectOf(lesson.subject),
+              keyStage: keyStageOf(lesson.yearGroup),
+            },
+            "picture outcome",
+          );
           return { ...map, alt: map.alt ?? ask.shows, look: "photo" };
         }
       }

@@ -405,6 +405,7 @@ export async function findPicture(
       await bank.remember(req, fetched).catch(rethrowAbort);
       return done(fetched, "fetched");
     }
+    trace.stock = "miss";
   }
   if (req.route === "real") {
     const fallback = req.realFallback ?? "none";
