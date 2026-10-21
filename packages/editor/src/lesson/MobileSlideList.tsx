@@ -3,6 +3,7 @@ import { Button } from "@tj/ui";
 import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { SlideScaler } from "../slide/SlideScaler";
 import { SlideView } from "../slide/SlideView";
+import { useWritingPicture } from "./live-draft";
 
 /** One native scroll surface; inactive slides never mount editing or drag handlers. */
 export function MobileSlideList({
@@ -88,14 +89,14 @@ export function MobileSlideList({
             >
               <div inert>
                 <SlideScaler zoom="fit">
-                  <SlideView slide={slide} theme={theme} mode="view" />
+                  <WritingSlideView slide={slide} theme={theme} />
                 </SlideScaler>
               </div>
             </button>
           ) : (
             <div className="mobile-lesson-paper">
               <SlideScaler zoom="fit">
-                <SlideView slide={slide} theme={theme} mode="view" />
+                <WritingSlideView slide={slide} theme={theme} />
               </SlideScaler>
             </div>
           )}
@@ -104,4 +105,13 @@ export function MobileSlideList({
       {footer}
     </section>
   );
+}
+
+/**
+ * A card while the lesson is written: a planned slide as its outline, a new lesson's first two
+ * slides typing out (live-draft `useWritingPicture`). Drafts stay off the cards: they show the
+ * saved slides, as before.
+ */
+function WritingSlideView({ slide, theme }: { slide: Slide; theme: Theme }) {
+  return <SlideView slide={useWritingPicture(slide, false)} theme={theme} mode="view" />;
 }

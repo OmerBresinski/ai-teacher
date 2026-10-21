@@ -1,4 +1,4 @@
-import type { Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
+import type { SlideKind, Theme, ThemeArtLayer, ThemeArtRole } from "@tj/domain/documents";
 import TOKENS from "./themes/tokens.json" with { type: "json" };
 
 /*
@@ -17,10 +17,16 @@ import TOKENS from "./themes/tokens.json" with { type: "json" };
 
 type Art = Partial<Record<ThemeArtRole, ThemeArtLayer[]>>;
 
-const url = (w: number, h: number, vw: number, vh: number, body: string) =>
+const url = (w: number, h: number, vw: number, vh: number, body: string, vy = 0) =>
   `url("data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${vw} ${vh}' preserveAspectRatio='none'>${body}</svg>`,
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 ${vy} ${vw} ${vh}' preserveAspectRatio='none'>${body}</svg>`,
   )}")`;
+
+/**
+ * How to cut a layer down to a band of its own rows (slide points, `top` to `bottom`), drawn at the
+ * same scale: the part of the art a panel leaves showing (decision 41 A, `cropArt`).
+ */
+const CROPS = new WeakMap<ThemeArtLayer, (top: number, bottom: number) => ThemeArtLayer>();
 
 /** An inline SVG drawn at a box. `vw`/`vh` default to the box, so the body is in slide points. */
 function svg(
@@ -32,24 +38,59 @@ function svg(
   view: [number, number] = [w, h],
 ): ThemeArtLayer {
   const [vw, vh] = view;
-  return {
+  const flip = `<g transform='matrix(-1 0 0 1 ${vw} 0)'>${body}</g>`;
+  const layer: ThemeArtLayer = {
     image: url(w, h, vw, vh, body),
-    flipped: url(w, h, vw, vh, `<g transform='matrix(-1 0 0 1 ${vw} 0)'>${body}</g>`),
+    flipped: url(w, h, vw, vh, flip),
     x,
     y,
     w,
     h,
   };
+  CROPS.set(layer, (top, bottom) => {
+    const k = vh / h;
+    const [vy, ch] = [(top - y) * k, (bottom - top) * k];
+    const cut: ThemeArtLayer = {
+      image: url(w, bottom - top, vw, ch, body, vy),
+      flipped: url(w, bottom - top, vw, ch, flip, vy),
+      x,
+      y: top,
+      w,
+      h: bottom - top,
+    };
+    return cut;
+  });
+  return layer;
 }
 
 /** A flat block of colour: a band or a rule. */
-const block = (x: number, y: number, w: number, h: number, color: string): ThemeArtLayer => ({
-  image: `linear-gradient(${color}, ${color})`,
-  x,
-  y,
-  w,
-  h,
-});
+function block(x: number, y: number, w: number, h: number, color: string): ThemeArtLayer {
+  const layer = { image: `linear-gradient(${color}, ${color})`, x, y, w, h };
+  CROPS.set(layer, (top, bottom) => ({ ...layer, y: top, h: bottom - top }));
+  return layer;
+}
+
+/**
+ * The rows `top` to `bottom` of a layer, at the same scale and place, or null when the band is
+ * outside it or the layer cannot be cut (a ground texture). A mirrored layer is cut from its
+ * mirror's own source, so the cut keeps its side.
+ */
+export function cropArt(layer: ThemeArtLayer, top: number, bottom: number): ThemeArtLayer | null {
+  const t = Math.max(top, layer.y);
+  const b = Math.min(bottom, layer.y + layer.h);
+  if (b - t <= 0) return null;
+  const crop = CROPS.get(layer);
+  return crop ? crop(t, b) : null;
+}
+
+/** A layer moved (mirrored) keeps its cut: the copy remembers the source's crop, mirrored. */
+export function mirrorArt(layer: ThemeArtLayer, slideW: number): ThemeArtLayer {
+  const out = { ...layer, image: layer.flipped ?? layer.image, x: slideW - layer.x - layer.w };
+  if (layer.flipped) out.flipped = layer.image;
+  const crop = CROPS.get(layer);
+  if (crop) CROPS.set(out, (t, b) => mirrorArt(crop(t, b), slideW));
+  return out;
+}
 
 /* ------------------------------------------------------------------ Playground: sun, rainbow, clouds */
 
@@ -403,3 +444,64 @@ export const THEME_ART: Record<string, Art> = {
  */
 export const artOf = (t: Theme): Theme["backgrounds"] =>
   "backgrounds" in t ? t.backgrounds : THEME_ART[t.id];
+
+/*
+ * Where the corner art sits per slide type (decision 41 A, Greg 20 Oct): as the approved slides
+ * draw it. The golds (theming rounds 3-5 and final, `prod-art.css`) paint every non-cover slide
+ * with the theme's `content` layers at their own places, never mirrored and never swapped for the
+ * picture motif, under every panel: where a full-bleed panel covers a layer, only the part above
+ * it (or below, for a layer standing on the foot) shows, and a layer the panel hides whole is not
+ * seen at all (Treehouse: the vine top-right above the quick check's and the myth's panels, none on
+ * the worked example). A slide is keyed by its kind, the template family a layout stamps.
+ *
+ * `role`: "content" draws the content art whatever images the slide holds; "auto" keeps ruling
+ *   107's rule (a slide with a picture wears the picture motif on the side away from it), with
+ *   `marks` not counted as pictures.
+ * `fit`: "crop" cuts a layer that meets an element back to the rows a panel leaves showing (never
+ *   over text, a picture or a card); "drop" leaves the layer out whole, as ruling 107 did.
+ * `marks`: image names that are drawn marks, not pictures: they never make a picture slide.
+ * `gold`: the approved renders the row is read from, or "gap" (no approved design: today's rule).
+ * `themes`: a per-theme row when a theme's golds place it differently (none do today).
+ */
+export type ArtPlacement = {
+  role: "content" | "auto";
+  fit: "crop" | "drop";
+  marks?: readonly string[];
+  gold: string;
+  themes?: Partial<Record<string, Omit<ArtPlacement, "themes">>>;
+};
+
+/** The rule for a slide type no gold shows: ruling 107 as before. */
+export const ART_PLACEMENT_GAP: ArtPlacement = { role: "auto", fit: "drop", gold: "gap" };
+
+export const ART_PLACEMENT: Partial<Record<SlideKind, ArtPlacement>> = {
+  // worked, steps, equation-hero: round 3-5 `worked-*`, final `steps2-*`. The gold worked example
+  // holds a drawn figure (the algebra tiles in its right panel) and still wears the content art,
+  // so this row draws it whatever the slide holds. The move arrows and check tick are marks.
+  "worked-example": {
+    role: "content",
+    fit: "crop",
+    marks: ["Move arrow", "Check tick"],
+    gold: "worked, steps2",
+  },
+  // question-set: round 3-5 `quick-*` (no picture in the gold, so a picture keeps ruling 107).
+  starter: { role: "auto", fit: "crop", gold: "quick" },
+  // hinge: round 3-5 `hinge-*` (no picture in the gold, so a picture keeps ruling 107).
+  "multiple-choice": { role: "auto", fit: "crop", gold: "hinge" },
+  // myth, stages, explain, compare, source, reasons, items-row, panel-list, split-compare: round
+  // 3-5 `myth-*`, `stages-*`, `table-*`, final `summary-*`, `venn-*`, `writing-*`. The myth's proof
+  // icons are marks; a real photo (panel-list, split-compare, a myth's proof picture) keeps the
+  // picture rule (no gold).
+  content: {
+    role: "auto",
+    fit: "crop",
+    marks: ["Proof icon"],
+    gold: "myth, stages, table, venn, summary",
+  },
+};
+
+/** The placement row a slide kind and theme read. */
+export function artPlacement(kind: SlideKind, themeId?: string): ArtPlacement {
+  const row = ART_PLACEMENT[kind] ?? ART_PLACEMENT_GAP;
+  return (themeId && row.themes?.[themeId]) || row;
+}
