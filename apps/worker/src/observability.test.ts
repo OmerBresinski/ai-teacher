@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { VERIFY_FIELDS, VERIFY_REASONS } from "@tj/generation";
 import { FACT_FIELDS, FACT_REASONS, type Observability } from "@tj/observability";
 import pino from "pino";
@@ -44,6 +44,30 @@ describe("worker observability (ADR 0041)", () => {
     );
     expect(on.enabled).toBe(true);
     return on.shutdown();
+  });
+
+  test("without a key (dev, tests, CI) nothing reaches the network, whatever is captured", async () => {
+    const fetchSpy = spyOn(globalThis, "fetch");
+    try {
+      const obs = createWorkerObservability(parseEnv({ DATABASE_URL: DB }), quiet);
+      expect(obs.enabled).toBe(false);
+      const endJob = obs.beginJob("j1", { job: "lesson.plan", workspaceId: "w1", lessonId: "l1" });
+      obs.captureJobEvent("j1", "gen_job", { status: "picked" });
+      obs.captureException(new Error("boom"), "uncaughtException");
+      obs.captureJobFailure({
+        error: new Error("x"),
+        job: "lesson.plan",
+        jobId: "j1",
+        attempt: 1,
+        willRetry: false,
+      });
+      endJob();
+      await obs.flush();
+      await obs.shutdown();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   test("a job failure goes to captureJobFailure; one without a job id is an exception", () => {

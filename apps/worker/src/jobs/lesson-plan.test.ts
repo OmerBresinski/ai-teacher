@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { costUsd, createAi, DEFAULT_MODEL_IDS } from "@tj/ai";
 import { createFakeAi, type FakeAi } from "@tj/ai/testing";
 import {
@@ -154,6 +154,12 @@ describeDb("lesson.plan job", () => {
       const lessonId = await briefLesson(jobId);
       const ai = scriptedPipelineAi();
       const bodies: string[] = [];
+      // The transport is this stub, never the network. posthog-core prints each failed batch with
+      // console.error (whatever listeners are set), so that output is held here and checked below.
+      const consoleError = spyOn(console, "error").mockImplementation(() => {});
+      // The hanging requests, released when the test ends so none outlives it (no stray timer
+      // printing into a later test file's output).
+      const hanging: Array<(error: Error) => void> = [];
       const observability = createObservability({
         apiKey: "phc_test_key",
         logger: quiet,
@@ -175,17 +181,30 @@ describeDb("lesson.plan job", () => {
               options.headers["Content-Encoding"] === "gzip" ? Bun.gunzipSync(bytes) : bytes,
             ),
           );
-          if (mode === "refused") throw new Error("ECONNREFUSED");
-          return new Promise(() => {});
+          if (mode === "refused") throw new Error("stub transport: connection refused");
+          return new Promise((_resolve, reject) => void hanging.push(reject));
         },
       });
       const end = observability.beginJob(jobId, { job: "lesson.plan", workspaceId, lessonId });
       const h = ctx(jobId, lessonId, { ...depsWith(ai), observability });
 
       const started = Date.now();
-      await lessonPlanJob(h.ctx);
-      end();
-      await observability.shutdown();
+      let printed: unknown[][] = [];
+      try {
+        await lessonPlanJob(h.ctx);
+        end();
+        await observability.shutdown();
+      } finally {
+        for (const reject of hanging) reject(new Error("stub transport: test over"));
+        await Bun.sleep(20);
+        printed = [...consoleError.mock.calls];
+        consoleError.mockRestore();
+      }
+      // Whatever reached console.error is PostHog's own output (a failed batch, its `[PostHog]`
+      // logger), nothing else.
+      for (const [first] of printed) {
+        expect(String(first)).toMatch(/^(Error while flushing PostHog|\[PostHog\])/);
+      }
 
       expect(Date.now() - started).toBeLessThan(30_000);
       const row = await getDocument(ws(), lessonId);

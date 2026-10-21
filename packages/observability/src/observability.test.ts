@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import pino from "pino";
 import {
   type AiGeneration,
@@ -302,8 +302,11 @@ describe("createObservability with a key (mocked transport)", () => {
 
   test("a failing transport never throws and is logged once", async () => {
     const { logger, lines } = captureLogger();
+    // A stub, never the network. posthog-core prints each failed batch with console.error
+    // (whatever listeners are set); held here so CI output shows no stray stack traces.
+    const consoleError = spyOn(console, "error").mockImplementation(() => {});
     const { fetch } = recordingFetch(async () => {
-      throw new Error("ECONNREFUSED eu.i.posthog.com");
+      throw new Error("stub transport: connection refused");
     });
     const obs = createObservability({
       apiKey: "phc_test",
@@ -317,13 +320,23 @@ describe("createObservability with a key (mocked transport)", () => {
     obs.captureAiGeneration(call);
     await obs.flush();
     await obs.shutdown();
+    const printed = [...consoleError.mock.calls];
+    consoleError.mockRestore();
+    for (const [first] of printed) {
+      expect(String(first)).toMatch(/^(Error while flushing PostHog|\[PostHog\])/);
+    }
     const warnings = lines.filter((l) => l.msg === "posthog send failed; events dropped");
     expect(warnings).toHaveLength(1);
   });
 
   test("a hanging transport is cut off by the flush timeout", async () => {
     const { logger, lines } = captureLogger();
-    const { fetch } = recordingFetch(() => new Promise<Response>(() => {}));
+    // Released at the end, so no request outlives the test and prints into a later one.
+    const hanging: Array<(error: Error) => void> = [];
+    const consoleError = spyOn(console, "error").mockImplementation(() => {});
+    const { fetch } = recordingFetch(
+      () => new Promise<Response>((_resolve, reject) => void hanging.push(reject)),
+    );
     const obs = createObservability({
       apiKey: "phc_test",
       modelIds: MODELS,
@@ -341,6 +354,9 @@ describe("createObservability with a key (mocked transport)", () => {
     const stopping = Date.now();
     await obs.shutdown();
     expect(Date.now() - stopping).toBeLessThan(1500);
+    for (const reject of hanging) reject(new Error("stub transport: test over"));
+    await Bun.sleep(20);
+    consoleError.mockRestore();
   });
 });
 
