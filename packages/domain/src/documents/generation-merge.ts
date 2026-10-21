@@ -200,6 +200,30 @@ export function keepWritingSlides(stored: Lesson, incoming: Lesson): Lesson {
 }
 
 /**
+ * A confirmed plan whose job has not yet said which slides it owns (no `slideStates`): the editor
+ * opens on it at once (UX audit J2), and until the job marks slides it owns every one of them.
+ */
+export function isStartingJob(lesson: Pick<Lesson, "generation" | "plan" | "slides">): boolean {
+  return (
+    lesson.plan?.state === "confirmed" &&
+    lesson.generation?.stage === "planned" &&
+    !lesson.generation.slideStates &&
+    lesson.slides.length > 0
+  );
+}
+
+/**
+ * The merge base for a starting job (`isStartingJob`): the row with every slide marked `writing`,
+ * so `mergeJobLesson` takes the job's copy of each one (a re-fit on open, a drop or a split) rather
+ * than keeping the teacher's read-only copy as an edit. Any other lesson is returned as it is.
+ */
+export function startingJobBase(lesson: Lesson): Lesson {
+  if (!isStartingJob(lesson) || !lesson.generation) return lesson;
+  const slideStates = Object.fromEntries(lesson.slides.map((s) => [s.id, "writing" as const]));
+  return { ...lesson, generation: { ...lesson.generation, slideStates } };
+}
+
+/**
  * The merge base for a job that starts on a stored lesson (a retry or a resume, ADR 0037): the
  * stored copy without its `done` slides. The job never saw those as its own, so they read as the
  * teacher's in `mergeJobLesson` and the new run cannot write over them, edited or not.

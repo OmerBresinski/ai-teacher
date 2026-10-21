@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { isBudgetStopMessage } from "@tj/domain";
-import { hasEditableSlides, type Lesson, writingSlideIds } from "@tj/domain/documents";
+import {
+  hasEditableSlides,
+  isStartingJob,
+  type Lesson,
+  startingJobBase,
+  writingSlideIds,
+} from "@tj/domain/documents";
 import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { ExportControl } from "@tj/editor/export";
 import {
@@ -176,6 +182,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // Under it a refused save is the job's own writing racing the editor's, never the teacher's
   // conflict: it is deferred and tried again (`useSaveWithConflictToast`), never toasted.
   const followed = useRef<{ jobId: string; until: number } | null>(null);
+  const handoffFocused = useRef(false);
   const ownJob = useCallback(() => {
     const f = followed.current;
     return f && Date.now() < f.until ? f.jobId : undefined;
@@ -196,7 +203,12 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       if (!row || !base || !editor || !sessionIsCurrent(queryClient)) return undefined;
       if (row.meta.updatedAt < base.at) return undefined;
       const merged = editor.receiveGenerated(base.body, row.body);
-      folded.current = { jobId: base.jobId, body: row.body, at: row.meta.updatedAt };
+      // A row the job has not marked yet is all the job's (`startingJobBase`).
+      folded.current = {
+        jobId: base.jobId,
+        body: startingJobBase(row.body),
+        at: row.meta.updatedAt,
+      };
       libraryCache.setMetaIfNewer(queryClient, lessonId, row.meta);
       return merged;
     })();
@@ -413,6 +425,24 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     [readOnlyBody, openSignIn],
   );
 
+  // UX audit polish 1: when the editor takes over from the lesson being made, focus would be left
+  // on the page body (the button the teacher pressed is gone). It lands on a hidden line naming the
+  // lesson, just before the editor (so Tab goes on to its bar), once, and only when nothing
+  // else holds focus. A control would show its tooltip; the line shows nothing.
+  // It runs once per editor session, when the filling job unlocks the editor (`unlocked`), and
+  // never for an anonymous visitor, whose editor has no anchor.
+  const handoffJob = unlocked?.jobId;
+  const slideCount = data && "slides" in data ? data.slides.length : 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `slideCount` re-runs it when the first slide arrives, which is when the anchor mounts.
+  useEffect(() => {
+    if (!handoffJob || anonymous || handoffFocused.current) return;
+    const name = document.querySelector<HTMLElement>("[data-editor-anchor]");
+    if (!name) return;
+    handoffFocused.current = true;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    name.focus({ preventScroll: true });
+  }, [handoffJob, anonymous, slideCount]);
   if (!data || !isFullDocument(data) || !meta) return <RoutePendingPage />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
@@ -500,6 +530,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   // read-only inside it, and the follower folds each newer row into the open document.
   const fillingJobId =
     meta?.generatingJobId && meta.generatingJobId !== completedJobId ? meta.generatingJobId : null;
+  // Greg's answer 66 (UX audit J2): a confirmed plan opens the editor at once, before the job has
+  // marked any slide, so the teacher sees one bar from Continue on rather than the generating
+  // shell's bar giving way to the editor's. Until the job says which slides it owns, it owns them
+  // all: every slide is read-only and marked "Writing" (ruling 189).
+  const starting = !!fillingJobId && isStartingJob(data);
   if (
     fillingJobId &&
     unlocked?.jobId !== fillingJobId &&
@@ -509,13 +544,13 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       proposed: data.plan?.state === "proposed",
       // Live writing (ADR 0039): the editor opens as soon as the job owns the deck (its slides
       // `writing`), not at the first done slide, so the lesson is watched taking shape in it.
-      editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0,
+      editableSlides: hasEditableSlides(data) || writingSlideIds(data).size > 0 || starting,
     })
   ) {
-    setUnlocked({ jobId: fillingJobId, base: data });
+    setUnlocked({ jobId: fillingJobId, base: startingJobBase(data) });
     // The first merge's base: the row the editor opens on, unless Try again already read it.
     if (folded.current?.jobId !== fillingJobId)
-      folded.current = { jobId: fillingJobId, body: data, at: meta.updatedAt };
+      folded.current = { jobId: fillingJobId, body: startingJobBase(data), at: meta.updatedAt };
   }
   const filling = !!fillingJobId && unlocked?.jobId === fillingJobId;
   // The filling editor follows the job's end itself (`FillingFollower`), so it needs no latch.
@@ -534,11 +569,18 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   else if (followed.current?.until === Infinity)
     followed.current = { jobId: followed.current.jobId, until: Date.now() + FOLD_GRACE_MS };
   const editorOpen = !generatingJobId || filling;
-  const writing = filling ? writingSlideIds(data) : undefined;
+  const writing = filling
+    ? starting
+      ? new Set(data.slides.map((slide) => slide.id))
+      : writingSlideIds(data)
+    : undefined;
   const showStory = storyStarted && !storyFinished && data.plan?.state !== "proposed";
-  const companionSlot = showStory ? (
-    <div ref={setDestination} className="creation-generation-anchor" />
-  ) : undefined;
+  // The slot outlives the story: on a phone it keeps its place (faded) so the companion leaving
+  // moves no slide (creation.css, "The phone's companion leaves…").
+  const companionSlot =
+    showStory || (storyStarted && storyFinished) ? (
+      <div ref={setDestination} className="creation-generation-anchor" />
+    ) : undefined;
   const shownLesson = displayInTheme(data, pickedTheme);
   const content = !editorOpen ? (
     <Suspense fallback={<RoutePendingPage />}>
@@ -639,6 +681,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       data-guest-read-only={readOnlyBody ? "" : undefined}
       onDoubleClick={onReadOnlyDoubleClick}
     >
+      {editorOpen && !anonymous && data.slides.length > 0 ? (
+        <p className="sr-only" tabIndex={-1} data-editor-anchor="">
+          {`Editing ${data.title}`}
+        </p>
+      ) : null}
       {content}
       {keepEditing && stopped && !stopped.dismissed && editorOpen ? (
         <StoppedNotice
