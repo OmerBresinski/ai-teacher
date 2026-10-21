@@ -95,7 +95,62 @@ export type MadePicture = PlacedPhoto & {
   style?: "photo" | "illustration" | "drawn" | "house";
   /** The palette a generated illustration was made in (`BankRequest.palette`). */
   palette?: string;
+  /** What a fresh generation cost (the generator's own figure); absent on library and stock rows. */
+  costUsd?: number;
+  /** The whole prompt the image model got (retry and frame lines included): debug record only. */
+  prompt?: string;
+  /** How far a fresh generation's subject runs off its frame (`FrameMeasure`): measured, never acted on. */
+  frame?: FrameMeasure;
 };
+
+/**
+ * `frameCut` of a fresh generation's bytes (`@tj/images`), as the worker records it, with how long
+ * the measurement took. Measure only (21 Oct 2026): nothing is redrawn on it.
+ */
+export interface FrameMeasure {
+  /** One backdrop colour holds most of the edge; false is a full-bleed scene, never measured. */
+  plain: boolean;
+  cut: boolean;
+  /** The sum of the edge runs (0 when whole or not plain). */
+  bleed: number;
+  edges: { top: number; right: number; bottom: number; left: number };
+  ms: number;
+}
+
+/** What failed a picture's judge, as fixed codes (`failedChecks` in `illustrate.ts`). */
+export const JUDGE_CHECKS = [
+  "no-pick",
+  "off-subject",
+  "wrong-kind",
+  "unclear",
+  "misfit",
+  "items-missing",
+] as const;
+export type JudgeCheck = (typeof JUDGE_CHECKS)[number];
+
+/** One generation a slot asked for, for its trace (debug record and the outcome event). */
+export interface PictureAttempt {
+  /** How it ended: placed, refused by the judge, the judge call failed, the wrong style, the bank
+   * declined it (daily cap, no generator), or the generator's failure code. */
+  result: string;
+  src?: string;
+  costUsd?: number;
+  frame?: FrameMeasure;
+  failedChecks?: readonly JudgeCheck[];
+  /** The judge's one sentence (debug record only; never an event). */
+  why?: string;
+  /** The image model's whole prompt (debug record only; never an event). */
+  prompt?: string;
+}
+
+/** Everything one slot's ladder did, for the debug record and the outcome event. */
+export interface PictureTrace {
+  attempts: PictureAttempt[];
+  /** The library row offered, and whether the judge took it. */
+  library?: "reused" | "refused" | "down";
+  /** The stock search ran and found nothing, or found the picture placed. */
+  stock?: "placed" | "miss";
+}
 
 /**
  * One locked look per lesson: a generated library row is reused only when it looks the way this
@@ -186,6 +241,7 @@ export interface BankOutcome {
   attempts: number;
   /** Why the last generation failed (`judge`, or a generator code such as `refused-safety`). */
   reason?: string;
+  trace: PictureTrace;
 }
 
 /**
@@ -211,7 +267,7 @@ export async function findPicture(
   judgeMade?: (
     picture: MadePicture,
     reuse?: boolean,
-    onWhy?: (why: string) => void,
+    onWhy?: (why: string, failed?: readonly JudgeCheck[]) => void,
   ) => Promise<boolean>,
   now: () => number = Date.now,
   verdicts?: VerdictCache,
@@ -225,14 +281,20 @@ export async function findPicture(
   const t0 = now();
   let attempts = 0;
   let lastFail: string | undefined;
-  const done = (photo: PlacedPhoto | undefined, via: BankVia): BankOutcome => ({
-    photo,
-    via: photo ? via : "none",
-    route: req.route,
-    ms: now() - t0,
-    attempts,
-    ...(lastFail ? { reason: lastFail } : {}),
-  });
+  const trace: PictureTrace = { attempts: [] };
+  const done = (photo: PlacedPhoto | undefined, via: BankVia): BankOutcome => {
+    for (const a of trace.attempts) if (photo && a.src === photo.src) a.result = "placed";
+    if (via === "fetched" && !trace.stock) trace.stock = photo ? "placed" : "miss";
+    return {
+      photo,
+      via: photo ? via : "none",
+      route: req.route,
+      ms: now() - t0,
+      attempts,
+      ...(lastFail ? { reason: lastFail } : {}),
+      trace,
+    };
+  };
   // Generated pictures this request's judge passed: only these are stored once placed.
   const judged = new WeakSet<PlacedPhoto>();
   const placeMade = async (photo: PlacedPhoto | undefined, via: BankVia): Promise<BankOutcome> => {
@@ -256,6 +318,7 @@ export async function findPicture(
         if (requestsSent(e) > 0) attempts++;
         const reason = imageFailReason(e);
         lastFail = reason;
+        trace.attempts.push({ result: reason });
         // A safety refusal is tried again with its own line, never the same prompt; any other
         // generator failure has had the generator's own retries already.
         if (reason !== "refused-safety" && reason !== "no-image") return undefined;
@@ -267,18 +330,41 @@ export async function findPicture(
         continue;
       }
       if (made && !req.draw) attempts++;
-      if (made && !styleAllowed(req, made)) {
+      // The bank made nothing and threw nothing: it declined (the daily cap, no generator, no
+      // prompt). Recorded so an empty slot says why instead of failing silently.
+      if (!made) {
+        lastFail = "declined";
+        trace.attempts.push({ result: "declined" });
+        return undefined;
+      }
+      const tried: PictureAttempt = {
+        result: "made",
+        src: made.src,
+        ...(made.costUsd !== undefined ? { costUsd: made.costUsd } : {}),
+        ...(made.prompt ? { prompt: made.prompt } : {}),
+        ...(made.frame ? { frame: made.frame } : {}),
+      };
+      trace.attempts.push(tried);
+      if (!styleAllowed(req, made)) {
         // A photo-style picture for a historical request: the wrong kind, so no retry either.
+        tried.result = lastFail = "style";
         await bank.reject?.(made).catch(rethrowAbort);
         return undefined;
       }
-      if (!made || req.draw || !judgeMade || !made.dataUrl) return made;
+      if (req.draw || !judgeMade || !made.dataUrl) return made;
       let why: string | undefined;
-      if (await judgeMade(made, undefined, (w) => (why = w)).catch(rethrowAbort)) {
+      const verdict = await judgeMade(made, undefined, (w, failed) => {
+        why = w || undefined;
+        if (failed?.length) tried.failedChecks = failed;
+      }).catch(rethrowAbort);
+      if (verdict) {
         judged.add(made);
         return made;
       }
-      lastFail = "judge";
+      // A judge call that failed (no verdict) is told apart from a refusal; both still retry.
+      lastFail = verdict === undefined ? "judge-error" : "judge";
+      tried.result = lastFail;
+      if (why) tried.why = why;
       hint = { reason: "judge", ...(why ? { why } : {}) };
       await bank.reject?.(made).catch(rethrowAbort);
     }
@@ -306,7 +392,9 @@ export async function findPicture(
     libraryDown = true;
     return undefined;
   });
-  if (hit && (await usable(hit))) return done(hit, "library");
+  if (libraryDown) trace.library = "down";
+  else if (hit) trace.library = (await usable(hit)) ? "reused" : "refused";
+  if (hit && trace.library === "reused") return done(hit, "library");
   // With the library unreachable nothing could be stored, so nothing is generated.
   if (libraryDown) return done(await fetchStock().catch(rethrowAbort), "fetched");
   if (req.draw) return done(await make(false), "generated");
@@ -317,6 +405,7 @@ export async function findPicture(
       await bank.remember(req, fetched).catch(rethrowAbort);
       return done(fetched, "fetched");
     }
+    trace.stock = "miss";
   }
   if (req.route === "real") {
     const fallback = req.realFallback ?? "none";

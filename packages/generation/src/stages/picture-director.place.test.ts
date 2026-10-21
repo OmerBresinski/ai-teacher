@@ -197,6 +197,21 @@ describe("ruling 163 under strict (placement)", () => {
         reason: "real-miss-no-fallback",
       }),
     ]);
+    // Picture tracing (21 Oct 2026): the line's new codes, and nothing the debug record keeps.
+    const line = lines.find((l) => l.ev === "picture-outcome") ?? {};
+    expect(line).toMatchObject({
+      director: "commons",
+      route: "real",
+      sourceKind: "none",
+      pictureKind: expect.stringMatching(/^(portrait|scene|object)$/),
+      promptVersion: "picture-director-batch.v2",
+      framingClause: true,
+      frameMeasured: false,
+      retryReasons: [],
+      pictureCostUsd: 0,
+    });
+    for (const key of ["tries", "why", "src", "imagePrompt", "request"])
+      expect(line).not.toHaveProperty(key);
   });
 
   test("a historical event is real only: no stock fallback, zero generation calls", async () => {
@@ -448,5 +463,73 @@ describe("findDirected aborts", () => {
     });
     await expect(run).rejects.toThrow("aborted");
     expect(n).toBe(2);
+  });
+});
+
+describe("picture tracing never touches the picture", () => {
+  test("a trace that throws records no kind or trace; the picture is still placed", async () => {
+    const { images } = placer({ commons: async () => [], pexels: async () => [] });
+    const lines: Record<string, unknown>[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _enc, cb) {
+          lines.push(JSON.parse(String(chunk)));
+          cb();
+        },
+      }),
+    );
+    // A made picture whose frame measure throws when read (no bytes, so it is not judged).
+    const bank: PictureBank = {
+      lookup: async () => undefined,
+      remember: async () => undefined,
+      generate: async () => ({
+        src: "/files/w/images/g1.png",
+        alt: "a hen",
+        source: {
+          provider: "generated",
+          id: "g1",
+          pageUrl: "https://openai.com/policies/",
+          photographer: "AI-generated (m)",
+          photographerUrl: "https://openai.com/policies/",
+        },
+        evidence: { visible: [], count: "one", alt: "a hen", promptVersion: "t" },
+        frame: {
+          plain: true,
+          cut: false,
+          bleed: 0,
+          ms: 1,
+          get edges(): never {
+            throw new Error("trace bug");
+          },
+        },
+      }),
+    };
+    const got = await placeWriterPicture({
+      ask: ask({ shows: "A hen beside a chick", mustSee: [], named: false }),
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] }), { logger }),
+      bank,
+      direct: async () =>
+        direction({
+          route: "library-or-generate",
+          pictures: [
+            {
+              shows: "A hen beside a chick",
+              mustShow: [],
+              queries: [],
+              imagePrompt: "A hen beside a chick on straw.",
+            },
+          ],
+        }),
+      raceMs: 60_000,
+    });
+    expect(got?.src).toBe("/files/w/images/g1.png");
+    const line = lines.find((l) => l.ev === "picture-outcome") ?? {};
+    expect(line).toMatchObject({ outcome: "placed", via: "generated", sourceKind: "generated" });
+    for (const key of ["pictureKind", "frameMeasured", "retryReasons", "pictureCostUsd"])
+      expect(line).not.toHaveProperty(key);
   });
 });

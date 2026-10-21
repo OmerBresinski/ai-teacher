@@ -62,6 +62,7 @@ export {
 } from "./commons";
 export { type CountArray, countArraySvg } from "./count-array";
 export { extendRaster } from "./extend";
+export * from "./frame";
 export * from "./panels";
 export {
   type CreatePexelsClientOptions,
