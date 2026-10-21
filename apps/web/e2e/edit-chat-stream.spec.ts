@@ -1,4 +1,22 @@
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
+
+type Box = NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>;
+
+/** `locator`'s box once it reads the same twice, 100 ms apart; fails after 5 s if it never does. */
+async function settledBox(page: Page, locator: Locator): Promise<Box> {
+  let settled: Box | undefined;
+  await expect(async () => {
+    const first = await locator.boundingBox();
+    await page.waitForTimeout(100);
+    const second = await locator.boundingBox();
+    expect(first, "no text box on the slide").not.toBeNull();
+    expect(second).toEqual(first);
+    settled = second ?? undefined;
+  }).toPass({ timeout: 5_000 });
+  if (!settled) throw new Error("no text box on the slide");
+  return settled;
+}
 
 /*
  * Edit with Dayback, streamed (TEACH-97 chat-d): ask → the answer streams into the reply and its
@@ -44,16 +62,11 @@ test("ask, stream, result, undo", async ({ signedInPage: { page, paths } }) => {
   const target = frame.getByText(/Where rain/);
   await expect(target).toBeVisible();
   const before = await target.innerText();
-  // The selection layer sits over the slide: click where the text is, as a teacher does.
-  // `boundingBox()` does not wait: it answers null while the canvas swaps the text node for its
-  // re-fitted one (seen in CI right after `toBeVisible` passed), so wait for the settled box.
-  let settled: Awaited<ReturnType<typeof target.boundingBox>> = null;
-  await expect(async () => {
-    settled = await target.boundingBox();
-    expect(settled, "no text box on the slide").not.toBeNull();
-  }).toPass({ timeout: 5_000 });
-  const box = settled as Awaited<ReturnType<typeof target.boundingBox>>;
-  if (!box) throw new Error("no text box on the slide");
+  // The selection layer sits over the slide: click where the text is, as a teacher does. The
+  // layer takes the pointer, so `target.click()` would fail Playwright's hit-target check; click
+  // by coordinates, but only once the text's box has held still across two reads (the canvas
+  // swaps the node for its re-fitted one just after it first shows, seen in CI).
+  const box = await settledBox(page, target);
   await page.mouse.click(box.x + box.width / 2, box.y + Math.min(12, box.height / 2));
   await pane.getByRole("button", { name: "Shorter", exact: true }).click();
 

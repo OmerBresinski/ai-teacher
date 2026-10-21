@@ -7,6 +7,7 @@
 import { finishOf } from "./finish";
 import { timeOf } from "./meaning";
 import {
+  addArea,
   addLine,
   type Box,
   blockSize,
@@ -1823,7 +1824,7 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
         ? ""
         : `<polygon points="${g.map(([a, b]) => `${n(a)},${n(b)}`).join(" ")}" fill="${look().outlines ? mix("#8a6a3b", x.c.surface, 0.35) : mix(x.c.ink, x.c.surface, x.dark ? 0.16 : 0.1)}" stroke="none"/>`,
     );
-    sc.areas.push(g);
+    addArea(sc, g);
     if (geo.water) {
       const wtr = geo.water.map(t);
       out.push(
