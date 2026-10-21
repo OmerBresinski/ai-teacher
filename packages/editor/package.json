@@ -10,6 +10,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./thumb": "./src/thumb.ts",
+    "./theme-picker": "./src/theme-picker.ts",
+    "./theme-picker/samples": "./src/theme-picker/samples.ts",
     "./worksheet-thumb": "./src/worksheet-thumb.ts",
     "./styles/worksheet-thumb.css": "./src/styles/worksheet-thumb.css",
     "./starter": "./src/starter.ts",
@@ -97,6 +99,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "image-size": "workspace:*",
+    "playwright-core": "1.62.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwindcss": "4.3.3",

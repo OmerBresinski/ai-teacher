@@ -34,6 +34,7 @@ import type {
 import { styledRun } from "@tj/domain/documents";
 import { contrastRatio } from "../colour-contrast";
 import { uid } from "../factories";
+import { crossPolygon, tickPolygon } from "../glyph-centre";
 import { iconsLoaded, loadIcons } from "../icons/loader";
 import { blockArrow } from "../paths/arrow";
 import { measureHeadless } from "../text-measure";
@@ -870,7 +871,6 @@ const textWidth = (c: Ctx, s: string, size: number, weight: number) => {
   return hi;
 };
 
-/** The ✓ (true) or ✕ (myth) glyph, an open stroked path in a 24-unit box scaled to `s`. */
 /** The verdict glyph's ink on its disc: the on-deep ink, or the ground when that reads better. */
 export function verdictGlyphInk(disc: string, onDeep: string, ground: string): string {
   const hex = (c: string) => (c.startsWith("#") ? c.slice(0, 7) : c);
@@ -879,37 +879,27 @@ export function verdictGlyphInk(disc: string, onDeep: string, ground: string): s
     : ground;
 }
 
+/**
+ * The ✓ (true) or ✕ (myth) glyph: one filled outline in a 24-unit box scaled to `s`, its ink
+ * centred on the box (`tickPolygon` / `crossPolygon`; a stroked polyline's ends and joins reach
+ * out unevenly, so its ink sat off the disc's centre). `sw` is the bar weight in 24ths.
+ */
 function glyph(
   k: "true" | "myth",
   b: { x: number; y: number; s: number },
   colour: string,
   sw: number,
 ): PathElement {
-  const raw =
-    k === "true"
-      ? [
-          [5.5, 12.5],
-          [10, 17],
-          [18.5, 7.5],
-        ]
-      : [
-          [7, 7],
-          [17, 17],
-          [12, 12],
-          [17, 7],
-          [7, 17],
-        ];
+  const raw = k === "true" ? tickPolygon(sw) : crossPolygon(sw);
   return {
     id: uid(),
     type: "path",
     ...rnd({ x: b.x, y: b.y, w: b.s, h: b.s }),
-    points: raw.map(([x, y]) => ({
-      x: +((x as number) / 24).toFixed(4),
-      y: +((y as number) / 24).toFixed(4),
-    })),
-    closed: false,
+    points: raw.map(([x, y]) => ({ x: +(x / 24).toFixed(4), y: +(y / 24).toFixed(4) })),
+    closed: true,
+    fill: colour,
     stroke: colour,
-    strokeWidth: round1((sw * b.s) / 24),
+    strokeWidth: 0,
   };
 }
 

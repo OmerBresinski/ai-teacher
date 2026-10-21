@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render } from "@testing-library/react";
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
@@ -113,14 +113,19 @@ function withReducedMotion<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
-/** Runs `fn` on fake timers; `advance` moves the clock and runs due ticks. */
-function fakeClock(fn: (advance: (ms: number) => void) => void) {
-  jest.useFakeTimers();
-  try {
-    fn((ms) => jest.advanceTimersByTime(ms));
-  } finally {
-    jest.useRealTimers();
-  }
+/**
+ * A manual clock for the reveal (never the runner's fake timers: they leak into later files'
+ * Testing Library calls on CI). `advance` moves it, then lets one real tick of the reveal run.
+ */
+function manualClock() {
+  let t = 0;
+  return {
+    now: () => t,
+    advance: async (ms: number) => {
+      t += ms;
+      await new Promise((done) => setTimeout(done, 60));
+    },
+  };
 }
 
 describe("createFirstSlidesReveal", () => {
@@ -171,27 +176,22 @@ describe("createFirstSlidesReveal", () => {
     expect(r.words("b")).toBeUndefined();
   });
 
-  test("the reveal ends between 10 and 15 seconds after it starts (fake timers)", () => {
-    jest.useFakeTimers();
-    try {
-      const t0 = Date.now();
-      const r = createFirstSlidesReveal(() => Date.now());
-      r.arm([
-        { id: "a", words: 4 },
-        { id: "b", words: 30 },
-      ]);
-      const release = r.retain();
-      let ended: number | undefined;
-      for (let t = 0; t < 20_000 && ended === undefined; t += 50) {
-        jest.advanceTimersByTime(50);
-        if (r.state() === "done") ended = Date.now() - t0;
-      }
-      release();
-      expect(ended).toBeGreaterThanOrEqual(10_000);
-      expect(ended).toBeLessThanOrEqual(15_000);
-    } finally {
-      jest.useRealTimers();
+  test("the reveal ends between 10 and 15 seconds after it starts", async () => {
+    const clock = manualClock();
+    const r = createFirstSlidesReveal(clock.now);
+    r.arm([
+      { id: "a", words: 4 },
+      { id: "b", words: 30 },
+    ]);
+    const release = r.retain();
+    let ended: number | undefined;
+    while (clock.now() < 20_000 && ended === undefined) {
+      await clock.advance(500);
+      if (r.state() === "done") ended = clock.now();
     }
+    release();
+    expect(ended).toBeGreaterThanOrEqual(10_000);
+    expect(ended).toBeLessThanOrEqual(15_000);
   });
 
   test("slides 1-2 blank at first: it waits, then arms when they get words", () => {
@@ -207,12 +207,13 @@ describe("createFirstSlidesReveal", () => {
   });
 
   test("only the title had words: the objectives are paced too when they arrive in the window", () =>
-    fakeClock((advance) => {
-      const r = createFirstSlidesReveal(() => Date.now());
+    (async () => {
+      const { now, advance } = manualClock();
+      const r = createFirstSlidesReveal(now);
       r.arm([{ id: "a", words: 4 }, undefined]);
       const release = r.retain();
       // The title is done and the objectives are not here yet: it keeps watching for them.
-      advance(4_000);
+      await advance(4_000);
       expect(r.state()).toBe("running");
       expect(r.words("a")).toBe(4);
       r.sync([
@@ -222,12 +223,12 @@ describe("createFirstSlidesReveal", () => {
       // Cut, not whole: the first word now, the rest by the window's end.
       expect(r.words("b")).toBe(1);
       expect(r.current()).toBe("b");
-      advance((FIRST_SLIDES_REVEAL_MS - 4_000) / 2);
+      await advance((FIRST_SLIDES_REVEAL_MS - 4_000) / 2);
       expect(r.words("b")).toBe(10);
-      advance(FIRST_SLIDES_REVEAL_MS);
+      await advance(FIRST_SLIDES_REVEAL_MS);
       expect(r.state()).toBe("done");
       release();
-    }));
+    })());
 
   test("objectives arriving after the window show whole", () => {
     let now = 0;
@@ -242,8 +243,9 @@ describe("createFirstSlidesReveal", () => {
   });
 
   test("text that changes mid-reveal is paced by its live word count", () =>
-    fakeClock((advance) => {
-      const r = createFirstSlidesReveal(() => Date.now());
+    (async () => {
+      const { now, advance } = manualClock();
+      const r = createFirstSlidesReveal(now);
       const b = (words: number) => [
         { id: "a", words: 4 },
         { id: "b", words },
@@ -251,17 +253,17 @@ describe("createFirstSlidesReveal", () => {
       r.arm(b(20));
       const release = r.retain();
       // Halfway through the objectives' turn.
-      advance(FIRST_SLIDES_REVEAL_MS * 0.625);
+      await advance(FIRST_SLIDES_REVEAL_MS * 0.625);
       expect(r.words("b")).toBe(10);
       r.sync(b(40));
-      advance(50);
+      await advance(50);
       expect(r.words("b")).toBeGreaterThanOrEqual(20);
       // Words taken away: never more shown than the slide has.
       r.sync(b(5));
-      advance(50);
+      await advance(50);
       expect(r.words("b") ?? 5).toBeLessThanOrEqual(5);
       release();
-    }));
+    })());
 
   test("the clock stops when the last holder lets go (StrictMode's remount retains it again)", () => {
     const live = new Set<unknown>();

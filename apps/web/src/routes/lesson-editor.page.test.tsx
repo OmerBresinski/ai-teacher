@@ -1016,6 +1016,9 @@ describe("LessonEditorPage", () => {
 
 // TEACH-245: a signed-out visitor's anonymous session (`/me` with `isAnonymous: true`).
 describe("LessonEditorPage, signed out (anonymous session)", () => {
+  // The first render loads the session, the lesson and the page chunk: about 0.8 s on CI, too close
+  // to Testing Library's 1 s default (it failed at 1.08 s on #606 and #607).
+  const FIRST_LOAD = { timeout: 3_000 };
   const ANONYMOUS_ME = {
     user: { id: "anon-1", email: "temp@anon-1.com", name: "Anonymous", isAnonymous: true },
     workspaceId: WORKSPACE_ID,
@@ -1045,7 +1048,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     installFakeEventSource();
     fakeApi.setGenerating("demo-water-cycle", JOB_ID);
     renderAs(ANONYMOUS_ME);
-    const banner = await screen.findByTestId("generating-shell");
+    const banner = await screen.findByTestId("generating-shell", {}, FIRST_LOAD);
     expect(within(banner).getByRole("button", { name: SIGN_IN_TO_EDIT })).toBeVisible();
     // Export is the sign-in sheet's door, never the export menu (ruling 109).
     expect(within(banner).getByRole("button", { name: "Export" })).toHaveAttribute(
@@ -1058,7 +1061,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
     search = { export: "1" };
     try {
       renderAs(TEACHER_ME);
-      expect(await screen.findByRole("dialog", { name: "Export" })).toBeVisible();
+      expect(await screen.findByRole("dialog", { name: "Export" }, FIRST_LOAD)).toBeVisible();
       await waitFor(() =>
         expect(navigate).toHaveBeenCalledWith(
           expect.objectContaining({ to: "/l/$lessonId", search: {}, replace: true }),
@@ -1071,7 +1074,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
 
   it("Export opens the sign-in sheet for export, and nothing is written (ruling 127)", async () => {
     renderAs(ANONYMOUS_ME);
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }, FIRST_LOAD));
     expect(await screen.findByRole("dialog", { name: SIGN_IN_TO_EXPORT })).toBeVisible();
     expect(writes()).toEqual([]);
   });
@@ -1082,7 +1085,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
       const el = document.querySelector("[data-lesson-viewer]");
       if (!el) throw new Error("no viewer yet");
       return el as HTMLElement;
-    });
+    }, FIRST_LOAD);
     expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
     expect(screen.queryByRole("listbox", { name: "Slides" })).toBeNull();
     expect(screen.getByRole("button", { name: "Export" })).toHaveAttribute(
@@ -1102,7 +1105,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
 
   it("row 3: the action and a double-click on the slide open the sign-in sheet over the lesson", async () => {
     renderAs(ANONYMOUS_ME);
-    fireEvent.click(await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }));
+    fireEvent.click(await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }, FIRST_LOAD));
     const sheet = await screen.findByRole("dialog", { name: SIGN_IN_TO_EDIT });
     expect(within(sheet).getByRole("button", { name: "Continue with Google" })).toBeVisible();
     expect(within(sheet).getByLabelText("Email address")).toBeVisible();
@@ -1123,7 +1126,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
 
   it("row 7: no worksheet, facts or regenerate entry points and no api calls for them", async () => {
     renderAs(ANONYMOUS_ME);
-    await screen.findByRole("button", { name: SIGN_IN_TO_EDIT });
+    await screen.findByRole("button", { name: SIGN_IN_TO_EDIT }, FIRST_LOAD);
     for (const name of [/Worksheet/, /Facts/i, /Regenerate/i, "Theme"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
@@ -1137,7 +1140,7 @@ describe("LessonEditorPage, signed out (anonymous session)", () => {
       JSON.stringify({ lessonId: "demo-water-cycle", topic: "The water cycle", at: Date.now() }),
     );
     renderAs(TEACHER_ME);
-    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Rename lesson" }, FIRST_LOAD)).toBeVisible();
     expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
     expect(screen.queryByRole("button", { name: SIGN_IN_TO_EDIT })).toBeNull();
     // The lesson opened for its owner: the claim went through, nothing is left to offer again.
