@@ -84,6 +84,7 @@ and `safeError`'s type and code lists.
 | `$ai_generation` | every model call | `$ai_model`, `$ai_provider`, `$ai_input_tokens`, `$ai_output_tokens`, `$ai_cache_read_input_tokens`, `$ai_cache_creation_input_tokens`, `$ai_total_cost_usd` (our list price), `$ai_latency` (seconds), `$ai_stop_reason`, `$ai_is_error`, `$ai_span_name` (= `stage`), `stage`, `promptVersion`, `effort`, `modelClass` |
 | `$exception` | a failed job attempt; an infrastructure failure; an uncaught exception or unhandled rejection | `$exception_list` (type and frames only, no message), `causeType`, `modelId`, `source` (`job`, `job:infrastructure`, `uncaughtException`, `unhandledRejection`), `job`, `jobId`, `lessonId`, `stage` (the last stage seen), `planner`, `attempt`, `willRetry`, `errorType`, `errorCode` |
 | `gen_lesson` | once per lesson job (the `generation summary` line), whatever the outcome | `outcome` (`success`/`failed`), `planner`, `stages`, `costUsd`, `calls`, `inputTokens`, `outputTokens`, `durationMs`, `readableMs`, `checkedMs`, `findingsError`, `findingsWarning`, `imagesPhotographable`, `imagesRequested`, `imagesPlaced`, `imagesEmpty`, `imagesFailed`; fact-check totals `factChecks`, `factsChecked`, `factsCorrected`, `factsChanged`, `factWordsChanged`, `factChangeRate` (= factsChanged / factsChecked), `factChecksCapped`, `factChecksDropped`; repair totals `repairs`, `repairsReverted`, `repairsFailed` |
+| `gen_lesson_pictures` | once per lesson job that had a picture slot, beside `gen_lesson` | the job's `gen_picture_outcome` lines rolled up: `pictures`, `notWanted`, `toDrawer`, `picturesPlaced`, `picturesEmpty`, `picturesFailed`, `fromGenerated`, `fromDrawn`, `fromStock`, `fromCommons`, `fromLibrary`, `generations`, `retries`, `judgeRefusals`, `framesMeasured`, `framesCut`, `portraitsCut`, `pictureCostUsd`, with `lessonSubject`, `keyStage`, `outcome`, `planner` (see "Lesson pictures") |
 | `gen_job` | job lifecycle | `status`: `picked` (with `queueWaitMs`, from enqueue or re-queue to pick-up), `started`, `completed`, `cancelled` (Stop), `retry` (pg-boss will run it again), `failed`, `skipped` (already settled), `lock_kept` (lock kept for the retry, which resumes from the checkpoint) |
 | `gen_stage` | each pipeline stage run (the timeline) | `stage`, `outcome` (`done`/`failed`), `startedAt` (ISO), `durationMs` |
 | `gen_fact_check` | each fact-verification pass (`verify-facts`) | `outcome` (`checked`/`capped`/`dropped`), `factsChecked`, `proposed`, `corrections` (applied), `factsChanged`, `wordsChanged` (word edit distance summed over the changed strings; never the text), `reason_<reason>` and `field_<field>`: one count per member of `VERIFY_REASONS` and `VERIFY_FIELDS`, named from the enum, never from model text, `durationMs`, `by` (`usd`/`tokens` when capped). The call's model, tokens, cost and latency are on its `$ai_generation` (same trace, `stage: plan`). |
@@ -104,8 +105,7 @@ writer's lines carry `source: "writer"`. The table below lists each event's allo
 names. A string under a name without a `*` is never sent; numbers and booleans under any listed
 name are. Repairs are `gen_repair` (`slide`, `mode`, `ok`, `reverted`; never `fix`). Splits and
 continuations are `gen_practice_continued`, `gen_quick_check_continued`, `gen_table_continued`
-and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `kind`,
-`attempts`, `slideIndex`). The picture `reason` is free text, so it is not sent.
+and `gen_unshown_strip`. Pictures are `gen_picture_outcome`, one per picture slot (see "Lesson pictures" below).
 
 | Event | Property names (a * marks an enum-checked string) |
 | --- | --- |
@@ -163,7 +163,7 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `
 | `gen_on_flow_item_failed` | none |
 | `gen_orphan6_drop` | `moved`, `orphans`, `slide` |
 | `gen_overflow_shipped` | `level`* |
-| `gen_picture_outcome` | `attempts`, `key`, `kind`*, `outcome`*, `set`, `slideIndex`, `stage`*, `via`* |
+| `gen_picture_outcome` | `attempts`, `director`*, `errorType`*, `framingClause`, `key`, `keyStage`*, `kind`*, `latencyMs`, `lessonSubject`*, `library`*, `outcome`*, `pictureKind`*, `promptVersion`*, `reason`*, `route`*, `set`, `slideIndex`, `sourceKind`*, `stage`*, `stock`*, `via`*; and from the trace: `retryReasons`*, `failedChecks`*, `judgeRefusals`, `pictureCostUsd`, `frameMeasured`, `backdrop`*, `frameCut`, `portraitCut`, `cutEdges`, `frameBleed`, `frameMs`, `cutsSeen` |
 | `gen_pilot_fit` | `overs`, `path`, `slide`, `steps` |
 | `gen_pilot_members_over` | `id`, `slide`, `template`* |
 | `gen_point_guard` | `how`*, `removed`, `ships`, `slide` |
@@ -194,6 +194,7 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `
 | `gen_slide_tail_failed` | `slide` |
 | `gen_slot_fill` | `fit`, `route`, `slide`, `template`*, `waveCCountCaps` |
 | `gen_stage` | `durationMs`, `outcome`*, `stage`*, `startedAt` |
+| `gen_stock_failed` | `errorType`*, `slideIndex`, `stage`* |
 | `gen_stream_opened` | `of`, `slides` |
 | `gen_stream_reopened` | `slide` |
 | `gen_stream_stopped` | `why` |
@@ -208,6 +209,79 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `
 | `gen_unshown_strip` | `how`*, `removed`, `slide` |
 | `gen_visual_path` | `path`, `slide` |
 
+## Lesson pictures
+
+Added 21 Oct 2026 so prod runs can say how often pictures fail and why. Every picture slot of the
+writer planner logs one `picture-outcome` line, which becomes `gen_picture_outcome`; a set frame
+logs one too (`kind: "set"`, fewer fields). All values are codes or numbers. The words behind them
+(the director's request and image prompt, the image model's whole prompt per try, the judge's
+reason per try, picture ids and URLs) go to the lesson's 30-day debug record (`kind: "picture"`,
+read with `tools/lesson-debug/run.ts`), never to PostHog.
+
+| Property | Meaning |
+| --- | --- |
+| `outcome` | `placed`, `empty`, `failed` (the slot threw; `errorType` says what), `none` (the director wanted no picture, or its call failed), `drawer` (handed to the writer's code drawer). `gen_lesson_pictures` counts the last two as `notWanted` and `toDrawer`, outside `pictures` |
+| `sourceKind` | where the placed picture came from: `generated`, `drawn` (a count drawn in code), `stock` (Pexels), `commons`, `library`, `none` |
+| `via`, `director`, `route` | the ladder's step, the director's route (`failed`: the director call failed), `real`/`generic` |
+| `reason` | the last failure: `judge`, `judge-error` (the judge call failed), `style`, `declined` (the bank made nothing: daily cap or no generator), a generator code (`refused-safety`, `rate-limited`, `quota`, `server-error`, `timeout`, `no-image`, …), or why the slot is empty (`director-none`, `real-miss-no-fallback`, `generation-refused-or-failed`, …) |
+| `retryReasons` | every failed try's code, in order |
+| `failedChecks` | the judge checks any try failed: `no-pick`, `off-subject`, `wrong-kind`, `unclear`, `misfit`, `items-missing` |
+| `attempts`, `judgeRefusals`, `latencyMs`, `pictureCostUsd` | generations asked for, judge refusals, the slot's wall time, and what its generations cost (refused ones included) |
+| `pictureKind` | `portrait`, `scene`, `object`, `drawing`: read by code from the director's words and named kind (the director has no such field; the heuristic's accuracy is unmeasured) |
+| `frameMeasured`, `backdrop` | the placed picture is a fresh generation whose frame was measured; `plain` backdrop or `full-bleed` (a scene, never measured) |
+| `frameCut` / `portraitCut` | the subject runs off the frame (#496's detector, **measure only**: nothing is redrawn). A portrait's cut is recorded as `portraitCut`, apart, because most are cropped at the chest on purpose |
+| `cutEdges`, `frameBleed`, `cutsSeen`, `frameMs` | edges cut (0–4), the summed edge runs, cut tries in the slot (refused ones too), and the measurement's time (about 70 ms median on a 1024² PNG) |
+| `promptVersion`, `framingClause` | the director prompt's version and whether it asks for "the subject whole inside the frame" (#497) |
+| `lessonSubject`, `keyStage` | the brief form's subject as a code (`art-and-design`; anything else `other`) and `eyfs`, `ks1`–`ks5` from the year group |
+
+`gen_stock_failed` is a stock search that threw (the slot carries on to generation). The daily
+image cap is a `declined` reason on the slot it stopped.
+
+Share of generated pictures cut, by subject and key stage (HogQL, Product analytics → SQL):
+
+```sql
+SELECT
+  properties.lessonSubject AS subject,
+  properties.keyStage AS key_stage,
+  count() AS generated,
+  countIf(toString(properties.frameMeasured) = 'true' AND properties.pictureKind != 'portrait') AS measured,
+  countIf(toString(properties.frameCut) = 'true') AS cut,
+  round(cut / nullIf(measured, 0), 3) AS cut_share,
+  countIf(toString(properties.portraitCut) = 'true') AS portraits_cut,
+  countIf(properties.backdrop = 'full-bleed') AS scenes_unmeasured
+FROM events
+WHERE event = 'gen_picture_outcome'
+  AND properties.sourceKind = 'generated'
+  AND timestamp > now() - INTERVAL 30 DAY
+GROUP BY subject, key_stage
+ORDER BY generated DESC
+```
+
+Picture failure reasons: empty or failed slots by their last reason, then every failed try:
+
+```sql
+SELECT properties.outcome AS outcome, properties.reason AS reason, count() AS slots
+FROM events
+WHERE event = 'gen_picture_outcome'
+  AND properties.outcome IN ('empty', 'failed')
+  AND timestamp > now() - INTERVAL 30 DAY
+GROUP BY outcome, reason
+ORDER BY slots DESC
+```
+
+```sql
+SELECT
+  arrayJoin(JSONExtract(ifNull(toString(properties.retryReasons), '[]'), 'Array(String)')) AS try_failed,
+  count() AS tries
+FROM events
+WHERE event = 'gen_picture_outcome' AND timestamp > now() - INTERVAL 30 DAY
+GROUP BY try_failed
+ORDER BY tries DESC
+```
+
+Swap `retryReasons` for `failedChecks` to count which judge checks fail. These queries were
+written without access to the live project; check the column types once real events arrive.
+
 ## Building insights
 
 - Cost per lesson: `gen_lesson`, sum of `costUsd`, broken down by `planner`.
@@ -215,6 +289,8 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome` (`via`, `outcome`, `
   `status = picked`, average `queueWaitMs`.
 - How much the fact checker changes: `gen_lesson`, average `factChangeRate` and
   `factWordsChanged`; or `gen_fact_check`, `reason_*` and `field_*`.
+- Pictures: `gen_lesson_pictures` per lesson (sum `framesCut` over sum `framesMeasured`, average
+  `pictureCostUsd`, `picturesEmpty` by `lessonSubject`); one slot is `gen_picture_outcome`.
 - Repairs that made things worse: `gen_repair` where `reverted = true`, by `mode`.
 - Failures: Error tracking groups `$exception` by type and frames; filter on `job`, `stage` or
   `willRetry`.

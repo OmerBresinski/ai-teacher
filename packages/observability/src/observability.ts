@@ -234,6 +234,31 @@ export function createObservability(options: ObservabilityOptions): Observabilit
     repairsReverted: number;
     repairsFailed: number;
     events: number;
+    pictures: PictureTotals;
+  }
+  /** `gen_picture_outcome` per lesson job, for `gen_lesson_pictures`. */
+  interface PictureTotals {
+    pictures: number;
+    /** Slots the director routed away from the ladder: no picture wanted, or the code drawer. */
+    notWanted: number;
+    toDrawer: number;
+    picturesPlaced: number;
+    picturesEmpty: number;
+    picturesFailed: number;
+    fromGenerated: number;
+    fromDrawn: number;
+    fromStock: number;
+    fromCommons: number;
+    fromLibrary: number;
+    generations: number;
+    judgeRefusals: number;
+    retries: number;
+    framesMeasured: number;
+    framesCut: number;
+    portraitsCut: number;
+    pictureCostUsd: number;
+    lessonSubject?: unknown;
+    keyStage?: unknown;
   }
   const emptyTotals = (): Totals => ({
     factChecks: 0,
@@ -247,6 +272,26 @@ export function createObservability(options: ObservabilityOptions): Observabilit
     repairsReverted: 0,
     repairsFailed: 0,
     events: 0,
+    pictures: {
+      pictures: 0,
+      notWanted: 0,
+      toDrawer: 0,
+      picturesPlaced: 0,
+      picturesEmpty: 0,
+      picturesFailed: 0,
+      fromGenerated: 0,
+      fromDrawn: 0,
+      fromStock: 0,
+      fromCommons: 0,
+      fromLibrary: 0,
+      generations: 0,
+      judgeRefusals: 0,
+      retries: 0,
+      framesMeasured: 0,
+      framesCut: 0,
+      portraitsCut: 0,
+      pictureCostUsd: 0,
+    },
   });
   const jobs = new Map<
     string,
@@ -265,6 +310,36 @@ export function createObservability(options: ObservabilityOptions): Observabilit
         totals.factWordsChanged += num(props.wordsChanged);
       } else if (props.outcome === "capped") totals.factChecksCapped += 1;
       else if (props.outcome === "dropped") totals.factChecksDropped += 1;
+    }
+    if (event === "gen_picture_outcome") {
+      const p = totals.pictures;
+      p.lessonSubject ??= props.lessonSubject;
+      p.keyStage ??= props.keyStage;
+      if (props.outcome === "none" || props.outcome === "drawer") {
+        if (props.outcome === "none") p.notWanted += 1;
+        else p.toDrawer += 1;
+        return;
+      }
+      p.pictures += 1;
+      if (props.outcome === "placed") p.picturesPlaced += 1;
+      else if (props.outcome === "failed") p.picturesFailed += 1;
+      else p.picturesEmpty += 1;
+      const from: Record<string, keyof PictureTotals> = {
+        generated: "fromGenerated",
+        drawn: "fromDrawn",
+        stock: "fromStock",
+        commons: "fromCommons",
+        library: "fromLibrary",
+      };
+      const key = typeof props.sourceKind === "string" ? from[props.sourceKind] : undefined;
+      if (key) (p[key] as number) += 1;
+      p.generations += num(props.attempts);
+      p.judgeRefusals += num(props.judgeRefusals);
+      p.retries += Math.max(0, num(props.attempts) - 1);
+      if (props.frameMeasured === true) p.framesMeasured += 1;
+      if (props.frameCut === true) p.framesCut += 1;
+      if (props.portraitCut === true) p.portraitsCut += 1;
+      p.pictureCostUsd += num(props.pictureCostUsd);
     }
     if (event === "gen_repair") {
       totals.repairs += 1;
@@ -429,6 +504,19 @@ export function createObservability(options: ObservabilityOptions): Observabilit
           imagesEmpty: summary.images.empty,
           imagesFailed: summary.images.failed,
         });
+        // The lesson's pictures in one row (counts by source, failures, cuts, retries, cost).
+        const p = t?.pictures;
+        if (p && p.pictures + p.notWanted + p.toDrawer > 0)
+          capture(distinctIdFor(scope?.workspaceId), "gen_lesson_pictures", {
+            ...p,
+            pictureCostUsd: Math.round(p.pictureCostUsd * 1e6) / 1e6,
+            $ai_trace_id: summary.jobId,
+            lessonId: summary.lessonId ?? scope?.lessonId,
+            jobId: summary.jobId,
+            job: scope?.job,
+            outcome: summary.outcome,
+            planner: summary.planner,
+          });
       });
     },
 

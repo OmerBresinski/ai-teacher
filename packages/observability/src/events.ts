@@ -105,6 +105,71 @@ const FACT_COUNT_KEYS = [
   ...FACT_FIELDS.map((f) => factCountKey("field", f)),
 ];
 
+/**
+ * The lesson picture codes. `PICTURE_FAIL_REASONS`, `JUDGE_CHECKS`, `SOURCE_KINDS`, `PICTURE_KINDS`,
+ * `LESSON_SUBJECTS` and `KEY_STAGES` in `@tj/generation` (the worker's test keeps them equal).
+ */
+export const PICTURE_FAIL_REASONS = [
+  "judge",
+  "judge-error",
+  "style",
+  "declined",
+  "error",
+  "refused-safety",
+  "rate-limited",
+  "quota",
+  "server-error",
+  "network",
+  "network-unsure",
+  "timeout",
+  "bad-request",
+  "no-image",
+  "odd",
+  "capped",
+  "director-code",
+  "director-none",
+  "director-failed",
+  "real-miss-no-fallback",
+  "generation-refused-or-failed",
+] as const;
+export const JUDGE_CHECKS = [
+  "no-pick",
+  "off-subject",
+  "wrong-kind",
+  "unclear",
+  "misfit",
+  "items-missing",
+] as const;
+export const SOURCE_KINDS = ["generated", "drawn", "stock", "commons", "library", "none"] as const;
+export const PICTURE_KINDS = ["portrait", "scene", "object", "drawing"] as const;
+export const LESSON_SUBJECTS = [
+  "english",
+  "maths",
+  "science",
+  "history",
+  "geography",
+  "art-and-design",
+  "computing",
+  "design-and-technology",
+  "languages",
+  "music",
+  "pe",
+  "pshe",
+  "re",
+  "other",
+] as const;
+export const KEY_STAGES = ["eyfs", "ks1", "ks2", "ks3", "ks4", "ks5"] as const;
+/** The director's routes (`PICTURE_ROUTES`), its failure, and the map search that runs first. */
+const DIRECTOR_ROUTES = [
+  "commons",
+  "pexels",
+  "library-or-generate",
+  "code",
+  "none",
+  "failed",
+  "map-first",
+] as const;
+
 /** The enum each string-valued key is checked against. */
 export const ENUMS: Record<string, ReadonlySet<string>> = {
   stage: STAGES,
@@ -120,6 +185,8 @@ export const ENUMS: Record<string, ReadonlySet<string>> = {
     "placed",
     "empty",
     "busy",
+    "drawer",
+    "none",
   ),
   status: set(
     "picked",
@@ -134,7 +201,30 @@ export const ENUMS: Record<string, ReadonlySet<string>> = {
     "pending",
     "photo",
   ),
-  via: set("none", "drawer", "fetched", "code", "library", "pexels", "commons", "generated"),
+  via: set(
+    "none",
+    "drawer",
+    "fetched",
+    "code",
+    "library",
+    "pexels",
+    "commons",
+    "generated",
+    "generated-faithful",
+  ),
+  // Lesson pictures (`gen_picture_outcome`, `docs/observability.md` "Lesson pictures").
+  reason: set(...PICTURE_FAIL_REASONS),
+  retryReasons: set(...PICTURE_FAIL_REASONS),
+  failedChecks: set(...JUDGE_CHECKS),
+  sourceKind: set(...SOURCE_KINDS),
+  pictureKind: set(...PICTURE_KINDS),
+  lessonSubject: set(...LESSON_SUBJECTS),
+  keyStage: set(...KEY_STAGES),
+  director: set(...DIRECTOR_ROUTES),
+  route: set("real", "generic"),
+  backdrop: set("plain", "full-bleed"),
+  library: set("reused", "refused", "down"),
+  stock: set("placed", "miss"),
   mode: set(
     "fit",
     "groups",
@@ -367,6 +457,46 @@ const OWN_KEYS: Record<string, readonly string[]> = {
   gen_input_checked: ["stage", "findings"],
   gen_plan_call: ["stage", "call", "cls", "awaited"],
   gen_fact_check: FACT_COUNT_KEYS,
+  // `traceProps` in `@tj/generation` is spread into the line, so the catalogue cannot see these.
+  gen_picture_outcome: [
+    "retryReasons",
+    "failedChecks",
+    "judgeRefusals",
+    "pictureCostUsd",
+    "frameMeasured",
+    "backdrop",
+    "frameCut",
+    "portraitCut",
+    "cutEdges",
+    "frameBleed",
+    "frameMs",
+    "cutsSeen",
+  ],
+  /** The per-lesson roll-up of `gen_picture_outcome` (`captureLessonSummary`). */
+  gen_lesson_pictures: [
+    "lessonSubject",
+    "keyStage",
+    "planner",
+    "outcome",
+    "pictures",
+    "notWanted",
+    "toDrawer",
+    "picturesPlaced",
+    "picturesEmpty",
+    "picturesFailed",
+    "fromGenerated",
+    "fromDrawn",
+    "fromStock",
+    "fromCommons",
+    "fromLibrary",
+    "generations",
+    "judgeRefusals",
+    "retries",
+    "framesMeasured",
+    "framesCut",
+    "portraitsCut",
+    "pictureCostUsd",
+  ],
   gen_lesson: [
     "outcome",
     "planner",
