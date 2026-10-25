@@ -234,14 +234,25 @@ export function imageFailReason(error: unknown): ImageFailReason | "error" {
 export const PICTURE_FAIL_STAGES = ["generate", "save", "judge", "stock"] as const;
 export type PictureFailStage = (typeof PICTURE_FAIL_STAGES)[number];
 
-/** An error raised at a known picture stage (a storage write, so it is not taken for the model). */
+/**
+ * An error raised at a known picture stage (a storage write, so it is not taken for the model).
+ * `costUsd` is what the image model already charged for the picture this stage lost (a save that
+ * failed after a paid generation), so the try's cost is still recorded (`spentOn`).
+ */
 export class PictureStageError extends Error {
   override readonly name = "PictureStageError";
   readonly stage: PictureFailStage;
-  constructor(stage: PictureFailStage, cause: unknown) {
+  readonly costUsd: number | undefined;
+  constructor(stage: PictureFailStage, cause: unknown, opts: { costUsd?: number } = {}) {
     super(`The picture ${stage} step failed.`, { cause });
     this.stage = stage;
+    this.costUsd = opts.costUsd;
   }
+}
+
+/** What a failed picture try had already been charged (`PictureStageError.costUsd`), if anything. */
+export function spentOn(error: unknown): number | undefined {
+  return error instanceof PictureStageError ? error.costUsd : undefined;
 }
 
 /**

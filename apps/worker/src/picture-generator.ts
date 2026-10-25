@@ -204,7 +204,14 @@ export function createGeneratingBank(opts: {
       // measure, never a failed picture.
       const frame =
         out.mime === "image/png" ? await measureFrame(out.bytes).catch(() => undefined) : undefined;
-      const saved = await opts.save(out.bytes, out.mime);
+      // Paid already: a failed save carries the model's cost, so the try's trace still records it.
+      const saved = await opts.save(out.bytes, out.mime).catch((e: unknown) => {
+        if (e instanceof Error && e.name === "AbortError") throw e;
+        const tagged = e instanceof PictureStageError ? e : undefined;
+        throw new PictureStageError(tagged?.stage ?? "save", tagged ? tagged.cause : e, {
+          costUsd: out.costUsd,
+        });
+      });
       // The picture's own shape (the model returns the size asked; the header is the fact).
       const [sw, sh] = size.split("x").map(Number) as [number, number];
       const dims = pngSize(out.bytes) ?? { width: sw, height: sh };

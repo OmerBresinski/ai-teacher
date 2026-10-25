@@ -20,6 +20,7 @@ import { createPerJobFakeAi } from "./fake-ai";
 import type { DebugStore } from "./generation-debug";
 import { aiGenerationOf } from "./observability";
 import { createDailyImageCap, type DailyImageCap } from "./picture-generator";
+import type { StorageGate } from "./storage-check";
 
 /**
  * Boot-owned dependencies every handler receives as `ctx.deps`. `db` is the same pooled Drizzle
@@ -55,6 +56,12 @@ export type WorkerDeps = {
    * cap (`IMAGE_GENERATION_DAILY_CAP_USD`) per worker process, shared by every job.
    */
   imageGeneration?: { generator: ImageGenerator; cap: DailyImageCap };
+  /**
+   * The boot storage check's gate (`storage-check.ts`): closed while the bucket refuses a write, so
+   * no picture is paid for that cannot be saved. Read when a job builds its picture maker; absent
+   * (tests, scripts), generation is not gated.
+   */
+  storageGate?: StorageGate;
   /**
    * The shared picture library's request embedder (TEACH-84 part b), only when
    * `PICTURE_LIBRARY_REUSE=on` and `OPENAI_API_KEY` is set; absent, nothing is reused or stored.

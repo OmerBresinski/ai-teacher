@@ -23,6 +23,7 @@ import {
 } from "./jobs";
 import { createLogger, type LogTap } from "./logger";
 import { createWorkerObservability, lessonIdOf, reportJobFailure } from "./observability";
+import { verifyStorage } from "./storage-check";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
 const SHUTDOWN_GRACE_MS = 25_000;
@@ -56,15 +57,23 @@ const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
 const debugPool = createDb(env.DATABASE_URL, { max: 1 });
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
-const deps = {
-  ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability),
-  jobs: ctx,
-};
+const shutdown = new AbortController();
+/** Stops the storage re-check as soon as shutdown starts (`shutdown` aborts only after the grace). */
+const stopRecheck = new AbortController();
+const base = createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability);
+// 25 Oct 2026: a store that cannot take a write closes the picture gate (never the boot); it is
+// re-checked in the background with backoff and reopens on a pass. Shutdown stops the re-check.
+const { gate: storageGate, storageCheck } = await verifyStorage(
+  base.storage,
+  base.storageKind,
+  logger,
+  { signal: stopRecheck.signal },
+);
+const deps = { ...base, storageGate, jobs: ctx };
 
 boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
 boss.on("warning", (w) => logger.warn({ err: safeError(w) }, "pg-boss warning"));
 
-const shutdown = new AbortController();
 const active = new Map<string, Promise<unknown>>();
 let bossState: "starting" | "started" | "stopping" | "stopped" = "starting";
 
@@ -208,6 +217,8 @@ logger.info(
     worksheetCapUsd: deps.worksheetCapUsd,
     images: deps.images ? "pexels" : "disabled",
     storage: deps.storageKind,
+    storageCheck,
+    imageGeneration: deps.imageGeneration && storageGate.open ? "on" : "off",
   },
   "worker ready",
 );
@@ -216,6 +227,7 @@ let stopping = false;
 async function stop(signal: string): Promise<void> {
   if (stopping) return;
   stopping = true;
+  stopRecheck.abort();
   bossState = "stopping";
   logger.info({ signal, activeJobs: active.size }, "shutting down");
   // After the grace period, abort every active handler (`signal.reason === "shutdown"`); runJob

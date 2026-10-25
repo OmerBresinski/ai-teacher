@@ -76,13 +76,15 @@ export interface LessonJobSpec {
  * The writer planner's generator (TEACH-237): the director's bank and the set maker, saving to this
  * workspace's images under the process's daily cap. Objectives-first never reads it.
  */
-function pictureMaker(
+export function pictureMaker(
   deps: WorkerDeps,
   workspaceId: WorkspaceId,
   logger: PipelineDeps["logger"],
 ): Pick<PipelineDeps, "pictureMaker"> {
   const gen = deps.imageGeneration;
-  if (!gen || !deps.images) return {};
+  // A closed storage gate (the boot check failed and no re-check has passed yet): nothing is
+  // generated that could not be saved, as without a generator.
+  if (!gen || !deps.images || deps.storageGate?.open === false) return {};
   const save = savePicture(deps.images.storage, workspaceId);
   const remove = removePicture(deps.images.storage, workspaceId);
   return {
