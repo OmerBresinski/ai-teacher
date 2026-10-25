@@ -1,7 +1,7 @@
 import { type ModelClass, safeError } from "@tj/domain";
 import type { LanguageModelMiddleware } from "ai";
 import type pino from "pino";
-import { toProviderError } from "./errors";
+import { type ProviderErrorCode, providerErrorDetail, toProviderError } from "./errors";
 import { costUsd } from "./prices";
 import type { AiCallContext, AiCallRecord } from "./types";
 
@@ -33,6 +33,10 @@ interface AiLogFields extends AiCallContext {
   /** ADR 0025 §15: list price of this call, `null` for an unpriced model id. */
   costUsd: number | null;
   finishReason: string;
+  /** A failed call's HTTP status from the provider, when it answered. */
+  statusCode?: number;
+  /** A failed call's normalised provider error (an enum: never the provider's message). */
+  providerErrorCode?: ProviderErrorCode;
 }
 
 /** Only the context keys the caller set; pino would keep an explicit `undefined` out anyway. */
@@ -111,7 +115,9 @@ function logError(
   options: LoggingMiddlewareOptions,
   provider: string,
   startedAt: number,
+  error: unknown,
 ) {
+  const detail = providerErrorDetail(error);
   const ai: AiLogFields = {
     ...contextFields(options.context),
     class: options.modelClass,
@@ -123,6 +129,8 @@ function logError(
     costUsd: null,
     finishReason: "error",
   };
+  if (detail?.statusCode !== undefined) ai.statusCode = detail.statusCode;
+  if (detail) ai.providerErrorCode = detail.providerErrorCode;
   logger.warn({ ai });
   report(logger, options, ai, true);
 }
@@ -150,7 +158,7 @@ export function createLoggingMiddleware(
         );
         return result;
       } catch (error) {
-        logError(options.logger, options, model.provider, startedAt);
+        logError(options.logger, options, model.provider, startedAt, error);
         throw toProviderError(error);
       }
     },
@@ -161,10 +169,10 @@ export function createLoggingMiddleware(
         const reader = result.stream.getReader();
         let logged = false;
 
-        const logStreamError = () => {
+        const logStreamError = (error?: unknown) => {
           if (logged) return;
           logged = true;
-          logError(options.logger, options, model.provider, startedAt);
+          logError(options.logger, options, model.provider, startedAt, error);
         };
 
         return {
@@ -190,7 +198,7 @@ export function createLoggingMiddleware(
                 }
                 controller.enqueue(next.value);
               } catch (error) {
-                logStreamError();
+                logStreamError(error);
                 controller.error(toProviderError(error));
               }
             },
@@ -205,7 +213,7 @@ export function createLoggingMiddleware(
           }),
         };
       } catch (error) {
-        logError(options.logger, options, model.provider, startedAt);
+        logError(options.logger, options, model.provider, startedAt, error);
         throw toProviderError(error);
       }
     },

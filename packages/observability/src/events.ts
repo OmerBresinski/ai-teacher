@@ -404,6 +404,23 @@ export const ENUMS: Record<string, ReadonlySet<string>> = {
     "invalid_model",
     "moderated",
   ),
+  /** `@tj/ai` `PROVIDER_ERROR_CODES` (kept in step by the worker's `observability.test.ts`). */
+  providerErrorCode: set(
+    "invalid_api_key",
+    "unauthorized",
+    "permission_denied",
+    "insufficient_quota",
+    "rate_limited",
+    "context_length_exceeded",
+    "content_filter",
+    "invalid_request",
+    "not_found",
+    "timeout",
+    "unavailable",
+    "server_error",
+    "network",
+    "unknown",
+  ),
   service: set("worker"),
 };
 
@@ -539,12 +556,24 @@ const OWN_KEYS: Record<string, readonly string[]> = {
     "$ai_latency",
     "$ai_stop_reason",
     "$ai_is_error",
+    "$ai_http_status",
+    "providerErrorCode",
     "stage",
     "promptVersion",
     "effort",
     "modelClass",
   ],
-  $exception: ["stage", "planner", "willRetry", "errorType", "errorCode", "causeType", "modelId"],
+  $exception: [
+    "stage",
+    "planner",
+    "willRetry",
+    "errorType",
+    "errorCode",
+    "causeType",
+    "modelId",
+    "providerStatus",
+    "providerErrorCode",
+  ],
 };
 
 /** The property names `event` may carry. Unknown events carry only the common ones. */

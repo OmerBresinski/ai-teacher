@@ -1,5 +1,6 @@
 import type { LanguageModelMiddleware } from "ai";
 import { wrapLanguageModel } from "ai";
+import { type ProviderErrorDetail, providerErrorDetail, redactSecrets } from "./errors";
 import { costUsd } from "./prices";
 import type { AiCallContext, CreatedAi } from "./types";
 
@@ -29,8 +30,11 @@ export interface CapturedCall {
   costUsd: number | null;
   durationMs: number;
   ok: boolean;
-  error?: { name: string; message: string };
+  error?: CapturedError;
 }
+
+/** A failed call's error; a provider failure adds its `ProviderErrorDetail` (no secrets). */
+export type CapturedError = { name: string; message: string } & Partial<ProviderErrorDetail>;
 
 export type CallCapture = (call: CapturedCall) => void;
 
@@ -114,8 +118,11 @@ function usageOf(modelId: string, usage: Usage | undefined) {
   };
 }
 
-const errorOf = (e: unknown) =>
-  e instanceof Error ? { name: e.name, message: e.message } : { name: "Error", message: String(e) };
+/** The error and, for a provider failure, its status, codes and redacted message (no secrets). */
+const errorOf = (e: unknown): CapturedError =>
+  e instanceof Error
+    ? { name: e.name, message: redactSecrets(e.message), ...providerErrorDetail(e) }
+    : { name: "Error", message: redactSecrets(String(e)) };
 
 /**
  * Captures every request the wrapped model makes (one record per attempt: an SDK retry or a

@@ -1,6 +1,7 @@
 import type { ModelClass } from "@tj/domain";
 import type { LanguageModel } from "ai";
 import type pino from "pino";
+import type { ProviderErrorCode } from "./errors";
 
 export interface AiEnv {
   AWS_BEARER_TOKEN_BEDROCK?: string | undefined;
@@ -83,4 +84,8 @@ export interface AiCallRecord extends AiCallContext {
   finishReason: string;
   /** The call failed (the log line is the `warn` one). */
   isError: boolean;
+  /** A failed call's HTTP status from the provider, when it answered. */
+  statusCode?: number;
+  /** A failed call's normalised provider error code (an enum, safe for PostHog). */
+  providerErrorCode?: ProviderErrorCode;
 }
