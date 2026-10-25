@@ -54,6 +54,25 @@
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
+/* "Saving your choices…" (UX audit J11): out of the flow, under the step's last row. */
+.creation-saving {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* The saving line sits out of the flow under the fieldset, where a Turnstile challenge would start:
+   a container with a widget in it starts below the line (review of #613). */
+[data-turnstile]:not(:empty) {
+  padding-top: 28px;
+}
 .creation-objectives {
   display: flex;
   flex-direction: column;
@@ -588,14 +607,41 @@
   }
 }
 
+/* The phone companion's box: a 120 px character with 24 px above and 8 px below (answer 67). The
+ * slot's height and the slide list's rise when the story ends both read it. */
+.creation-editor-preview {
+  --companion-slot: 152px;
+}
 .creation-generation-layer {
   pointer-events: none;
 }
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="desktop"] {
   display: none;
 }
+/* The phone's companion leaves without moving the slides' layout (UX audit, CLS at 390): its slot
+ * keeps its height and fades, and the slide list rises over it by a transform (not a layout
+ * change), growing at the foot by the same amount so its bottom stays at the screen's edge. */
+.creation-editor-preview [data-editor-companion="mobile"] + :has([data-mobile-lesson-list]) {
+  transition: transform 300ms ease;
+}
 .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
-  height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 250ms ease,
+    visibility 0s 250ms;
+}
+.creation-editor-preview[data-story-finished="true"]
+  [data-editor-companion="mobile"]
+  + :has([data-mobile-lesson-list]) {
+  transform: translateY(calc(-1 * var(--companion-slot)));
+  margin-bottom: calc(-1 * var(--companion-slot));
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-editor-preview [data-editor-companion="mobile"] + :has([data-mobile-lesson-list]),
+  .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
+    transition: none;
+  }
 }
 
 /* The receiver cannot appear until the incoming solo character reaches centre. */
@@ -638,18 +684,18 @@
 }
 
 @media (max-width: 760px) {
+  /* Greg's answer 67: on a phone the companion is about 120 px tall while the lesson writes, so the
+   * slides being written stay in view under it. */
   .creation-generation-anchor {
-    margin-top: 28px;
-    margin-bottom: 32px;
+    height: calc(var(--companion-slot, 152px) - 32px);
+    margin-top: 24px;
+    margin-bottom: 8px;
   }
   .creation-generation-status {
-    top: -24px;
+    top: -22px;
   }
   [data-editor-companion="mobile"]:has(.creation-generation-anchor) {
-    height: 250px;
-  }
-  .creation-editor-preview[data-story-finished="true"] [data-editor-companion="mobile"] {
-    height: 0;
+    height: var(--companion-slot);
   }
 }
 

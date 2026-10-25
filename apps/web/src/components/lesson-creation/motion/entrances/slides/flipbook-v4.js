@@ -587,6 +587,8 @@
       const box = svg.getBoundingClientRect(),
         r = region();
       const k = box.width / svg.viewBox.baseVal.width;
+      // No width, no scale (UX audit J13): skip rather than write Infinity/NaN into the clip.
+      if (!(k > 0) || !Number.isFinite(k)) return;
       clip.setAttribute("x", f1((r.left - box.left) / k));
       clip.setAttribute("y", f1((r.top - box.top) / k));
       clip.setAttribute("width", f1(r.width / k));

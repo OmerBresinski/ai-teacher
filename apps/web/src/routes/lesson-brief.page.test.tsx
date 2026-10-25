@@ -177,7 +177,8 @@ describe("real lesson intake", () => {
     fireEvent.change(topic, {
       target: { value: "A pupil called Jamie struggles with the water cycle" },
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(GUARD_MESSAGE);
+    // The saving line's live region is always mounted (empty), so the guard is found by its words.
+    expect(await screen.findByText(GUARD_MESSAGE)).toHaveAttribute("role", "status");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     // The submit is async (an anonymous session first), so prove the guarded click sent nothing by
@@ -293,6 +294,26 @@ describe("real lesson intake", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     const skipped = fakeApi.requests.find((r) => r.path === `/lessons/${slidesOnly}/generate`);
     expect(skipped?.body).toMatchObject({ worksheet: false });
+  });
+  it("UX audit J10: confirming goes to the lesson without the planning stage coming back", async () => {
+    openPlanned("chalk");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Just the slides" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    // The generate job's lock is on the lesson now; it is not a plan job to watch.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("heading", { name: "Planning your lesson" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Add a worksheet?" })).toBeInTheDocument();
+  });
+  it("UX audit J11: the saving line is drawn inside the step, out of the page's flow", async () => {
+    openPlanned("chalk");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Just the slides" }));
+    const line = await screen.findByText(/Saving your choices/);
+    const status = line.closest('[role="status"]');
+    expect(status?.classList.contains("creation-saving")).toBe(true);
+    // Inside the fieldset (positioned there), not a new row after it that pushes the page down.
+    expect(status?.parentElement?.tagName).toBe("FIELDSET");
   });
   it("ruling 201: including a worksheet confirms with worksheet true", async () => {
     const id = openPlanned("chalk");

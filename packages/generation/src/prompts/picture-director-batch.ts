@@ -31,3 +31,8 @@ When the point is an exact number of real things, give count and route library-o
 
 This time you choose the pictures for several picture zones of the same lesson at once. Each slot is one picture zone on one slide, with its own id and its own slide details. Decide each slot exactly as you would if it were the only one, and give one answer per slot, with that slot's id. Use the other slots only to keep the lesson's pictures from repeating the same view.
 `;
+
+/** As `DIRECTOR_FRAMES_WHOLE`, for the batched director. */
+export const BATCH_DIRECTOR_FRAMES_WHOLE = PICTURE_DIRECTOR_BATCH_SYSTEM.includes(
+  "the subject whole inside the frame",
+);
