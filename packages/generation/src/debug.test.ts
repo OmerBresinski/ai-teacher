@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { AiError, ProviderFailure } from "@tj/ai";
 import { type DebugRecord, fullError, recordDebug } from "./debug";
 
 describe("recordDebug", () => {
@@ -37,5 +38,24 @@ describe("fullError", () => {
     });
     expect(String(out.stack)).toContain("debug.test.ts");
     expect(fullError("plain")).toEqual({ value: "plain" });
+  });
+
+  test("a provider failure's status, codes and redacted message reach the stage-error row", () => {
+    const cause = new ProviderFailure("AI_APICallError", "The model provider request failed.", {
+      statusCode: 429,
+      isRetryable: true,
+      providerErrorCode: "rate_limited",
+      providerCode: "rate_limit_exceeded",
+      providerMessage: "Rate limit reached for gpt-6-luna.",
+    });
+    const out = fullError(new AiError("provider", "Model call failed", { cause }));
+    expect(out.cause).toMatchObject({
+      name: "AI_APICallError",
+      statusCode: 429,
+      isRetryable: true,
+      providerErrorCode: "rate_limited",
+      providerCode: "rate_limit_exceeded",
+      providerMessage: "Rate limit reached for gpt-6-luna.",
+    });
   });
 });

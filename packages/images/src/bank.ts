@@ -1,3 +1,4 @@
+import { redactSecrets } from "@tj/domain";
 /**
  * Generated pictures (TEACH-237, UX ruling 158): the pure parts, shared by the worker and the tests.
  * The generation size per slide zone, the frame and no-text lines code owns on every generation
@@ -227,6 +228,90 @@ export class ImageGenerationError extends Error {
 /** The reason code of any generation error (an error from elsewhere is `error`). */
 export function imageFailReason(error: unknown): ImageFailReason | "error" {
   return error instanceof ImageGenerationError ? error.reason : "error";
+}
+
+/** Where a picture's try failed: making it, storing it, judging it, or the stock search. */
+export const PICTURE_FAIL_STAGES = ["generate", "save", "judge", "stock"] as const;
+export type PictureFailStage = (typeof PICTURE_FAIL_STAGES)[number];
+
+/** An error raised at a known picture stage (a storage write, so it is not taken for the model). */
+export class PictureStageError extends Error {
+  override readonly name = "PictureStageError";
+  readonly stage: PictureFailStage;
+  constructor(stage: PictureFailStage, cause: unknown) {
+    super(`The picture ${stage} step failed.`, { cause });
+    this.stage = stage;
+  }
+}
+
+/**
+ * A failed picture try, for its trace and the debug record: the stage, the error's class, a code
+ * (generator reason, provider code, S3 error code) and HTTP status where known, and a short message
+ * with keys, credentials and URL query strings removed. Only `stage`, `code` (when an enum) and
+ * `status` may reach PostHog (ADR 0041).
+ */
+export interface PictureFailure {
+  stage: PictureFailStage;
+  error: string;
+  code?: string;
+  status?: number;
+  message?: string;
+}
+
+export const PICTURE_FAILURE_MESSAGE_MAX = 300;
+const IDENT = /^[A-Za-z0-9_.:-]{1,64}$/;
+const identOf = (v: unknown) => (typeof v === "string" && IDENT.test(v) ? v : undefined);
+const statusOf = (v: unknown) =>
+  typeof v === "number" && Number.isInteger(v) && v >= 100 && v < 600 ? v : undefined;
+
+/** `error` as a `PictureFailure`; `stage` unless the error names its own (`PictureStageError`). */
+export function pictureFailureOf(error: unknown, stage: PictureFailStage): PictureFailure {
+  let at = stage;
+  let inner: unknown = error;
+  if (error instanceof PictureStageError) {
+    at = error.stage;
+    inner = error.cause;
+  }
+  if (!(inner instanceof Error)) return { stage: at, error: "UnknownError" };
+  let status: number | undefined;
+  let code: string | undefined;
+  let providerMessage: string | undefined;
+  // The first status and code down the cause chain: an AiError's `ProviderFailure`, an S3 error's
+  // `$metadata`, a generator's `ImageGenerationError`.
+  let cur: unknown = inner;
+  for (let depth = 0; depth < 6 && cur && typeof cur === "object"; depth++) {
+    const e = cur as Record<string, unknown> & { $metadata?: { httpStatusCode?: unknown } };
+    status ??=
+      statusOf(e.status) ?? statusOf(e.statusCode) ?? statusOf(e.$metadata?.httpStatusCode);
+    code ??=
+      cur instanceof ImageGenerationError
+        ? cur.reason
+        : (identOf(e.providerErrorCode) ?? identOf(e.Code) ?? identOf(e.code));
+    if (typeof e.providerMessage === "string") providerMessage ??= e.providerMessage;
+    cur = e.cause;
+  }
+  // An S3 service error's class name is its code (`AccessDenied`, `NoSuchBucket`).
+  if (!code && "$metadata" in inner && inner.name !== "Error") code = identOf(inner.name);
+  const raw = providerMessage ?? inner.message;
+  const message = redactSecrets(
+    String(raw ?? "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  return {
+    stage: at,
+    error: identOf(inner.name) ?? "Error",
+    ...(code ? { code } : {}),
+    ...(status !== undefined ? { status } : {}),
+    ...(message
+      ? {
+          message:
+            message.length > PICTURE_FAILURE_MESSAGE_MAX
+              ? `${message.slice(0, PICTURE_FAILURE_MESSAGE_MAX - 1)}…`
+              : message,
+        }
+      : {}),
+  };
 }
 
 /**

@@ -15,6 +15,7 @@ export {
 export {
   type CallCapture,
   type CapturedCall,
+  type CapturedError,
   createCaptureMiddleware,
   withCallCapture,
 } from "./capture-middleware";
@@ -28,8 +29,16 @@ export {
   NO_THINKING,
   OPENAI_PREFIX,
 } from "./create-ai";
-export type { AiErrorCode } from "./errors";
-export { AiError, isAiError, ProviderFailure } from "./errors";
+export type { AiErrorCode, ProviderErrorCode, ProviderErrorDetail } from "./errors";
+export {
+  AiError,
+  isAiError,
+  PROVIDER_ERROR_CODES,
+  ProviderFailure,
+  providerErrorDetail,
+  redactSecrets,
+  sanitizeProviderMessage,
+} from "./errors";
 export { costUsd, isPriced, type ModelPrice, PRICES, type TokenUsage } from "./prices";
 export type { FakeCall } from "./testing";
 export type {

@@ -1,6 +1,8 @@
 import { describe, expect, spyOn, test } from "bun:test";
+import { PROVIDER_ERROR_CODES } from "@tj/ai";
 import * as gen from "@tj/generation";
 import { VERIFY_FIELDS, VERIFY_REASONS } from "@tj/generation";
+import { PICTURE_FAIL_STAGES } from "@tj/images";
 import * as obs from "@tj/observability";
 import { FACT_FIELDS, FACT_REASONS, type Observability } from "@tj/observability";
 import pino from "pino";
@@ -172,5 +174,31 @@ describe("worker observability (ADR 0041)", () => {
     ] as const;
     for (const [sent, logged] of pairs)
       expect<string[]>([...sent].sort()).toEqual([...logged].sort());
+  });
+});
+
+describe("provider failure detail", () => {
+  test("the PostHog provider and picture failure enums are exactly the packages' own", () => {
+    expect([...obs.PROVIDER_ERROR_CODES].sort()).toEqual([...PROVIDER_ERROR_CODES].sort());
+    expect([...obs.PICTURE_FAIL_STAGES]).toEqual([...PICTURE_FAIL_STAGES]);
+  });
+
+  test("aiGenerationOf passes a failed call's status and code through", () => {
+    expect(
+      aiGenerationOf({
+        class: "small",
+        modelId: "gpt-6-luna",
+        provider: "openai.chat",
+        durationMs: 255,
+        inputTokens: null,
+        outputTokens: null,
+        costUsd: null,
+        finishReason: "error",
+        isError: true,
+        statusCode: 401,
+        providerErrorCode: "invalid_api_key",
+        stage: "check-input",
+      }),
+    ).toMatchObject({ isError: true, statusCode: 401, providerErrorCode: "invalid_api_key" });
   });
 });

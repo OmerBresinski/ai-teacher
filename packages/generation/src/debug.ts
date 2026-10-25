@@ -65,12 +65,22 @@ export function recordDebug(
 }
 
 /**
- * An error as a debug payload: class, message, stack and the `cause` chain (depth 5). Only for
+ * An error as a debug payload: class, message, stack, a provider failure's status, codes and
+ * redacted message, and the `cause` chain (depth 5). Only for
  * `generation_debug`; logs keep `safeError` (ADR 0015 TEACH-282 amendment).
  */
 export function fullError(error: unknown, depth = 0): Record<string, unknown> {
   if (!(error instanceof Error)) return { value: String(error) };
-  const own = error as Error & { code?: unknown; by?: unknown; reason?: unknown };
+  const own = error as Error & {
+    code?: unknown;
+    by?: unknown;
+    reason?: unknown;
+    statusCode?: unknown;
+    isRetryable?: unknown;
+    providerErrorCode?: unknown;
+    providerCode?: unknown;
+    providerMessage?: unknown;
+  };
   return {
     name: error.name,
     message: error.message,
@@ -78,6 +88,14 @@ export function fullError(error: unknown, depth = 0): Record<string, unknown> {
     ...(own.code !== undefined ? { code: String(own.code) } : {}),
     ...(own.reason !== undefined ? { reason: String(own.reason) } : {}),
     ...(own.by !== undefined ? { by: own.by } : {}),
+    // A provider failure's detail (`@tj/ai` `ProviderFailure`): status, codes, the redacted message.
+    ...(typeof own.statusCode === "number" ? { statusCode: own.statusCode } : {}),
+    ...(typeof own.isRetryable === "boolean" ? { isRetryable: own.isRetryable } : {}),
+    ...(typeof own.providerErrorCode === "string"
+      ? { providerErrorCode: own.providerErrorCode }
+      : {}),
+    ...(typeof own.providerCode === "string" ? { providerCode: own.providerCode } : {}),
+    ...(typeof own.providerMessage === "string" ? { providerMessage: own.providerMessage } : {}),
     ...(error.cause !== undefined && depth < 5 ? { cause: fullError(error.cause, depth + 1) } : {}),
   };
 }

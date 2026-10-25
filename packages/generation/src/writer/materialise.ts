@@ -535,7 +535,13 @@ export function toInput(
       )
         return { template: "figure", heading, ...(lead ? { lead } : {}), figure: f };
       return f
-        ? { template, heading, lead, figure: f, ...(cards.length ? { points: cards } : {}) }
+        ? {
+            template,
+            heading,
+            lead,
+            figure: f,
+            ...(cards.length ? { points: cards, across: true } : {}),
+          }
         : { template: "explain", heading, lead: lead ?? "" };
     }
     case "picture-sequence": {

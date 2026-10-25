@@ -16,6 +16,7 @@ import {
   IMAGE_TERMS,
   type ImageGenerator,
   type ImageSize,
+  PictureStageError,
   pngSize,
   sizeForAspect,
   withRetryLine,
@@ -100,7 +101,10 @@ export function savePicture(storage: StorageAdapter, workspaceId: WorkspaceId, i
     const id = ids();
     const ext = contentType === "image/svg+xml" ? "svg" : "png";
     const key = storageKey(workspaceId, "images", `${id}.${ext}`);
-    await storage.put(key, bytes, { contentType });
+    // Tagged so the picture's trace says the store failed, not the image model (`PictureFailure`).
+    await storage.put(key, bytes, { contentType }).catch((e: unknown) => {
+      throw e instanceof Error && e.name === "AbortError" ? e : new PictureStageError("save", e);
+    });
     return { id, src: `/files/${key}` };
   };
 }

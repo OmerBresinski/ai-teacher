@@ -3,6 +3,7 @@ import { APICallError, generateText, jsonSchema, Output, streamText } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { type CapturedCall, withCallCapture } from "./capture-middleware";
+import { toProviderError } from "./errors";
 import { createFakeAi } from "./testing";
 import type { CreatedAi } from "./types";
 
@@ -144,5 +145,45 @@ describe("the call capture middleware (generation_debug model-call rows)", () =>
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({ mode: "stream", ok: false, response: { text: "half" } });
     expect(calls[0]?.error?.message).toContain("connection reset");
+  });
+
+  test("a failed call's row carries status, codes and the provider message with the key redacted", async () => {
+    const keyError = () =>
+      new APICallError({
+        message: "Incorrect API key provided: sk-proj-Secret123****abcd. See your account.",
+        url: "https://api.openai.com/v1/chat/completions",
+        requestBodyValues: {},
+        statusCode: 401,
+        responseHeaders: { authorization: "Bearer sk-header-secret" },
+        responseBody: JSON.stringify({
+          error: { type: "invalid_request_error", code: "invalid_api_key" },
+        }),
+        isRetryable: false,
+      });
+    for (const thrown of [() => toProviderError(keyError()), keyError]) {
+      const calls: CapturedCall[] = [];
+      const inner = new MockLanguageModelV4({
+        provider: "openai.chat",
+        modelId: "gpt-6-luna",
+        doGenerate: async () => {
+          throw thrown();
+        },
+      });
+      const base = { kind: "openai", region: "x", model: () => inner, modelId: () => "gpt-6-luna" };
+      const ai = withCallCapture(base as unknown as CreatedAi, (c) => calls.push(c));
+      await expect(
+        generateText({ model: ai.model("small", context), prompt: "hi", maxRetries: 0 }),
+      ).rejects.toThrow();
+      expect(calls[0]?.error).toMatchObject({
+        statusCode: 401,
+        isRetryable: false,
+        providerErrorCode: "invalid_api_key",
+        providerCode: "invalid_api_key",
+        providerMessage: "Incorrect API key provided: [redacted] See your account.",
+      });
+      const row = JSON.stringify(calls[0]?.error);
+      expect(row).not.toContain("Secret123");
+      expect(row).not.toContain("sk-header-secret");
+    }
   });
 });

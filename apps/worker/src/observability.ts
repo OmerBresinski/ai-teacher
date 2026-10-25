@@ -56,6 +56,8 @@ export function aiGenerationOf(call: AiCallRecord): AiGeneration {
     costUsd: call.costUsd,
     finishReason: call.finishReason,
     isError: call.isError,
+    statusCode: call.statusCode,
+    providerErrorCode: call.providerErrorCode,
     lessonId: call.lessonId,
     jobId: call.jobId,
     stage: call.stage,
