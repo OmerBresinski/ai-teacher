@@ -1,4 +1,6 @@
 import { LIMITS } from "@tj/slides/diagrams";
+import { G } from "@tj/slides/templates";
+import { specKey } from "./figure-sync";
 
 // Long tables (UX ruling 197, register content-01 / diagrams-10): a table the writer wrote longer
 // than its slot holds is packed into up to 4 columns, and what still does not fit continues as a
@@ -65,6 +67,11 @@ export function readingRows(t: Table): { rows: string[][]; pairs: boolean } {
   return { rows: [...left, ...right], pairs: true };
 }
 
+function untitled(t: Table): Table {
+  const { title: _t, ...rest } = t;
+  return rest as Table;
+}
+
 /**
  * A slide's table spread over as many slides as it needs. `fits(slide, first)` says whether a
  * candidate slide lays out with its table whole (`first`: the slide itself, else a continuation).
@@ -73,7 +80,10 @@ export function readingRows(t: Table): { rows: string[][]; pairs: boolean } {
  * down the left and the rest down the right (1-6 | 7-12), so reading order holds across slides. A
  * picture-and-words slide goes across the slide (its points as key cards, ruling 194) so its first
  * part holds as many rows as a continuation. Continuation slides are big visuals headed
- * "<heading> (continued)". Undefined when even one entry cannot fit.
+ * "<heading> (continued)". A picture-and-words slide whose table holds no row across the slide
+ * keeps its words on its own slide (explain) and the table follows, full width, on a slide headed
+ * with the table's title (else the slide's heading); only later parts are "(continued)".
+ * Undefined when even one entry cannot fit.
  */
 export function continueTable(
   slide: S,
@@ -91,11 +101,24 @@ export function continueTable(
     slide.template === "visual-text"
       ? { ...slide, template: "big-visual", cardsUnder: true }
       : slide;
-  const cont = (t: Table): S => ({
+  // When not one row holds across the slide under its words (KS2's key-card strip leaves under
+  // 160 pt), the words keep their own slide and the table starts, full width, on the next.
+  const { figure: _f, ...plain } = slide;
+  const words: S | undefined =
+    slide.template === "visual-text" ? { ...plain, template: "explain" } : undefined;
+  let wordsFirst = false;
+  // The table's own first slide after a words-only slide continues nothing: it takes the table's
+  // title, else the slide's heading, as a split keeps its heading (#597). Only a slide whose rows
+  // carry on from a table on the slide before is headed "(continued)".
+  const title = typeof f.title === "string" && f.title.trim() ? f.title.trim() : undefined;
+  const cont = (t: Table, opens = false): S => ({
     template: "big-visual",
-    heading: `${String(slide.heading ?? "")} (continued)`,
+    heading: opens
+      ? (title ?? String(slide.heading ?? ""))
+      : `${String(slide.heading ?? "")} (continued)`,
     lead: null,
-    figure: t,
+    // A title that became the heading is not drawn twice (`noHeadingTitle`).
+    figure: opens && title ? untitled(t) : t,
   });
   // Bounded search: a slide holds at most MAX_ROWS drawn rows (the drawer's own table limit), so
   // at most twice that many entries when packed; the longest run that fits is found by bisection
@@ -105,10 +128,11 @@ export function continueTable(
   const parts: Table[] = [];
   let at = 0;
   while (at < list.length) {
-    if (parts.length === MAX_SLIDES) return undefined;
+    if (parts.length + (wordsFirst ? 1 : 0) === MAX_SLIDES) return undefined;
+    const own = !parts.length && !wordsFirst;
     const ok = (k: number) => {
       const t = chunk(list.slice(at, at + k));
-      return fits(parts.length ? cont(t) : { ...top, figure: t }, parts.length === 0);
+      return fits(own ? { ...top, figure: t } : cont(t, wordsFirst && !parts.length), own);
     };
     let lo = 0;
     let hi = Math.min(most, list.length - at);
@@ -117,12 +141,17 @@ export function continueTable(
       if (ok(mid)) lo = mid;
       else hi = mid - 1;
     }
+    if (!lo && own && words) {
+      wordsFirst = true;
+      continue;
+    }
     if (!lo) return undefined;
     parts.push(chunk(list.slice(at, at + lo)));
     at += lo;
   }
-  const [head, ...tail] = parts;
-  if (!head) return undefined;
+  const head = wordsFirst ? undefined : parts[0];
+  const tail = wordsFirst ? parts : parts.slice(1);
+  if (!head && !(wordsFirst && words)) return undefined;
   // The continuation slides share what is left evenly (not 12 rows then 2): the same number of
   // slides, each taking its share of the consecutive entries, never more than fitted greedily.
   const after = list.slice(list.length - tail.reduce((a, t) => a + entries(t, pairs), 0));
@@ -132,8 +161,78 @@ export function continueTable(
     even.push(chunk(after.slice(at2, at2 + share)));
     at2 += share;
   }
-  const balanced = even.every((t) => fits(cont(t), false)) ? even : tail;
-  return { first: { ...top, figure: head }, rest: balanced.map(cont) };
+  const balanced = even.every((t, k) => fits(cont(t, wordsFirst && !k), false)) ? even : tail;
+  return {
+    first: head ? { ...top, figure: head } : (words as S),
+    rest: balanced.map((t, k) => cont(t, wordsFirst && !k)),
+  };
+}
+
+/** The cache entry of a split whose first part is the words alone (no table to key on). */
+const WORDS_FIRST = "words-first";
+
+/**
+ * The stage's long-table splits by slide, re-run on every slide it opens or rewrites (ruling 197).
+ * A split's continuations belong to the slide for as long as the slide descends from the split's
+ * first part. The stage knows which: a slide it opens (`rewrite` false) is written afresh by the
+ * writer, a slide it swaps in (`rewrite` true: a repair, a relayout, a fallback) starts from the
+ * slide it replaces, which after a split is the first part.
+ * - A rewrite keeps the continuations when it keeps the first part's table, or, when the words took
+ *   their own slide, when it still has no table (an overflow or wording repair of the words).
+ * - A slide written afresh keeps them only when it carries the first part's table as it was; one
+ *   without it is split afresh (a slide with no table splits into nothing), so no table slides are
+ *   left behind a slide that no longer has the table.
+ * Anything else (a rewrite that adds, drops or changes the table) is split afresh.
+ */
+export function tableSplitter(fitsAt: (idx: number) => Parameters<typeof continueTable>[1]) {
+  const rest = new Map<number, S[]>();
+  const first = new Map<number, string>();
+  const kept = (idx: number, s: S, rewrite: boolean): boolean => {
+    const key = first.get(idx);
+    if (key === undefined) return false;
+    if (s.figure === undefined) return rewrite && key === WORDS_FIRST;
+    return key === specKey(s.figure);
+  };
+  const split = (idx: number, s: S, rewrite = false): { slide: S; rest?: S[] } => {
+    if (kept(idx, s, rewrite)) return { slide: s };
+    const tc = continueTable(s, fitsAt(idx));
+    if (!tc) {
+      rest.delete(idx);
+      first.delete(idx);
+      return { slide: s };
+    }
+    rest.set(idx, tc.rest);
+    first.set(idx, tc.first.figure === undefined ? WORDS_FIRST : specKey(tc.first.figure));
+    return { slide: tc.first, rest: tc.rest };
+  };
+  return { rest, split };
+}
+
+/**
+ * Whether a laid-out candidate (`materialise`) draws its table whole: nothing over, no diagram
+ * fault, the table drawn. The first part of a picture-and-words slide moved across for its table
+ * (`cardsUnder`) must draw it across, wider than the side panel: a table that fits only beside the
+ * words is the half-width table the move is there to prevent (y3 plants s9 drew 4 rows beside the
+ * bullets and continued the 5th). So a table takes the full width before it is continued, and is
+ * continued only when it does not fit even there.
+ */
+export function tableDrawn(
+  sl: S,
+  first: boolean,
+  m: {
+    over: unknown[];
+    diagram?: unknown[];
+    slide: { elements: { type: string; name?: string; w: number }[] };
+  },
+): boolean {
+  const across = first && sl.cardsUnder === true;
+  return (
+    !m.over.length &&
+    !m.diagram?.length &&
+    m.slide.elements.some(
+      (e) => e.type === "image" && e.name === "Diagram" && (!across || e.w > G.panel.w),
+    )
+  );
 }
 
 const SLIDE_REF = /\b([Ss]lides?)(\s+)(\d+)\b/g;
