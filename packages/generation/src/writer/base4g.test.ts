@@ -169,7 +169,7 @@ describe("base4g against base4f-p123", () => {
     }
   });
 
-  test("production still ships base4f-p123", () => expect(WRITER_BUNDLE_ID).toBe("base4f-p123"));
+  test("production ships base4f-p124", () => expect(WRITER_BUNDLE_ID).toBe("base4f-p124"));
 });
 
 describe("the compiled writer request, base4g against base4f-p123", () => {
