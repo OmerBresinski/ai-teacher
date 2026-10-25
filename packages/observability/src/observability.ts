@@ -63,6 +63,37 @@ export interface JobFailure {
   planner?: string | undefined;
 }
 
+/**
+ * A provider failure's status and normalised code, read off the first error in the cause chain
+ * that carries them (`@tj/ai` `ProviderFailure`). Never its message: the event gate keeps the
+ * code only when it is in the `providerErrorCode` enum (ADR 0041).
+ */
+export function providerFieldsOf(error: unknown): {
+  providerStatus?: number;
+  providerErrorCode?: string;
+} {
+  try {
+    let current: unknown = error;
+    for (let depth = 0; depth < 6 && typeof current === "object" && current !== null; depth++) {
+      const value = current as {
+        statusCode?: unknown;
+        providerErrorCode?: unknown;
+        cause?: unknown;
+      };
+      if (typeof value.providerErrorCode === "string") {
+        return {
+          providerErrorCode: value.providerErrorCode,
+          ...(typeof value.statusCode === "number" ? { providerStatus: value.statusCode } : {}),
+        };
+      }
+      current = value.cause;
+    }
+  } catch {
+    // A hostile getter must not fail error reporting.
+  }
+  return {};
+}
+
 /** One model call, from the `@tj/ai` logging middleware's fields. */
 export interface AiGeneration {
   modelId: string;
@@ -77,6 +108,10 @@ export interface AiGeneration {
   costUsd: number | null;
   finishReason: string;
   isError: boolean;
+  /** A failed call's provider HTTP status. */
+  statusCode?: number | undefined;
+  /** A failed call's normalised provider error code (`@tj/ai` `ProviderErrorCode`). */
+  providerErrorCode?: string | undefined;
   lessonId?: string | undefined;
   jobId?: string | undefined;
   stage?: string | undefined;
@@ -417,13 +452,14 @@ export function createObservability(options: ObservabilityOptions): Observabilit
           attempt: failure.attempt,
           willRetry: failure.willRetry,
           causeType: cause === undefined ? undefined : safeError(cause).type,
+          ...providerFieldsOf(failure.error),
         });
       });
     },
 
     captureException(error, source) {
       safely("exception", () => {
-        exception(error, SYSTEM_DISTINCT_ID, { source });
+        exception(error, SYSTEM_DISTINCT_ID, { source, ...providerFieldsOf(error) });
       });
     },
 
@@ -447,6 +483,8 @@ export function createObservability(options: ObservabilityOptions): Observabilit
           $ai_latency: call.durationMs / 1000,
           $ai_stop_reason: call.finishReason,
           $ai_is_error: call.isError,
+          $ai_http_status: call.statusCode,
+          providerErrorCode: call.providerErrorCode,
           lessonId: call.lessonId ?? scope?.lessonId,
           jobId: call.jobId,
           stage: call.stage,

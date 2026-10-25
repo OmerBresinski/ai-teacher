@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ImageGenerationError } from "@tj/images";
+import { ImageGenerationError, PictureStageError } from "@tj/images";
 import { failedChecks } from "./illustrate";
 import {
   type BankRequest,
@@ -123,7 +123,17 @@ describe("findPicture's trace (picture tracing, 21 Oct 2026)", () => {
       signal,
       async () => true,
     );
-    expect(out.trace.attempts).toEqual([{ result: "server-error" }]);
+    expect(out.trace.attempts).toEqual([
+      {
+        result: "server-error",
+        failure: {
+          stage: "generate",
+          error: "ImageGenerationError",
+          code: "server-error",
+          message: "busy",
+        },
+      },
+    ]);
     expect(traceProps(out.trace, undefined, "object").retryReasons).toEqual(["server-error"]);
   });
 
@@ -197,5 +207,101 @@ describe("the outcome's codes", () => {
         { ...v, pick: "1", onSubject: true, kindMatches: null, clear: true, fits: true },
       ),
     ).toEqual([]);
+  });
+});
+
+describe("a failed try says where it failed (production: bare `error`, no detail)", () => {
+  test("a storage.put that throws is recorded as stage save, with the S3 code and status", async () => {
+    const s3 = Object.assign(
+      new Error(
+        "Access Denied for https://bucket.s3.amazonaws.com/w/images/g1.png?X-Amz-Signature=abc123&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE",
+      ),
+      { name: "AccessDenied", $metadata: { httpStatusCode: 403 } },
+    );
+    const out = await findPicture(
+      req,
+      bank(async () => {
+        // What the worker's `savePicture` throws when `storage.put` fails.
+        throw new PictureStageError("save", s3);
+      }),
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(out.trace.attempts).toEqual([
+      {
+        result: "error",
+        failure: {
+          stage: "save",
+          error: "AccessDenied",
+          code: "AccessDenied",
+          status: 403,
+          message: "Access Denied for https://bucket.s3.amazonaws.com/w/images/g1.png",
+        },
+      },
+    ]);
+    // PostHog: the stage and status; an S3 code is not one of ours, so it stays out.
+    expect(traceProps(out.trace, undefined, "object")).toMatchObject({
+      failStage: "save",
+      failStatus: 403,
+      failCode: undefined,
+    });
+  });
+
+  test("a judge call that throws keeps its provider status and code", async () => {
+    const cause = Object.assign(new Error("The model provider request failed."), {
+      name: "AI_APICallError",
+      statusCode: 429,
+      providerErrorCode: "rate_limited",
+    });
+    let n = 0;
+    const out = await findPicture(
+      req,
+      bank(async () => made(++n)),
+      async () => undefined,
+      signal,
+      async () => {
+        throw Object.assign(new Error("Model call failed", { cause }), { name: "AiError" });
+      },
+    );
+    expect(out.trace.attempts[0]?.failure).toMatchObject({
+      stage: "judge",
+      error: "AiError",
+      code: "rate_limited",
+      status: 429,
+    });
+    expect(traceProps(out.trace, undefined, "object")).toMatchObject({
+      failStage: "judge",
+      failStatus: 429,
+      failCode: "rate_limited",
+    });
+  });
+
+  test("a stock search in the race that finds nothing is recorded as a miss", async () => {
+    const out = await findPicture(
+      { ...req, stockFirst: true },
+      bank(async () => made(1)),
+      async () => undefined,
+      signal,
+      async () => true,
+      Date.now,
+      undefined,
+      1000,
+    );
+    expect(out.via).toBe("generated");
+    expect(out.trace.stock).toBe("miss");
+  });
+
+  test("a stock search that throws is a miss with its failure", async () => {
+    const out = await findPicture(
+      { ...req, route: "real" },
+      bank(async () => made(1)),
+      async () => {
+        throw Object.assign(new Error("stock down"), { status: 503 });
+      },
+      signal,
+    );
+    expect(out.trace.stock).toBe("miss");
+    expect(out.trace.stockFailure).toMatchObject({ stage: "stock", status: 503 });
   });
 });

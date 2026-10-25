@@ -210,3 +210,26 @@ export function safeValidationIssues(issues: readonly { code?: unknown }[]): str
   }
   return [...counts].map(([code, count]) => `${code}: ${count}`);
 }
+
+/**
+ * Secrets a provider may echo back (OpenAI quotes part of a wrong key: "Incorrect API key
+ * provided: sk-abc***xyz"): API keys, bearer tokens, AWS access key ids, and any long opaque token.
+ */
+const SECRET_PATTERNS: RegExp[] = [
+  /\b(?:sk|pk|rk)-[A-Za-z0-9_*.-]{2,}/g,
+  /\bBearer\s+[A-Za-z0-9_*.~+/=-]+/gi,
+  /\b(?:AKIA|ASIA)[A-Z0-9]{12,}/g,
+  /\b(?:api[_-]?key|x-api-key|authorization|token|secret)\s*[:=]\s*\S+/gi,
+  // Long opaque tokens; `/`, `-` and `.` split it, so URL paths and UUIDs survive.
+  /[A-Za-z0-9_*+]{32,}/g,
+];
+
+/**
+ * `text` with every key or token shape in `SECRET_PATTERNS` replaced by `[redacted]`, and every
+ * URL's query string and fragment dropped (a signed storage URL carries its credentials there).
+ */
+export function redactSecrets(text: string): string {
+  let out = text.replace(/(https?:\/\/[^\s?#"']+)[?#][^\s"']*/gi, "$1");
+  for (const re of SECRET_PATTERNS) out = out.replace(re, "[redacted]");
+  return out;
+}

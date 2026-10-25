@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { StorageAdapter, WorkspaceId } from "@tj/domain";
 import type { BankRequest } from "@tj/generation";
-import { decodePng, encodePng, type ImageGenerator, retryLine } from "@tj/images";
+import {
+  decodePng,
+  encodePng,
+  type ImageGenerator,
+  PictureStageError,
+  pictureFailureOf,
+  retryLine,
+} from "@tj/images";
 import {
   createDailyImageCap,
   createGeneratingBank,
@@ -205,5 +212,31 @@ describe("a rejected generation is deleted from storage (TEACH-167 part b)", () 
     expect(objects.size).toBe(1);
     await bank.reject?.(made as never);
     expect(objects.size).toBe(0);
+  });
+});
+
+describe("savePicture when the store fails", () => {
+  test("a storage.put that throws is a save-stage failure, its S3 status kept", async () => {
+    const s3 = Object.assign(new Error("The specified bucket does not exist"), {
+      name: "NoSuchBucket",
+      $metadata: { httpStatusCode: 404 },
+    });
+    const storage = {
+      put: async () => {
+        throw s3;
+      },
+    } as unknown as StorageAdapter;
+    const error = await savePicture(
+      storage,
+      "01a12146-0bf6-7000-9dad-27a0a34bb22f" as WorkspaceId,
+    )(new Uint8Array([1])).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(PictureStageError);
+    expect(pictureFailureOf(error, "generate")).toEqual({
+      stage: "save",
+      error: "NoSuchBucket",
+      code: "NoSuchBucket",
+      status: 404,
+      message: "The specified bucket does not exist",
+    });
   });
 });
