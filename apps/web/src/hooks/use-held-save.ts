@@ -1,4 +1,5 @@
 import { hasEditableSlides, type Lesson } from "@tj/domain/documents";
+import { SaveDeferredError } from "@tj/editor/autosave";
 import { useCallback, useEffect, useRef } from "react";
 
 type Row = { slides?: unknown; generation?: unknown } | null | undefined;
@@ -13,7 +14,8 @@ function allTheJobs(row: Row): boolean {
  * refuses any save until one slide is done. A save in that window (a theme change, a title) is
  * held, not dropped: the moment a slide is done, the editor's current copy (the job's newest row
  * folded in by `pull`) is saved, so the held edit lands with everything since. The editor's copy is
- * saved rather than the held one, which predates the job's later slides.
+ * saved rather than the held one, which predates the job's later slides. Meanwhile the save is
+ * deferred (`SaveDeferredError`): the autosave keeps it as unsaved and tries again.
  */
 export function useHeldSave<D>(opts: {
   save: (document: D) => Promise<void>;
@@ -44,7 +46,10 @@ export function useHeldSave<D>(opts: {
       const mine = document as { slides?: unknown };
       if (g && allTheJobs(r) && allTheJobs(mine as Row)) {
         held.current = true;
-        return Promise.resolve();
+        // Not "saved": the change is still only in this editor. Deferred, the autosave keeps it
+        // ("Unsaved changes", tried again), and an editor that unmounts first hands it to the app
+        // to keep (`onAbandon`) instead of dropping it (P0 follow-up, 25 Oct 2026).
+        return Promise.reject(new SaveDeferredError("Every slide is still being written."));
       }
       return save(document);
     },

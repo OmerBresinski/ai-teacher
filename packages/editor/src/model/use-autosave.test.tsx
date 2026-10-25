@@ -191,6 +191,88 @@ describe("useAutosave", () => {
     expect(toastErrorSpy).not.toHaveBeenCalled();
   });
 
+  // P0 25 Oct 2026: a filling editor that unmounted kept retrying its last copy for minutes, and
+  // once the job's grace ran out the retry went out raw and overwrote the job's slides.
+  test("an unmounted editor writes its copy once on unmount and never retries it", async () => {
+    const onSave = mock((_l: Lesson) =>
+      Promise.reject(new SaveDeferredError("the job wrote first")),
+    );
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5 }),
+    );
+    act(() => result.current.onChange(newLesson("Early copy")));
+    unmount();
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  // PR 622 review: a gone editor never retries, so a teacher's change it could not write is
+  // handed to the app (`onAbandon`) with the server copy it was made on, never silently dropped.
+  test("an edit, then unmount while a job holds the row: the change is handed on once, unretried", async () => {
+    const onSave = mock((_l: Lesson) =>
+      Promise.reject(new SaveDeferredError("the job holds the row")),
+    );
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const server = newLesson("On the server");
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    act(() => result.current.noteServerCopy(server));
+    act(() => result.current.onChange(newLesson("Teacher's title")));
+    unmount();
+    await waitFor(() => expect(onAbandon).toHaveBeenCalledTimes(1));
+    expect(onAbandon.mock.calls[0]?.[0].title).toBe("Teacher's title");
+    expect(onAbandon.mock.calls[0]?.[1]).toBe(server);
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onAbandon).toHaveBeenCalledTimes(1);
+  });
+
+  test("unmount with nothing of the teacher's waiting: nothing is sent and nothing is kept", async () => {
+    const onSave = mock((_l: Lesson) => Promise.resolve());
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    // The fit stamp, or a job's write folded in: not the teacher's.
+    act(() => result.current.onChange(newLesson("Folded copy"), { teacher: false }));
+    unmount();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onAbandon).not.toHaveBeenCalled();
+  });
+
+  test("a saved edit, then only a folded copy: unmount sends and keeps nothing", async () => {
+    const onSave = mock((_l: Lesson) => Promise.resolve());
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    act(() => result.current.onChange(newLesson("Teacher's title")));
+    await act(() => result.current.flush());
+    expect(onSave).toHaveBeenCalledTimes(1);
+    act(() => result.current.onChange(newLesson("Folded copy"), { teacher: false }));
+    unmount();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onAbandon).not.toHaveBeenCalled();
+  });
+
+  test("a network failure after unmount: the teacher's change is handed on, not lost", async () => {
+    const onSave = mock((_l: Lesson) => Promise.reject(new TypeError("Failed to fetch")));
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    act(() => result.current.onChange(newLesson("Typed offline")));
+    unmount();
+    await waitFor(() => expect(onAbandon).toHaveBeenCalledTimes(1));
+    expect(onAbandon.mock.calls[0]?.[0].title).toBe("Typed offline");
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   test("UX-A: while a write is deferred the unload warning stands, and a newer edit replaces it", async () => {
     let refuse = true;
     const saved: string[] = [];

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
+import { SaveDeferredError } from "@tj/editor/autosave";
 import { useHeldSave } from "./use-held-save";
 
 /* Live writing (ADR 0039): a save while every slide is the job's is held, then lands. */
@@ -25,7 +26,11 @@ describe("useHeldSave", () => {
       { initialProps: { row: row({ s1: "writing", s2: "writing" }) } },
     );
     // The teacher picks a theme: nothing is sent (the server would refuse), nothing is dropped.
-    await act(() => result.current({ id: "l1", themeId: "treehouse", slides: [{ id: "s1" }] }));
+    // It is deferred, not reported saved: the autosave keeps it as unsaved (and, if the editor
+    // goes first, hands it on to be kept for the next open).
+    const held = result.current({ id: "l1", themeId: "treehouse", slides: [{ id: "s1" }] });
+    await act(() => held.catch(() => undefined));
+    await expect(held).rejects.toBeInstanceOf(SaveDeferredError);
     expect(saved).toEqual([]);
     // Slide 1 is done: the editor's copy is saved, theme and all.
     await act(async () => {

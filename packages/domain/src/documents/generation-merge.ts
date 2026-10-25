@@ -183,15 +183,34 @@ export function mergeJobLesson(base: Lesson | undefined, mine: Lesson, theirs: L
  * stored row) are kept as stored, whatever the teacher's copy says, and the job's `generation` is
  * kept too. A writing slide missing from the teacher's copy is put back after the slide it follows
  * in the stored row. Read-only in the editor already; this makes it true at the database.
+ *
+ * A `done` slide missing from the teacher's copy is only dropped when that copy saw it done (its
+ * `generation` is this job's and marks the slide `done`): the teacher deleted it. A copy taken
+ * before the slide was done (a stale or partial save, sent under a newer `updatedAt`) never saw
+ * it, so it cannot delete it, and the slide is put back like a writing one; nor can it put back the
+ * read-only copy it holds of a slide finished since (P0, 25 Oct 2026).
  */
 export function keepWritingSlides(stored: Lesson, incoming: Lesson): Lesson {
   const writing = writingSlideIds(stored);
+  const sameJob =
+    incoming.generation?.jobId !== undefined &&
+    incoming.generation.jobId === stored.generation?.jobId;
+  const seenDone = (id: string) => sameJob && incoming.generation?.slideStates?.[id] === "done";
   const storedOf = new Map(stored.slides.map((s) => [s.id, s]));
-  const slides = incoming.slides.map((s) => (writing.has(s.id) ? (storedOf.get(s.id) ?? s) : s));
+  // The teacher's copy speaks only for the slides it saw done; any other stored slide is the job's.
+  const jobs = (id: string) => writing.has(id) || (storedOf.has(id) && !seenDone(id));
+  const slides = incoming.slides.map((s) => (jobs(s.id) ? (storedOf.get(s.id) ?? s) : s));
   stored.slides.forEach((slide, i) => {
-    if (!writing.has(slide.id) || slides.some((s) => s.id === slide.id)) return;
-    const before = stored.slides[i - 1]?.id;
-    const at = before === undefined ? 0 : slides.findIndex((s) => s.id === before) + 1;
+    if (!jobs(slide.id) || slides.some((s) => s.id === slide.id)) return;
+    // After the nearest earlier stored slide the copy still has (the one before may be deleted).
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const found = slides.findIndex((s) => s.id === stored.slides[j]?.id);
+      if (found >= 0) {
+        at = found + 1;
+        break;
+      }
+    }
     slides.splice(at, 0, slide);
   });
   const next = { ...incoming, slides } as Lesson;

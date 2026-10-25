@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { isBudgetStopMessage } from "@tj/domain";
 import {
@@ -66,6 +66,13 @@ import { isFullDocument, kindOf, libraryCache, libraryQueries } from "@/lib/libr
 import { openPrintTab } from "@/lib/print-tab";
 import { meQueryOptions } from "@/lib/query";
 import { sessionIsCurrent } from "@/lib/session-boundary";
+import {
+  forgetUnsavedChange,
+  keepUnsavedChange,
+  RESTORED_UNSAVED_CHANGE,
+  readUnsavedChange,
+  type UnsavedChange,
+} from "@/lib/unsaved-change";
 import { lessonEditorRoute } from "./documents.route";
 
 // Both are off the editor's first paint (and its chunk budget): the worksheets dialog pulls the
@@ -224,7 +231,16 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const saveDocument = useSaveWithConflictToast(lessonId, onStale, ownJob);
   const saveFolded = useCallback(
     async (lesson: Parameters<typeof saveDocument>[0]) => {
-      if (!ownJob() || !folded.current) return saveDocument(lesson);
+      if (!ownJob() || !folded.current) {
+        // A job holds the row and this editor is not folding it in: its copy may be from any
+        // point in the run, and the save would carry the row's newest `updatedAt` (the meta the
+        // page polls), so it would pass as current and replace what the job wrote since (P0,
+        // 25 Oct 2026). It waits; the editor that follows the job saves the merged copy.
+        // With no meta cached it is read, never assumed free: a raw save during a job is the P0.
+        if (await generatingLock(queryClient, lessonId))
+          throw new SaveDeferredError("The lesson is still being written.");
+        return saveDocument(lesson);
+      }
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const merged = await fold();
         const base = folded.current;
@@ -248,6 +264,40 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       throw new SaveDeferredError("The lesson is still being written.");
     },
     [ownJob, fold, saveDocument, queryClient, lessonId],
+  );
+  // A teacher's change the editor could not write before it went (a job held the row, or the
+  // network failed) is kept on this browser and merged back in on the next open, with a notice.
+  const keepChange = useCallback(
+    (
+      lesson: Parameters<typeof saveDocument>[0],
+      base: Parameters<typeof saveDocument>[0] | null,
+    ) => {
+      if (!("slides" in lesson)) return;
+      const lessonBase = folded.current?.body ?? (base && "slides" in base ? base : null);
+      if (!lessonBase) return;
+      const meta = queryClient.getQueryData(libraryQueries.documentMeta(lessonId).queryKey);
+      const change: UnsavedChange = {
+        lessonId,
+        lesson,
+        base: lessonBase,
+        baseAt: folded.current?.at ?? meta?.updatedAt ?? null,
+        jobId: meta?.generatingJobId ?? null,
+        keptAt: Date.now(),
+      };
+      keepUnsavedChange(change);
+      // The next editor on this page (the view flips back) picks it up as well as the next visit.
+      setKept(change);
+    },
+    [queryClient, lessonId],
+  );
+  const [kept, setKept] = useState(() => readUnsavedChange(lessonId));
+  const onRestored = useCallback(
+    (applied: boolean) => {
+      forgetUnsavedChange(lessonId);
+      setKept(undefined);
+      if (applied) toast(RESTORED_UNSAVED_CHANGE);
+    },
+    [lessonId],
   );
   // Ruling 116: a theme the teacher picks in the editor becomes the next lesson's starting theme.
   // The theme the lesson opened with is not a choice (it may be the automatic default).
@@ -633,6 +683,9 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         queryKey={options.queryKey}
         queryFn={() => queryClient.fetchQuery(options)}
         onSave={save}
+        onAbandon={keepChange}
+        restore={kept}
+        onRestored={onRestored}
         onBack={onBack}
         onPresent={onPresent}
         worksheet={worksheet}
@@ -762,6 +815,20 @@ export function onlyFitStampDiffers(mine: Lesson, row: Lesson): boolean {
  * row only in the fit stamp, and `jobId` still holds the lesson. Once the lock is gone the stamp
  * saves like any change, so it is never left unwritten behind a "Saved".
  */
+/**
+ * The job holding the lesson's row, if any. Read from the cached meta, or fetched when there is
+ * none: a save never treats a missing entry as "no job" (it would go out raw over the job's work).
+ */
+export async function generatingLock(
+  queryClient: QueryClient,
+  lessonId: string,
+): Promise<string | null | undefined> {
+  const options = libraryQueries.documentMeta(lessonId);
+  const meta =
+    queryClient.getQueryData(options.queryKey) ?? (await queryClient.fetchQuery(options));
+  return meta?.generatingJobId;
+}
+
 export function holdsFitStamp(
   mine: Lesson,
   row: Lesson,
