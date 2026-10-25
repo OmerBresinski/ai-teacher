@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
-import { SaveDeferredError } from "@tj/editor/autosave";
+import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { useHeldSave } from "./use-held-save";
 
 /* Live writing (ADR 0039): a save while every slide is the job's is held, then lands. */
@@ -43,6 +43,27 @@ describe("useHeldSave", () => {
     // Saves go straight through from then on.
     await act(() => result.current({ ...current, themeId: "splash" }));
     expect(saved.at(-1)?.themeId).toBe("splash");
+  });
+
+  // P0 25 Oct 2026: the editor's fit stamp is not the teacher's; it waits quietly ("Saved").
+  it("a copy that differs from the row only in the editor's stamps is held, not deferred", async () => {
+    const r = { ...row({ s1: "writing" }), id: "l1", themeId: "a", fitVersion: 0, updatedAt: "x" };
+    const { result } = renderHook(() =>
+      useHeldSave<Doc>({
+        save: async () => {},
+        row: r,
+        generating: true,
+        pull: async () => undefined,
+      }),
+    );
+    const stamped = { ...r, fitVersion: 3, updatedAt: "y", slides: [{ id: "s1" }] };
+    let refused: unknown;
+    await act(() =>
+      result.current(stamped).catch((e) => {
+        refused = e;
+      }),
+    );
+    expect(refused).toBeInstanceOf(SaveHeldError);
   });
 
   it("saves go straight through when a slide is done or no job holds the lesson", async () => {

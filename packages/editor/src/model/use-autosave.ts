@@ -63,14 +63,25 @@ export class SaveHeldError extends Error {
 export const DEFERRED_RETRY_MS = 1_500;
 export const DEFERRED_RETRY_MAX_MS = 8_000;
 
+/** Where a change came from (`Autosave.onChange`). */
+export type ChangeOrigin = {
+  /** `false`: nothing new of the teacher's in it. Omitted, the change is the teacher's. */
+  teacher?: boolean;
+  /** Only the editor's own stamps differ from the server's copy: written without "Unsaved". */
+  quiet?: boolean;
+};
+
 export type Autosave<D extends SavableDocument = SavableDocument> = {
   /**
    * Hand to the history hook's `onChange`: one call per committed change. `teacher: false` marks a
    * copy that carries nothing new of the teacher's (the fit stamp, a job's write merged in): an
    * editor that unmounts with only such a copy waiting drops it unsent (it is made again on the
-   * next open). Omitted, the change is the teacher's.
+   * next open). Omitted, the change is the teacher's. `quiet` marks a copy that differs from the
+   * server's only in the editor's own stamps (a lesson a job is writing): it is written like any
+   * change, but while no teacher change waits the indicator stays "Saved". A quiet copy is never
+   * the teacher's.
    */
-  onChange: (document: D, origin?: { teacher?: boolean }) => void;
+  onChange: (document: D, origin?: ChangeOrigin) => void;
   /**
    * Record a copy the server is known to hold (the row the editor opened on, or a job's row folded
    * in): the base handed to `onAbandon` with an unsaved change. A write that lands records itself.
@@ -186,18 +197,24 @@ export function useAutosave<D extends SavableDocument>(
         unreported = false;
         lastSavedAt = Date.now();
         retryMs = deferredRetry;
-        if (quiet && pending === null) {
+        if (pending === null) {
+          // Nothing arrived while the write was in flight: "Saved" (already so for a quiet one).
           held = false;
+          setState("saved");
           notify();
           return;
         }
-        // Only "Saved" if nothing changed while the write was in flight.
-        if (pending === null) setState("saved");
-        else setState("unsaved");
+        // Only quiet copies arrived while it was in flight (`held`): the teacher's truth is still
+        // "Saved", and the next one goes out quietly too. A teacher's change keeps "Unsaved".
+        if (!held) setState("unsaved");
       } catch (error) {
         const newer = pending !== null;
         pending = pending ?? document;
-        if (error instanceof SaveHeldError && !newer && mountedRef.current) {
+        // A quiet copy (nothing of the teacher's) that has to wait keeps "Saved" as well, and so
+        // does one whose newer change is itself only quiet copies (`held`).
+        const waits =
+          error instanceof SaveHeldError || (quiet && error instanceof SaveDeferredError);
+        if (waits && (!newer || held) && mountedRef.current) {
           // Nothing of the teacher's is waiting: the teacher's truth is "Saved".
           held = true;
           setState("saved");
@@ -244,11 +261,14 @@ export function useAutosave<D extends SavableDocument>(
     };
 
     return {
-      onChange: (document: D, origin?: { teacher?: boolean }) => {
+      onChange: (document: D, origin?: ChangeOrigin) => {
+        // A quiet copy while nothing of the teacher's waits keeps "Saved" (P0 25 Oct 2026: each
+        // row the job wrote flipped the header to "Unsaved changes" and back).
+        const quiet = !!origin?.quiet && (pending === null || held) && state === "saved";
         pending = document;
-        if (origin?.teacher !== false) teacher = true;
-        held = false;
-        setState("unsaved");
+        if (origin?.teacher !== false && !origin?.quiet) teacher = true;
+        held = quiet;
+        if (!quiet) setState("unsaved");
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => void flush(), delay);
       },

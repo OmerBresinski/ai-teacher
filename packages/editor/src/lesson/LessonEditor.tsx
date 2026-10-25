@@ -546,8 +546,13 @@ export function LessonEditor({
         // The teacher's changes the row does not have yet: the next autosave sends the merged copy,
         // never the one it held from before the merge.
         autosave.noteServerCopy(theirs);
-        // Any teacher's change in it is already marked; the merge itself adds none.
-        if (merged) autosave.onChange(merged, { teacher: false });
+        // Any teacher's change in it is already marked; the merge itself adds none. A copy that
+        // differs from the job's only in the editor's own stamps (the fit version set on open and
+        // the body's `updatedAt`) is written quietly, so the indicator does not flip to "Unsaved
+        // changes" and back with every row (P0 25 Oct).
+        if (merged) {
+          autosave.onChange(merged, { teacher: false, quiet: onlyStampsDiffer(merged, theirs) });
+        }
         return merged;
       },
       undo: () => historyRef.current.undo(),
@@ -944,4 +949,10 @@ function WritingOverlay({ text }: { text: string }) {
       </span>
     </div>
   );
+}
+
+/** Whether two copies of a lesson differ only in the editor's stamps: `fitVersion`, `updatedAt`. */
+function onlyStampsDiffer(a: Lesson, b: Lesson): boolean {
+  const unstamped = (l: Lesson) => ({ ...l, fitVersion: 0, updatedAt: "" });
+  return sameJson(unstamped(a), unstamped(b));
 }

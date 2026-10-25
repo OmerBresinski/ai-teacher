@@ -191,6 +191,112 @@ describe("useAutosave", () => {
     expect(toastErrorSpy).not.toHaveBeenCalled();
   });
 
+  // P0 25 Oct 2026: each row the job wrote flipped the header to "Unsaved changes" and back.
+  test("a quiet copy is written but never shows Unsaved changes, even when it has to wait", async () => {
+    let refusals = 2;
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      if (refusals > 0) {
+        refusals -= 1;
+        return Promise.reject(new SaveDeferredError("all slides still writing"));
+      }
+      saved.push(l.title);
+      return Promise.resolve();
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10, deferredRetry: 20 });
+      states.push(useSaveState(autosave));
+      return autosave;
+    });
+    act(() => result.current.onChange(newLesson("Stamp"), { quiet: true }));
+    await waitFor(() => expect(saved).toEqual(["Stamp"]));
+    expect(states.every((s) => s === "saved")).toBe(true);
+    // A teacher change is never quiet, even when offered as one behind it.
+    act(() => result.current.onChange(newLesson("Typed")));
+    act(() => result.current.onChange(newLesson("Typed + stamp"), { quiet: true }));
+    expect(states.at(-1)).toBe("unsaved");
+    await waitFor(() => expect(saved.at(-1)).toBe("Typed + stamp"));
+  });
+
+  // PR 623 review: a job row arriving while the previous quiet copy was still being written made
+  // the header say "Unsaved changes" and left it there (and the unload warning on).
+  test("a quiet copy offered while a quiet write is in flight: Saved throughout, Saved after", async () => {
+    const gates: ReturnType<typeof deferred<void>>[] = [];
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      const gate = deferred();
+      gates.push(gate);
+      return gate.promise.then(() => {
+        saved.push(l.title);
+      });
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10 });
+      states.push(useSaveState(autosave));
+      return autosave;
+    });
+    act(() => result.current.onChange(newLesson("Row 1"), { teacher: false, quiet: true }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    act(() => result.current.onChange(newLesson("Row 2"), { teacher: false, quiet: true }));
+    await act(async () => {
+      gates[0]?.resolve();
+      await gates[0]?.promise;
+    });
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      gates[1]?.resolve();
+      await gates[1]?.promise;
+    });
+    await waitFor(() => expect(saved).toEqual(["Row 1", "Row 2"]));
+    expect(states.every((s) => s === "saved")).toBe(true);
+    expect(result.current.getState()).toBe("saved");
+    expect(result.current.getHeld()).toBe(false);
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
+  });
+
+  test("a teacher's change during a quiet write shows Unsaved and Saving, then Saved", async () => {
+    const gates: ReturnType<typeof deferred<void>>[] = [];
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      const gate = deferred();
+      gates.push(gate);
+      return gate.promise.then(() => {
+        saved.push(l.title);
+      });
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10 });
+      states.push(useSaveState(autosave));
+      return autosave;
+    });
+    act(() => result.current.onChange(newLesson("Row 1"), { teacher: false, quiet: true }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(states.every((s) => s === "saved")).toBe(true);
+    act(() => result.current.onChange(newLesson("Typed")));
+    expect(result.current.getState()).toBe("unsaved");
+    await act(async () => {
+      gates[0]?.resolve();
+      await gates[0]?.promise;
+    });
+    expect(result.current.getState()).not.toBe("saved");
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    expect(result.current.getState()).toBe("saving");
+    await act(async () => {
+      gates[1]?.resolve();
+      await gates[1]?.promise;
+    });
+    await waitFor(() => expect(result.current.getState()).toBe("saved"));
+    expect(saved).toEqual(["Row 1", "Typed"]);
+    expect(states).toContain("unsaved");
+    expect(states).toContain("saving");
+    expect(states.at(-1)).toBe("saved");
+  });
+
   // P0 25 Oct 2026: a filling editor that unmounted kept retrying its last copy for minutes, and
   // once the job's grace ran out the retry went out raw and overwrote the job's slides.
   test("an unmounted editor writes its copy once on unmount and never retries it", async () => {

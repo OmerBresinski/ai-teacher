@@ -1,5 +1,5 @@
-import { hasEditableSlides, type Lesson } from "@tj/domain/documents";
-import { SaveDeferredError } from "@tj/editor/autosave";
+import { hasEditableSlides, type Lesson, sameJson } from "@tj/domain/documents";
+import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { useCallback, useEffect, useRef } from "react";
 
 type Row = { slides?: unknown; generation?: unknown } | null | undefined;
@@ -7,6 +7,22 @@ type Row = { slides?: unknown; generation?: unknown } | null | undefined;
 /** Whether the row's slides are all still the job's (ADR 0037): the server refuses a save then. */
 function allTheJobs(row: Row): boolean {
   return !!row && "slides" in row && !hasEditableSlides(row as Lesson);
+}
+
+/**
+ * Whether the editor's copy holds nothing of the teacher's beyond the row while every slide is the
+ * job's: it differs only in the slides (the job's), the job's `generation` and the editor's own
+ * stamps (`fitVersion`, `updatedAt`).
+ */
+function nothingOfTheTeachers(mine: object, row: Row): boolean {
+  const bare = (d: object) => ({
+    ...d,
+    slides: undefined,
+    generation: undefined,
+    fitVersion: undefined,
+    updatedAt: undefined,
+  });
+  return !!row && sameJson(bare(mine), bare(row));
 }
 
 /**
@@ -48,8 +64,15 @@ export function useHeldSave<D>(opts: {
         held.current = true;
         // Not "saved": the change is still only in this editor. Deferred, the autosave keeps it
         // ("Unsaved changes", tried again), and an editor that unmounts first hands it to the app
-        // to keep (`onAbandon`) instead of dropping it (P0 follow-up, 25 Oct 2026).
-        return Promise.reject(new SaveDeferredError("Every slide is still being written."));
+        // to keep (`onAbandon`) instead of dropping it (P0 follow-up, 25 Oct 2026). Resolving here
+        // read as saved, and each row the job wrote then re-offered the change, so the header
+        // flipped between the two over and over (P0 25 Oct 2026). The editor's own stamps alone
+        // wait quietly ("Saved"): no unload warning for them, and nothing to keep on unmount.
+        return Promise.reject(
+          nothingOfTheTeachers(mine, r)
+            ? new SaveHeldError("Only the editor's stamps wait for the first slide.")
+            : new SaveDeferredError("Every slide is still being written."),
+        );
       }
       return save(document);
     },
