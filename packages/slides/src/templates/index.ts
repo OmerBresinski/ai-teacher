@@ -252,6 +252,12 @@ type RegisteredFields = [RegisteredId] extends [never]
 export type TemplateInput = RegisteredFields & {
   template: TemplateId;
   heading: string;
+  /**
+   * Big diagram with points: a long table moved across the slide (generation's `cardsUnder`) is
+   * laid across even when beside the words would draw it larger, since beside the words it does
+   * not hold its rows (y3 plants s9). The 18 pt type floor still holds.
+   */
+  across?: boolean;
   /** Title slide: the enquiry line under the title. Others: the one lead sentence. */
   lead?: string;
   /**
@@ -1688,7 +1694,8 @@ function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): bo
     // it does not draw beside the words; wide kinds (a flow, a timeline, a table) gain from width.
     // Type floor: every label shown at 18 pt or more, and the cards at body size, also 18 or more.
     if (!big || big.fs < TYPE_FLOOR_PT || d.s.body < TYPE_FLOOR_PT) return false;
-    if (side && (big.fs < side.fs || !WIDE.has(kind))) return false;
+    if (side && !(input.across && WIDE.has(kind)) && (big.fs < side.fs || !WIDE.has(kind)))
+      return false;
     // Not drawn beside the words: across the slide replaces the squashed band under the words
     // (register diagrams-05), never a figure the slide would otherwise lose to a fallback.
     if (!side && !WIDE.has(kind)) {

@@ -160,7 +160,7 @@ import {
 import { writerStageOfKey } from "./shown-cap";
 import { slideStates } from "./slide-states";
 import { slotFillArrival, slotFillSystem, withSlotFill } from "./slot-fill";
-import { continueTable, drawable, renumberSlideRefs } from "./table-pack";
+import { drawable, renumberSlideRefs, tableDrawn, tableSplitter } from "./table-pack";
 import { withWaveCLibrary } from "./wave-c";
 
 /*
@@ -1012,49 +1012,36 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * closes in the writer's stream (C1), in slide order, and at the end for any slide the stream
    * did not open: the final parse stays the source of truth.
    */
-  /** Ruling 197: the continuation slides of a table too long for its slide, by slide. */
-  const tableRest = new Map<number, S[]>();
-  /** The first part's table (specKey) each continuation belongs to, so a rewrite can't leave it stale. */
-  const tableFirst = new Map<number, string>();
   /**
    * Ruling 197: a table longer than its slot holds packs into 4 columns and continues on the next
-   * slide; one that fits as written is left alone. Run on every slide the stage opens or rewrites:
-   * a rewrite that keeps the first part's table keeps its continuations, any other drops or
-   * recomputes them.
+   * slide; one that fits as written is left alone. Run on every slide the stage opens or rewrites
+   * (`tableSplitter` keeps or drops the continuations).
    */
-  const splitTable = (idx: number, s: S): S => {
-    if (tableFirst.get(idx) === specKey(s.figure)) return s;
-    const slot = slotOf(String(s.template ?? ""));
-    // A candidate fits when it lays out (as the deck will) with its table drawn and nothing over.
-    const tc = continueTable(s, (sl, first, asWritten) => {
-      const t = sl.figure as S;
-      // The slot check the writer's spec meets when it is drawn (the slide's own part only).
-      const probe = (at: "side" | "full") =>
-        !layoutSlotProbe(drawable(t), at, base.stage, base.theme).length;
-      if (asWritten) return probe(slot);
-      if (first && !probe(slotOf(String(sl.template ?? "")))) return false;
-      const m = materialise(sl, {
-        ...base,
-        index: idx,
-        plan,
-        visual: () => ({ status: "diagram", spec: drawable(t) }),
-      });
-      return (
-        !m.over.length &&
-        !m.diagram?.length &&
-        m.slide.elements.some((e) => e.type === "image" && e.name === "Diagram")
-      );
+  const tables = tableSplitter((idx) => (sl, first, asWritten) => {
+    const t = sl.figure as S;
+    // The slot check the writer's spec meets when it is drawn (the slide's own part only).
+    const probe = (at: "side" | "full") =>
+      !layoutSlotProbe(drawable(t), at, base.stage, base.theme).length;
+    // As written, `sl` is the slide itself (its own slot); a first part, its template's slot.
+    if (asWritten) return probe(slotOf(String(sl.template ?? "")));
+    if (first && !probe(slotOf(String(sl.template ?? "")))) return false;
+    const m = materialise(sl, {
+      ...base,
+      index: idx,
+      plan,
+      visual: () => ({ status: "diagram", spec: drawable(t) }),
     });
-    if (!tc) {
-      tableRest.delete(idx);
-      tableFirst.delete(idx);
-      return s;
+    return tableDrawn(sl, first, m);
+  });
+  const tableRest = tables.rest;
+  /** `rewrite`: the slide starts from the one it replaces (swapSlide), not written afresh. */
+  const splitTable = (idx: number, s: S, rewrite = false): S => {
+    const r = tables.split(idx, s, rewrite);
+    if (r.rest) {
+      log({ ev: "table-continued", slide: idx + 1, slides: r.rest.length + 1 });
+      debug("split", { how: "table-continued", before: s, first: r.slide, rest: r.rest }, idx);
     }
-    tableRest.set(idx, tc.rest);
-    tableFirst.set(idx, specKey(tc.first.figure));
-    log({ ev: "table-continued", slide: idx + 1, slides: tc.rest.length + 1 });
-    debug("split", { how: "table-continued", before: s, first: tc.first, rest: tc.rest }, idx);
-    return tc.first;
+    return r.slide;
   };
   /**
    * TEACH-101 part g: a quick check past its maximum continues on more quick-check slides;
@@ -1591,6 +1578,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         : sync.action === "drop"
           ? asWords(sync.slide as S)
           : (sync.slide as S),
+      true,
     );
     const oldAsks = asks.get(i) ?? [];
     const oldCarried = new Map(oldAsks.map((a) => [a.key, carried.get(`${i}:${a.key}`)]));
