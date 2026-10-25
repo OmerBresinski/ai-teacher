@@ -64,8 +64,12 @@ export const DEFERRED_RETRY_MS = 1_500;
 export const DEFERRED_RETRY_MAX_MS = 8_000;
 
 export type Autosave<D extends SavableDocument = SavableDocument> = {
-  /** Hand to the history hook's `onChange`: one call per committed change. */
-  onChange: (document: D) => void;
+  /**
+   * Hand to the history hook's `onChange`: one call per committed change. `quiet` marks a copy
+   * that carries nothing of the teacher's (the editor's fit stamp on a lesson a job is writing): it
+   * is written like any change, but while no teacher change waits the indicator stays "Saved".
+   */
+  onChange: (document: D, opts?: { quiet?: boolean }) => void;
   /** Write anything outstanding now — before Present opens, before the route is left. */
   flush: () => Promise<void>;
   subscribe: (listener: () => void) => () => void;
@@ -167,7 +171,10 @@ export function useAutosave<D extends SavableDocument>(
       } catch (error) {
         const newer = pending !== null;
         pending = pending ?? document;
-        if (error instanceof SaveHeldError && !newer) {
+        // A quiet copy (nothing of the teacher's) that has to wait keeps "Saved" as well.
+        const waits =
+          error instanceof SaveHeldError || (quiet && error instanceof SaveDeferredError);
+        if (waits && !newer) {
           // Nothing of the teacher's is waiting: the teacher's truth is "Saved".
           held = true;
           setState("saved");
@@ -205,10 +212,13 @@ export function useAutosave<D extends SavableDocument>(
     };
 
     return {
-      onChange: (document: D) => {
+      onChange: (document: D, opts?: { quiet?: boolean }) => {
+        // A quiet copy while nothing of the teacher's waits keeps "Saved" (P0 25 Oct 2026: each
+        // row the job wrote flipped the header to "Unsaved changes" and back).
+        const quiet = !!opts?.quiet && (pending === null || held) && state === "saved";
         pending = document;
-        held = false;
-        setState("unsaved");
+        held = quiet;
+        if (!quiet) setState("unsaved");
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => void flush(), delay);
       },

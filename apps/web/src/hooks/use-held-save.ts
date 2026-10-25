@@ -1,4 +1,5 @@
-import { hasEditableSlides, type Lesson } from "@tj/domain/documents";
+import { hasEditableSlides, type Lesson, sameJson } from "@tj/domain/documents";
+import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { useCallback, useEffect, useRef } from "react";
 
 type Row = { slides?: unknown; generation?: unknown } | null | undefined;
@@ -6,6 +7,22 @@ type Row = { slides?: unknown; generation?: unknown } | null | undefined;
 /** Whether the row's slides are all still the job's (ADR 0037): the server refuses a save then. */
 function allTheJobs(row: Row): boolean {
   return !!row && "slides" in row && !hasEditableSlides(row as Lesson);
+}
+
+/**
+ * Whether the editor's copy holds nothing of the teacher's beyond the row while every slide is the
+ * job's: it differs only in the slides (the job's), the job's `generation` and the editor's own
+ * stamps (`fitVersion`, `updatedAt`).
+ */
+function nothingOfTheTeachers(mine: object, row: Row): boolean {
+  const bare = (d: object) => ({
+    ...d,
+    slides: undefined,
+    generation: undefined,
+    fitVersion: undefined,
+    updatedAt: undefined,
+  });
+  return !!row && sameJson(bare(mine), bare(row));
 }
 
 /**
@@ -44,7 +61,15 @@ export function useHeldSave<D>(opts: {
       const mine = document as { slides?: unknown };
       if (g && allTheJobs(r) && allTheJobs(mine as Row)) {
         held.current = true;
-        return Promise.resolve();
+        // Not written yet, so not "Saved": the indicator stays "Unsaved changes" until it lands.
+        // Resolving here read as saved, and each row the job wrote then re-offered the change, so
+        // the header flipped between the two over and over (P0 25 Oct 2026).
+        // The editor's own stamps alone wait quietly ("Saved"): no unload warning for them.
+        return Promise.reject(
+          nothingOfTheTeachers(mine, r)
+            ? new SaveHeldError("Only the editor's stamps wait for the first slide.")
+            : new SaveDeferredError("Waiting for the first slide to be written."),
+        );
       }
       return save(document);
     },

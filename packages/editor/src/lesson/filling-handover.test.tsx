@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { SaveIndicator } from "../kit/SaveIndicator";
@@ -206,21 +206,48 @@ describe("the filling editor", () => {
     expect(container.querySelector("[data-writing-status]")).toBe(region);
   });
 
-  test("a generator fold alone reaches the save path but never shows Unsaved changes", () => {
+  test("a generator fold alone reaches the save path but never shows Unsaved changes", async () => {
     const lesson = { ...seededLesson(), fitVersion: 5 };
     const ids = lesson.slides.map((s) => s.id);
     const ref: { current: LessonEditorHandle | null } = { current: null };
-    const { container, rerender, tree } = setup(lesson, { editorRef: ref });
+    const saved: Lesson[] = [];
+    const onSave = (l: Lesson) => {
+      saved.push(l);
+      return Promise.resolve();
+    };
+    const { container, rerender, tree } = setup(lesson, { editorRef: ref, onSave });
     act(() => rerender(tree(new Set([ids[1] as Id]))));
-    // The job's copy has no fit stamp: the merge keeps the editor's, so the fold is saved.
+    // The job's copy has no fit stamp: the merge keeps the editor's, so the fold is saved, quietly.
     const base = { ...lesson, fitVersion: 0 };
     const theirs = { ...base, title: "From the job" };
     act(() => {
       ref.current?.receiveGenerated(base, theirs);
     });
     const el = container.querySelector("[data-save-state]");
-    expect(el?.getAttribute("data-save-state")).not.toBe("saved");
+    expect(el?.getAttribute("data-save-state")).toBe("saved");
     expect(el?.hasAttribute("data-save-quiet")).toBe(true);
+    await waitFor(() => expect(saved.at(-1)?.title).toBe("From the job"));
+    expect(saved.at(-1)?.fitVersion).toBe(5);
+  });
+
+  // P0 25 Oct 2026: every row the job wrote flipped the indicator to "Unsaved changes" and back,
+  // because the fold kept the editor's fit stamp and reported it as a change.
+  test("a fold that differs from the job's copy only in the fit stamp leaves the indicator Saved", () => {
+    const lesson = { ...seededLesson(), fitVersion: 5 };
+    const ids = lesson.slides.map((s) => s.id);
+    const ref: { current: LessonEditorHandle | null } = { current: null };
+    const { container, rerender, tree } = setup(lesson, { editorRef: ref });
+    act(() => rerender(tree(new Set([ids[1] as Id]))));
+    // The job's row carries no fit stamp and its own body `updatedAt`.
+    const base = { ...lesson, fitVersion: 0, updatedAt: "2026-10-25T15:00:00.000Z" };
+    for (let i = 0; i < 3; i++) {
+      act(() => {
+        ref.current?.receiveGenerated(base, { ...base });
+      });
+      expect(container.querySelector("[data-save-state]")?.getAttribute("data-save-state")).toBe(
+        "saved",
+      );
+    }
   });
 
   test("the companion leaves once the first slide has words, and does not come back", () => {

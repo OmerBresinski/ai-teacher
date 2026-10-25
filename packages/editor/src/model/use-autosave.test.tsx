@@ -191,6 +191,34 @@ describe("useAutosave", () => {
     expect(toastErrorSpy).not.toHaveBeenCalled();
   });
 
+  // P0 25 Oct 2026: each row the job wrote flipped the header to "Unsaved changes" and back.
+  test("a quiet copy is written but never shows Unsaved changes, even when it has to wait", async () => {
+    let refusals = 2;
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      if (refusals > 0) {
+        refusals -= 1;
+        return Promise.reject(new SaveDeferredError("all slides still writing"));
+      }
+      saved.push(l.title);
+      return Promise.resolve();
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10, deferredRetry: 20 });
+      states.push(useSaveState(autosave));
+      return autosave;
+    });
+    act(() => result.current.onChange(newLesson("Stamp"), { quiet: true }));
+    await waitFor(() => expect(saved).toEqual(["Stamp"]));
+    expect(states.every((s) => s === "saved")).toBe(true);
+    // A teacher change is never quiet, even when offered as one behind it.
+    act(() => result.current.onChange(newLesson("Typed")));
+    act(() => result.current.onChange(newLesson("Typed + stamp"), { quiet: true }));
+    expect(states.at(-1)).toBe("unsaved");
+    await waitFor(() => expect(saved.at(-1)).toBe("Typed + stamp"));
+  });
+
   test("UX-A: while a write is deferred the unload warning stands, and a newer edit replaces it", async () => {
     let refuse = true;
     const saved: string[] = [];
