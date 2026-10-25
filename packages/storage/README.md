@@ -27,6 +27,17 @@ Both implement `StorageAdapter` from `@tj/domain` (`put`, `getSignedUrl`, `delet
 `get(key)` (`ReadableStorageAdapter`, also from `@tj/domain`), which the API's `GET /files/:key`
 proxy uses to stream bytes server-side (`apps/api/src/routes/files.ts`).
 
+## Boot check (`checkStorage`)
+
+`checkStorage(adapter)` puts a 2-byte object under `STORAGE_CHECK_PREFIX`
+(`0b0b0000-0000-4000-8000-0000000c4ec0/storage-check/<uuid>.txt`, a reserved workspace id) and
+deletes it, each step under a 10 s timeout. It never throws: it returns `{ ok: true, ms }` or
+`{ ok: false, step, code?, status?, message? }`, the message with keys and URL query strings
+removed. A write is the test because a read can pass with credentials that cannot sign a write
+(25 Oct 2026: a reset bucket secret, `SignatureDoesNotMatch` on every picture save). On S3 the
+worker runs it at boot and turns paid picture generation off when it fails
+(`apps/worker/src/storage-check.ts`); the api logs it.
+
 ### LocalDiskStorage
 
 - Object at `<rootDir>/<key>`; directories are created on demand.

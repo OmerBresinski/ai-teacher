@@ -248,6 +248,38 @@ describe("a failed try says where it failed (production: bare `error`, no detail
     });
   });
 
+  test("a save that fails after a paid generation keeps the model's cost on the try and the row", async () => {
+    const s3 = Object.assign(new Error("The request signature we calculated does not match"), {
+      name: "SignatureDoesNotMatch",
+      $metadata: { httpStatusCode: 403 },
+    });
+    const out = await findPicture(
+      req,
+      bank(async () => {
+        // What the worker's bank throws when the picture was made and `storage.put` then failed.
+        throw new PictureStageError("save", s3, { costUsd: 0.0123 });
+      }),
+      async () => undefined,
+      signal,
+      async () => true,
+    );
+    expect(out.trace.attempts).toEqual([
+      {
+        result: "error",
+        costUsd: 0.0123,
+        failure: {
+          stage: "save",
+          error: "SignatureDoesNotMatch",
+          code: "SignatureDoesNotMatch",
+          status: 403,
+          message: "The request signature we calculated does not match",
+        },
+      },
+    ]);
+    // The picture row's `costUsd` (picture-director) is this sum: no longer 0 (25 Oct incident).
+    expect(traceProps(out.trace, undefined, "object").pictureCostUsd).toBe(0.0123);
+  });
+
   test("a judge call that throws keeps its provider status and code", async () => {
     const cause = Object.assign(new Error("The model provider request failed."), {
       name: "AI_APICallError",

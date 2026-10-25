@@ -7,7 +7,7 @@ import { createAi } from "@tj/ai";
 import { createDb } from "@tj/db";
 import { createPexelsClient } from "@tj/images";
 import { createBoss, ensureQueues, type JobsContext } from "@tj/jobs";
-import { createStorage } from "@tj/storage";
+import { checkStorage, createStorage } from "@tj/storage";
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
 import { logUsersWithoutWorkspace } from "./auth/workspace-hook";
@@ -41,6 +41,17 @@ const storage = createStorage({
   STORAGE_ROOT: process.env.STORAGE_ROOT,
   STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL,
 });
+// 25 Oct 2026: one put and delete against the bucket, logged; never awaited and never fatal (the
+// api serves lessons without it). A stale S3 secret shows here, not at a teacher's first upload.
+if (storage.kind === "s3") {
+  void checkStorage(storage.adapter).then((out) => {
+    if (out.ok) logger.info({ storage: storage.kind, ms: out.ms }, "storage_check ok");
+    else {
+      const { ok: _ok, ...failure } = out;
+      logger.error({ storage: storage.kind, ...failure }, "storage_check failed");
+    }
+  });
+}
 // The claim copies a signed-out lesson's pictures into an existing account (ruling 127).
 const auth = createAuth({
   env,

@@ -1,4 +1,11 @@
 export {
+  checkStorage,
+  STORAGE_CHECK_PREFIX,
+  STORAGE_CHECK_TIMEOUT_MS,
+  STORAGE_CHECK_WORKSPACE_ID,
+  type StorageCheck,
+} from "./check-storage";
+export {
   type CreatedStorage,
   createStorage,
   DEFAULT_STORAGE_ROOT,

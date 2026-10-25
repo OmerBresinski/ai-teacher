@@ -23,6 +23,7 @@ import {
 } from "./jobs";
 import { createLogger, type LogTap } from "./logger";
 import { createWorkerObservability, lessonIdOf, reportJobFailure } from "./observability";
+import { verifyStorage } from "./storage-check";
 
 /** How long shutdown waits for active jobs before failing them (retryable) and exiting. */
 const SHUTDOWN_GRACE_MS = 25_000;
@@ -56,8 +57,12 @@ const { unsafeDb, sql, close } = createDb(env.DATABASE_URL, { max: 4 });
 const debugPool = createDb(env.DATABASE_URL, { max: 1 });
 const boss = createBoss(env.DATABASE_URL);
 const ctx: JobsContext = { boss, db: unsafeDb, sql };
+// 25 Oct 2026: a store that cannot take a write turns paid picture generation off (never the boot).
 const deps = {
-  ...createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability),
+  ...(await verifyStorage(
+    createWorkerDeps(env, logger, unsafeDb, debugPool.unsafeDb, observability),
+    logger,
+  )),
   jobs: ctx,
 };
 
@@ -208,6 +213,8 @@ logger.info(
     worksheetCapUsd: deps.worksheetCapUsd,
     images: deps.images ? "pexels" : "disabled",
     storage: deps.storageKind,
+    storageCheck: deps.storageCheck,
+    imageGeneration: deps.imageGeneration ? "on" : "off",
   },
   "worker ready",
 );

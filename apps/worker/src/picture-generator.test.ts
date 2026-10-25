@@ -8,6 +8,7 @@ import {
   PictureStageError,
   pictureFailureOf,
   retryLine,
+  spentOn,
 } from "@tj/images";
 import {
   createDailyImageCap,
@@ -238,5 +239,49 @@ describe("savePicture when the store fails", () => {
       status: 404,
       message: "The specified bucket does not exist",
     });
+  });
+});
+
+describe("a picture whose save fails after a paid generation (25 Oct 2026 incident)", () => {
+  test("the error carries the model's cost and the daily cap counts it", async () => {
+    const s3 = Object.assign(new Error("The request signature we calculated does not match"), {
+      name: "SignatureDoesNotMatch",
+      $metadata: { httpStatusCode: 403 },
+    });
+    const storage = {
+      put: async () => {
+        throw s3;
+      },
+    } as unknown as StorageAdapter;
+    const cap = createDailyImageCap({ capUsd: 5 });
+    const bank = createGeneratingBank({
+      generator: fakeGenerator().generator,
+      cap,
+      save: savePicture(storage, "01a12146-0bf6-7000-9dad-27a0a34bb22f" as WorkspaceId),
+      logger,
+    });
+    const error = await bank.generate(req, false, signal).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(PictureStageError);
+    expect(spentOn(error)).toBe(0.005);
+    expect(pictureFailureOf(error, "generate")).toMatchObject({
+      stage: "save",
+      code: "SignatureDoesNotMatch",
+      status: 403,
+    });
+    expect(cap.spentToday()).toBe(0.005);
+  });
+
+  test("a save that throws untagged is still a save failure with the cost", async () => {
+    const bank = createGeneratingBank({
+      generator: fakeGenerator().generator,
+      cap: createDailyImageCap({ capUsd: 5 }),
+      save: async () => {
+        throw new Error("disk full");
+      },
+      logger,
+    });
+    const error = await bank.generate(req, false, signal).catch((e: unknown) => e);
+    expect(pictureFailureOf(error, "generate")).toMatchObject({ stage: "save", error: "Error" });
+    expect(spentOn(error)).toBe(0.005);
   });
 });

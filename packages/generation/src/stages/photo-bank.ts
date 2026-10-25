@@ -13,6 +13,7 @@ import {
   pictureFailureOf,
   type RetryHint,
   requestsSent,
+  spentOn,
 } from "@tj/images";
 import { whenNonFatal } from "../writer/services";
 import type { PlacedPhoto } from "./illustrate";
@@ -333,7 +334,13 @@ export async function findPicture(
         const reason = imageFailReason(e);
         lastFail = reason;
         // A store failure after the picture was made is tagged `save` by the bank (`PictureStageError`).
-        trace.attempts.push({ result: reason, failure: pictureFailureOf(e, "generate") });
+        // A save that failed after a paid generation still costs what the model charged.
+        const spent = spentOn(e);
+        trace.attempts.push({
+          result: reason,
+          ...(spent !== undefined ? { costUsd: spent } : {}),
+          failure: pictureFailureOf(e, "generate"),
+        });
         // A safety refusal is tried again with its own line, never the same prompt; any other
         // generator failure has had the generator's own retries already.
         if (reason !== "refused-safety" && reason !== "no-image") return undefined;

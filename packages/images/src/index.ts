@@ -40,6 +40,7 @@ export {
   requestText,
   retryLine,
   sizeForAspect,
+  spentOn,
   withRetryLine,
 } from "./bank";
 export { isBlockedQuery, QUERY_BLOCKLIST } from "./blocklist";
