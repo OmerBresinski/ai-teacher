@@ -26,14 +26,11 @@ describe("useHeldSave", () => {
       { initialProps: { row: row({ s1: "writing", s2: "writing" }) } },
     );
     // The teacher picks a theme: nothing is sent (the server would refuse), nothing is dropped.
-    // It is deferred (still "Unsaved changes"), never reported as saved.
-    let refused: unknown;
-    await act(() =>
-      result.current({ id: "l1", themeId: "treehouse", slides: [{ id: "s1" }] }).catch((e) => {
-        refused = e;
-      }),
-    );
-    expect(refused).toBeInstanceOf(SaveDeferredError);
+    // It is deferred, not reported saved: the autosave keeps it as unsaved (and, if the editor
+    // goes first, hands it on to be kept for the next open).
+    const held = result.current({ id: "l1", themeId: "treehouse", slides: [{ id: "s1" }] });
+    await act(() => held.catch(() => undefined));
+    await expect(held).rejects.toBeInstanceOf(SaveDeferredError);
     expect(saved).toEqual([]);
     // Slide 1 is done: the editor's copy is saved, theme and all.
     await act(async () => {

@@ -171,6 +171,31 @@ describe("keepWritingSlides", () => {
     expect(el(slide(kept, "w1"), "w1-t")).toEqual(el(slide(incoming, "w1"), "w1-t"));
     expect(kept.generation).toEqual(stored.generation);
   });
+
+  // P0 25 Oct 2026: a partial copy saved under a newer `updatedAt` deleted every slide done since.
+  test("a stale copy cannot drop done slides it never saw done; a teacher's delete still lands", () => {
+    const stored = filling();
+    const gen = stored.generation as NonNullable<Lesson["generation"]>;
+    const three = { id: "w3", kind: "content", elements: [textElement("w3-t", "Rain.")] } as Slide;
+    const now: Lesson = {
+      ...stored,
+      slides: [...stored.slides, three],
+      generation: { ...gen, slideStates: { w1: "done", w2: "done", w3: "writing" } },
+    };
+    // The editor's copy from when only w1 was done: w2 was still writing, w3 did not exist.
+    const stale: Lesson = { ...stored, slides: [slide(stored, "w1")] };
+    expect(keepWritingSlides(now, stale).slides.map((s) => s.id)).toEqual(["w1", "w2", "w3"]);
+    // A copy from another job (a retry's first run) saw none of this job's slides.
+    const otherJob: Lesson = {
+      ...now,
+      slides: [slide(now, "w1")],
+      generation: { ...gen, jobId: "old-job", slideStates: { w1: "done", w2: "done" } },
+    };
+    expect(keepWritingSlides(now, otherJob).slides.map((s) => s.id)).toEqual(["w1", "w2", "w3"]);
+    // The teacher deleted w2 after seeing it done: the delete lands, w3 stays the job's.
+    const deleted: Lesson = { ...now, slides: [slide(now, "w1")] };
+    expect(keepWritingSlides(now, deleted).slides.map((s) => s.id)).toEqual(["w1", "w3"]);
+  });
 });
 
 /*

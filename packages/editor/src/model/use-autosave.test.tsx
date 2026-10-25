@@ -219,6 +219,166 @@ describe("useAutosave", () => {
     await waitFor(() => expect(saved.at(-1)).toBe("Typed + stamp"));
   });
 
+  // PR 623 review: a job row arriving while the previous quiet copy was still being written made
+  // the header say "Unsaved changes" and left it there (and the unload warning on).
+  test("a quiet copy offered while a quiet write is in flight: Saved throughout, Saved after", async () => {
+    const gates: ReturnType<typeof deferred<void>>[] = [];
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      const gate = deferred();
+      gates.push(gate);
+      return gate.promise.then(() => {
+        saved.push(l.title);
+      });
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10 });
+      states.push(useSaveState(autosave));
+      return autosave;
+    });
+    act(() => result.current.onChange(newLesson("Row 1"), { teacher: false, quiet: true }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    act(() => result.current.onChange(newLesson("Row 2"), { teacher: false, quiet: true }));
+    await act(async () => {
+      gates[0]?.resolve();
+      await gates[0]?.promise;
+    });
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      gates[1]?.resolve();
+      await gates[1]?.promise;
+    });
+    await waitFor(() => expect(saved).toEqual(["Row 1", "Row 2"]));
+    expect(states.every((s) => s === "saved")).toBe(true);
+    expect(result.current.getState()).toBe("saved");
+    expect(result.current.getHeld()).toBe(false);
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
+  });
+
+  test("a teacher's change during a quiet write shows Unsaved and Saving, then Saved", async () => {
+    const gates: ReturnType<typeof deferred<void>>[] = [];
+    const saved: string[] = [];
+    const onSave = mock((l: Lesson) => {
+      const gate = deferred();
+      gates.push(gate);
+      return gate.promise.then(() => {
+        saved.push(l.title);
+      });
+    });
+    const states: string[] = [];
+    const { result } = renderHook(() => {
+      const autosave = useAutosave(onSave, { delay: 10 });
+      states.push(useSaveState(autosave));
+      return autosave;
+    });
+    act(() => result.current.onChange(newLesson("Row 1"), { teacher: false, quiet: true }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(states.every((s) => s === "saved")).toBe(true);
+    act(() => result.current.onChange(newLesson("Typed")));
+    expect(result.current.getState()).toBe("unsaved");
+    await act(async () => {
+      gates[0]?.resolve();
+      await gates[0]?.promise;
+    });
+    expect(result.current.getState()).not.toBe("saved");
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    expect(result.current.getState()).toBe("saving");
+    await act(async () => {
+      gates[1]?.resolve();
+      await gates[1]?.promise;
+    });
+    await waitFor(() => expect(result.current.getState()).toBe("saved"));
+    expect(saved).toEqual(["Row 1", "Typed"]);
+    expect(states).toContain("unsaved");
+    expect(states).toContain("saving");
+    expect(states.at(-1)).toBe("saved");
+  });
+
+  // P0 25 Oct 2026: a filling editor that unmounted kept retrying its last copy for minutes, and
+  // once the job's grace ran out the retry went out raw and overwrote the job's slides.
+  test("an unmounted editor writes its copy once on unmount and never retries it", async () => {
+    const onSave = mock((_l: Lesson) =>
+      Promise.reject(new SaveDeferredError("the job wrote first")),
+    );
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5 }),
+    );
+    act(() => result.current.onChange(newLesson("Early copy")));
+    unmount();
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  // PR 622 review: a gone editor never retries, so a teacher's change it could not write is
+  // handed to the app (`onAbandon`) with the server copy it was made on, never silently dropped.
+  test("an edit, then unmount while a job holds the row: the change is handed on once, unretried", async () => {
+    const onSave = mock((_l: Lesson) =>
+      Promise.reject(new SaveDeferredError("the job holds the row")),
+    );
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const server = newLesson("On the server");
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    act(() => result.current.noteServerCopy(server));
+    act(() => result.current.onChange(newLesson("Teacher's title")));
+    unmount();
+    await waitFor(() => expect(onAbandon).toHaveBeenCalledTimes(1));
+    expect(onAbandon.mock.calls[0]?.[0].title).toBe("Teacher's title");
+    expect(onAbandon.mock.calls[0]?.[1]).toBe(server);
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onAbandon).toHaveBeenCalledTimes(1);
+  });
+
+  test("unmount with nothing of the teacher's waiting: nothing is sent and nothing is kept", async () => {
+    const onSave = mock((_l: Lesson) => Promise.resolve());
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    // The fit stamp, or a job's write folded in: not the teacher's.
+    act(() => result.current.onChange(newLesson("Folded copy"), { teacher: false }));
+    unmount();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onAbandon).not.toHaveBeenCalled();
+  });
+
+  test("a saved edit, then only a folded copy: unmount sends and keeps nothing", async () => {
+    const onSave = mock((_l: Lesson) => Promise.resolve());
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    act(() => result.current.onChange(newLesson("Teacher's title")));
+    await act(() => result.current.flush());
+    expect(onSave).toHaveBeenCalledTimes(1);
+    act(() => result.current.onChange(newLesson("Folded copy"), { teacher: false }));
+    unmount();
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onAbandon).not.toHaveBeenCalled();
+  });
+
+  test("a network failure after unmount: the teacher's change is handed on, not lost", async () => {
+    const onSave = mock((_l: Lesson) => Promise.reject(new TypeError("Failed to fetch")));
+    const onAbandon = mock((_l: Lesson, _base: Lesson | null) => {});
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5, onAbandon }),
+    );
+    act(() => result.current.onChange(newLesson("Typed offline")));
+    unmount();
+    await waitFor(() => expect(onAbandon).toHaveBeenCalledTimes(1));
+    expect(onAbandon.mock.calls[0]?.[0].title).toBe("Typed offline");
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   test("UX-A: while a write is deferred the unload warning stands, and a newer edit replaces it", async () => {
     let refuse = true;
     const saved: string[] = [];

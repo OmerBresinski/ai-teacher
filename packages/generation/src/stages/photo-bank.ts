@@ -6,7 +6,14 @@
  * database, storage, embedder and generator.
  */
 import { createHash } from "node:crypto";
-import { type CountArray, imageFailReason, type RetryHint, requestsSent } from "@tj/images";
+import {
+  type CountArray,
+  imageFailReason,
+  type PictureFailure,
+  pictureFailureOf,
+  type RetryHint,
+  requestsSent,
+} from "@tj/images";
 import { whenNonFatal } from "../writer/services";
 import type { PlacedPhoto } from "./illustrate";
 
@@ -141,6 +148,11 @@ export interface PictureAttempt {
   why?: string;
   /** The image model's whole prompt (debug record only; never an event). */
   prompt?: string;
+  /**
+   * Why a try threw (generate, save or judge): stage, error class, code, status and a sanitised
+   * message. The message is debug record only; the outcome event takes stage, code and status.
+   */
+  failure?: PictureFailure;
 }
 
 /** Everything one slot's ladder did, for the debug record and the outcome event. */
@@ -150,6 +162,8 @@ export interface PictureTrace {
   library?: "reused" | "refused" | "down";
   /** The stock search ran and found nothing, or found the picture placed. */
   stock?: "placed" | "miss";
+  /** The stock search threw (a miss as far as the ladder goes): why, as for a try. */
+  stockFailure?: PictureFailure;
 }
 
 /**
@@ -318,7 +332,8 @@ export async function findPicture(
         if (requestsSent(e) > 0) attempts++;
         const reason = imageFailReason(e);
         lastFail = reason;
-        trace.attempts.push({ result: reason });
+        // A store failure after the picture was made is tagged `save` by the bank (`PictureStageError`).
+        trace.attempts.push({ result: reason, failure: pictureFailureOf(e, "generate") });
         // A safety refusal is tried again with its own line, never the same prompt; any other
         // generator failure has had the generator's own retries already.
         if (reason !== "refused-safety" && reason !== "no-image") return undefined;
@@ -356,7 +371,11 @@ export async function findPicture(
       const verdict = await judgeMade(made, undefined, (w, failed) => {
         why = w || undefined;
         if (failed?.length) tried.failedChecks = failed;
-      }).catch(rethrowAbort);
+      }).catch((e: unknown) => {
+        rethrowAbort(e);
+        tried.failure = pictureFailureOf(e, "judge");
+        return undefined;
+      });
       if (verdict) {
         judged.add(made);
         return made;
@@ -386,6 +405,13 @@ export async function findPicture(
     if (verdict === false) await bank.reject?.(hit).catch(rethrowAbort);
     return false;
   };
+  /** The stock search; a throw (not an abort) is a miss with its failure on the trace. */
+  const stockFailed = (e: unknown): undefined => {
+    rethrowAbort(e);
+    trace.stockFailure = pictureFailureOf(e, "stock");
+    if (!trace.stock) trace.stock = "miss";
+    return undefined;
+  };
   let libraryDown = false;
   const hit = await bank.lookup(req, signal).catch((error) => {
     rethrowAbort(error);
@@ -396,11 +422,11 @@ export async function findPicture(
   else if (hit) trace.library = (await usable(hit)) ? "reused" : "refused";
   if (hit && trace.library === "reused") return done(hit, "library");
   // With the library unreachable nothing could be stored, so nothing is generated.
-  if (libraryDown) return done(await fetchStock().catch(rethrowAbort), "fetched");
+  if (libraryDown) return done(await fetchStock().catch(stockFailed), "fetched");
   if (req.draw) return done(await make(false), "generated");
   if (req.route !== "real" && req.stockFirst && raceMs !== undefined) return race(raceMs);
   if (req.route === "real" || req.stockFirst) {
-    const fetched = await fetchStock().catch(rethrowAbort);
+    const fetched = await fetchStock().catch(stockFailed);
     if (fetched) {
       await bank.remember(req, fetched).catch(rethrowAbort);
       return done(fetched, "fetched");
@@ -429,14 +455,15 @@ export async function findPicture(
     /** A side cancelled because the other won answers nothing; the job's own abort still throws. */
     const lost = (stop: AbortController) => (error: unknown) => {
       if (stop.signal.aborted && !signal.aborted) return undefined;
-      return rethrowAbort(error);
+      return stop === stockStop ? stockFailed(error) : rethrowAbort(error);
     };
     const discard = (p: PlacedPhoto) =>
       (bank.reject?.(p) ?? Promise.resolve()).catch(whenNonFatal(() => undefined));
-    const stockP = fetchStock(AbortSignal.any([signal, stockStop.signal])).then(
-      undefined,
-      lost(stockStop),
-    );
+    const stockP = fetchStock(AbortSignal.any([signal, stockStop.signal])).then((p) => {
+      // A search that ran to the end and found nothing is a miss, whichever side then wins.
+      if (!p && !trace.stock) trace.stock = "miss";
+      return p;
+    }, lost(stockStop));
     let timer: ReturnType<typeof setTimeout> | undefined;
     const late = new Promise<"late">((resolve) => {
       timer = setTimeout(() => resolve("late"), ms);

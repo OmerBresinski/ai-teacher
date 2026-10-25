@@ -768,6 +768,7 @@ export async function findDirected(args: {
     tries: out.trace.attempts,
     library: out.trace.library ?? null,
     stock: out.trace.stock ?? null,
+    ...(out.trace.stockFailure ? { stockFailure: out.trace.stockFailure } : {}),
     costUsd: trace?.pictureCostUsd,
   });
   const style = (out.photo as MadePicture | undefined)?.style;

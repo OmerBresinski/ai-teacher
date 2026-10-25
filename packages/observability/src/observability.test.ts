@@ -807,3 +807,67 @@ test("slots the director routed away are counted apart, not as empty pictures", 
   expect(roll?.properties).toMatchObject({ pictures: 0, notWanted: 2, toDrawer: 1 });
   await obs.shutdown();
 });
+
+describe("provider failure detail (status and error code only)", () => {
+  test("$ai_generation and $exception carry the provider status and code, never its message", async () => {
+    const { fetch, sent } = recordingFetch();
+    const obs = createObservability({
+      apiKey: "phc_test",
+      modelIds: MODELS,
+      logger: pino({ level: "silent" }),
+      service: "worker",
+      fetch,
+    });
+    obs.beginJob(JOB, { workspaceId: WORKSPACE, job: "lesson.generate", lessonId: LESSON });
+    obs.captureAiGeneration({
+      ...call,
+      isError: true,
+      finishReason: "error",
+      statusCode: 401,
+      providerErrorCode: "invalid_api_key",
+    });
+    // Free text in the code slot is dropped by the enum gate.
+    obs.captureAiGeneration({ ...call, isError: true, providerErrorCode: "Incorrect API key" });
+    const cause = Object.assign(new Error("The model provider request failed."), {
+      name: "AI_APICallError",
+      statusCode: 429,
+      providerErrorCode: "rate_limited",
+    });
+    Object.defineProperty(cause, "providerMessage", {
+      value: "PROVIDER-MESSAGE-SENTINEL",
+      enumerable: false,
+    });
+    const error = Object.assign(new Error("Model call failed", { cause }), {
+      name: "AiError",
+      code: "provider",
+    });
+    obs.captureJobFailure({
+      error,
+      job: "lesson.generate",
+      jobId: JOB,
+      attempt: 1,
+      willRetry: false,
+    });
+    await obs.flush();
+
+    const events = sent.flatMap((s) => s.events);
+    const [failed, freeText] = events.filter((e) => e.event === "$ai_generation");
+    expect(failed?.properties).toMatchObject({
+      $ai_is_error: true,
+      $ai_http_status: 401,
+      providerErrorCode: "invalid_api_key",
+    });
+    expect(freeText?.properties).not.toHaveProperty("providerErrorCode");
+    const exception = events.find((e) => e.event === "$exception");
+    expect(exception?.properties).toMatchObject({
+      errorType: "AiError",
+      errorCode: "provider",
+      providerStatus: 429,
+      providerErrorCode: "rate_limited",
+    });
+    const text = sent.map((s) => s.text).join("\n");
+    expect(text).not.toContain("PROVIDER-MESSAGE-SENTINEL");
+    expect(text).not.toContain("Incorrect API key");
+    await obs.shutdown();
+  });
+});

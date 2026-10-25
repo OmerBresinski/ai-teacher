@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
-import { generateText, streamText, wrapLanguageModel } from "ai";
+import { APICallError, generateText, streamText, wrapLanguageModel } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import pino from "pino";
 import { PROVIDER_FAILURE_MESSAGE } from "./errors";
@@ -288,5 +288,30 @@ describe("AI logging middleware", () => {
     const result = await generateText({ model: throwing.model("small"), prompt: "p" });
     expect(result.text).toBe("ok");
     expect(lines.some((l) => l.includes("ai call reporter failed"))).toBe(true);
+  });
+
+  test("a provider failure reaches onCall and the log with its status and code, never its message", async () => {
+    const { lines, logger } = createMemoryLogger();
+    const calls: AiCallRecord[] = [];
+    const failing = createFakeAi({
+      logger,
+      error: new APICallError({
+        message: "Incorrect API key provided: sk-proj-Secret123****abcd.",
+        url: "https://api.openai.com/v1/chat/completions",
+        requestBodyValues: {},
+        statusCode: 401,
+        responseBody: JSON.stringify({ error: { code: "invalid_api_key" } }),
+        isRetryable: false,
+      }),
+      onCall: (call) => calls.push(call),
+    });
+    await expect(generateText({ model: failing.model("frontier"), prompt: "p" })).rejects.toThrow();
+    expect(calls).toMatchObject([
+      { isError: true, statusCode: 401, providerErrorCode: "invalid_api_key" },
+    ]);
+    const log = lines.join("");
+    expect(log).toContain('"statusCode":401');
+    expect(log).not.toContain("Incorrect API key");
+    expect(log).not.toContain("Secret123");
   });
 });

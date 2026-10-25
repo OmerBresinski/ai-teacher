@@ -63,13 +63,30 @@ export class SaveHeldError extends Error {
 export const DEFERRED_RETRY_MS = 1_500;
 export const DEFERRED_RETRY_MAX_MS = 8_000;
 
+/** Where a change came from (`Autosave.onChange`). */
+export type ChangeOrigin = {
+  /** `false`: nothing new of the teacher's in it. Omitted, the change is the teacher's. */
+  teacher?: boolean;
+  /** Only the editor's own stamps differ from the server's copy: written without "Unsaved". */
+  quiet?: boolean;
+};
+
 export type Autosave<D extends SavableDocument = SavableDocument> = {
   /**
-   * Hand to the history hook's `onChange`: one call per committed change. `quiet` marks a copy
-   * that carries nothing of the teacher's (the editor's fit stamp on a lesson a job is writing): it
-   * is written like any change, but while no teacher change waits the indicator stays "Saved".
+   * Hand to the history hook's `onChange`: one call per committed change. `teacher: false` marks a
+   * copy that carries nothing new of the teacher's (the fit stamp, a job's write merged in): an
+   * editor that unmounts with only such a copy waiting drops it unsent (it is made again on the
+   * next open). Omitted, the change is the teacher's. `quiet` marks a copy that differs from the
+   * server's only in the editor's own stamps (a lesson a job is writing): it is written like any
+   * change, but while no teacher change waits the indicator stays "Saved". A quiet copy is never
+   * the teacher's.
    */
-  onChange: (document: D, opts?: { quiet?: boolean }) => void;
+  onChange: (document: D, origin?: ChangeOrigin) => void;
+  /**
+   * Record a copy the server is known to hold (the row the editor opened on, or a job's row folded
+   * in): the base handed to `onAbandon` with an unsaved change. A write that lands records itself.
+   */
+  noteServerCopy: (document: D) => void;
   /** Write anything outstanding now — before Present opens, before the route is left. */
   flush: () => Promise<void>;
   subscribe: (listener: () => void) => () => void;
@@ -94,19 +111,33 @@ export type Autosave<D extends SavableDocument = SavableDocument> = {
   getHeld: () => boolean;
 };
 
-export type AutosaveOptions = {
+export type AutosaveOptions<D extends SavableDocument = SavableDocument> = {
   /** The debounce, `AUTOSAVE_MS` unless a test shortens it. */
   delay?: number;
   /** The first retry after a deferred write, `DEFERRED_RETRY_MS` unless a test shortens it. */
   deferredRetry?: number;
+  /**
+   * The editor has unmounted and a teacher's change could not be written (deferred while a job
+   * holds the row, refused, or the network failed). Nothing retries it from a gone editor (a
+   * stale whole-document copy must not keep going out), so it is handed here with `base`, the
+   * newest copy the server is known to hold, for the app to keep and apply on the next open.
+   * Never called for a copy with nothing of the teacher's in it.
+   */
+  onAbandon?: (document: D, base: D | null) => void;
 };
 
 export function useAutosave<D extends SavableDocument>(
   onSave: (document: D) => Promise<void>,
-  { delay = AUTOSAVE_MS, deferredRetry = DEFERRED_RETRY_MS }: AutosaveOptions = {},
+  { delay = AUTOSAVE_MS, deferredRetry = DEFERRED_RETRY_MS, onAbandon }: AutosaveOptions<D> = {},
 ): Autosave<D> {
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const onAbandonRef = useRef(onAbandon);
+  onAbandonRef.current = onAbandon;
+  // False once the editor has unmounted: its last copy is written once (the unmount flush), and a
+  // deferred write is never retried after that. A retry from a gone editor would resend a copy
+  // that no longer follows the row, under the row's newest version (P0, 25 Oct 2026).
+  const mountedRef = useRef(true);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the store is built once; `delay` and `deferredRetry` are read at creation
   const store = useMemo(() => {
@@ -122,6 +153,10 @@ export function useAutosave<D extends SavableDocument>(
     let retryMs = deferredRetry;
     /** Only a non-teacher change waits (`SaveHeldError`): retried quietly, state "saved". */
     let held = false;
+    /** Something of the teacher's is in what waits (or is being written): never dropped unsent. */
+    let teacher = false;
+    /** The newest copy the server is known to hold (`noteServerCopy`, or the last write that landed). */
+    let base: D | null = null;
 
     const notify = () => {
       for (const l of listeners) l();
@@ -157,24 +192,29 @@ export function useAutosave<D extends SavableDocument>(
       if (!quiet) setState("saving");
       try {
         await onSaveRef.current(document);
+        base = document;
+        if (pending === null) teacher = false;
         unreported = false;
         lastSavedAt = Date.now();
         retryMs = deferredRetry;
-        if (quiet && pending === null) {
+        if (pending === null) {
+          // Nothing arrived while the write was in flight: "Saved" (already so for a quiet one).
           held = false;
+          setState("saved");
           notify();
           return;
         }
-        // Only "Saved" if nothing changed while the write was in flight.
-        if (pending === null) setState("saved");
-        else setState("unsaved");
+        // Only quiet copies arrived while it was in flight (`held`): the teacher's truth is still
+        // "Saved", and the next one goes out quietly too. A teacher's change keeps "Unsaved".
+        if (!held) setState("unsaved");
       } catch (error) {
         const newer = pending !== null;
         pending = pending ?? document;
-        // A quiet copy (nothing of the teacher's) that has to wait keeps "Saved" as well.
+        // A quiet copy (nothing of the teacher's) that has to wait keeps "Saved" as well, and so
+        // does one whose newer change is itself only quiet copies (`held`).
         const waits =
           error instanceof SaveHeldError || (quiet && error instanceof SaveDeferredError);
-        if (waits && !newer) {
+        if (waits && (!newer || held) && mountedRef.current) {
           // Nothing of the teacher's is waiting: the teacher's truth is "Saved".
           held = true;
           setState("saved");
@@ -186,6 +226,15 @@ export function useAutosave<D extends SavableDocument>(
           return;
         }
         held = false;
+        if (!mountedRef.current) {
+          // A gone editor never retries: its copy no longer follows the row. A teacher's change
+          // goes to the app to keep for the next open; a copy with none of theirs is dropped.
+          const lost = pending;
+          pending = null;
+          if (teacher && lost) onAbandonRef.current?.(lost, base);
+          teacher = false;
+          return;
+        }
         if (error instanceof SaveDeferredError || error instanceof SaveHeldError) {
           // Not a failure: still unsaved, tried again shortly (a newer change resets the timer).
           setState("unsaved");
@@ -212,15 +261,27 @@ export function useAutosave<D extends SavableDocument>(
     };
 
     return {
-      onChange: (document: D, opts?: { quiet?: boolean }) => {
+      onChange: (document: D, origin?: ChangeOrigin) => {
         // A quiet copy while nothing of the teacher's waits keeps "Saved" (P0 25 Oct 2026: each
         // row the job wrote flipped the header to "Unsaved changes" and back).
-        const quiet = !!opts?.quiet && (pending === null || held) && state === "saved";
+        const quiet = !!origin?.quiet && (pending === null || held) && state === "saved";
         pending = document;
+        if (origin?.teacher !== false && !origin?.quiet) teacher = true;
         held = quiet;
         if (!quiet) setState("unsaved");
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => void flush(), delay);
+      },
+      noteServerCopy: (document: D) => {
+        base = document;
+      },
+      /** The editor unmounted: what waits with nothing of the teacher's in it is dropped unsent. */
+      dropUntaught: () => {
+        if (teacher || pending === null) return;
+        pending = null;
+        held = false;
+        if (timer) clearTimeout(timer);
+        timer = undefined;
       },
       flush,
       subscribe: (listener: () => void) => {
@@ -239,6 +300,7 @@ export function useAutosave<D extends SavableDocument>(
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     const onHide = () => {
       if (document.visibilityState === "hidden") void store.flush();
     };
@@ -254,6 +316,8 @@ export function useAutosave<D extends SavableDocument>(
     return () => {
       window.removeEventListener("beforeunload", onUnload);
       document.removeEventListener("visibilitychange", onHide);
+      mountedRef.current = false;
+      store.dropUntaught();
       void store.flush();
     };
   }, [store]);

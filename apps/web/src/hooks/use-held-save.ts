@@ -30,7 +30,8 @@ function nothingOfTheTeachers(mine: object, row: Row): boolean {
  * refuses any save until one slide is done. A save in that window (a theme change, a title) is
  * held, not dropped: the moment a slide is done, the editor's current copy (the job's newest row
  * folded in by `pull`) is saved, so the held edit lands with everything since. The editor's copy is
- * saved rather than the held one, which predates the job's later slides.
+ * saved rather than the held one, which predates the job's later slides. Meanwhile the save is
+ * deferred (`SaveDeferredError`): the autosave keeps it as unsaved and tries again.
  */
 export function useHeldSave<D>(opts: {
   save: (document: D) => Promise<void>;
@@ -61,14 +62,16 @@ export function useHeldSave<D>(opts: {
       const mine = document as { slides?: unknown };
       if (g && allTheJobs(r) && allTheJobs(mine as Row)) {
         held.current = true;
-        // Not written yet, so not "Saved": the indicator stays "Unsaved changes" until it lands.
-        // Resolving here read as saved, and each row the job wrote then re-offered the change, so
-        // the header flipped between the two over and over (P0 25 Oct 2026).
-        // The editor's own stamps alone wait quietly ("Saved"): no unload warning for them.
+        // Not "saved": the change is still only in this editor. Deferred, the autosave keeps it
+        // ("Unsaved changes", tried again), and an editor that unmounts first hands it to the app
+        // to keep (`onAbandon`) instead of dropping it (P0 follow-up, 25 Oct 2026). Resolving here
+        // read as saved, and each row the job wrote then re-offered the change, so the header
+        // flipped between the two over and over (P0 25 Oct 2026). The editor's own stamps alone
+        // wait quietly ("Saved"): no unload warning for them, and nothing to keep on unmount.
         return Promise.reject(
           nothingOfTheTeachers(mine, r)
             ? new SaveHeldError("Only the editor's stamps wait for the first slide.")
-            : new SaveDeferredError("Waiting for the first slide to be written."),
+            : new SaveDeferredError("Every slide is still being written."),
         );
       }
       return save(document);
