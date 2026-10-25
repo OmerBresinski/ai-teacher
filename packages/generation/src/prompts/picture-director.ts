@@ -160,6 +160,12 @@ For pupils up to Year 6, choose a picture a young pupil takes in at a glance: on
 
 When the point is an exact number of real things, give count and route library-or-generate: code writes the image prompt from it. Choose code with count only when a drawn array teaches it better. count is what is counted (plural), how many there are, the number of equal groups or rows, how many spaces each holds, whether they are groups or rows (one group when none are asked for), and how many of those spaces are empty. For code, diagram is the drawing's kind. For commons, named is what the subject is: an event, a person, a work, a place or a particular object or artefact. period is the time and place a historical subject belongs to, written as a phrase; null for anything present-day. For a historical event, imagePrompt describes a painted educational illustration of the scene, never a photograph. Each is null when it does not apply.`;
 
+/**
+ * Whether the director's system prompt asks for the subject whole inside the frame (#497, v12): the
+ * picture outcome event carries it, so frame cuts split by prompt (`docs/observability.md`).
+ */
+export const DIRECTOR_FRAMES_WHOLE = SYSTEM.includes("the subject whole inside the frame");
+
 function shapeOf(aspect: number): string {
   if (aspect > 1.15) return "landscape";
   if (aspect < 0.87) return "portrait";

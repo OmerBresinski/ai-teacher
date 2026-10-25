@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { generatedLesson, imageElement, textElement } from "./fixtures.test-helpers";
-import { keepWritingSlides, mergeJobLesson, sameJson, writingSlideIds } from "./generation-merge";
+import {
+  isStartingJob,
+  keepWritingSlides,
+  mergeJobLesson,
+  sameJson,
+  startingJobBase,
+  writingSlideIds,
+} from "./generation-merge";
 import type { Lesson } from "./lesson";
 import type { Slide } from "./slide";
 
@@ -163,5 +170,73 @@ describe("keepWritingSlides", () => {
     expect(slide(kept, "w2")).toEqual(slide(stored, "w2"));
     expect(el(slide(kept, "w1"), "w1-t")).toEqual(el(slide(incoming, "w1"), "w1-t"));
     expect(kept.generation).toEqual(stored.generation);
+  });
+});
+
+/*
+ * UX audit J2 (answer 66): the editor opens on a confirmed plan before the job has marked a slide.
+ * Until it does, the job owns every slide, so a re-fit on open is never kept as the teacher's edit.
+ */
+describe("a starting job (no slide states yet)", () => {
+  function starting(): Lesson {
+    const { slideStates: _states, ...generation } = filling().generation as NonNullable<
+      Lesson["generation"]
+    >;
+    return {
+      ...filling(),
+      plan: { revision: 1, state: "confirmed", jobId: "plan" },
+      generation,
+    } as Lesson;
+  }
+  /** The editor's copy after the on-open fit migration touched both slides (read-only to the teacher). */
+  const refitted = (l: Lesson): Lesson => ({
+    ...l,
+    slides: l.slides.map((s) => ({
+      ...s,
+      elements: s.elements.map((e) => ({ ...e, y: (e as { y: number }).y + 4 })),
+    })) as Slide[],
+  });
+  const marked = (
+    l: Lesson,
+    slides: Slide[],
+    states: Record<string, "writing" | "done">,
+  ): Lesson => ({
+    ...l,
+    slides,
+    generation: { ...(l.generation as NonNullable<Lesson["generation"]>), slideStates: states },
+  });
+
+  test("is recognised, and its base marks every slide writing", () => {
+    const row = starting();
+    expect(isStartingJob(row)).toBe(true);
+    expect([...writingSlideIds(startingJobBase(row))].sort()).toEqual(["w1", "w2"]);
+    expect(isStartingJob(filling())).toBe(false);
+    const done = filling();
+    expect(startingJobBase(done)).toBe(done);
+  });
+
+  test("a slide the job drops is gone, not kept as the teacher's re-fitted copy", () => {
+    const row = starting();
+    const theirs = marked(row, [slide(row, "w1")], { w1: "writing" });
+    const merged = mergeJobLesson(startingJobBase(row), refitted(row), theirs);
+    expect(merged.slides.map((s) => s.id)).toEqual(["w1"]);
+    expect(sameJson(slide(merged, "w1"), slide(theirs, "w1"))).toBe(true);
+    // Without the starting base the re-fit reads as an edit and the dropped slide survives.
+    const naive = mergeJobLesson(row, refitted(row), theirs);
+    expect(naive.slides.map((s) => s.id)).toContain("w2");
+  });
+
+  test("a slide the job splits comes in as the job's two slides, both still writing", () => {
+    const row = starting();
+    const a = { ...slide(row, "w2"), id: "w2a" } as Slide;
+    const b = { ...slide(row, "w2"), id: "w2b" } as Slide;
+    const theirs = marked(row, [slide(row, "w1"), a, b], {
+      w1: "writing",
+      w2a: "writing",
+      w2b: "writing",
+    });
+    const merged = mergeJobLesson(startingJobBase(row), refitted(row), theirs);
+    expect(merged.slides.map((s) => s.id)).toEqual(["w1", "w2a", "w2b"]);
+    expect([...writingSlideIds(merged)].sort()).toEqual(["w1", "w2a", "w2b"]);
   });
 });

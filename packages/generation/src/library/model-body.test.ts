@@ -27,7 +27,9 @@ describe("model body and type floor (diagrams-06)", () => {
   test("the heart's labels are under 18 pt in the old box and at or over 18 pt in the body", async () => {
     const d = await drawLibraryModel("heart_circulation", { showPulse: false });
     const old = placedTypeSize(d.svg, OLD_BOX);
-    expect(old.scale).toBeLessThan(0.45);
+    // v2's figure-of-eight heart is more compact, so it draws a little larger in the old box; its
+    // words are still under the floor there, which is what refuses it
+    expect(old.scale).toBeLessThan(0.55);
     expect(old.minPt).toBeLessThan(18);
     const body = placedTypeSize(d.svg, BODY);
     expect(BODY.w).toBe(900);
