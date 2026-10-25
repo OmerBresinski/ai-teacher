@@ -35,8 +35,9 @@ deletes it, each step under a 10 s timeout. It never throws: it returns `{ ok: t
 `{ ok: false, step, code?, status?, message? }`, the message with keys and URL query strings
 removed. A write is the test because a read can pass with credentials that cannot sign a write
 (25 Oct 2026: a reset bucket secret, `SignatureDoesNotMatch` on every picture save). On S3 the
-worker runs it at boot and turns paid picture generation off when it fails
-(`apps/worker/src/storage-check.ts`); the api logs it.
+worker runs it at boot; a failure closes its picture gate (no paid generation) and re-checks in the
+background with backoff until a pass reopens it (`apps/worker/src/storage-check.ts`). The api logs
+it.
 
 ### LocalDiskStorage
 
