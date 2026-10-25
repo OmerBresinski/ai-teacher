@@ -409,7 +409,8 @@ export async function makePictureSet(
     boxes: Box[] | undefined,
     set: string,
   ): Promise<SetPicture> => {
-    const saved = await deps.save(panel).catch((e: unknown) => {
+    // Rethrown, never swallowed: tagged so the trace says the store failed, not the image model.
+    const saved = await deps.save(panel).then(undefined, (e: unknown) => {
       throw e instanceof Error && e.name === "AbortError" ? e : new PictureStageError("save", e);
     });
     const dims = pngSize(panel);
