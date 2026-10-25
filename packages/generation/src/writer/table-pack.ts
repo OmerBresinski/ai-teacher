@@ -168,20 +168,33 @@ export function continueTable(
   };
 }
 
+/** The cache entry of a split whose first part is the words alone (no table to key on). */
+const WORDS_FIRST = "words-first";
+
 /**
  * The stage's long-table splits by slide, re-run on every slide it opens or rewrites (ruling 197).
- * A rewrite that keeps the first part's table keeps its continuations; any other drops or
- * recomputes them. The cache is keyed on the first part's own table, since a rewrite starts from
- * the split slide and carries that table. When the words took their own slide (no table on the
- * first part) there is no table to key on: a figure-less rewrite is not the same table kept, so
- * it is split afresh (a slide with no table splits into nothing) and its continuations go, never
- * left as orphan table slides after a slide that no longer has its table.
+ * A split's continuations belong to the slide for as long as the slide descends from the split's
+ * first part. The stage knows which: a slide it opens (`rewrite` false) is written afresh by the
+ * writer, a slide it swaps in (`rewrite` true: a repair, a relayout, a fallback) starts from the
+ * slide it replaces, which after a split is the first part.
+ * - A rewrite keeps the continuations when it keeps the first part's table, or, when the words took
+ *   their own slide, when it still has no table (an overflow or wording repair of the words).
+ * - A slide written afresh keeps them only when it carries the first part's table as it was; one
+ *   without it is split afresh (a slide with no table splits into nothing), so no table slides are
+ *   left behind a slide that no longer has the table.
+ * Anything else (a rewrite that adds, drops or changes the table) is split afresh.
  */
 export function tableSplitter(fitsAt: (idx: number) => Parameters<typeof continueTable>[1]) {
   const rest = new Map<number, S[]>();
   const first = new Map<number, string>();
-  const split = (idx: number, s: S): { slide: S; rest?: S[] } => {
-    if (s.figure !== undefined && first.get(idx) === specKey(s.figure)) return { slide: s };
+  const kept = (idx: number, s: S, rewrite: boolean): boolean => {
+    const key = first.get(idx);
+    if (key === undefined) return false;
+    if (s.figure === undefined) return rewrite && key === WORDS_FIRST;
+    return key === specKey(s.figure);
+  };
+  const split = (idx: number, s: S, rewrite = false): { slide: S; rest?: S[] } => {
+    if (kept(idx, s, rewrite)) return { slide: s };
     const tc = continueTable(s, fitsAt(idx));
     if (!tc) {
       rest.delete(idx);
@@ -189,8 +202,7 @@ export function tableSplitter(fitsAt: (idx: number) => Parameters<typeof continu
       return { slide: s };
     }
     rest.set(idx, tc.rest);
-    if (tc.first.figure !== undefined) first.set(idx, specKey(tc.first.figure));
-    else first.delete(idx);
+    first.set(idx, tc.first.figure === undefined ? WORDS_FIRST : specKey(tc.first.figure));
     return { slide: tc.first, rest: tc.rest };
   };
   return { rest, split };

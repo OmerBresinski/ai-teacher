@@ -1034,8 +1034,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return tableDrawn(sl, first, m);
   });
   const tableRest = tables.rest;
-  const splitTable = (idx: number, s: S): S => {
-    const r = tables.split(idx, s);
+  /** `rewrite`: the slide starts from the one it replaces (swapSlide), not written afresh. */
+  const splitTable = (idx: number, s: S, rewrite = false): S => {
+    const r = tables.split(idx, s, rewrite);
     if (r.rest) {
       log({ ev: "table-continued", slide: idx + 1, slides: r.rest.length + 1 });
       debug("split", { how: "table-continued", before: s, first: r.slide, rest: r.rest }, idx);
@@ -1577,6 +1578,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         : sync.action === "drop"
           ? asWords(sync.slide as S)
           : (sync.slide as S),
+      true,
     );
     const oldAsks = asks.get(i) ?? [];
     const oldCarried = new Map(oldAsks.map((a) => [a.key, carried.get(`${i}:${a.key}`)]));

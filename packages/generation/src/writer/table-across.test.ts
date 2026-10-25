@@ -207,14 +207,34 @@ describe("a table too big for the side slot goes across before it is continued",
 });
 
 describe("the stage's table splits follow rewrites of the slide (stage.ts splitTable)", () => {
-  test("words-first: rewriting the words slide text-only leaves no table slides behind", () => {
+  test("words-first: a repair of the words slide (no table) keeps the table's slides", () => {
     const tables = tableSplitter(() => fits("visual-text"));
     const r = tables.split(8, plants);
     expect(r.slide.template).toBe("explain");
+    const rest = tables.rest.get(8);
+    expect(rest?.length).toBe(1);
+    // An overflow or wording repair starts from the words slide: the table still belongs to it.
+    const again = tables.split(8, { ...r.slide, points: ["Only water changes."] }, true);
+    expect(again.slide.points).toEqual(["Only water changes."]);
+    expect(tables.rest.get(8)).toBe(rest);
+  });
+
+  test("words-first: the slide written afresh without the table leaves no table slides behind", () => {
+    const tables = tableSplitter(() => fits("visual-text"));
+    tables.split(8, plants);
     expect(tables.rest.get(8)?.length).toBe(1);
-    // A repair or edit of that slide with no table: the same table is not kept, so its
-    // continuations go (they used to stay, keyed on the first part's missing figure).
-    tables.split(8, { ...r.slide, points: ["Only water changes."] });
+    // The writer re-emits the slide (not a rewrite of the split) with words only.
+    const { figure: _f, ...words } = plants;
+    tables.split(8, { ...words, template: "explain" });
+    expect(tables.rest.get(8)).toBeUndefined();
+  });
+
+  test("a rewrite that drops the first part's table drops its continuations", () => {
+    const tables = tableSplitter(() => fitsAt(at("KS3"))("visual-text"));
+    const r = tables.split(8, plants);
+    expect(r.slide.figure).toBeDefined();
+    const { figure: _f, ...words } = r.slide;
+    tables.split(8, words, true);
     expect(tables.rest.get(8)).toBeUndefined();
   });
 
@@ -224,8 +244,10 @@ describe("the stage's table splits follow rewrites of the slide (stage.ts splitT
     expect(r.slide.figure).toBeDefined();
     const rest = tables.rest.get(8);
     expect(rest?.length).toBeGreaterThan(0);
-    const again = tables.split(8, { ...r.slide, lead: "Reworded lead." });
-    expect(again.slide.figure).toEqual(r.slide.figure);
-    expect(tables.rest.get(8)).toBe(rest);
+    for (const rewrite of [true, false]) {
+      const again = tables.split(8, { ...r.slide, lead: "Reworded lead." }, rewrite);
+      expect(again.slide.figure).toEqual(r.slide.figure);
+      expect(tables.rest.get(8)).toBe(rest);
+    }
   });
 });
