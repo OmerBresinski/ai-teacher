@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createAi, createBudget } from "@tj/ai";
-import type { AgeBand, Lesson } from "@tj/domain/documents";
+import { type AgeBand, deriveAgeBand, type Lesson } from "@tj/domain/documents";
 import pino from "pino";
 import { sampleBriefLesson } from "../testing";
 import type { PipelineDeps } from "../types";
@@ -8,7 +8,7 @@ import { withActivityMenu } from "../writer/activities";
 import { writerRoute } from "../writer/ai-services";
 import { writerBundle } from "../writer/bundle";
 import { contractSystem } from "../writer/contract";
-import { pupilWordLimit, type Stage } from "../writer/fixes";
+import { promptStage, pupilWordLimit, type Stage } from "../writer/fixes";
 import fixture from "../writer/fixtures/activities/y1-animals.json" with { type: "json" };
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
 import { runWriter } from "../writer/stage";
@@ -41,6 +41,31 @@ describe("the writer's key stage", () => {
     expect(stageOf(undefined, "Year 4")).toBe("ks2");
     expect(stageOf(undefined, "Mixed")).toBe("ks3");
     expect(stageOf(undefined)).toBe("ks3");
+  });
+
+  test("every intake year reaches its writer bundle: Years 1-2 KS1, 12-13 KS5", () => {
+    const want: Record<string, Stage> = {
+      "Year 1": "ks1",
+      "Year 2": "ks1",
+      "Year 3": "ks2",
+      "Year 6": "ks2",
+      "Year 7": "ks3",
+      "Year 9": "ks3",
+      "Year 10": "ks4",
+      "Year 11": "ks4",
+      "Year 12": "ks5",
+      "Year 13": "ks5",
+    };
+    for (const [yearGroup, stage] of Object.entries(want)) {
+      // As `createLesson` stores it, and as a lesson with no band reads it.
+      expect(stageOf(deriveAgeBand(yearGroup), yearGroup)).toBe(stage);
+      expect(stageOf(undefined, yearGroup)).toBe(stage);
+    }
+    expect(promptStage(stageOf(undefined, "Year 1"))).toBe("KS1");
+    expect(promptStage(stageOf(undefined, "Year 2"))).toBe("KS1");
+    expect(promptStage(stageOf(undefined, "Year 12"))).toBe("KS3-5");
+    expect(writerBrief(sampleBriefLesson({ yearGroup: "Year 12" })).year).toBe(12);
+    expect(writerBrief(sampleBriefLesson({ yearGroup: "Year 1" })).year).toBe(1);
   });
 
   test("a band the writer does not know throws instead of becoming ks3", () => {

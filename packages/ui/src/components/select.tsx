@@ -80,7 +80,12 @@ function SelectContent({
               "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1",
           )}
         >
-          <div className="[--tj-arrive-distance:6px] motion-safe:animate-arrive">{children}</div>
+          {/* The clip keeps the arrive animation's 6px start offset out of the viewport's scroll
+              height: Radix decides once, on placement, whether to show the scroll-down button, and
+              the offset made a list that fits exactly look scrollable (a stray chevron). */}
+          <div className="overflow-y-clip">
+            <div className="[--tj-arrive-distance:6px] motion-safe:animate-arrive">{children}</div>
+          </div>
         </SelectPrimitive.Viewport>
         <SelectScrollDownButton />
       </SelectPrimitive.Content>
