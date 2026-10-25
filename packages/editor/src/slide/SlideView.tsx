@@ -8,6 +8,7 @@ import {
   quoteFaceOf,
   slideArtVariant,
   slideBackground,
+  tickPolygon,
   withoutDiagramSlot,
   withThemeColours,
 } from "@tj/slides";
@@ -46,6 +47,7 @@ import {
 } from "./elements/kit";
 import { OverflowGlyph } from "./elements/TextView";
 import { applySlideClip } from "./slide-clip";
+import { TICK_D, tickSpot } from "./tick-spot";
 
 const ExplanationEditor = lazy(() => import("./elements/ExplanationEditor"));
 
@@ -489,7 +491,9 @@ function placedById(elements: readonly SlideElement[]): Map<string, Placed> {
 /**
  * The choice reveal for cards and option boxes (template hinge, choose, odd one out): each wrong
  * card is washed back in turn, then the right one is ringed with a tick, over the whole card so
- * its picture dims with its word. `option` elements draw their own (`OptionView`).
+ * its picture dims with its word. The tick sits where no words are (`tickSpot`): inside the top-right
+ * corner over a picture, else perched on a corner clear of the option's text. `option` elements draw
+ * their own (`OptionView`).
  */
 function ChoiceMarks({
   slide,
@@ -520,6 +524,7 @@ function ChoiceMarks({
         const r = placed.get(id);
         if (!r) return null;
         const right = state === "right";
+        const tick = right ? tickSpot(slide, r) : null;
         return (
           <div
             key={id}
@@ -542,24 +547,31 @@ function ChoiceMarks({
               <span
                 role="img"
                 aria-label="Correct answer"
+                data-tick-spot=""
                 style={{
                   position: "absolute",
-                  right: 10,
-                  top: 10,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 36,
+                  left: tick?.left,
+                  top: tick?.top,
+                  width: TICK_D,
+                  height: TICK_D,
+                  borderRadius: TICK_D,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   background: theme.colors.correct,
                   color: theme.colors.surface,
-                  fontWeight: 700,
-                  fontSize: 22,
-                  lineHeight: 1,
                 }}
               >
-                ✓
+                {/* A drawn tick centred on its disc (`tickPolygon`, #605); a font's ✓ is not. */}
+                <svg
+                  width={TICK_D * 0.6}
+                  height={TICK_D * 0.6}
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  focusable="false"
+                >
+                  <polygon points={CHOICE_TICK} fill="currentColor" />
+                </svg>
               </span>
             ) : null}
           </div>
@@ -568,6 +580,10 @@ function ChoiceMarks({
     </>
   );
 }
+
+const CHOICE_TICK = tickPolygon(3.2)
+  .map((p) => p.join(","))
+  .join(" ");
 
 /** `matching` reveal: one line per pair, drawn between the two cards. */
 function MatchingLines({
