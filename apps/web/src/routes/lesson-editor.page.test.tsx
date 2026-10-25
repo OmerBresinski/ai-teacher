@@ -36,9 +36,10 @@ mock.module("@/components/lesson-creation/generation-companion", () => ({
   ),
 }));
 
-const { LessonEditorPage, holdsFitStamp, onlyFitStampDiffers } = await import(
+const { LessonEditorPage, generatingLock, holdsFitStamp, onlyFitStampDiffers } = await import(
   "./lesson-editor.page"
 );
+const { RESTORED_UNSAVED_CHANGE, readUnsavedChange } = await import("@/lib/unsaved-change");
 const { REFETCH_DEBOUNCE_MS } = await import("@/components/generating-lesson");
 const { FAILED_NOTICE, STOPPED_NOTICE, TRY_AGAIN_LABEL } = await import(
   "@/components/generating-lesson/StoppedNotice"
@@ -174,6 +175,68 @@ describe("LessonEditorPage", () => {
     lessonId = "fraction-practice";
     renderPage();
     expect(await screen.findByText("This is a worksheet")).toBeVisible();
+  });
+
+  it("the editor goes with no edit of the teacher's: nothing is kept and nothing is sent", async () => {
+    localStorage.clear();
+    const { unmount } = renderPage();
+    await screen.findByRole("heading", { level: 1, name: "The water cycle" });
+    // Whatever the open itself wrote has landed: from here nothing of the teacher's waits.
+    await waitFor(() => expect(screen.getByText("Saved")).toBeVisible(), { timeout: 3_000 });
+    const puts = () => fakeApi.requests.filter((r) => r.method === "PUT").length;
+    const before = puts();
+    unmount();
+    await wait(100);
+    expect(readUnsavedChange("demo-water-cycle")).toBeUndefined();
+    expect(puts()).toBe(before);
+  });
+
+  // PR 622 review: an editor that goes while a job holds the row never resends its copy, and the
+  // teacher's change it could not write is kept on this browser and comes back on the next open.
+  it("an edit, then the editor goes while a job holds the row: kept, unsent, and restored next open", async () => {
+    localStorage.clear();
+    const first = renderPage();
+    await screen.findByRole("heading", { level: 1, name: "The water cycle" });
+    fireEvent.click(screen.getByRole("button", { name: "Rename lesson" }));
+    const input = screen.getByRole("textbox", { name: "Lesson title" });
+    fireEvent.change(input, { target: { value: "Kept while away" } });
+    fireEvent.blur(input);
+    // A job takes the row (another tab), and the teacher leaves within the debounce.
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    first.queryClient.setQueryData<{ generatingJobId: string | null }>(META_KEY, (m) =>
+      m ? { ...m, generatingJobId: JOB_ID } : m,
+    );
+    first.unmount();
+    await waitFor(() =>
+      expect(readUnsavedChange("demo-water-cycle")?.lesson.title).toBe("Kept while away"),
+    );
+    await wait(100);
+    expect(fakeApi.requests.filter((r) => r.method === "PUT")).toHaveLength(0);
+    expect(fakeApi.get("demo-water-cycle")?.body.title).toBe("The water cycle");
+
+    // The job has let go: the next open merges the kept change in, says so, and saves it.
+    fakeApi.setGenerating("demo-water-cycle", null);
+    const second = renderPage();
+    await waitFor(() => expect(toastSpy).toHaveBeenCalledWith(RESTORED_UNSAVED_CHANGE));
+    await waitFor(
+      () => expect(fakeApi.get("demo-water-cycle")?.body.title).toBe("Kept while away"),
+      { timeout: 3_000 },
+    );
+    expect(readUnsavedChange("demo-water-cycle")).toBeUndefined();
+    second.unmount();
+    await wait(100);
+  });
+
+  it("with no meta cached, a save during a job reads the lock rather than going out raw", async () => {
+    fakeApi.setGenerating("demo-water-cycle", JOB_ID);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    expect(queryClient.getQueryData(META_KEY)).toBeUndefined();
+    expect(await generatingLock(queryClient, "demo-water-cycle")).toBe(JOB_ID);
+    fakeApi.setGenerating("demo-water-cycle", null);
+    // A cached entry is trusted as it stands (the page keeps it current).
+    expect(await generatingLock(queryClient, "demo-water-cycle")).toBe(JOB_ID);
+    queryClient.removeQueries({ queryKey: META_KEY });
+    expect(await generatingLock(queryClient, "demo-water-cycle")).toBeNull();
   });
 
   it("a save another tab beat to it toasts Reload, which refetches the stored copy", async () => {

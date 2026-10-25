@@ -164,6 +164,18 @@ export type LessonEditorProps = {
    * carries on.
    */
   sidePane?: { open: boolean; label: string; content: ReactNode };
+  /**
+   * The editor unmounted with a teacher's change it could not write (`AutosaveOptions.onAbandon`):
+   * `base` is the newest copy the server was known to hold. The app keeps both for the next open.
+   */
+  onAbandon?: (lesson: Lesson, base: Lesson | null) => void;
+  /**
+   * A change kept from an earlier visit (`onAbandon`): once the lesson loads it is merged onto the
+   * current copy (`mergeJobLesson` on `base`, the teacher's side winning only where they edited)
+   * as one undo step, and saved like any edit. `onRestored` follows, once.
+   */
+  restore?: { lesson: Lesson; base: Lesson };
+  onRestored?: (applied: boolean) => void;
 };
 
 /**
@@ -218,10 +230,13 @@ export function LessonEditor({
   initialSlideId,
   worksheetsSlot,
   sidePane,
+  onAbandon,
+  restore,
+  onRestored,
 }: LessonEditorProps) {
   const mobile = useMobileEditor();
   const paneW = usePaneWidth();
-  const autosave = useAutosave(onSave);
+  const autosave = useAutosave(onSave, { onAbandon });
   // Every change through the history is the teacher's, except the fit migration's bookkeeping
   // (`systemWrite`); a job's merged write reaches the autosave directly (`receiveGenerated`).
   const teacherEdits = useMemo(() => createTeacherEdits(), []);
@@ -229,7 +244,7 @@ export function LessonEditor({
   const onHistoryChange = useCallback(
     (doc: Lesson) => {
       if (!systemWrite.current) teacherEdits.mark();
-      autosave.onChange(doc);
+      autosave.onChange(doc, { teacher: !systemWrite.current });
     },
     [autosave, teacherEdits],
   );
@@ -433,8 +448,31 @@ export function LessonEditor({
   // latest lesson/history/session at run time.
   const lessonRef = useRef(lesson);
   lessonRef.current = lesson;
+  const restoreRef = useRef(restore);
+  const onRestoredRef = useRef(onRestored);
+  onRestoredRef.current = onRestored;
   const historyRef = useRef(history);
   historyRef.current = history;
+  // The copy the editor opened on is the server's: the base of any change kept for later.
+  const opened = lesson !== undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the lesson first loads
+  useEffect(() => {
+    const current = lessonRef.current;
+    if (!current) return;
+    autosave.noteServerCopy(current);
+    const kept = restoreRef.current;
+    restoreRef.current = undefined;
+    if (!kept) return;
+    // A kept change rejoins through the history (one undo step, the teacher's, autosaved).
+    let applied = false;
+    historyRef.current.dispatch((doc: Lesson) => {
+      const merged = mergeJobLesson(kept.base, kept.lesson, doc);
+      if (sameJson(merged, doc)) return doc;
+      applied = true;
+      return merged;
+    });
+    onRestoredRef.current?.(applied);
+  }, [opened]);
   useHistoryKeys(historyRef);
   const getFitDeps = useCallback((): FitMigrationDeps | null => {
     const current = lessonRef.current;
@@ -501,12 +539,15 @@ export function LessonEditor({
         // Nothing of the teacher's left to send: hold the job's very copy, so the next round sees
         // an untouched document and the autosave stays quiet.
         if (merged && sameJson(merged, theirs)) {
+          autosave.noteServerCopy(theirs);
           historyRef.current.rebase?.((doc) => (doc === merged ? theirs : doc));
           return theirs;
         }
         // The teacher's changes the row does not have yet: the next autosave sends the merged copy,
         // never the one it held from before the merge.
-        if (merged) autosave.onChange(merged);
+        autosave.noteServerCopy(theirs);
+        // Any teacher's change in it is already marked; the merge itself adds none.
+        if (merged) autosave.onChange(merged, { teacher: false });
         return merged;
       },
       undo: () => historyRef.current.undo(),
