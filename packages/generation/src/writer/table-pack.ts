@@ -1,5 +1,6 @@
 import { LIMITS } from "@tj/slides/diagrams";
 import { G } from "@tj/slides/templates";
+import { specKey } from "./figure-sync";
 
 // Long tables (UX ruling 197, register content-01 / diagrams-10): a table the writer wrote longer
 // than its slot holds is packed into up to 4 columns, and what still does not fit continues as a
@@ -165,6 +166,34 @@ export function continueTable(
     first: head ? { ...top, figure: head } : (words as S),
     rest: balanced.map((t, k) => cont(t, wordsFirst && !k)),
   };
+}
+
+/**
+ * The stage's long-table splits by slide, re-run on every slide it opens or rewrites (ruling 197).
+ * A rewrite that keeps the first part's table keeps its continuations; any other drops or
+ * recomputes them. The cache is keyed on the first part's own table, since a rewrite starts from
+ * the split slide and carries that table. When the words took their own slide (no table on the
+ * first part) there is no table to key on: a figure-less rewrite is not the same table kept, so
+ * it is split afresh (a slide with no table splits into nothing) and its continuations go, never
+ * left as orphan table slides after a slide that no longer has its table.
+ */
+export function tableSplitter(fitsAt: (idx: number) => Parameters<typeof continueTable>[1]) {
+  const rest = new Map<number, S[]>();
+  const first = new Map<number, string>();
+  const split = (idx: number, s: S): { slide: S; rest?: S[] } => {
+    if (s.figure !== undefined && first.get(idx) === specKey(s.figure)) return { slide: s };
+    const tc = continueTable(s, fitsAt(idx));
+    if (!tc) {
+      rest.delete(idx);
+      first.delete(idx);
+      return { slide: s };
+    }
+    rest.set(idx, tc.rest);
+    if (tc.first.figure !== undefined) first.set(idx, specKey(tc.first.figure));
+    else first.delete(idx);
+    return { slide: tc.first, rest: tc.rest };
+  };
+  return { rest, split };
 }
 
 /**

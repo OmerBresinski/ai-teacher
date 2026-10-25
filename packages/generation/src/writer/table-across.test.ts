@@ -6,7 +6,7 @@ import { sampleBriefLesson } from "../testing";
 
 import { layoutSlotProbe } from "./diagrams";
 import { materialise, type Plan } from "./materialise";
-import { continueTable, drawable, tableDrawn } from "./table-pack";
+import { continueTable, drawable, tableDrawn, tableSplitter } from "./table-pack";
 
 type S = Record<string, unknown>;
 
@@ -16,7 +16,7 @@ type S = Record<string, unknown>;
  * takes the full width before it is continued (#453's continuation stays for what does not fit
  * even there). The `fits` here is the writer stage's own (`stage.ts` `splitTable`).
  */
-const at = (stage: "KS2" | "KS3") => {
+const at = (stage: "KS1" | "KS2" | "KS3") => {
   const brief = { ...sampleBriefLesson().brief, keyStage: stage } as never;
   return { brief, theme: getTheme("splash", stage as never), stage: stage as never };
 };
@@ -158,5 +158,74 @@ describe("a table too big for the side slot goes across before it is continued",
     expect(tableDrawn({ cardsUnder: true }, true, side)).toBe(false);
     expect(tableDrawn({ cardsUnder: true }, false, side)).toBe(true);
     expect(tableDrawn({}, true, side)).toBe(true);
+  });
+
+  // A table too long for one slide even full width, whose words keep their own slide: the
+  // table's first slide continues nothing; every later one carries rows on.
+  const lifeCycles = (lead: string): S => ({
+    template: "visual-text",
+    heading: "Life cycles",
+    lead,
+    points: [
+      "Each animal changes as it grows.",
+      "Some change shape completely.",
+      "Look for the pattern.",
+    ],
+    figure: {
+      kind: "table",
+      alt: "Animals at each stage of their life cycle.",
+      header: ["Animal", "Young", "Adult"],
+      rows: Array.from({ length: 16 }, (_, i) => [`A${i + 1}`, "egg", "adult"]),
+    },
+  });
+  // KS3 keeps a row across the slide under fewer words, so its words here are longer.
+  const longer = [1, 2, 3].map((i) => `Point ${i} explains a careful idea about growth.`);
+  for (const [stage, lead, points] of [
+    ["KS1", "How animals grow and change.", undefined],
+    [
+      "KS3",
+      "A longer lead sentence that sets up what the class will look at on this slide today.",
+      longer,
+    ],
+  ] as const) {
+    test(`${stage}: a table over several slides after its words is headed (continued) only where it carries on`, () => {
+      const slide: S = { ...lifeCycles(lead), ...(points ? { points } : {}) };
+      const r = continueTable(slide, fitsAt(at(stage))("visual-text"));
+      expect(r).toBeDefined();
+      if (!r) return;
+      expect(r.first.template).toBe("explain");
+      expect(r.first.figure).toBeUndefined();
+      expect(r.rest.length).toBeGreaterThan(1);
+      expect(r.rest.map((p) => p.heading)).toEqual([
+        "Life cycles",
+        ...r.rest.slice(1).map(() => "Life cycles (continued)"),
+      ]);
+      const rows = r.rest.flatMap((p) => (p.figure as { rows: string[][] }).rows.map((x) => x[0]));
+      expect(rows).toEqual((slide.figure as { rows: string[][] }).rows.map((x) => x[0]));
+    });
+  }
+});
+
+describe("the stage's table splits follow rewrites of the slide (stage.ts splitTable)", () => {
+  test("words-first: rewriting the words slide text-only leaves no table slides behind", () => {
+    const tables = tableSplitter(() => fits("visual-text"));
+    const r = tables.split(8, plants);
+    expect(r.slide.template).toBe("explain");
+    expect(tables.rest.get(8)?.length).toBe(1);
+    // A repair or edit of that slide with no table: the same table is not kept, so its
+    // continuations go (they used to stay, keyed on the first part's missing figure).
+    tables.split(8, { ...r.slide, points: ["Only water changes."] });
+    expect(tables.rest.get(8)).toBeUndefined();
+  });
+
+  test("a rewrite that keeps the first part's table keeps its continuations", () => {
+    const tables = tableSplitter(() => fitsAt(at("KS3"))("visual-text"));
+    const r = tables.split(8, plants);
+    expect(r.slide.figure).toBeDefined();
+    const rest = tables.rest.get(8);
+    expect(rest?.length).toBeGreaterThan(0);
+    const again = tables.split(8, { ...r.slide, lead: "Reworded lead." });
+    expect(again.slide.figure).toEqual(r.slide.figure);
+    expect(tables.rest.get(8)).toBe(rest);
   });
 });
