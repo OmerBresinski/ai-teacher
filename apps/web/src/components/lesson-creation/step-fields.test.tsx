@@ -29,3 +29,12 @@ describe("ObjectivesStep slide tier", () => {
     ]);
   });
 });
+
+describe("intake year group picker", () => {
+  it("offers Year 1 to Year 13 from the shared list, without Reception", async () => {
+    const { YEAR_GROUP_OPTIONS } = await import("./step-fields");
+    const want = Array.from({ length: 13 }, (_, i) => `Year ${i + 1}`);
+    expect(YEAR_GROUP_OPTIONS.map((o) => o.value)).toEqual(want);
+    expect(YEAR_GROUP_OPTIONS.map((o) => o.label)).toEqual(want);
+  });
+});
