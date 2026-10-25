@@ -224,7 +224,17 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const saveDocument = useSaveWithConflictToast(lessonId, onStale, ownJob);
   const saveFolded = useCallback(
     async (lesson: Parameters<typeof saveDocument>[0]) => {
-      if (!ownJob() || !folded.current) return saveDocument(lesson);
+      if (!ownJob() || !folded.current) {
+        // A job holds the row and this editor is not folding it in: its copy may be from any
+        // point in the run, and the save would carry the row's newest `updatedAt` (the meta the
+        // page polls), so it would pass as current and replace what the job wrote since (P0,
+        // 25 Oct 2026). It waits; the editor that follows the job saves the merged copy.
+        const lock = queryClient.getQueryData(
+          libraryQueries.documentMeta(lessonId).queryKey,
+        )?.generatingJobId;
+        if (lock) throw new SaveDeferredError("The lesson is still being written.");
+        return saveDocument(lesson);
+      }
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const merged = await fold();
         const base = folded.current;

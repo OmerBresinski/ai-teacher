@@ -103,6 +103,10 @@ export function useAutosave<D extends SavableDocument>(
 ): Autosave<D> {
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  // False once the editor has unmounted: its last copy is written once (the unmount flush), and a
+  // deferred write is never retried after that. A retry from a gone editor would resend a copy
+  // that no longer follows the row, under the row's newest version (P0, 25 Oct 2026).
+  const mountedRef = useRef(true);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the store is built once; `delay` and `deferredRetry` are read at creation
   const store = useMemo(() => {
@@ -167,7 +171,7 @@ export function useAutosave<D extends SavableDocument>(
       } catch (error) {
         const newer = pending !== null;
         pending = pending ?? document;
-        if (error instanceof SaveHeldError && !newer) {
+        if (error instanceof SaveHeldError && !newer && mountedRef.current) {
           // Nothing of the teacher's is waiting: the teacher's truth is "Saved".
           held = true;
           setState("saved");
@@ -179,6 +183,13 @@ export function useAutosave<D extends SavableDocument>(
           return;
         }
         held = false;
+        if (
+          !mountedRef.current &&
+          (error instanceof SaveDeferredError || error instanceof SaveHeldError)
+        ) {
+          pending = null;
+          return;
+        }
         if (error instanceof SaveDeferredError || error instanceof SaveHeldError) {
           // Not a failure: still unsaved, tried again shortly (a newer change resets the timer).
           setState("unsaved");
@@ -229,6 +240,7 @@ export function useAutosave<D extends SavableDocument>(
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     const onHide = () => {
       if (document.visibilityState === "hidden") void store.flush();
     };
@@ -244,6 +256,7 @@ export function useAutosave<D extends SavableDocument>(
     return () => {
       window.removeEventListener("beforeunload", onUnload);
       document.removeEventListener("visibilitychange", onHide);
+      mountedRef.current = false;
       void store.flush();
     };
   }, [store]);

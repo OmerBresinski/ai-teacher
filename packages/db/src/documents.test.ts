@@ -297,6 +297,48 @@ describeDb("documents repository", () => {
       expect(stored.generation?.slideStates).toEqual({ [a]: "done", [b]: "done" });
     });
 
+    // P0 25 Oct 2026: the editor saved a copy from early in the run under the row's newest
+    // `updatedAt`; every slide done since was dropped, and the job's merge kept them dropped.
+    test("a stale teacher copy under a newer updatedAt drops and reverts nothing the job wrote", async () => {
+      const jobId = newId<JobId>();
+      const fixture = lessonFixture();
+      const [a, b] = fixture.slides.map((s) => s.id) as [string, string];
+      const row = await createDocument(wsA, "lesson", fixture, { generatingJobId: jobId });
+      const first: Lesson = {
+        ...(row.body as Lesson),
+        generation: states({ [a]: "done", [b]: "writing" }, jobId),
+      };
+      const w1 = await putDocumentAsJob(wsA, row.id, first, jobId);
+      if (w1.status !== "ok") throw new Error(w1.status);
+      const stale = w1.row.body as Lesson;
+      // The job finishes b and adds c, done too.
+      const c = { ...(slideOf(first, b) as Lesson["slides"][number]), id: "slide-c-p0" };
+      const second: Lesson = {
+        ...retitle(first, b, "Job finished b"),
+        slides: [
+          ...retitle(first, b, "Job finished b").slides,
+          retitle({ ...first, slides: [c] }, "slide-c-p0", "Job c")
+            .slides[0] as Lesson["slides"][number],
+        ],
+        generation: states({ [a]: "done", [b]: "done", "slide-c-p0": "done" }, jobId),
+      };
+      const w2 = await putDocumentAsJob(wsA, row.id, second, jobId, { base: w1.jobBody });
+      if (w2.status !== "ok") throw new Error(w2.status);
+      // The editor's early copy (a edited, b and c as it last saw them) at the newest version.
+      const put = await putDocument(wsA, row.id, retitle(stale, a, "Mine"), w2.row.updatedAt);
+      if (put.status !== "ok") throw new Error(put.status);
+      const saved = put.row.body as Lesson;
+      expect(saved.slides.map((s) => s.id)).toEqual(second.slides.map((s) => s.id));
+      expect(slideOf(saved, b)).toEqual(slideOf(second, b));
+      expect(JSON.stringify(slideOf(saved, a))).toContain("Mine");
+      // The job's next write keeps all three.
+      const w3 = await putDocumentAsJob(wsA, row.id, second, jobId, { base: w2.jobBody });
+      if (w3.status !== "ok") throw new Error(w3.status);
+      expect((w3.row.body as Lesson).slides.map((s) => s.id)).toEqual(
+        second.slides.map((s) => s.id),
+      );
+    });
+
     // TEACH-189 part b: the writer's final save proposes the title slide's heading as the lesson
     // title; the write compares it against the title stored at that moment, not the job's copy.
     const titleRace = async (teacherTitle?: string) => {

@@ -191,6 +191,22 @@ describe("useAutosave", () => {
     expect(toastErrorSpy).not.toHaveBeenCalled();
   });
 
+  // P0 25 Oct 2026: a filling editor that unmounted kept retrying its last copy for minutes, and
+  // once the job's grace ran out the retry went out raw and overwrote the job's slides.
+  test("an unmounted editor writes its copy once on unmount and never retries it", async () => {
+    const onSave = mock((_l: Lesson) =>
+      Promise.reject(new SaveDeferredError("the job wrote first")),
+    );
+    const { result, unmount } = renderHook(() =>
+      useAutosave(onSave, { delay: 10_000, deferredRetry: 5 }),
+    );
+    act(() => result.current.onChange(newLesson("Early copy")));
+    unmount();
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 60));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   test("UX-A: while a write is deferred the unload warning stands, and a newer edit replaces it", async () => {
     let refuse = true;
     const saved: string[] = [];
