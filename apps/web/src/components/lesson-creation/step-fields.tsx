@@ -1,4 +1,10 @@
-import { SLIDE_TIER_RANGES, SLIDE_TIERS, type SlideTier } from "@tj/domain/documents";
+import {
+  SLIDE_TIER_RANGES,
+  SLIDE_TIERS,
+  type SlideTier,
+  YEAR_GROUPS,
+  yearNumberOf,
+} from "@tj/domain/documents";
 import {
   Button,
   Label,
@@ -26,6 +32,15 @@ export const SLIDE_TIER_OPTIONS = SLIDE_TIERS.map((tier) => ({
   value: tier,
   label: `${TIER_NAMES[tier]}, ${SLIDE_TIER_RANGES[tier].min}–${SLIDE_TIER_RANGES[tier].max} slides`,
 }));
+
+/**
+ * The intake's year groups: the shared list's numbered years, Year 1 to Year 13, so KS1 and the
+ * sixth form reach the writer's KS1 and KS5 bundles. Reception is left out: the writer has no
+ * EYFS bundle (an `eyfs` lesson is written as KS1) and `writerBrief` reads its year as 7.
+ */
+export const YEAR_GROUP_OPTIONS = YEAR_GROUPS.filter(
+  (year) => yearNumberOf(year) !== undefined,
+).map((year) => ({ value: year, label: year }));
 
 export function ChoiceField({
   label,
@@ -105,10 +120,7 @@ export function BriefStep({
         label="Year group"
         value={brief.yearGroup}
         onChange={(yearGroup) => onChange({ ...brief, yearGroup })}
-        options={[3, 4, 5, 6, 7, 8, 9, 10, 11].map((year) => ({
-          value: `Year ${year}`,
-          label: `Year ${year}`,
-        }))}
+        options={YEAR_GROUP_OPTIONS}
       />
       <div className="creation-disclosure" data-open={levelOpen}>
         <Button
