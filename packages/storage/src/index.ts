@@ -4,6 +4,7 @@ export {
   STORAGE_CHECK_TIMEOUT_MS,
   STORAGE_CHECK_WORKSPACE_ID,
   type StorageCheck,
+  type StorageCheckWarning,
 } from "./check-storage";
 export {
   type CreatedStorage,

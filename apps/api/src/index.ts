@@ -45,8 +45,14 @@ const storage = createStorage({
 // api serves lessons without it). A stale S3 secret shows here, not at a teacher's first upload.
 if (storage.kind === "s3") {
   void checkStorage(storage.adapter).then((out) => {
-    if (out.ok) logger.info({ storage: storage.kind, ms: out.ms }, "storage_check ok");
-    else {
+    if (out.ok) {
+      logger.info({ storage: storage.kind, ms: out.ms }, "storage_check ok");
+      if (out.warning)
+        logger.warn(
+          { storage: storage.kind, ...out.warning },
+          "storage_check: the probe could not be deleted",
+        );
+    } else {
       const { ok: _ok, ...failure } = out;
       logger.error({ storage: storage.kind, ...failure }, "storage_check failed");
     }

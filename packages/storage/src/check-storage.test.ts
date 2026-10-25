@@ -58,7 +58,7 @@ describe("checkStorage", () => {
     expect(message).not.toContain("X-Amz-Signature");
   });
 
-  test("a delete that fails is a failed check too", async () => {
+  test("a delete that fails still passes, with a warning (a key without DeleteObject)", async () => {
     const store = {
       put: async (key: string) => ({ key }),
       delete: async () => {
@@ -70,9 +70,8 @@ describe("checkStorage", () => {
       },
     } as unknown as StorageAdapter;
     expect(await checkStorage(store)).toMatchObject({
-      ok: false,
-      step: "delete",
-      code: "AccessDenied",
+      ok: true,
+      warning: { step: "delete", code: "AccessDenied" },
     });
   });
 

@@ -11,13 +11,21 @@ export const STORAGE_CHECK_PREFIX = `${STORAGE_CHECK_WORKSPACE_ID}/storage-check
 export const STORAGE_CHECK_TIMEOUT_MS = 10_000;
 const MESSAGE_MAX = 300;
 
+/** Why a check that passed still left its probe behind (a key without `DeleteObject`). */
+export interface StorageCheckWarning {
+  step: "delete";
+  code?: string;
+  status?: number;
+  message?: string;
+}
+
 export type StorageCheck =
-  | { ok: true; ms: number }
+  | { ok: true; ms: number; warning?: StorageCheckWarning }
   | {
       ok: false;
       ms: number;
-      /** The call that failed: a write proves the credentials sign, so it goes first. */
-      step: "put" | "delete";
+      /** The write failed: a write proves the credentials sign, so only it decides the check. */
+      step: "put";
       /** The S3 error code (`SignatureDoesNotMatch`, `AccessDenied`, `NoSuchBucket`) or `timeout`. */
       code?: string;
       status?: number;
@@ -75,16 +83,24 @@ export async function checkStorage(
   const timeoutMs = opts.timeoutMs ?? STORAGE_CHECK_TIMEOUT_MS;
   const key = `${STORAGE_CHECK_PREFIX}/${(opts.id ?? (() => crypto.randomUUID()))()}.txt`;
   const t0 = now();
-  let step: "put" | "delete" = "put";
   try {
     await withTimeout(
       adapter.put(key, new TextEncoder().encode("ok"), { contentType: "text/plain" }),
       timeoutMs,
     );
-    step = "delete";
+  } catch (error) {
+    return { ok: false, ms: Math.round(now() - t0), step: "put", ...describe(error) };
+  }
+  // The write passed, so pictures can be saved: a failed delete (a key without `DeleteObject`)
+  // is a warning, never a failed check.
+  try {
     await withTimeout(adapter.delete(key), timeoutMs);
     return { ok: true, ms: Math.round(now() - t0) };
   } catch (error) {
-    return { ok: false, ms: Math.round(now() - t0), step, ...describe(error) };
+    return {
+      ok: true,
+      ms: Math.round(now() - t0),
+      warning: { step: "delete", ...describe(error) },
+    };
   }
 }

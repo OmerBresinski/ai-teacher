@@ -1,4 +1,4 @@
-import type { StorageAdapter } from "@tj/domain";
+import { type StorageAdapter, safeError } from "@tj/domain";
 import { checkStorage, type StorageCheck, type StorageKind } from "@tj/storage";
 
 interface Logger {
@@ -49,9 +49,18 @@ export async function verifyStorage(
     const { ok: _ok, ...failure } = out;
     return { storage: storageKind, ...failure, imageGeneration: "disabled" };
   };
+  /** A pass that left its probe behind (no `DeleteObject`): pictures stay on, the warn says why. */
+  const warnLeftover = (out: Extract<StorageCheck, { ok: true }>) => {
+    if (out.warning)
+      logger.warn(
+        { storage: storageKind, ...out.warning },
+        "storage_check: the probe could not be deleted",
+      );
+  };
   const first = await check(storage);
   if (first.ok) {
     logger.info({ storage: storageKind, ms: first.ms }, "storage_check ok");
+    warnLeftover(first);
     return { gate, storageCheck: "ok" };
   }
   open = false;
@@ -66,17 +75,26 @@ export async function verifyStorage(
     const wait = delayMs(n);
     timer = setTimeout(async () => {
       timer = undefined;
-      const out = await check(storage);
-      if (opts.signal?.aborted) return;
-      if (out.ok) {
-        open = true;
-        logger.info(
-          { storage: storageKind, ms: out.ms, rechecks: n + 1 },
-          "storage_check ok (recovered)",
+      // Never lets the chain die with the gate closed: a throw is logged and re-checked later.
+      try {
+        const out = await check(storage);
+        if (opts.signal?.aborted) return;
+        if (out.ok) {
+          open = true;
+          logger.info(
+            { storage: storageKind, ms: out.ms, rechecks: n + 1 },
+            "storage_check ok (recovered)",
+          );
+          warnLeftover(out);
+          return;
+        }
+        logger.warn({ ...failed(out), rechecks: n + 1 }, "storage_check still failing");
+      } catch (error) {
+        logger.warn(
+          { storage: storageKind, err: safeError(error), rechecks: n + 1 },
+          "storage_check re-check threw",
         );
-        return;
       }
-      logger.warn({ ...failed(out), rechecks: n + 1 }, "storage_check still failing");
       schedule(n + 1);
     }, wait);
     timer.unref?.();

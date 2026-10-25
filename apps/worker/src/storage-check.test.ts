@@ -110,6 +110,44 @@ describe("verifyStorage (the boot storage check)", () => {
     stop.abort();
   });
 
+  test("a re-check that throws is logged and the chain goes on: the next pass reopens the gate", async () => {
+    const { lines, logger } = logs();
+    const answers: (StorageCheck | Error)[] = [failed, new Error("boom"), { ok: true, ms: 3 }];
+    const stop = new AbortController();
+    const out = await verifyStorage(storage, "s3", logger, {
+      check: async () => {
+        const next = answers.shift();
+        if (next instanceof Error) throw next;
+        return next ?? { ok: true, ms: 1 };
+      },
+      delayMs: () => 1,
+      signal: stop.signal,
+    });
+    expect(out.gate.open).toBe(false);
+    await until(() => out.gate.open);
+    expect(out.gate.open).toBe(true);
+    expect(lines.map((l) => l.msg)).toEqual([
+      "storage_check failed: picture generation is off until a re-check passes",
+      "storage_check re-check threw",
+      "storage_check ok (recovered)",
+    ]);
+    stop.abort();
+  });
+
+  test("a pass whose probe could not be deleted keeps pictures on and warns", async () => {
+    const { lines, logger } = logs();
+    const out = await verifyStorage(storage, "s3", logger, {
+      check: async () => ({ ok: true, ms: 5, warning: { step: "delete", code: "AccessDenied" } }),
+    });
+    expect(out).toMatchObject({ storageCheck: "ok" });
+    expect(out.gate.open).toBe(true);
+    expect(lines.map((l) => [l.level, l.msg])).toEqual([
+      ["info", "storage_check ok"],
+      ["warn", "storage_check: the probe could not be deleted"],
+    ]);
+    expect(lines[1]?.obj).toMatchObject({ step: "delete", code: "AccessDenied" });
+  });
+
   test("shutdown stops the re-checks; the gate stays closed", async () => {
     const { logger } = logs();
     const { check, stats } = scripted([failed]);
