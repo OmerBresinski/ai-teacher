@@ -17,6 +17,9 @@ import {
   type ImageGenerator,
   type ImageSize,
   imageFailReason,
+  type PictureFailure,
+  PictureStageError,
+  pictureFailureOf,
   pngSize,
   type RetryHint,
   requestsSent,
@@ -44,6 +47,7 @@ import {
   type LessonLook,
   lessonIllustrationPrompt,
 } from "./picture-director";
+import { failureProps } from "./picture-trace";
 
 /** Words that say which stage, size or age a panel is at, not what the subject is. */
 const STAGE =
@@ -358,6 +362,8 @@ export async function makePictureSet(
   /** Why each panel last failed: its next solo carries it (`withRetryLine`). */
   const reasons = new Map<number, RetryHint>();
   const failed = (k: number, hint: RetryHint) => reasons.set(k, hint);
+  /** Each panel's last thrown failure (stage, code, status): its outcome line carries them. */
+  const failures = new Map<number, PictureFailure>();
   /** Panels whose one safety retry (a solo with the safety line) has run: never a second. */
   const safetyRetried = new Set<number>();
   /**
@@ -403,7 +409,9 @@ export async function makePictureSet(
     boxes: Box[] | undefined,
     set: string,
   ): Promise<SetPicture> => {
-    const saved = await deps.save(panel);
+    const saved = await deps.save(panel).catch((e: unknown) => {
+      throw e instanceof Error && e.name === "AbortError" ? e : new PictureStageError("save", e);
+    });
     const dims = pngSize(panel);
     return {
       key: a.key,
@@ -462,12 +470,14 @@ export async function makePictureSet(
         // The safety retry runs once at most: refused after it, the panel stops.
         const again = !(reason === "refused-safety" && safetyRetried.has(k));
         failed(k, { reason });
+        failures.set(k, pictureFailureOf(e, "generate"));
         deps.log({
           ev: "set-solo-error",
           set: setKey,
           key: a.key,
           try: n + 1,
           reason,
+          ...failureProps(failures.get(k)),
           err: String(e).slice(0, 200),
         });
         return NO_SOLO_AFTER.has(reason) || !again ? undefined : "again";
@@ -644,10 +654,19 @@ export async function makePictureSet(
   };
   const tried = await nonFatal(attempt, (e) => {
     const reason = imageFailReason(e);
+    const failure = pictureFailureOf(e, "generate");
     asks.forEach((_, k) => {
       if (!reasons.has(k)) failed(k, { reason });
+      if (!failures.has(k)) failures.set(k, failure);
     });
-    deps.log({ ev: "set-error", set: setKey, mode, reason, err: String(e).slice(0, 200) });
+    deps.log({
+      ev: "set-error",
+      set: setKey,
+      mode,
+      reason,
+      ...failureProps(failure),
+      err: String(e).slice(0, 200),
+    });
     return undefined;
   }).then(undefined, stop);
   /**
@@ -667,6 +686,7 @@ export async function makePictureSet(
         attempts: tries[k] ?? 0,
         // A literal key (not a spread), so the event catalogue lists it (`docs/observability.md`).
         reason: why,
+        ...failureProps(out[k] ? undefined : failures.get(k)),
       });
     });
   if (tried === "none") {

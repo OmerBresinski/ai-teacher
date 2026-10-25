@@ -163,7 +163,7 @@ and `gen_unshown_strip`. Pictures are `gen_picture_outcome`, one per picture slo
 | `gen_on_flow_item_failed` | none |
 | `gen_orphan6_drop` | `moved`, `orphans`, `slide` |
 | `gen_overflow_shipped` | `level`* |
-| `gen_picture_outcome` | `attempts`, `director`*, `errorType`*, `framingClause`, `key`, `keyStage`*, `kind`*, `latencyMs`, `lessonSubject`*, `library`*, `outcome`*, `pictureKind`*, `promptVersion`*, `reason`*, `route`*, `set`, `slideIndex`, `sourceKind`*, `stage`*, `stock`*, `via`*; and from the trace: `retryReasons`*, `failedChecks`*, `judgeRefusals`, `pictureCostUsd`, `frameMeasured`, `backdrop`*, `frameCut`, `portraitCut`, `cutEdges`, `frameBleed`, `frameMs`, `cutsSeen` |
+| `gen_picture_outcome` | `attempts`, `director`*, `errorType`*, `framingClause`, `key`, `keyStage`*, `kind`*, `latencyMs`, `lessonSubject`*, `library`*, `outcome`*, `pictureKind`*, `promptVersion`*, `reason`*, `route`*, `set`, `slideIndex`, `sourceKind`*, `stage`*, `stock`*, `via`*; and from the trace: `retryReasons`*, `failedChecks`*, `judgeRefusals`, `pictureCostUsd`, `frameMeasured`, `backdrop`*, `frameCut`, `portraitCut`, `cutEdges`, `frameBleed`, `frameMs`, `cutsSeen`, and the last failure's `failStage`* (`generate`, `save`, `judge`, `stock`), `failStatus` (HTTP or S3 status) and `failCode`* (a generator reason or provider error code only; the S3 code and the sanitised message stay in the `picture` debug row's `tries[].failure` and `stockFailure`) |
 | `gen_pilot_fit` | `overs`, `path`, `slide`, `steps` |
 | `gen_pilot_members_over` | `id`, `slide`, `template`* |
 | `gen_point_guard` | `how`*, `removed`, `ships`, `slide` |
@@ -230,6 +230,7 @@ read with `tools/lesson-debug/run.ts`), never to PostHog.
 | `pictureKind` | `portrait`, `scene`, `object`, `drawing`: read by code from the director's words and named kind (the director has no such field; the heuristic's accuracy is unmeasured) |
 | `frameMeasured`, `backdrop` | the placed picture is a fresh generation whose frame was measured; `plain` backdrop or `full-bleed` (a scene, never measured) |
 | `frameCut` / `portraitCut` | the subject runs off the frame (#496's detector, **measure only**: nothing is redrawn). A portrait's cut is recorded as `portraitCut`, apart, because most are cropped at the chest on purpose |
+| `failStage`, `failStatus`, `failCode` | where the slot's last try failed (`save` is the store write, apart from the image model), its status, and its code when it is one of ours; also on `gen_set_error` and `gen_set_solo_error` |
 | `cutEdges`, `frameBleed`, `cutsSeen`, `frameMs` | edges cut (0–4), the summed edge runs, cut tries in the slot (refused ones too), and the measurement's time (about 70 ms median on a 1024² PNG) |
 | `promptVersion`, `framingClause` | the director prompt's version and whether it asks for "the subject whole inside the frame" (#497) |
 | `lessonSubject`, `keyStage` | the brief form's subject as a code (`art-and-design`; anything else `other`) and `eyfs`, `ks1`–`ks5` from the year group |

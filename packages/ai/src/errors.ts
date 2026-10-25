@@ -1,4 +1,6 @@
-import { safeError } from "@tj/domain";
+import { redactSecrets, safeError } from "@tj/domain";
+
+export { redactSecrets };
 
 export type AiErrorCode = "unconfigured" | "provider" | "invalid_model" | "moderated";
 
@@ -103,25 +105,6 @@ function isModeration(cause: unknown): boolean {
 }
 
 export const PROVIDER_MESSAGE_MAX = 300;
-
-/**
- * Secrets a provider may echo back (OpenAI quotes part of a wrong key: "Incorrect API key
- * provided: sk-abc***xyz"): API keys, bearer tokens, AWS access key ids, and any long opaque token.
- */
-const SECRET_PATTERNS: RegExp[] = [
-  /\b(?:sk|pk|rk)-[A-Za-z0-9_*.-]{2,}/g,
-  /\bBearer\s+[A-Za-z0-9_*.~+/=-]+/gi,
-  /\b(?:AKIA|ASIA)[A-Z0-9]{12,}/g,
-  /\b(?:api[_-]?key|x-api-key|authorization|token|secret)\s*[:=]\s*\S+/gi,
-  /[A-Za-z0-9_*+/=-]{32,}/g,
-];
-
-/** `text` with every key or token shape in `SECRET_PATTERNS` replaced by `[redacted]`. */
-export function redactSecrets(text: string): string {
-  let out = text;
-  for (const re of SECRET_PATTERNS) out = out.replace(re, "[redacted]");
-  return out;
-}
 
 /** A provider message safe for the debug record: one line, secrets redacted, capped. */
 export function sanitizeProviderMessage(message: string): string {

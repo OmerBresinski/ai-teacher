@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { PROVIDER_ERROR_CODES } from "@tj/ai";
 import * as gen from "@tj/generation";
 import { VERIFY_FIELDS, VERIFY_REASONS } from "@tj/generation";
+import { PICTURE_FAIL_STAGES } from "@tj/images";
 import * as obs from "@tj/observability";
 import { FACT_FIELDS, FACT_REASONS, type Observability } from "@tj/observability";
 import pino from "pino";
@@ -177,10 +178,9 @@ describe("worker observability (ADR 0041)", () => {
 });
 
 describe("provider failure detail", () => {
-  test("the PostHog providerErrorCode enum is exactly @tj/ai's PROVIDER_ERROR_CODES", () => {
-    expect([...(obs.ENUMS.providerErrorCode ?? [])].sort()).toEqual(
-      [...PROVIDER_ERROR_CODES].sort(),
-    );
+  test("the PostHog provider and picture failure enums are exactly the packages' own", () => {
+    expect([...obs.PROVIDER_ERROR_CODES].sort()).toEqual([...PROVIDER_ERROR_CODES].sort());
+    expect([...obs.PICTURE_FAIL_STAGES]).toEqual([...PICTURE_FAIL_STAGES]);
   });
 
   test("aiGenerationOf passes a failed call's status and code through", () => {

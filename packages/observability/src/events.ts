@@ -171,6 +171,27 @@ const DIRECTOR_ROUTES = [
 ] as const;
 
 /** The enum each string-valued key is checked against. */
+/** `@tj/ai` `PROVIDER_ERROR_CODES`: a failed model call's normalised provider error. */
+export const PROVIDER_ERROR_CODES = [
+  "invalid_api_key",
+  "unauthorized",
+  "permission_denied",
+  "insufficient_quota",
+  "rate_limited",
+  "context_length_exceeded",
+  "content_filter",
+  "invalid_request",
+  "not_found",
+  "timeout",
+  "unavailable",
+  "server_error",
+  "network",
+  "unknown",
+] as const;
+
+/** `@tj/images` `PICTURE_FAIL_STAGES`. */
+export const PICTURE_FAIL_STAGES = ["generate", "save", "judge", "stock"] as const;
+
 export const ENUMS: Record<string, ReadonlySet<string>> = {
   stage: STAGES,
   $ai_span_name: STAGES,
@@ -405,22 +426,11 @@ export const ENUMS: Record<string, ReadonlySet<string>> = {
     "moderated",
   ),
   /** `@tj/ai` `PROVIDER_ERROR_CODES` (kept in step by the worker's `observability.test.ts`). */
-  providerErrorCode: set(
-    "invalid_api_key",
-    "unauthorized",
-    "permission_denied",
-    "insufficient_quota",
-    "rate_limited",
-    "context_length_exceeded",
-    "content_filter",
-    "invalid_request",
-    "not_found",
-    "timeout",
-    "unavailable",
-    "server_error",
-    "network",
-    "unknown",
-  ),
+  providerErrorCode: set(...PROVIDER_ERROR_CODES),
+  /** `@tj/images` `PICTURE_FAIL_STAGES`: where a picture's try failed. */
+  failStage: set(...PICTURE_FAIL_STAGES),
+  /** A picture failure's code: one of ours (generator reason, provider error code) only. */
+  failCode: set(...PICTURE_FAIL_REASONS, ...PROVIDER_ERROR_CODES),
   service: set("worker"),
 };
 
@@ -488,7 +498,13 @@ const OWN_KEYS: Record<string, readonly string[]> = {
     "frameBleed",
     "frameMs",
     "cutsSeen",
+    "failStage",
+    "failStatus",
+    "failCode",
   ],
+  // `failureProps` in `@tj/generation` is spread into these lines.
+  gen_set_error: ["failStage", "failStatus", "failCode"],
+  gen_set_solo_error: ["failStage", "failStatus", "failCode"],
   /** The per-lesson roll-up of `gen_picture_outcome` (`captureLessonSummary`). */
   gen_lesson_pictures: [
     "lessonSubject",

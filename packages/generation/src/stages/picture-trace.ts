@@ -4,8 +4,9 @@
  * the lesson's subject and key stage, so prod runs can say how often pictures fail and why. Codes
  * only: the words they are read from stay in the debug record.
  */
+import { PROVIDER_ERROR_CODES } from "@tj/ai";
 import { SUBJECTS } from "@tj/domain/documents";
-import { FRAME_CUT_RUN } from "@tj/images";
+import { FRAME_CUT_RUN, type PictureFailure } from "@tj/images";
 import type { FrameMeasure, JudgeCheck, PictureTrace } from "./photo-bank";
 
 /**
@@ -103,6 +104,20 @@ export const PICTURE_FAIL_REASONS = [
   "generation-refused-or-failed",
 ] as const;
 
+const FAIL_CODES: ReadonlySet<string> = new Set([...PICTURE_FAIL_REASONS, ...PROVIDER_ERROR_CODES]);
+
+/**
+ * The last failure's stage, status and code, for an outcome event (ADR 0041): the code only when
+ * it is one of ours (a generator reason, a provider error code), never an S3 or free-text code.
+ */
+export function failureProps(failure: PictureFailure | undefined) {
+  return {
+    failStage: failure?.stage,
+    failStatus: failure?.status,
+    failCode: failure?.code && FAIL_CODES.has(failure.code) ? failure.code : undefined,
+  };
+}
+
 /** The frame and trace numbers of one slot's outcome event (all codes and numbers). */
 export function traceProps(
   trace: PictureTrace | undefined,
@@ -135,5 +150,6 @@ export function traceProps(
     frameBleed: frame ? Math.round(frame.bleed * 1000) / 1000 : undefined,
     frameMs: frame ? Math.round(frame.ms * 10) / 10 : undefined,
     cutsSeen: attempts.filter((a) => a.frame?.cut).length,
+    ...failureProps(attempts.findLast((a) => a.failure)?.failure ?? trace?.stockFailure),
   };
 }
