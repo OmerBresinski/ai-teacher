@@ -1226,6 +1226,62 @@ function leadAndPoints(
   );
 }
 
+/** The most words a sparse explain slide holds to be set as a statement (`explainStatement`). */
+export const STATEMENT_MAX_WORDS = 30;
+/** The statement's accent edge: its width and the gap to the words (the key card's edge, wider). */
+const STATEMENT_EDGE = { w: 6, gap: 22 } as const;
+/**
+ * A sparse explain slide (TEACH-247 part al: Romans Y4 s3 "began in AD 122", s8 one line and one
+ * bullet, each a small column on an empty slide): a lead and at most one plain point, together no
+ * more than `STATEMENT_MAX_WORDS` words, are the slide's statement. Ruling 252: sparse slides grow
+ * their content, not the gaps. The words go up to the type scale's heading step (as objective
+ * cards do), held by an accent edge down their left, the block centred on the band at the reading
+ * measure. The single point is a sentence under the lead, never a one-item list. Every word stays,
+ * and nothing is added: no label, no box. Returns false (nothing drawn) when the slide is not
+ * sparse or the block does not sit comfortably in the band, and the column takes over.
+ */
+function explainStatement(c: Ctx, lead: string | undefined, points: TemplatePoint[]): boolean {
+  const first = lead?.trim() ?? "";
+  if (!first || points.length > 1) return false;
+  const p = points[0];
+  if (p !== undefined && (pointLabel(p) || pointKind(p))) return false;
+  const second = p === undefined ? "" : pointText(p).trim();
+  const words = `${first} ${second}`.split(/\s+/).filter(Boolean).length;
+  if (words > STATEMENT_MAX_WORDS) return false;
+  const full = c.s;
+  const top = typeScale(c.t)?.heading ?? 0;
+  const x = G.margin + STATEMENT_EDGE.w + STATEMENT_EDGE.gap;
+  const w = 680 - STATEMENT_EDGE.w - STATEMENT_EDGE.gap;
+  // From the heading step down 2 pt at a time, never to body: the largest size that sits
+  // comfortably (a block over 3/4 of the band is a column, not a statement).
+  let fit: { size: number; gap: number; h1: number; total: number } | null = null;
+  for (let size = top; size > full.body && !fit; size -= 2) {
+    c.s = { ...full, lead: size, body: size };
+    const gap = Math.round(size * 0.5);
+    const h1 = measure(c, first, "lead", w);
+    const total = h1 + (second ? gap + measure(c, second, "body", w) : 0);
+    if (total <= G.band.h * 0.75 && wordsFit(c, `${first} ${second}`, "lead", w, size))
+      fit = { size, gap, h1, total };
+  }
+  if (!fit) {
+    c.s = full;
+    return false;
+  }
+  const { size, gap, h1, total } = fit;
+  c.s = { ...full, lead: size, body: size };
+  const y = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
+  box(c, { x: G.margin, y, w: STATEMENT_EDGE.w, h: total }, c.t.colors.accent, {
+    shape: "rect",
+    radius: 0,
+    name: "Statement edge",
+  });
+  text(c, first, "lead", { x, y, w }, { color: c.t.colors.ink, name: "Lead" });
+  if (second)
+    text(c, second, "body", { x, y: y + h1 + gap, w }, { color: c.t.colors.ink, name: "Point" });
+  c.s = full;
+  return true;
+}
+
 /** Numbered disc rows, full width or in a column; hairlines between when `ruled`. */
 function numbered(
   c: Ctx,
@@ -2196,6 +2252,7 @@ function layoutOnce(
     }
     case "explain": {
       heading(c, input.heading);
+      if (explainStatement(c, input.lead, raw)) break;
       const mark = c.els.length;
       const overMark = c.over.length;
       leadAndPoints(c, input.lead, raw, G.margin, 680, "explain");
