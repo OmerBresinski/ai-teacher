@@ -140,7 +140,7 @@ describe("base4g against base4f-p123", () => {
       const out = contractSystem(g[k] as string);
       expect(out).not.toContain(PINNED_LINES.labelledRoute);
       expect(out).toMatch(
-        /- labelled-diagram: a drawing of one object with up to \d+ parts labelled, [^\n]*; a structure hidden inside or too small to see, or a route through it, is a picture\.\n/,
+        /- labelled-diagram: a drawing of one object or piece of apparatus with up to \d+ parts labelled, [^\n]*; objects and apparatus only: [^\n]*; a structure hidden inside or too small to see, or a route through it, is a picture\.\n/,
       );
     }
   });

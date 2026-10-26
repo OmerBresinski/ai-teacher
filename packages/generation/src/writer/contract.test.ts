@@ -137,7 +137,7 @@ describe("drawer output goes through mendSpec, and nothing is cut to fit (lesson
   test("the drawer and the writer state a label's limit from one source", () => {
     expect(limitLines()).toContain(`each ${LIMIT_TEXT.label}.`);
     expect(writerSystem({ ...brief, keyStage: "ks3" })).toContain(
-      `each label ${LIMIT_TEXT.label}.`,
+      `each label ${LIMIT_TEXT.label}; objects and apparatus only`,
     );
     expect(limitLines()).toContain(LIMIT_TEXT.particles);
     expect(writerSystem({ ...brief, keyStage: "ks3" })).toContain(LIMIT_TEXT.particles);

@@ -410,7 +410,11 @@ export function noHeadingTitle<T>(spec: T, words: string): T {
   return rest as T;
 }
 
-/** The structured call the drawer makes (P1's call on gpt-6-luna, low; not strict). */
+/**
+ * The structured call the drawer makes (P1's call on gpt-6-luna, low). Strict only for a
+ * labelled drawing (TEACH-247 part ay): its `subject` tag decides whether it is drawn at all, so
+ * decoding must always give one. Other kinds stay non-strict, as measured.
+ */
 export type DrawerCall = (req: {
   model: "gpt-6-luna";
   effort: "low";
@@ -418,7 +422,7 @@ export type DrawerCall = (req: {
   user: string;
   schema: J;
   name: "diagram";
-  strict: false;
+  strict: boolean;
   timeoutMs: number;
 }) => Promise<{ out?: unknown }>;
 
@@ -473,7 +477,15 @@ async function drawerCall(
 ): Promise<{ spec?: unknown; fault: string }> {
   if (!(DIAGRAM_KINDS as readonly string[]).includes(ask.kind))
     return { fault: `no drawer for the kind ${ask.kind}` };
-  const schema = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  // A labelled drawing goes strict (part ay): a missing or invalid `subject` is banned as a living
+  // body, so an honest object drawing must never lose the tag. strictForm makes its optional
+  // fields nullable and closes every object; dropNulls below takes the nulls out before the parse.
+  // Probed 26 Oct: the strict form has no OpenAI schema faults, and 3 of 3 asks on gpt-6-luna low
+  // tagged, parsed and routed as the non-strict call did.
+  const strict = ask.kind === "labelled-diagram";
+  const wire = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  const { $schema: _s, ...open } = wire;
+  const schema = strict ? (strictForm(open) as J) : wire;
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -491,7 +503,7 @@ async function drawerCall(
               : user,
             schema,
             name: "diagram",
-            strict: false,
+            strict,
             timeoutMs: DRAWER_TIMEOUT_MS,
           })
         ).out,
