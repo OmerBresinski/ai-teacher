@@ -334,6 +334,11 @@ export type WriterRun = {
    * lostPic draws it with the drawer first, then asks the picture again (which then keeps the
    * picture route). Absent: no director drawing.
    */
+  /**
+   * Resolves once slide `index`'s own picture placements are over, without ending the round: the
+   * early lost-picture retry waits on it (the write stage's `whenSlideDone`).
+   */
+  slideDone?: (index: number) => Promise<void>;
   drawAs?: (index: number, key: string) => string | undefined;
   /** The failed photo ask may land if placed again (it ran out of time or its placement failed). */
   retryable?: (index: number, key: string) => boolean;
@@ -1494,117 +1499,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // A continuation moves the slides after it: "slide 7" in notes or on a slide follows them.
     return renumberSlideRefs(slides, at);
   };
-  if (run.beforeEditable) {
-    await run.beforeEditable();
-    await retryTitle();
-    // The settled pictures (or their absence) replace the open slots.
-    for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
-  }
-  editable = true;
-  await run.onEditable?.(deck());
-
-  // ── notes off the tail: one call on the deck as shown now, beside the repairs ──
-  // The notes need each slide's final words and placed visuals, not the repairs. So the one call
-  // starts here, and a slide whose words or visuals change afterwards gets its note written again
-  // once that slide settles (below). Nothing waits for the notes until the very end.
-  const placedLines = (i: number) =>
-    (asks.get(i) ?? []).flatMap((a) => {
-      const v = visualState(i)(a.key);
-      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
-      if (v?.status === "diagram" && a.type === "diagram")
-        return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
-      return [];
-    });
-  const asShown = (i: number) =>
-    renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i));
-  const notesCall = (only?: number) => {
-    const lines = Array.from({ length: n }, (_, i) => i)
-      .filter((i) => i >= 2)
-      .map(asShown)
-      .join("\n\n");
-    const call = lessonNotes({
-      slides: only ?? n,
-      first: only ?? 3,
-      system: P.notes,
-      user:
-        fillTemplate(P.notesUser, brief, {
-          objectives: plan.objectives,
-          context: user,
-          slidesAsShown: lines,
-        }) + (only ? `\n\n${notesOnlyLine([only])}` : ""),
-      schema: JSON.parse(P.notesSchema),
-      chat,
-      log,
-      onUsd: () => {},
-    });
-    // Awaited at the end; a fatal error (a budget stop) is rethrown there, never unhandled.
-    void Promise.allSettled([call]);
-    return call;
-  };
-  /** Each slide as the deck-wide notes call saw it. */
-  const seenByNotes = new Map(Array.from({ length: n }, (_, i) => [i, asShown(i)] as const));
-  const deckNotes = notesCall();
-  /** Notes written again for a slide that changed after the deck-wide call saw it. */
-  const notesRedone = new Map<number, Promise<Map<number, SlideNotes>>>();
-
-  // ── code checks ──
-  const baseCheck = () =>
-    Array.from({ length: n }, (_, i) =>
-      checkSlide({
-        specs: (asks.get(i) ?? []).flatMap((a) => {
-          const v = visualState(i)(a.key) as { status?: string; spec?: unknown };
-          return a.type === "diagram" && v?.status === "diagram" && v.spec ? [v.spec] : [];
-        }),
-        index: i,
-        slide: laid.get(i)?.slide,
-        over: laid.get(i)?.over ?? [],
-        ...(laid.get(i)?.diagram ? { diagram: laid.get(i)?.diagram } : {}),
-        questions: plan.slides[i] ? questionsOf(plan.slides[i] as S) : [],
-        answers: notes.get(i)?.answers,
-        notesChecked: notes.has(i),
-        words: plan.slides[i] ? wordsOf(plan.slides[i] as S) : "",
-      }),
-    );
-  /**
-   * The deck the parallel tail judges a slide against: every other slide as it was when the phase
-   * started, so one repair's verdict never depends on another repair still in flight.
-   */
-  let frozen: { slides: readonly unknown[]; own: number } | undefined;
-  const deckSlide = (i: number) =>
-    (frozen && i !== frozen.own ? frozen.slides[i] : plan.slides[i]) as S;
-  const duplicates = () =>
-    duplicateFaults(
-      Array.from({ length: n }, (_, i) => i)
-        .filter((i) => repairable(deckSlide(i), i))
-        .map((i) => {
-          const sl = deckSlide(i);
-          return { index: i, heading: String(sl.heading ?? ""), words: wordsOf(sl) };
-        }),
-    );
-  const check = () => {
-    const res = baseCheck();
-    // A slide that repeats another goes to repair to be made different or merged
-    // (duplicateLogOnly: it is logged once below and never repaired).
-    if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
-    for (let i = 0; i < n; i++)
-      res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
-    // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
-    for (const h of gasFaults(gasTexts()))
-      if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);
-    return res;
-  };
-  const gasTexts = () =>
-    Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
-  let checks = check();
-  log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
-  // Each slide's check in the debug record: the fault lines and the measured overflows (which
-  // element, by how much), failing or not.
-  if (run.services.debug)
-    for (const c of checks)
-      debug("check", { faults: c.faults, over: laid.get(c.slide - 1)?.over ?? [] }, c.slide - 1);
-  if (flags.duplicateLogOnly)
-    for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
-
   /** Slide i's continuation parts dropped: they belong to the version of it being replaced. */
   const dropContinued = (i: number) => {
     continued.delete(i);
@@ -1713,8 +1607,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     checks
       .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
       .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
-  let failing = failingNow();
-  const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
   /** How each slide's figure ended (diagram, picture, words-…), logged for the run. */
   const path = new Map<number, string>();
   const restore = (
@@ -1731,6 +1623,297 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     asks.set(i, oldAsks);
     relay(i);
   };
+  type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
+  /** A slide's failed photo asks that lostPic may fill (sets, fixed shapes and cards have their own paths). */
+  const lostAsks = (i: number) =>
+    (asks.get(i) ?? []).filter(
+      (a): a is PhotoAsk =>
+        a.type === "photo" &&
+        !a.set &&
+        !a.fixedShape &&
+        // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
+        // slide is never split or redrawn
+        !/^card\.\d+$/.test(a.key) &&
+        visualState(i)(a.key).status === "failed",
+    );
+  /**
+   * lostPic's attempt for one lost picture: swap in `next` (a library drawing or a split), place or
+   * draw its new visuals, and keep it only when they land; otherwise the slide is restored.
+   */
+  const attemptLost =
+    (i: number, s0: S, n0: ReturnType<typeof notes.get>, lost: PhotoAsk) =>
+    async (next: S, kind: "split" | "library"): Promise<boolean> => {
+      const oldAsks = asks.get(i) ?? [];
+      swapSlide(i, next);
+      const all = asks.get(i) ?? [];
+      const now = plan.slides[i] as S;
+      if (kind === "split")
+        await run.placeMore?.(
+          i,
+          all.filter((a) => a.type === "photo"),
+          { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
+        );
+      if (kind === "library" && run.drawDiagrams)
+        for (const a of all)
+          if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
+            const r = await drawWriterDiagram(diagramAsk(a, now), {
+              callDrawer: run.drawDiagrams.callDrawer,
+              drawerSystem: writerDrawerSystem,
+              fitActs: act,
+              theme: base.theme,
+              probe: layoutSlotProbe,
+              log: (e) => log({ ...e, slide: i + 1 }),
+            });
+            if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+          }
+      const got = all.every((a) => {
+        const st = visualState(i)(a.key).status;
+        return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
+      });
+      // splitOk (D48b, p123-2 y1 s6: 5 of 8 tiles landed and the slide lost every picture): a
+      // split is kept when 2 or more of its pictures and at least half land; the rest drop out.
+      // the same photo placed twice (one bank image for two tiles) counts, and ships, once
+      const srcs = new Set<string>();
+      const landed = all.filter((a) => {
+        const v = visualState(i)(a.key);
+        if (a.type !== "photo" || v.status !== "photo") return false;
+        const src = (v as { photo?: { src?: string } }).photo?.src ?? a.key;
+        if (srcs.has(src)) return false;
+        srcs.add(src);
+        return true;
+      });
+      const ok =
+        kind === "split"
+          ? all.length > 0 && splitLanded(landed.length, all.length)
+          : got && all.length > 0;
+      log({
+        ev: "lost-picture",
+        slide: i + 1,
+        try: kind,
+        ok,
+        ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
+      });
+      if (kind === "split")
+        debug(
+          "split",
+          {
+            how: "lost-picture",
+            ok,
+            before: s0,
+            after: now,
+            landed: landed.length,
+            asked: all.length,
+          },
+          i,
+        );
+      if (ok && landed.length < all.length) {
+        const shows = new Set(landed.map((a) => a.shows));
+        swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
+      }
+      if (ok) {
+        relay(i);
+        return true;
+      }
+      restore(i, s0, n0, oldAsks);
+      return false;
+    };
+  /** The library drawing the director chose for a lost picture, where it was the slide's one visual. */
+  const drawLost = async (i: number, lost: PhotoAsk, kind: string): Promise<boolean> => {
+    const s0 = plan.slides[i] as S;
+    const others = (asks.get(i) ?? [])
+      .filter((a) => a.key !== lost.key)
+      .map((a) => visualState(i)(a.key).status);
+    if (!heldPhotoFills(s0, others)) return false;
+    const how = await lostPictureFallback(
+      s0,
+      lost.key,
+      lost.shows,
+      attemptLost(i, s0, notes.get(i), lost),
+      { kind, labels: lost.mustSee },
+    );
+    if (how) path.set(i, `picture-${how}`);
+    return how !== undefined;
+  };
+  /**
+   * Greg, 10 Oct ("a visual should never be lost"): before any rewrite, every failed photo ask the
+   * picture path can still fill is tried once more. A drawing the director chose is drawn by the
+   * drawer (only where it was the slide's one visual); if it cannot be, or for a placement that ran
+   * out of time or failed, the ask is placed again, which keeps the picture route (stock, then
+   * generation). One `placeMore` round for the slide, each ask at most once.
+   */
+  const retryLost = async (i: number) => {
+    if (i < 2) return;
+    const again: PhotoAsk[] = [];
+    for (const lost of lostAsks(i)) {
+      const kind = run.drawAs?.(i, lost.key);
+      if (!kind && !run.retryable?.(i, lost.key)) continue;
+      if (kind && run.drawDiagrams && !path.has(i) && (await drawLost(i, lost, kind))) continue;
+      again.push(lost);
+    }
+    if (!again.length || !run.placeMore) return;
+    const now = plan.slides[i] as S;
+    await run.placeMore(i, again, {
+      heading: String(now.heading ?? ""),
+      text: wordsOf(now),
+      point: pointOf(now),
+    });
+    const landed = again.filter((a) => visualState(i)(a.key).status === "photo").length;
+    log({
+      ev: "lost-picture",
+      slide: i + 1,
+      try: "picture",
+      ok: landed > 0,
+      landed,
+      asked: again.length,
+    });
+    if (!landed) return;
+    relay(i);
+    if (!path.has(i) && !lostAsks(i).length) path.set(i, "picture-placed");
+  };
+  // ── early lost pictures (before editable) ──
+  // A slide whose own pictures are over and lost one gets its retry (the director's drawing,
+  // then the picture route) now, beside the other slides' pictures, instead of after every
+  // picture, the checks and the repairs (genlab Y1 plants, 26 Oct: slide 5's photo was lost 7 s
+  // before the stream ended and its retry started 39 s after it). The tail skips the retry for
+  // these slides. Only the slide's own slot changes; its words change only through the same
+  // swap the tail would make, and before editable, so no teacher edit is overwritten.
+  const earlyLost = new Map<number, Promise<void>>();
+  if (run.slideDone)
+    for (let i = 2; i < n; i++) {
+      if (!(asks.get(i) ?? []).some((a) => a.type === "photo")) continue;
+      const slideDone = run.slideDone;
+      // A non-fatal throw is logged and the slide keeps what it has (the tail's rule); a stop
+      // (cancel, budget) is rethrown at editable.
+      const job = nonFatal(
+        async () => {
+          await slideDone(i);
+          if (run.signal?.aborted || path.has(i) || !lostAsks(i).length) return;
+          log({ ev: "lost-early", slide: i + 1 });
+          await retryLost(i);
+        },
+        (e) => {
+          if (run.signal?.aborted) throw e;
+          log({ ev: "lost-early-failed", slide: i + 1, err: String(e).slice(0, 200) });
+        },
+      );
+      earlyLost.set(i, job);
+      void Promise.allSettled([job]);
+    }
+  if (run.beforeEditable) {
+    await run.beforeEditable();
+    await retryTitle();
+    // The settled pictures (or their absence) replace the open slots.
+    for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
+  }
+  // Rethrows a stop (cancel, budget) from an early retry, as the tail would.
+  await Promise.all(earlyLost.values());
+  editable = true;
+  await run.onEditable?.(deck());
+
+  // ── notes off the tail: one call on the deck as shown now, beside the repairs ──
+  // The notes need each slide's final words and placed visuals, not the repairs. So the one call
+  // starts here, and a slide whose words or visuals change afterwards gets its note written again
+  // once that slide settles (below). Nothing waits for the notes until the very end.
+  const placedLines = (i: number) =>
+    (asks.get(i) ?? []).flatMap((a) => {
+      const v = visualState(i)(a.key);
+      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
+      if (v?.status === "diagram" && a.type === "diagram")
+        return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
+      return [];
+    });
+  const asShown = (i: number) =>
+    renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i));
+  const notesCall = (only?: number) => {
+    const lines = Array.from({ length: n }, (_, i) => i)
+      .filter((i) => i >= 2)
+      .map(asShown)
+      .join("\n\n");
+    const call = lessonNotes({
+      slides: only ?? n,
+      first: only ?? 3,
+      system: P.notes,
+      user:
+        fillTemplate(P.notesUser, brief, {
+          objectives: plan.objectives,
+          context: user,
+          slidesAsShown: lines,
+        }) + (only ? `\n\n${notesOnlyLine([only])}` : ""),
+      schema: JSON.parse(P.notesSchema),
+      chat,
+      log,
+      onUsd: () => {},
+    });
+    // Awaited at the end; a fatal error (a budget stop) is rethrown there, never unhandled.
+    void Promise.allSettled([call]);
+    return call;
+  };
+  /** Each slide as the deck-wide notes call saw it. */
+  const seenByNotes = new Map(Array.from({ length: n }, (_, i) => [i, asShown(i)] as const));
+  const deckNotes = notesCall();
+  /** Notes written again for a slide that changed after the deck-wide call saw it. */
+  const notesRedone = new Map<number, Promise<Map<number, SlideNotes>>>();
+
+  // ── code checks ──
+  const baseCheck = () =>
+    Array.from({ length: n }, (_, i) =>
+      checkSlide({
+        specs: (asks.get(i) ?? []).flatMap((a) => {
+          const v = visualState(i)(a.key) as { status?: string; spec?: unknown };
+          return a.type === "diagram" && v?.status === "diagram" && v.spec ? [v.spec] : [];
+        }),
+        index: i,
+        slide: laid.get(i)?.slide,
+        over: laid.get(i)?.over ?? [],
+        ...(laid.get(i)?.diagram ? { diagram: laid.get(i)?.diagram } : {}),
+        questions: plan.slides[i] ? questionsOf(plan.slides[i] as S) : [],
+        answers: notes.get(i)?.answers,
+        notesChecked: notes.has(i),
+        words: plan.slides[i] ? wordsOf(plan.slides[i] as S) : "",
+      }),
+    );
+  /**
+   * The deck the parallel tail judges a slide against: every other slide as it was when the phase
+   * started, so one repair's verdict never depends on another repair still in flight.
+   */
+  let frozen: { slides: readonly unknown[]; own: number } | undefined;
+  const deckSlide = (i: number) =>
+    (frozen && i !== frozen.own ? frozen.slides[i] : plan.slides[i]) as S;
+  const duplicates = () =>
+    duplicateFaults(
+      Array.from({ length: n }, (_, i) => i)
+        .filter((i) => repairable(deckSlide(i), i))
+        .map((i) => {
+          const sl = deckSlide(i);
+          return { index: i, heading: String(sl.heading ?? ""), words: wordsOf(sl) };
+        }),
+    );
+  const check = () => {
+    const res = baseCheck();
+    // A slide that repeats another goes to repair to be made different or merged
+    // (duplicateLogOnly: it is logged once below and never repaired).
+    if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
+    for (let i = 0; i < n; i++)
+      res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
+    // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
+    for (const h of gasFaults(gasTexts()))
+      if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);
+    return res;
+  };
+  const gasTexts = () =>
+    Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
+  let checks = check();
+  log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  // Each slide's check in the debug record: the fault lines and the measured overflows (which
+  // element, by how much), failing or not.
+  if (run.services.debug)
+    for (const c of checks)
+      debug("check", { faults: c.faults, over: laid.get(c.slide - 1)?.over ?? [] }, c.slide - 1);
+  if (flags.duplicateLogOnly)
+    for (const [i, f] of duplicates()) log({ ev: "duplicate-seen", slide: i + 1, fault: f });
+
+  let failing = failingNow();
+  const kinds = (f: string[]) => new Set(f.map((x) => x.split(":")[0]));
   // fallbackOnlyOnFailure: a diagram that drew but did not fit beside the slide's words is a fit
   // problem, not a drawing failure. Before any reword or fallback the slide is laid out full width
   // (big-visual; its points are read in the notes), and kept when the diagram then fits.
@@ -2393,153 +2576,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     restore(i, s0, n0, oldAsks);
     log({ ev: "unshown-strip", slide: i + 1, removed, how: "left" });
   };
-  type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
-  /** A slide's failed photo asks that lostPic may fill (sets, fixed shapes and cards have their own paths). */
-  const lostAsks = (i: number) =>
-    (asks.get(i) ?? []).filter(
-      (a): a is PhotoAsk =>
-        a.type === "photo" &&
-        !a.set &&
-        !a.fixedShape &&
-        // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
-        // slide is never split or redrawn
-        !/^card\.\d+$/.test(a.key) &&
-        visualState(i)(a.key).status === "failed",
-    );
-  /**
-   * lostPic's attempt for one lost picture: swap in `next` (a library drawing or a split), place or
-   * draw its new visuals, and keep it only when they land; otherwise the slide is restored.
-   */
-  const attemptLost =
-    (i: number, s0: S, n0: ReturnType<typeof notes.get>, lost: PhotoAsk) =>
-    async (next: S, kind: "split" | "library"): Promise<boolean> => {
-      const oldAsks = asks.get(i) ?? [];
-      swapSlide(i, next);
-      const all = asks.get(i) ?? [];
-      const now = plan.slides[i] as S;
-      if (kind === "split")
-        await run.placeMore?.(
-          i,
-          all.filter((a) => a.type === "photo"),
-          { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
-        );
-      if (kind === "library" && run.drawDiagrams)
-        for (const a of all)
-          if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
-            const r = await drawWriterDiagram(diagramAsk(a, now), {
-              callDrawer: run.drawDiagrams.callDrawer,
-              drawerSystem: writerDrawerSystem,
-              fitActs: act,
-              theme: base.theme,
-              probe: layoutSlotProbe,
-              log: (e) => log({ ...e, slide: i + 1 }),
-            });
-            if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
-          }
-      const got = all.every((a) => {
-        const st = visualState(i)(a.key).status;
-        return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
-      });
-      // splitOk (D48b, p123-2 y1 s6: 5 of 8 tiles landed and the slide lost every picture): a
-      // split is kept when 2 or more of its pictures and at least half land; the rest drop out.
-      // the same photo placed twice (one bank image for two tiles) counts, and ships, once
-      const srcs = new Set<string>();
-      const landed = all.filter((a) => {
-        const v = visualState(i)(a.key);
-        if (a.type !== "photo" || v.status !== "photo") return false;
-        const src = (v as { photo?: { src?: string } }).photo?.src ?? a.key;
-        if (srcs.has(src)) return false;
-        srcs.add(src);
-        return true;
-      });
-      const ok =
-        kind === "split"
-          ? all.length > 0 && splitLanded(landed.length, all.length)
-          : got && all.length > 0;
-      log({
-        ev: "lost-picture",
-        slide: i + 1,
-        try: kind,
-        ok,
-        ...(kind === "split" ? { landed: landed.length, asked: all.length } : {}),
-      });
-      if (kind === "split")
-        debug(
-          "split",
-          {
-            how: "lost-picture",
-            ok,
-            before: s0,
-            after: now,
-            landed: landed.length,
-            asked: all.length,
-          },
-          i,
-        );
-      if (ok && landed.length < all.length) {
-        const shows = new Set(landed.map((a) => a.shows));
-        swapSlide(i, keepLanded(now, lost.key, (x) => shows.has(x)) as S);
-      }
-      if (ok) {
-        relay(i);
-        return true;
-      }
-      restore(i, s0, n0, oldAsks);
-      return false;
-    };
-  /** The library drawing the director chose for a lost picture, where it was the slide's one visual. */
-  const drawLost = async (i: number, lost: PhotoAsk, kind: string): Promise<boolean> => {
-    const s0 = plan.slides[i] as S;
-    const others = (asks.get(i) ?? [])
-      .filter((a) => a.key !== lost.key)
-      .map((a) => visualState(i)(a.key).status);
-    if (!heldPhotoFills(s0, others)) return false;
-    const how = await lostPictureFallback(
-      s0,
-      lost.key,
-      lost.shows,
-      attemptLost(i, s0, notes.get(i), lost),
-      { kind, labels: lost.mustSee },
-    );
-    if (how) path.set(i, `picture-${how}`);
-    return how !== undefined;
-  };
-  /**
-   * Greg, 10 Oct ("a visual should never be lost"): before any rewrite, every failed photo ask the
-   * picture path can still fill is tried once more. A drawing the director chose is drawn by the
-   * drawer (only where it was the slide's one visual); if it cannot be, or for a placement that ran
-   * out of time or failed, the ask is placed again, which keeps the picture route (stock, then
-   * generation). One `placeMore` round for the slide, each ask at most once.
-   */
-  const retryLost = async (i: number) => {
-    if (i < 2) return;
-    const again: PhotoAsk[] = [];
-    for (const lost of lostAsks(i)) {
-      const kind = run.drawAs?.(i, lost.key);
-      if (!kind && !run.retryable?.(i, lost.key)) continue;
-      if (kind && run.drawDiagrams && !path.has(i) && (await drawLost(i, lost, kind))) continue;
-      again.push(lost);
-    }
-    if (!again.length || !run.placeMore) return;
-    const now = plan.slides[i] as S;
-    await run.placeMore(i, again, {
-      heading: String(now.heading ?? ""),
-      text: wordsOf(now),
-      point: pointOf(now),
-    });
-    const landed = again.filter((a) => visualState(i)(a.key).status === "photo").length;
-    log({
-      ev: "lost-picture",
-      slide: i + 1,
-      try: "picture",
-      ok: landed > 0,
-      landed,
-      asked: again.length,
-    });
-    if (!landed) return;
-    relay(i);
-    if (!path.has(i) && !lostAsks(i).length) path.set(i, "picture-placed");
-  };
   const pictureLost = async (i: number) => {
     if (path.has(i) || i < 2) return;
     const lost = lostAsks(i)[0];
@@ -2670,7 +2706,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const settleSlide = async (i: number) => {
     await cardRetry(i);
     await fallback(i);
-    await retryLost(i);
+    if (!earlyLost.has(i)) await retryLost(i);
     const beforeLost = plan.slides[i] as S | undefined;
     const asksBeforeLost = asks.get(i) ?? [];
     await pictureLost(i);

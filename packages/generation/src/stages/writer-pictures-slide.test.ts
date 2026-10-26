@@ -81,3 +81,76 @@ describe("settleSlide: one slide's later picture round", () => {
     expect(pictures.vetoed(5, "picture")).toContain("ran out of time");
   });
 });
+
+describe("whenSlideDone and the early re-ask (the lost picture retried before editable)", () => {
+  const make = (direct: () => Promise<PictureDirection | undefined>) =>
+    createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct,
+    });
+
+  test("waits for one slide's placements without failing another slide's or ending the round", async () => {
+    let release: (d: PictureDirection) => void = () => {};
+    const slow = new Promise<PictureDirection>((r) => {
+      release = r;
+    });
+    let calls = 0;
+    const pictures = make(async () => (calls++ === 0 ? noPhoto : slow));
+    pictures.start(3, ask, slide);
+    pictures.start(4, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+    expect(pictures.state(4, "picture").status).toBe("pending");
+    // The round has not ended: a key never started is still pending, not failed.
+    expect(pictures.state(9, "never").status).toBe("pending");
+    release(noPhoto);
+    await pictures.whenSlideDone(4, 5_000);
+    expect(pictures.vetoed(4, "picture")).toContain("No real photograph");
+  });
+
+  test("a failed single ask is asked once more as soon as its own placement is over", async () => {
+    let calls = 0;
+    const pictures = make(async () => {
+      calls++;
+      return noPhoto;
+    });
+    pictures.start(3, ask, slide);
+    // Before its placement is over it is not asked again.
+    expect(pictures.canReask(3, "picture")).toBe(false);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(pictures.canReask(3, "picture")).toBe(true);
+    pictures.start(3, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(calls).toBe(2);
+    // Once per round: a third ask is refused until the round settles.
+    pictures.start(3, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(calls).toBe(2);
+  });
+
+  test("settle waits for a placement started while it waits (never stops it half way)", async () => {
+    let release: (d: PictureDirection) => void = () => {};
+    const slow = new Promise<PictureDirection>((r) => {
+      release = r;
+    });
+    let calls = 0;
+    const pictures = make(async () => (calls++ === 0 ? noPhoto : slow));
+    pictures.start(3, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    const settled = pictures.settle(5_000);
+    // The early re-ask starts after settle took its first list of placements.
+    pictures.start(3, ask, slide);
+    let done = false;
+    void settled.then(() => {
+      done = true;
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(done).toBe(false);
+    release(noPhoto);
+    await settled;
+    expect(pictures.vetoed(3, "picture")).toContain("No real photograph");
+  });
+});
