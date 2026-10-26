@@ -265,3 +265,68 @@ describe("a starting job (no slide states yet)", () => {
     expect([...writingSlideIds(merged)].sort()).toEqual(["w1", "w2a", "w2b"]);
   });
 });
+
+describe("a picture slot the job took out never survives the merge (picq, 26 Oct)", () => {
+  // The job re-laid slide w1 without its picture (the picture failed); the editor holds w1 too.
+  const jobDropped = (base: Lesson): Lesson => ({
+    ...base,
+    slides: base.slides.map((s) =>
+      s.id === "w1"
+        ? ({ ...s, elements: [{ ...textElement("w1-t", "Water evaporates."), w: 800 }] } as Slide)
+        : s,
+    ),
+  });
+  const ids = (l: Lesson) => l.slides.find((s) => s.id === "w1")?.elements.map((e) => e.id);
+
+  test("an editor copy re-fitted on open (positions only) takes the job's re-laid slide", () => {
+    const base = filling();
+    const mine: Lesson = {
+      ...base,
+      slides: base.slides.map((s) =>
+        s.id === "w1"
+          ? ({ ...s, elements: s.elements.map((e) => ({ ...e, h: (e.h ?? 10) + 7 })) } as Slide)
+          : s,
+      ),
+    };
+    const theirs = jobDropped(base);
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(merged.slides.find((s) => s.id === "w1")).toEqual(
+      theirs.slides.find((s) => s.id === "w1"),
+    );
+  });
+
+  test("a slide whose words the teacher changed keeps them and loses only the empty slot", () => {
+    const base = filling();
+    const mine: Lesson = {
+      ...base,
+      slides: base.slides.map((s) =>
+        s.id === "w1"
+          ? ({
+              ...s,
+              elements: [textElement("w1-t", "Puddles dry up."), s.elements[1]],
+            } as Slide)
+          : s,
+      ),
+    };
+    const merged = mergeJobLesson(base, mine, jobDropped(base));
+    expect(ids(merged)).toEqual(["w1-t"]);
+    expect(JSON.stringify(merged)).toContain("Puddles dry up.");
+  });
+
+  test("a slot the teacher filled themselves is kept", () => {
+    const base = filling();
+    const mine: Lesson = {
+      ...base,
+      slides: base.slides.map((s) =>
+        s.id === "w1"
+          ? ({
+              ...s,
+              elements: [s.elements[0], imageElement("w1-pic", { src: "/files/mine.png" })],
+            } as Slide)
+          : s,
+      ),
+    };
+    const merged = mergeJobLesson(base, mine, jobDropped(base));
+    expect(ids(merged)).toEqual(["w1-t", "w1-pic"]);
+  });
+});

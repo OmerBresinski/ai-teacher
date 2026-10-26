@@ -6,6 +6,8 @@ import {
   FOLLOW_PACE,
   type FollowTimer,
   isTeacherNavigation,
+  PLANNING_VIEW,
+  planningView,
   useFollowWriting,
 } from "./use-follow-writing";
 
@@ -49,7 +51,9 @@ function manualClock() {
   let at = 0;
   let seq = 0;
   const due = new Map<number, { at: number; fn: () => void }>();
+  const delays: number[] = [];
   const timer: FollowTimer = (fn, ms) => {
+    delays.push(ms);
     const id = seq++;
     due.set(id, { at: at + ms, fn });
     return () => due.delete(id);
@@ -67,7 +71,7 @@ function manualClock() {
     }
     at = end;
   };
-  return { now: () => at, timer, advance };
+  return { now: () => at, timer, advance, delays };
 }
 let clock = manualClock();
 const tick = (ms: number) => act(() => clock.advance(ms));
@@ -118,11 +122,70 @@ describe("the follow paces itself", () => {
     expect(r.result.current.active).toBe(id(4));
   });
 
-  test("five slides behind it goes straight to the slide being written", () => {
+  test("five slides behind it goes straight to the slide being written, once the open one is read", () => {
     const r = setup(3);
     r.rerender({ lead: 8, typed: "open" });
     tick(0);
+    // Greg 26 Oct: never less than ~800 ms after a slide visibly finishes, however far behind.
+    expect(r.result.current.active).toBe(id(3));
+    tick(FOLLOW_PACE.catchUpReadMs - 1);
+    expect(r.result.current.active).toBe(id(3));
+    tick(FOLLOW_PACE.catchUpMinMs);
     expect(r.result.current.active).toBe(id(8));
+  });
+
+  test("a slide is never left less than the read time after its words finish, however long it was open", () => {
+    // Greg 26 Oct: one slide was left 0.1 s after its last word (it had been open past the give-up).
+    const r = setup(3, null);
+    r.rerender({ lead: 3, typed: id(3) });
+    tick(10);
+    // Still typing (more words came): it no longer reports its words out. Open well past the old
+    // give-up (8 s) while the writer is still on it.
+    r.rerender({ lead: 3, typed: null });
+    tick(FOLLOW_PACE.maxOpenMs);
+    // The writer moves on; the stall cap (6 s) counts from here.
+    r.rerender({ lead: 4, typed: null });
+    tick(FOLLOW_PACE.stallMs - 100);
+    expect(r.result.current.active).toBe(id(3));
+    // Its last word is out: it stands the read time, then the follow moves on.
+    r.rerender({ lead: 4, typed: id(3) });
+    tick(FOLLOW_PACE.readMs - 1);
+    expect(r.result.current.active).toBe(id(3));
+    tick(1);
+    expect(r.result.current.active).toBe(id(4));
+  });
+
+  test("behind the writer, the dwell after a slide's last word is still at least 800 ms", () => {
+    const r = setup(3);
+    r.rerender({ lead: 7, typed: "open" });
+    tick(FOLLOW_PACE.catchUpMinMs);
+    expect(r.result.current.active).toBe(id(4));
+    expect(r.result.current.behind).toBe(3);
+    tick(FOLLOW_PACE.catchUpMinMs - 1);
+    expect(r.result.current.active).toBe(id(4));
+    expect(FOLLOW_PACE.catchUpReadMs).toBeGreaterThanOrEqual(800);
+  });
+
+  test("every wait the follow asks for is finite (no setTimeout(fn, Infinity) render loop)", () => {
+    const r = setup(3, null);
+    r.rerender({ lead: 3, typed: id(3) });
+    tick(10);
+    // Typing again after it reported its words out, while the writer is on the next slide.
+    r.rerender({ lead: 4, typed: null });
+    for (let i = 0; i < 20; i++) tick(100);
+    expect(clock.delays.length).toBeGreaterThan(0);
+    expect(clock.delays.every((d) => Number.isFinite(d) && d > 0)).toBe(true);
+  });
+
+  test("a slide that never reports its words typed again is left at the stall cap", () => {
+    const r = setup(3, null);
+    r.rerender({ lead: 3, typed: id(3) });
+    tick(10);
+    r.rerender({ lead: 4, typed: null });
+    tick(FOLLOW_PACE.stallMs - 1);
+    expect(r.result.current.active).toBe(id(3));
+    tick(1);
+    expect(r.result.current.active).toBe(id(4));
   });
 
   test("Follow writing with nothing to move to is spent, not kept for the next slide", () => {
@@ -221,5 +284,26 @@ describe("isTeacherNavigation", () => {
     strip.el.append(toggle);
     expect(on(toggle, down())).toBe(false);
     for (const z of [bar, dialog, strip]) z.el.remove();
+  });
+});
+
+describe("planningView (ruling 278, and the pending alternative)", () => {
+  const deck = [
+    { id: id(1), elements: [{ id: "t", name: "Text" }] },
+    { id: id(2), elements: [{ id: "o", name: "Text" }] },
+    { id: id(3), elements: [{ id: "p", name: "Planned" }] },
+    { id: id(4), elements: [{ id: "q", name: "Planned" }] },
+  ];
+  const writing = new Set([id(2), id(3), id(4)]);
+  test("ruling 278 is the default: the next planned slide's outline", () => {
+    expect(PLANNING_VIEW).toBe("outline");
+    expect(planningView(deck, writing, undefined)).toBe(id(3));
+  });
+  test("a slide typing out (title, objectives) holds first, in either view", () => {
+    expect(planningView(deck, writing, id(2))).toBe(id(2));
+    expect(planningView(deck, writing, id(2), "stay")).toBe(id(2));
+  });
+  test("the alternative stays on the last finished slide (the usual target)", () => {
+    expect(planningView(deck, writing, undefined, "stay")).toBeUndefined();
   });
 });

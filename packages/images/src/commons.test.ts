@@ -391,3 +391,65 @@ describe("COMMONS_LICENCES", () => {
     ]);
   });
 });
+
+describe("one job's Commons searches and thumbnails are sent once (picq, greatfire 26 Oct)", () => {
+  function counted() {
+    const urls: string[] = [];
+    const stub = (async (url: string) => {
+      urls.push(url);
+      if (url.includes("upload.wikimedia.org"))
+        return new Response(new Uint8Array([255, 216, 255]), {
+          headers: { "content-type": "image/jpeg" },
+        });
+      return new Response(JSON.stringify({ query: { pages: [page(1, "CC0"), page(2, "CC0")] } }));
+    }) as unknown as typeof fetch;
+    const client = createCommonsClient({ fetch: stub, sleep: async () => undefined });
+    return { client, urls };
+  }
+  test("the same query asked by two slides searches once; both get the photos", async () => {
+    const { client, urls } = counted();
+    const [a, b] = await Promise.all([
+      client.search({ query: "great fire london" }),
+      client.search({ query: "great fire london" }),
+    ]);
+    const c = await client.search({ query: "great fire london" });
+    expect(urls.filter((u) => u.includes("api.php")).length).toBe(1);
+    expect(a.length).toBe(2);
+    expect(b.map((p) => p.id)).toEqual(a.map((p) => p.id));
+    expect(c.map((p) => p.id)).toEqual(a.map((p) => p.id));
+  });
+  test("a thumbnail another search already loaded is not downloaded again", async () => {
+    const { client, urls } = counted();
+    await client.search({ query: "Great Fire 1666" });
+    await client.search({ query: "fire 1666" });
+    const thumbs = urls.filter((u) => u.includes("upload.wikimedia.org"));
+    expect(thumbs.length).toBe(2);
+    expect(new Set(thumbs).size).toBe(2);
+  });
+  test("one caller's stop fails only that caller; the shared search still answers the other", async () => {
+    const { client, urls } = counted();
+    const stop = new AbortController();
+    const first = client.search({ query: "pudding lane", signal: stop.signal });
+    const second = client.search({ query: "pudding lane" });
+    stop.abort();
+    await expect(first).rejects.toBeDefined();
+    expect((await second).length).toBe(2);
+    expect(urls.filter((u) => u.includes("api.php")).length).toBe(1);
+  });
+  test("a failed search is not kept: the next ask sends it again", async () => {
+    let calls = 0;
+    const stub = (async (url: string) => {
+      if (url.includes("upload.wikimedia.org"))
+        return new Response(new Uint8Array([255, 216, 255]), {
+          headers: { "content-type": "image/jpeg" },
+        });
+      calls += 1;
+      if (calls === 1) return new Response("no", { status: 500 });
+      return new Response(JSON.stringify({ query: { pages: [page(1, "CC0")] } }));
+    }) as unknown as typeof fetch;
+    const client = createCommonsClient({ fetch: stub, sleep: async () => undefined });
+    await expect(client.search({ query: "bakery" })).rejects.toBeInstanceOf(CommonsError);
+    expect((await client.search({ query: "bakery" })).length).toBe(1);
+    expect(calls).toBe(2);
+  });
+});
