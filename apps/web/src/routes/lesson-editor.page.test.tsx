@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Lesson } from "@tj/domain/documents";
@@ -34,6 +34,20 @@ mock.module("@/components/lesson-creation/generation-companion", () => ({
       End the story
     </button>
   ),
+}));
+
+// The re-lay code a re-theme needs: the real loader unless a test swaps in its own (a held or a
+// failed import). The editor's own imports of it see the same module.
+const {
+  layoutKit: realLayoutKit,
+  loadLayoutKit: realLoadLayoutKit,
+  setLayoutKit: realSetLayoutKit,
+} = await import("@tj/editor/layout-kit");
+let loadKitOverride: (() => ReturnType<typeof realLoadLayoutKit>) | null = null;
+mock.module("@tj/editor/layout-kit", () => ({
+  layoutKit: realLayoutKit,
+  setLayoutKit: realSetLayoutKit,
+  loadLayoutKit: () => (loadKitOverride ? loadKitOverride() : realLoadLayoutKit()),
 }));
 
 const { LessonEditorPage, generatingLock, holdsFitStamp, onlyFitStampDiffers } = await import(
@@ -364,6 +378,92 @@ describe("LessonEditorPage", () => {
       { timeout: 6000 },
     );
   });
+  describe("a picked theme while the re-lay code is still loading (TEACH-202 part v)", () => {
+    /** The filling lesson with slide 1 done, and Exam Hall picked before the editor opened. */
+    function seedPicked() {
+      seedStarting();
+      const stored = fakeApi.get("demo-water-cycle");
+      if (!stored) throw new Error("fake api has no demo lesson");
+      const body = stored.body as Lesson;
+      stored.body = {
+        ...body,
+        generation: {
+          ...(body.generation ?? ({} as never)),
+          slideStates: Object.fromEntries(
+            body.slides.map((slide, i) => [slide.id, i === 0 ? "done" : "writing"]),
+          ),
+        },
+      } as Lesson;
+      window.sessionStorage.setItem("tj:generating-theme:demo-water-cycle", "exam-hall");
+    }
+
+    afterEach(async () => {
+      loadKitOverride = null;
+      await realLoadLayoutKit();
+    });
+
+    it("holds the editor's shell until the code is here, and the editor's first paint is in the picked theme", async () => {
+      seedPicked();
+      const kit = await realLoadLayoutKit();
+      realSetLayoutKit(null);
+      let release: () => void = () => undefined;
+      const held = new Promise<typeof kit>((resolve) => {
+        release = () => {
+          realSetLayoutKit(kit);
+          resolve(kit);
+        };
+      });
+      loadKitOverride = () => held;
+      // The theme button's name the first time the editor is in the DOM.
+      let firstTheme: string | null | undefined;
+      const observer = new MutationObserver(() => {
+        if (firstTheme !== undefined) return;
+        if (!screen.queryByRole("button", { name: "Rename lesson" })) return;
+        firstTheme =
+          screen.queryByRole("button", { name: /^Theme/ })?.getAttribute("aria-label") ??
+          screen.queryByRole("button", { name: /^Theme/ })?.textContent ??
+          null;
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      renderPage();
+      expect(
+        await screen.findByText((_, el) => el?.getAttribute("data-shell-pending") === "editor"),
+      ).toBeTruthy();
+      await wait(50);
+      expect(screen.queryByRole("button", { name: "Rename lesson" })).toBeNull();
+      act(() => release());
+      expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+      observer.disconnect();
+      expect(firstTheme).toMatch(/Exam Hall/i);
+      expect(screen.getByRole("button", { name: /Theme.*Exam Hall/i })).toBeVisible();
+      expect(document.querySelector('[data-shell-pending="editor"]')).toBeNull();
+    });
+
+    it("a failed import clears the shell, logs the failure and still applies the theme", async () => {
+      seedPicked();
+      await realLoadLayoutKit();
+      const kit = realLayoutKit();
+      realSetLayoutKit(null);
+      loadKitOverride = () => Promise.reject(new Error("chunk failed"));
+      const warn = spyOn(console, "warn").mockImplementation(() => undefined);
+      try {
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+        expect(document.querySelector('[data-shell-pending="editor"]')).toBeNull();
+        const logged = warn.mock.calls.find(
+          (call) => (call[1] as { ev?: string } | undefined)?.ev === "layout-kit-load-failed",
+        );
+        expect(logged?.[1]).toMatchObject({ lessonId: "demo-water-cycle" });
+        await waitFor(() =>
+          expect(screen.getByRole("button", { name: /Theme.*Exam Hall/i })).toBeVisible(),
+        );
+      } finally {
+        warn.mockRestore();
+        realSetLayoutKit(kit);
+      }
+    });
+  });
+
   it("polish 1: when the editor takes over, focus lands once on the hidden line naming the lesson", async () => {
     seedStarting();
     renderPage();

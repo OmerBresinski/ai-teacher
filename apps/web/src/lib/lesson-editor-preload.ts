@@ -19,7 +19,7 @@ export const GeneratingLesson = lazyPreload(() =>
 
 /**
  * Everything the lesson editor needs to draw a lesson being made: its route chunk, the companion,
- * the generating view and the characters' motion. Fire and forget; a failed load retries on use.
+ * the generating view, the characters' motion and the re-lay code. Fire and forget; a failed load retries on use.
  */
 export function preloadLessonEditor(): void {
   const component = lessonEditorRoute.options.component as { preload?: () => Promise<void> };
@@ -27,4 +27,13 @@ export function preloadLessonEditor(): void {
   void GenerationCompanion.preload().catch(() => undefined);
   void GeneratingLesson.preload().catch(() => undefined);
   preloadCreationMotion();
+  preloadLayoutKit();
+}
+
+/**
+ * The slides' re-lay code a re-theme needs (`@tj/slides/relayout`). Loaded ahead so a theme picked
+ * before the editor opened goes on in the editor's first paint, with no wait on mount.
+ */
+export function preloadLayoutKit(): void {
+  void import("@tj/editor/layout-kit").then((m) => m.loadLayoutKit()).catch(() => undefined);
 }
