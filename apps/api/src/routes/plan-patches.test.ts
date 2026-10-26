@@ -238,6 +238,30 @@ describe("confirmLesson (/generate)", () => {
     expect(lesson.plan?.revision).toBe(2);
   });
 
+  test("TEACH-110 part ao: defaulted minutes follow a tier changed on confirm; typed and old ones stay", () => {
+    const base = planned();
+    const at = (brief: Partial<NonNullable<Lesson["brief"]>>) => {
+      const before = {
+        ...base,
+        brief: {
+          topic: "The water cycle",
+          slideTier: "standard" as const,
+          durationMin: 60,
+          ...brief,
+        },
+      };
+      return confirmLesson(
+        before,
+        { expectedRevision: 1, objectives: sameObjectives(before), slideTier: "detailed" },
+        { jobId, now },
+      ).lesson.brief;
+    };
+    // The fixture is KS2: 60 at Standard, 80 at Detailed.
+    expect(at({ durationDefaulted: true })?.durationMin).toBe(80);
+    expect(at({})?.durationMin).toBe(60);
+    expect(at({ durationMin: 50 })?.durationMin).toBe(50);
+  });
+
   test("ruling 164: the tier an older exact count already stands for keeps the count, no re-plan", () => {
     const before = planned();
     const { lesson, replan } = confirmLesson(

@@ -49,6 +49,17 @@ describe("defaultDurationMin", () => {
   ] as const)("%p → %d", (band, minutes) => {
     expect(defaultDurationMin(band)).toBe(minutes);
   });
+  test("scales with the length tier (TEACH-110 part ao)", () => {
+    expect(
+      ["quick", "standard", "detailed"].map((t) => defaultDurationMin("ks1", t as never)),
+    ).toEqual([30, 45, 60]);
+    expect(
+      ["quick", "standard", "detailed"].map((t) => defaultDurationMin("ks3", t as never)),
+    ).toEqual([40, 60, 80]);
+    expect(
+      ["quick", "standard", "detailed"].map((t) => defaultDurationMin("eyfs", t as never)),
+    ).toEqual([20, 30, 40]);
+  });
 });
 
 describe("CreateLessonSchema", () => {
