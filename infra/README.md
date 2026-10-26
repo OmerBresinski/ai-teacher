@@ -14,7 +14,7 @@ EU-West), [0016](../docs/adr/0016-prd-deviations.md) (EU not UK residency).
 > (`5c408f9c-b1f2-4820-8a0b-a888391dfa02`), `api` (`ef433c66-c762-4c21-890e-c69856a09a39`, public
 > domain **`https://api.bresinski.org`**, Railway host `api-production-903f.up.railway.app`) and `worker`
 > (`5d7a3bc8-a02d-44b8-83ca-ea11c20a1676`, no domain). GitHub source is connected for api + worker
-> on `master`, PR environments are on and **verified with PR #30** (see "PR environments").
+> on `master`. PR environments were verified with PR #30 and are **off since 2026-10-26** (see "PR environments").
 > Production is wired end-to-end to the Vercel web app (CORS preflight → 204, magic link → `302`
 > back to `https://app.bresinski.org` with the session cookie → `/me` 200; pre-deploy
 > `db:migrate: DATABASE_URL up to date`). Since TEACH-142 (2026-09-07) object storage is the
@@ -117,8 +117,9 @@ the rest of the application keeps `X-Frame-Options: DENY`.
 
 ### Pairing a Vercel preview with a Railway PR environment (verified with PR #30, 2026-09-04)
 
-> Vercel previews are currently **disabled** (see the Git row above); this section describes how the
-> pairing works when they are turned back on.
+> Vercel previews are currently **disabled** (see the Git row above) and Railway PR environments are
+> **off** (see "PR environments"); this section describes how the pairing works if both are turned
+> back on.
 
 1. Railway PR env `ai-teacher-pr-<n>` deploys the api at `https://api-ai-teacher-pr-<n>.up.railway.app`
    (matches `RAILWAY_PR_API_URL_TEMPLATE`; PR #30 → `https://api-ai-teacher-pr-30.up.railway.app`,
@@ -639,7 +640,8 @@ for the `postgres` image service + its volume and the `files` bucket. Facts that
   environments are copies of production created by Railway; IaC has no `environments.pr`-style
   overrides (the `ctx.environment` switch only changes what a manual `apply` against that
   environment would render). `WEB_ORIGIN_PATTERNS` therefore keeps living on production (inherited
-  by PR envs) and `projectUpdate { prDeploys: true }` stays the one GraphQL call in `provision.sh`.
+  by PR envs) and `projectUpdate { prDeploys }` stays the one GraphQL call in `provision.sh` (it
+  sets `false` since 2026-10-26).
 - **Tooling.** `railway` (npm, root devDependency) provides `railway/iac` and its types; the CLI
   (5.49+) evaluates the file with **Node ≥ 22.6** (`--experimental-strip-types`; Node 18/20 fail
   with `bad option`). The file imports `../infra/env.contract.ts` (extension required for Node;
@@ -759,15 +761,15 @@ and a Google `POST /auth/sign-in/social` → 200 (404 means the api has no Googl
 export PATH="$HOME/.bun/bin:$PATH"           # railway >= 5.49, logged in
 ./infra/railway/provision.sh                 # idempotent: project, services, volume, IaC settings
                                              # (railway config apply), vars, domain, GitHub source,
-                                             # PR environments (variables: infra/env.contract.ts)
+                                             # PR environments off (variables: infra/env.contract.ts)
 ./infra/railway/provision.sh --deploy        # ...plus a first `railway up` of api and worker
 ```
 
 The script uses the CLI for everything it can — service settings, region, the GitHub source and
 the postgres image/volume come from `.railway/railway.ts` via `railway config apply --yes` (step 3,
 see "Config-as-code"; the Railway GitHub App must be installed on the repo first, otherwise apply
-fails there) — and one GraphQL mutation for what it cannot: `projectUpdate { prDeploys: true }`
-(PR environments). The script requires `node >= 22.6` on `PATH` and refuses to run otherwise. Re-running is safe; it never prints secrets. It was executed end-to-end on
+fails there) — and one GraphQL mutation for what it cannot: `projectUpdate { prDeploys: false }`
+(PR environments off). The script requires `node >= 22.6` on `PATH` and refuses to run otherwise. Re-running is safe; it never prints secrets. It was executed end-to-end on
 2026-09-04 (all steps passed, including the GitHub source connect — the Railway GitHub App was
 already installed); the IaC step replaced the former `serviceInstanceUpdate` shim on the same day
 (TEACH-38) and was verified with `plan` → apply → `plan` = no changes against production. A fresh
@@ -798,8 +800,15 @@ provisioning run with the IaC step has not been exercised end-to-end.
 
 ## PR environments
 
-`projectUpdate(prDeploys: true)` (dashboard: *Settings → Environments → Enable PR environments*).
-Each PR against `master` gets an environment named **`ai-teacher-pr-<number>`** — Railway uses the
+**Off since 2026-10-26** (ADR 0010 amendment, TEACH-38 part b): `provision.sh` sets
+`projectUpdate(prDeploys: false)` (dashboard: *Settings → Environments → Enable PR environments*).
+Nothing used them — landing smoke-tests a local stack, CI's e2e runs its own server, Vercel previews
+are skipped and reviews use local screenshots — while each one forked production (api, worker,
+postgres) and ran always-on (20 on 2026-10-26, 13 of them for merged or closed PRs). Turning them
+back on is a deliberate decision: amend ADR 0010 and flip `prDeploys` in `provision.sh`. The rest of
+this section describes how they behaved when on.
+
+When on, each PR against `master` gets an environment named **`ai-teacher-pr-<number>`** — Railway uses the
 *GitHub repository* name, not the project name — that copies `production`'s services and variables,
 builds the PR commit for `api` and `worker`, and gets a fresh `postgres` (empty volume → migrations
 create the schema via the pre-deploy step). Reference variables resolve inside the PR environment,
@@ -847,7 +856,8 @@ Done:
 - [x] **Railway GitHub App** on `OmerBresinski/ai-teacher` — already installed; the api/worker
       `source: github(...)` declared in `.railway/railway.ts` applies cleanly and pushes to `master`
       auto-deploy.
-- [x] *Settings → Environments → Enable PR environments* — on (`prDeploys: true`), verified with PR #30.
+- [x] *Settings → Environments → Enable PR environments* — **off** (`prDeploys: false`) since 2026-10-26
+      (ADR 0010 amendment); was on and verified with PR #30.
 - [x] **Railway Bucket** `files` (`ams`) + the `S3_*` variables on api + worker — done from the
       CLI on 2026-09-07 (TEACH-142, ADR 0026). The Vercel Blob store from TEACH-37 was deleted.
 
@@ -864,5 +874,5 @@ Open:
 - [ ] Optional: `railway ssh keys` for `railway ssh` / `railway connect`.
 
 Everything else — project, region, image + volume, services, service settings
-(`.railway/railway.ts`), variables, public domain, GitHub source, PR environments — is done by
+(`.railway/railway.ts`), variables, public domain, GitHub source, PR environments (off) — is done by
 `provision.sh` via CLI, `railway config apply` and one GraphQL call.

@@ -12,7 +12,7 @@
 #
 # Service settings (builder, watch patterns, commands, health check, region, ...) and the postgres
 # image + volume are declared in .railway/railway.ts and pushed with `railway config apply` (step 3).
-# Everything else is CLI, plus one GraphQL mutation (`projectUpdate { prDeploys }`, step 6). The
+# Everything else is CLI, plus one GraphQL mutation (`projectUpdate { prDeploys: false }`, step 6). The
 # things that still need the dashboard are listed at the end of the run and in infra/README.md
 # ("Dashboard-only steps").
 set -euo pipefail
@@ -143,10 +143,12 @@ fi
 API_DOMAIN=$(railway domain list --service api --json | jq -r '.domains[0].domain // .domains[0].name // empty')
 echo "api domain: https://${API_DOMAIN:-<pending>}"
 
-# --- 6. PR environments (project setting; GraphQL -- not exposed by the CLI nor by IaC) -----------
-log "PR environments: enable"
+# --- 6. PR environments OFF (project setting; GraphQL -- not exposed by the CLI nor by IaC) -------
+# Off since 2026-10-26 (ADR 0010 amendment, TEACH-38 part b): nothing used them and each one forked
+# production (api, worker, postgres) always-on. Re-enabling is a deliberate decision, not a default.
+log "PR environments: disable"
 gql 'mutation($id:String!,$i:ProjectUpdateInput!){projectUpdate(id:$id,input:$i){id prDeploys}}' \
-  "$(jq -n --arg id "$PROJECT_ID" '{id:$id,i:{prDeploys:true}}')" | jq -c '.data // .errors'
+  "$(jq -n --arg id "$PROJECT_ID" '{id:$id,i:{prDeploys:false}}')" | jq -c '.data // .errors'
 
 # --- 7. Optional first deploy from this checkout ------------------------------------------------
 if [[ "${1:-}" == "--deploy" ]]; then
