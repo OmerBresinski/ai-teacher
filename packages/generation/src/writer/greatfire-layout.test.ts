@@ -4,7 +4,7 @@ import { reflowSlide } from "@tj/slides/reflow";
 import { getTheme, THEMES } from "@tj/slides/themes";
 import { checkSlide } from "./checks";
 import FIXTURE from "./fixtures/greatfire-y2-slides.json" with { type: "json" };
-import { materialise } from "./materialise";
+import { materialise, visualsOf } from "./materialise";
 
 /*
  * TEACH-247 part ae: the Great Fire of London lesson (Year 2, Crayon Box, genlab run
@@ -93,4 +93,26 @@ describe("the myth slide survives a reflow that grows its words (TEACH-247 part 
         }
         expect(layoutFaults(MYTH, { elements: r.elements }, [])).toEqual([]);
       });
+});
+
+describe("a proof picture the myth gives way is never asked for (TEACH-247 part ae)", () => {
+  const vctx = (theme: string, stage: string) =>
+    ({
+      brief: brief(theme, stage),
+      theme: getTheme(theme, stage),
+      stage,
+      plan: { flow: [], slides: SLIDES },
+    }) as never;
+  test("the Great Fire fact needs the room: no proof ask, no picture element", () => {
+    const keys = visualsOf(SLIDES[MYTH] as S, MYTH + 2, vctx("crayon", "ks1")).map((a) => a.key);
+    expect(keys).toEqual([]);
+    const els = lay(MYTH, "crayon", "ks1").slide.elements;
+    expect(els.some((e) => e.type === "image")).toBe(false);
+  });
+  test("a short fact keeps its proof picture, asked for and laid in its own slot", () => {
+    const s = SLIDES[MYTH] as S;
+    const short = { ...s, myth: { ...(s.myth as S), fact: "Buckets, not engines." } };
+    const asks = visualsOf(short, MYTH + 2, vctx("crayon", "ks1"));
+    expect(asks.map((a) => a.key)).toEqual(["proof"]);
+  });
 });

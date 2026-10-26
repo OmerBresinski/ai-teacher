@@ -167,23 +167,38 @@ export function isHairline(el: SlideElement): boolean {
  * the label off its card. A hairline is not one of these — a rule is part of the
  * vertical flow and travels with the blocks it separates.
  */
+/**
+ * An opaque fill: set, not `none`/`transparent`, no alpha under 0.95 (`#rrggbbaa`, `rgba()`, `hsla()`),
+ * and the element's own `opacity` unset or at least 0.95. A tint lets what is under it show.
+ */
+function isOpaque(el: SlideElement): boolean {
+  const { fill, opacity } = el as { fill?: string; opacity?: number };
+  if (!fill || fill === "none" || fill === "transparent") return false;
+  if (opacity !== undefined && opacity < 0.95) return false;
+  const hex = /^#([0-9a-f]{8})$/i.exec(fill.trim());
+  if (hex) return Number.parseInt((hex[1] as string).slice(6), 16) / 255 >= 0.95;
+  const fn = /^(?:rgba|hsla)\(([^)]*)\)$/i.exec(fill.trim());
+  if (fn) {
+    const parts = (fn[1] as string).split(/[\s,/]+/).filter(Boolean);
+    const a = parts.length >= 4 ? (parts[3] as string) : "1";
+    const v = a.endsWith("%") ? Number.parseFloat(a) / 100 : Number.parseFloat(a);
+    return !(v < 0.95);
+  }
+  return true;
+}
+
+/** A closed, opaque filled path bigger than a rule: a theme's cut-corner or torn panel. */
 function isFilledPanel(el: SlideElement): boolean {
-  const p = el as { closed?: boolean; fill?: string };
   return (
     el.type === "path" &&
-    !!p.closed &&
-    !!p.fill &&
-    p.fill !== "none" &&
-    p.fill !== "transparent" &&
+    !!(el as { closed?: boolean }).closed &&
+    isOpaque(el) &&
     el.w > 2 &&
     el.h > 2
   );
 }
 
 export function isLayerBelow(el: SlideElement): boolean {
-  // A closed, filled path is a panel (Geometric's cut-corner field, Scrapbook's torn one): text laid
-  // on it stays on it (TEACH-247 part ae).
-  if (isFilledPanel(el)) return true;
   if (el.type !== "shape" && el.type !== "image" && el.type !== "icon") return false;
   return !isHairline(el);
 }
@@ -201,8 +216,7 @@ export function shownSpans(elements: readonly SlideElement[]): [number, number][
   const isCover = (c: SlideElement) => {
     if (isFilledPanel(c)) return true;
     if (c.type !== "shape" || isHairline(c)) return false;
-    const fill = (c as { fill?: string }).fill;
-    return !!fill && fill !== "none" && fill !== "transparent";
+    return isOpaque(c);
   };
   return elements.map((el, i) => {
     const from = stepOf(el);
@@ -210,7 +224,9 @@ export function shownSpans(elements: readonly SlideElement[]): [number, number][
     // claim panel and verdict ground meet at the seam under the vote card).
     const covers = elements.slice(i + 1).filter((c) => stepOf(c) > from && isCover(c));
     if (!covers.length || el.w <= 0 || el.h <= 0) return [from, Number.POSITIVE_INFINITY];
-    // Sample points across the box: covered once every point is under a cover shown by then.
+    // Sample a 9 x 5 grid of points across the box (its edges included): covered once every point
+    // is under a cover shown by then. A gap in the covers narrower than one sample step (an eighth
+    // of the box's width, a quarter of its height) can be missed.
     const pts: [number, number][] = [];
     for (let a = 0; a <= 8; a++)
       for (let b = 0; b <= 4; b++) pts.push([el.x + (el.w * a) / 8, el.y + (el.h * b) / 4]);
@@ -507,6 +523,13 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
       if (!shownTogether(spans, slot.index, other.index)) continue;
       if (isHairline(slot.el) && isHairline(other.el)) continue;
       if (!overlapsX(rect(slot), rect(other))) continue;
+      // A box wholly on a theme's path panel (Geometric's cut-corner field, Scrapbook's torn one)
+      // was laid there; a path that only crosses it (a diagram's polygon) still separates them.
+      if (
+        (isFilledPanel(other.el) && contains(rect0(other), rect0(slot))) ||
+        (isFilledPanel(slot.el) && contains(rect0(slot), rect0(other)))
+      )
+        continue;
       // Anything involving a card, an image or an icon was stacked on purpose.
       const layered = isLayerBelow(other.el) || isLayerBelow(slot.el);
       if (layered && (contains(rect0(other), rect0(slot)) || contains(rect0(slot), rect0(other))))
