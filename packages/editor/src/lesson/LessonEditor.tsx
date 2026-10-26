@@ -70,7 +70,7 @@ import {
   resolveActiveSlide,
   useEditorSessionState,
 } from "./use-editor-session";
-import { useFollowWriting } from "./use-follow-writing";
+import { type FollowPace, useFollowWriting } from "./use-follow-writing";
 import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
 
@@ -156,6 +156,13 @@ export type LessonEditorProps = {
    * generated). Read once at mount; an id not in the deck opens the first slide as usual.
    */
   initialSlideId?: Id;
+  /**
+   * The job's writer has finished every slide's words (TEACH-202 part o); its slides stay the
+   * job's until the lesson is editable, while it adds pictures and checks the lesson.
+   */
+  writingFinished?: boolean;
+  /** How the follow paces itself through the slides being written (tests pass a faster one). */
+  followPace?: FollowPace;
   /** The app's Worksheet control (list and maker), the one Worksheet entry in ⋯ (ruling 186). */
   worksheetsSlot?: ReactNode;
   /**
@@ -228,6 +235,8 @@ export function LessonEditor({
   drafts,
   editorRef,
   initialSlideId,
+  followPace,
+  writingFinished = false,
   worksheetsSlot,
   sidePane,
   onAbandon,
@@ -325,6 +334,9 @@ export function LessonEditor({
   const revealing = useRevealCurrent(reveal);
   // The slide being written now: the streaming slide, while the job still owns it.
   const writingNowId = lead !== undefined && writingSlideIds?.has(lead) ? lead : undefined;
+  // The writer has finished every content slide; the job still adds pictures and checks the lesson
+  // (often a minute or more), and only the objectives slide waits for the job's end.
+  const writerDone = !!writingSlideIds && writingFinished;
   // Greg 20 Oct (62 C): the companion waits in the margin only until the first slide has words,
   // then leaves for good (latched: a later gap between drafts never brings it back).
   const [companionGone, setCompanionGone] = useState(false);
@@ -341,15 +353,24 @@ export function LessonEditor({
             reservedFactIds,
             writingSlideIds,
             writingNowId,
+            writingFinished: writerDone,
             drafts,
             reveal,
           }
         : writingSlideIds
-          ? { ...NO_PROPOSALS, writingSlideIds, writingNowId, drafts, reveal }
+          ? {
+              ...NO_PROPOSALS,
+              writingSlideIds,
+              writingNowId,
+              writingFinished: writerDone,
+              drafts,
+              reveal,
+            }
           : NO_PROPOSALS,
     [
       writingSlideIds,
       writingNowId,
+      writerDone,
       drafts,
       reveal,
       proposalsEnabled,
@@ -579,6 +600,8 @@ export function LessonEditor({
   );
 
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
+  /** The open slide, once every word it has so far is on screen (`LiveSlide`), for the follow. */
+  const [typedId, setTypedId] = useState<Id | undefined>(undefined);
   const slide = lesson ? resolveActiveSlide(lesson.slides, session.state.activeSlideId) : undefined;
   const follow = useFollowWriting({
     lead,
@@ -589,6 +612,8 @@ export function LessonEditor({
     setActiveSlide: session.actions.setActiveSlide,
     startFollowing: initialSlideId === undefined,
     canvasFocused,
+    typedId,
+    ...(followPace ? { pace: followPace } : {}),
   });
 
   // UX audit J1: the slide the teacher watched being written turns editable at the hand-over, and
@@ -767,15 +792,29 @@ export function LessonEditor({
                                           data-writing-status
                                           className="sr-only"
                                         >
-                                          {slide && writingSlideIds.has(slide.id)
-                                            ? writingText(lesson.slides, slide.id, writingNowId)
-                                            : ""}
+                                          {writerDone
+                                            ? FINISHING_TEXT
+                                            : slide && writingSlideIds.has(slide.id)
+                                              ? writingText(
+                                                  lesson.slides,
+                                                  slide.id,
+                                                  writingNowId,
+                                                  writerDone,
+                                                )
+                                              : ""}
                                         </span>
                                       ) : null}
                                       {slide && writingSlideIds?.has(slide.id) ? (
                                         <WritingOverlay
-                                          text={writingText(lesson.slides, slide.id, writingNowId)}
+                                          text={writingText(
+                                            lesson.slides,
+                                            slide.id,
+                                            writingNowId,
+                                            writerDone,
+                                          )}
                                         />
+                                      ) : writerDone ? (
+                                        <WritingOverlay text={FINISHING_TEXT} passive />
                                       ) : null}
                                       {companion && !companionGone ? (
                                         <div
@@ -801,6 +840,7 @@ export function LessonEditor({
                                           slide={slide}
                                           writing={!!slide && !!writingSlideIds?.has(slide.id)}
                                           reveal={reveal}
+                                          onTyped={setTypedId}
                                           render={(shown, live) => (
                                             <Canvas
                                               readOnly={
@@ -923,7 +963,13 @@ function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
  * UX audit J4: what the writer is doing now, so a slide waiting its turn (or the objectives, held
  * until the end) never reads as stuck on itself.
  */
-function writingText(slides: readonly { id: Id }[], slideId: Id, writingNowId: Id | undefined) {
+function writingText(
+  slides: readonly { id: Id }[],
+  slideId: Id,
+  writingNowId: Id | undefined,
+  writerDone = false,
+) {
+  if (writerDone) return FINISHING_TEXT;
   const now = writingNowId === undefined ? -1 : slides.findIndex((s) => s.id === writingNowId);
   return writingNowId === slideId
     ? "Writing this slide…"
@@ -932,19 +978,37 @@ function writingText(slides: readonly { id: Id }[], slideId: Id, writingNowId: I
       : "Planning the slides…";
 }
 
-/** The visible pill; the editor's one `data-writing-status` live region announces it. */
-function WritingOverlay({ text }: { text: string }) {
+/**
+ * After the writer's last slide (TEACH-202 part o): the job still adds pictures, checks the lesson
+ * and writes notes, so the editor says that rather than "Writing this slide…" on the last slide.
+ */
+const FINISHING_TEXT = "Adding pictures and final checks…";
+
+/**
+ * The visible pill; the editor's one `data-writing-status` live region announces it. `passive`
+ * (a done slide, the job finishing): the pill only, nothing under it blocked.
+ */
+function WritingOverlay({ text, passive = false }: { text: string; passive?: boolean }) {
   return (
     <div
-      data-slide-writing-overlay
-      className="absolute inset-0 z-20 flex items-start justify-center pt-4"
-      onPointerDownCapture={(e) => e.stopPropagation()}
+      data-slide-writing-overlay={passive ? "finishing" : ""}
+      // Passive, the slide is editable and its toolbar sits at the top: the pill waits at the
+      // bottom, centred between the "Follow writing" chip (left) and the zoom (right).
+      className={
+        passive
+          ? "pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center"
+          : "absolute inset-0 z-20 flex items-start justify-center pt-4"
+      }
+      onPointerDownCapture={passive ? undefined : (e) => e.stopPropagation()}
     >
       <span
         aria-hidden
         className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm"
       >
-        <span aria-hidden className="block size-2 animate-pulse rounded-full bg-primary" />
+        <span
+          aria-hidden
+          className="block size-2 rounded-full bg-primary motion-safe:animate-pulse"
+        />
         {text}
       </span>
     </div>

@@ -78,6 +78,11 @@ describe("K3: an incomplete writer output (row 5)", () => {
     }
     expect(countMiss(8, 10)).toBeUndefined();
   });
+  test("a Detailed deck 1 or 2 under its minimum ships, no retry (TEACH-110 part ao)", () => {
+    const text = (deck: number) => JSON.stringify({ slides: Array.from({ length: deck - 2 }) });
+    for (const deck of [11, 12, 13, 16])
+      expect(writerIncomplete({ text: text(deck), minSlides: 13 })).toBeUndefined();
+  });
 });
 
 describe("seeded hinge shuffle (row 6)", () => {

@@ -7,6 +7,10 @@ import { teacherBusy } from "./follow-mark";
 import { LessonEditor, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
+import { FOLLOW_PACE } from "./use-follow-writing";
+
+/** The follow without its reading pauses (its pacing has its own tests in follow-writing). */
+const INSTANT = { ...FOLLOW_PACE, readMs: 0, minMs: 0, catchUpReadMs: 0, catchUpMinMs: 0 };
 
 /*
  * Live writing P1 (TEACH-202 part e): while the lesson fills, the open slide follows the slide
@@ -30,6 +34,7 @@ function setup(lesson: Lesson, initial: Partial<LessonEditorProps> = {}) {
           onBack={() => {}}
           onPresent={() => {}}
           writingSlideIds={writing}
+          followPace={INSTANT}
           {...initial}
         />
       </TooltipProvider>

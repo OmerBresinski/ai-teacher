@@ -44,8 +44,25 @@ describe("revealSlide", () => {
     expect(JSON.stringify(r.slide)).not.toContain("four");
     expect(r.at).toBe("e1");
     expect(revealSlide(s, 8).at).toBeUndefined();
-    // Boxes show before their words: an empty box keeps its place.
-    expect(revealSlide(s, 0).slide.elements.length).toBe(2);
+    // A box shows with its first word, never empty before it (TEACH-202 part o).
+    expect(revealSlide(s, 0).slide.elements.length).toBe(0);
+    expect(revealSlide(s, 1).slide.elements.map((e) => e.id)).toEqual(["e0"]);
+    expect(revealSlide(s, 6).slide.elements.length).toBe(2);
+  });
+
+  test("a card shows with the words after it; a picture slot shows from the start", () => {
+    const s = slideOf("s4", "Roots hold the plant", "Stems carry water");
+    const card = { id: "card", type: "shape", shape: "rounded", x: 0, y: 200, w: 400, h: 80 };
+    const pic = { id: "pic", type: "image", src: "x", x: 500, y: 0, w: 300, h: 300 };
+    const laid = {
+      ...s,
+      elements: [s.elements[0], card, s.elements[1], pic],
+    } as unknown as typeof s;
+    const ids = (n: number) => revealSlide(laid, n).slide.elements.map((e) => e.id);
+    expect(ids(2)).toEqual(["e0", "pic"]);
+    // The card waits for the first word of the text after it, then shows with it.
+    expect(ids(4)).toEqual(["e0", "pic"]);
+    expect(ids(5)).toEqual(["e0", "card", "e1", "pic"]);
   });
 });
 

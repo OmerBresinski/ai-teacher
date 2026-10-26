@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { BRIEF_DURATION_MAX, BRIEF_DURATION_MIN, BriefSchema, DEFAULT_SLIDE_TIER } from "./brief";
+import {
+  BRIEF_DURATION_MAX,
+  BRIEF_DURATION_MIN,
+  BriefSchema,
+  DEFAULT_SLIDE_TIER,
+  type SlideTier,
+} from "./brief";
 import { guarded } from "./identifier-guard";
 import { type AgeBand, AgeBandSchema, type Lesson, parseLesson } from "./lesson";
 import { FactIdSchema } from "./lesson-facts";
@@ -27,7 +33,7 @@ const SourceIdsSchema = z.array(z.uuid()).max(3);
  * message (F01 item 1).
  */
 export const CreateLessonSchema = z.strictObject({
-  brief: BriefSchema.omit({ durationMin: true }).extend({
+  brief: BriefSchema.omit({ durationMin: true, durationDefaulted: true }).extend({
     durationMin: DurationMinSchema.optional(),
   }),
   subject: SubjectSchema.optional(),
@@ -167,17 +173,15 @@ export function yearNumberOf(yearGroup: string | undefined): number | undefined 
 
 /**
  * The lesson length a key stage usually gets, so generation can start with nothing but a topic
- * (F01 item 2). Unknown → an hour.
+ * (F01 item 2). Unknown → an hour. The writer reads it as the lesson's time budget, so it scales
+ * with the length tier (ruling 164): Standard is the key stage's own length, Quick two thirds of
+ * it and Detailed four thirds, to the nearest 5 minutes (TEACH-110 part ao: a KS1 Detailed lesson
+ * budgeted at 45 minutes was planned at the tier's minimum).
  */
-export function defaultDurationMin(ageBand: AgeBand | undefined): number {
-  switch (ageBand) {
-    case "eyfs":
-      return 30;
-    case "ks1":
-      return 45;
-    default:
-      return 60;
-  }
+export function defaultDurationMin(ageBand: AgeBand | undefined, tier?: SlideTier): number {
+  const base = ageBand === "eyfs" ? 30 : ageBand === "ks1" ? 45 : 60;
+  const scale = tier === "quick" ? 2 / 3 : tier === "detailed" ? 4 / 3 : 1;
+  return Math.round((base * scale) / 5) * 5;
 }
 
 /**
@@ -188,7 +192,15 @@ export function defaultDurationMin(ageBand: AgeBand | undefined): number {
  */
 export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date): Lesson {
   const ageBand = input.ageBand ?? deriveAgeBand(input.yearGroup);
-  const durationMin = input.brief.durationMin ?? defaultDurationMin(ageBand);
+  const defaulted = input.brief.durationMin === undefined;
+  const durationMin =
+    input.brief.durationMin ??
+    defaultDurationMin(
+      ageBand,
+      input.brief.slideCount === undefined
+        ? (input.brief.slideTier ?? DEFAULT_SLIDE_TIER)
+        : undefined,
+    );
   const at = now.toISOString();
   return parseLesson({
     version: 1,
@@ -208,6 +220,7 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     brief: {
       ...input.brief,
       durationMin,
+      ...(defaulted ? { durationDefaulted: true } : {}),
       ...(input.brief.slideCount === undefined
         ? { slideTier: input.brief.slideTier ?? DEFAULT_SLIDE_TIER }
         : {}),

@@ -908,6 +908,8 @@ const NavigatorRow = memo(function NavigatorRow({
   onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
   onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void;
 }) {
+  // The writer has finished; the job adds pictures and checks before the slide is editable.
+  const finishing = useProposals().writingFinished ?? false;
   // A slide being written shows its newest draft, as the canvas does (UX audit J6); a planned one
   // its outline, and a new lesson's first two slides type out in step with the canvas.
   const pictured = useWritingPicture(slide);
@@ -1013,7 +1015,7 @@ const NavigatorRow = memo(function NavigatorRow({
                   aria-hidden
                   className="block size-1.5 rounded-full bg-primary motion-safe:animate-pulse"
                 />
-                Writing…
+                {finishing ? "Finishing…" : "Writing…"}
               </span>
             ) : null}
           </span>

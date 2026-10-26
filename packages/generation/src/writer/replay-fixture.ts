@@ -155,6 +155,7 @@ export async function replayRun(
       WriterRun,
       | "onAsks"
       | "onSlide"
+      | "onWritten"
       | "onEditable"
       | "onReopen"
       | "roleStamp"

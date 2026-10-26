@@ -212,7 +212,9 @@ bare names are the pipeline's model check, TEACH-137) — so the brief screen an
 the same input with the same message. `lessonFromBrief()` applies the defaults the screen shows:
 `ageBand` from the year group (`deriveAgeBand`: Reception → `eyfs`, Year 1–2 → `ks1`, 3–6 → `ks2`,
 7–9 → `ks3`, 10–11 → `ks4`, 12–13 → `post16`), `durationMin` from the age band
-(`defaultDurationMin`: 30 / 45 / 60), `title` = the topic cut to 80 characters, `themeId` =
+(`defaultDurationMin`: 30 / 45 / 60 for Reception / KS1 / older at the Standard tier; Quick is
+two thirds and Detailed four thirds, to the nearest 5 minutes; a defaulted value is marked
+`durationDefaulted` and follows a tier changed on confirm, a typed one never moves), `title` = the topic cut to 80 characters, `themeId` =
 `DEFAULT_THEME_ID`, `language` = `en-GB`, `slides: []`. The handler then mints the job id, inserts
 the row with `generating_job_id = jobId` **first** (so a fast worker always finds a lock to clear),
 enqueues `lesson.plan { lessonId, revision: 1, stopAfter: "planned" }` under that id — removing the

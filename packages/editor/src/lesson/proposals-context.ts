@@ -75,6 +75,8 @@ export type ProposalsApi = {
    * thumbnail says "Writing…" (UX audit J5). Finished and waiting slides stay quiet.
    */
   writingNowId?: Id;
+  /** The writer has finished every slide's words; the job adds pictures and checks (part o). */
+  writingFinished?: boolean;
   /** The generating job's slide drafts (live writing, ADR 0039): the strip's thumbnails show them. */
   drafts?: DraftStore;
   /** A new lesson's title and objectives typing out (first-slides-reveal.ts): thumbnails follow it. */
