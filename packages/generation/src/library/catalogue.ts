@@ -52,6 +52,11 @@ export const BASE_KIND: Record<string, string> = {
   life_cycle: "cycle",
   water_cycle: "cycle",
 };
+/**
+ * Models whose failure goes to a picture, never the drawer (TEACH-251 part ac): the drawer cannot
+ * draw a real map (romans verify5 s4: two schema faults), and a Commons map of the place can.
+ */
+export const PICTURE_FALLBACK = new Set(["hist_map"]);
 /** The drawer kind for a model with no base kind: a labelled drawing of the intent. */
 export const FALLBACK_KIND = "labelled-diagram";
 
