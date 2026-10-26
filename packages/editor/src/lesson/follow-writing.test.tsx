@@ -7,6 +7,10 @@ import { teacherBusy } from "./follow-mark";
 import { LessonEditor, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
+import { FOLLOW_PACE } from "./use-follow-writing";
+
+/** The follow without its reading pauses (its pacing has its own tests in follow-writing). */
+const INSTANT = { ...FOLLOW_PACE, readMs: 0, minMs: 0, catchUpReadMs: 0, catchUpMinMs: 0 };
 
 /*
  * Live writing P1 (TEACH-202 part e): while the lesson fills, the open slide follows the slide
@@ -30,6 +34,7 @@ function setup(lesson: Lesson, initial: Partial<LessonEditorProps> = {}) {
           onBack={() => {}}
           onPresent={() => {}}
           writingSlideIds={writing}
+          followPace={INSTANT}
           {...initial}
         />
       </TooltipProvider>
@@ -233,5 +238,81 @@ describe("the editor follows the slide being written", () => {
     write(2);
     expect(open(1)).toBe("true");
     expect(chip()).not.toBeNull();
+  });
+});
+
+/** `n` more slides with words, after the seeded three. */
+const more = (lesson: ReturnType<typeof seededLesson>, n: number) => {
+  for (let k = 4; k < 4 + n; k++)
+    lesson.slides.push({
+      ...fourth(lesson),
+      id: `s${k}`,
+      elements: (lesson.slides[0]?.elements ?? []).map((e) => ({ ...e, id: `s${k}-${e.id}` })),
+    } as (typeof lesson.slides)[number]);
+  return lesson;
+};
+const sleep = (ms: number) => act(() => new Promise<void>((r) => setTimeout(r, ms)));
+
+describe("the follow paces itself (TEACH-202 part o)", () => {
+  const pace = { ...FOLLOW_PACE, readMs: 120, minMs: 250, catchUpReadMs: 40, catchUpMinMs: 80 };
+
+  test("a slide stays open its readable time before the next, one slide at a time", async () => {
+    const lesson = more(worded(seededLesson()), 3);
+    const { write } = setup(lesson, { followPace: pace });
+    write(2);
+    await sleep(300);
+    expect(open(3)).toBe("true");
+    // The writer moves on to slide 5: the view goes to slide 4 first, and not at once.
+    write(4);
+    await sleep(100);
+    expect(open(3)).toBe("true");
+    await sleep(250);
+    expect(open(4)).toBe("true");
+    await sleep(300);
+    expect(open(5)).toBe("true");
+  });
+
+  test("a slide whose words are still typing out is not left, however far the writer is", async () => {
+    const lesson = more(worded(seededLesson()), 2);
+    const drafts = createDraftStore();
+    const { write, ids } = setup(lesson, { drafts, followPace: { ...pace, readMs: 0, minMs: 0 } });
+    write(2);
+    const text = Array.from({ length: 60 }, (_, i) => `w${i}`).join(" ");
+    const s3 = ids[2] as Id;
+    const slide = {
+      id: s3,
+      kind: "content",
+      elements: [
+        {
+          id: `d-${s3}`,
+          type: "text",
+          x: 64,
+          y: 46,
+          w: 832,
+          h: 300,
+          doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+        },
+      ],
+    } as unknown as Slide;
+    act(() => drafts.set([{ index: 2, slideId: s3, slide }]));
+    expect(open(3)).toBe("true");
+    // The writer is on slide 4 while slide 3's 60 words are still typing out: slide 3 stays.
+    write(3);
+    await sleep(150);
+    expect(open(3)).toBe("true");
+    // Typed out (the done slide's words rush to the end), the view moves on.
+    await sleep(1500);
+    expect(open(4)).toBe("true");
+  });
+
+  test("five slides behind, or on Follow writing, it goes straight to the slide being written", async () => {
+    const lesson = more(worded(seededLesson()), 5);
+    const { write } = setup(lesson, { followPace: pace });
+    write(2);
+    await sleep(300);
+    expect(open(3)).toBe("true");
+    write(7);
+    await sleep(30);
+    expect(open(8)).toBe("true");
   });
 });

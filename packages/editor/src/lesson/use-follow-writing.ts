@@ -3,6 +3,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isPlannedBlank } from "./live-draft";
 
 /**
+ * Pacing (TEACH-202 part o, Greg 25 Oct: "it kinda skips through slides too fast"). The writer
+ * drafts a slide about every 1.2 to 1.5 s, faster than its words can be read as they type out, so
+ * the follow walks the deck one slide at a time: it leaves the open slide only once all its words
+ * are on screen (`typedId`) and have stood `readMs`, and never before the slide has been open
+ * `minMs`.
+ */
+export const FOLLOW_PACE = {
+  readMs: 1200,
+  minMs: 2000,
+  /** The writer this many slides ahead: the follow reads faster (`catchUp*`) to catch up. */
+  behind: 3,
+  catchUpReadMs: 500,
+  catchUpMinMs: 1000,
+  /** This far behind (or on "Follow writing"), the follow goes straight to the slide being written. */
+  jump: 5,
+};
+export type FollowPace = typeof FOLLOW_PACE;
+
+/**
  * Live writing P1 (TEACH-202 part e): while a job writes the lesson, the open slide follows the
  * slide being written (the last `writing` slide in deck order: the writer goes in order, and the
  * objectives slide stays `writing` until the job ends). The shell's pick arrives as
@@ -23,6 +42,9 @@ export function useFollowWriting({
   canvasFocused,
   lead,
   revealing,
+  typedId,
+  pace = FOLLOW_PACE,
+  now = () => performance.now(),
 }: {
   slides: readonly { id: Id; elements?: readonly unknown[] }[] | undefined;
   /**
@@ -37,6 +59,10 @@ export function useFollowWriting({
   setActiveSlide: (id: Id) => void;
   startFollowing: boolean;
   canvasFocused: boolean;
+  /** The open slide, once every word it has is on screen (the typing has caught up). */
+  typedId?: Id | undefined;
+  pace?: FollowPace;
+  now?: () => number;
 }): {
   following: boolean;
   target: Id | undefined;
@@ -82,6 +108,14 @@ export function useFollowWriting({
   /** The slide the follow is opening, until the session reports it open. */
   const mark = useRef<Id | null>(null);
   const previous = useRef(activeSlideId);
+  /** When the open slide opened, and when its words were all on screen. */
+  const opened = useRef({ id: activeSlideId, at: now() });
+  const typed = useRef<{ id?: Id; at: number }>({ at: 0 });
+  /** "Follow writing" was pressed: the next move goes straight to the slide being written. */
+  const jump = useRef(false);
+  const [, wake] = useState(0);
+  if (opened.current.id !== activeSlideId) opened.current = { id: activeSlideId, at: now() };
+  if (typedId !== typed.current.id) typed.current = { id: typedId, at: now() };
 
   useEffect(() => {
     const moved = activeSlideId !== previous.current;
@@ -97,11 +131,34 @@ export function useFollowWriting({
     }
     if (!following || !target || target === activeSlideId) return;
     // Forward only: the follow never takes the view back to an earlier slide.
-    const at = (id: Id | null) => (slides ?? []).findIndex((s) => s.id === id);
-    if (activeSlideId !== null && at(target) < at(activeSlideId)) return;
-    mark.current = target;
-    setActiveSlide(target);
-  }, [activeSlideId, following, target, setActiveSlide, slides]);
+    const list = slides ?? [];
+    const at = (id: Id | null) => list.findIndex((s) => s.id === id);
+    const from = at(activeSlideId);
+    const to = at(target);
+    if (activeSlideId !== null && to < from) return;
+    const behind = to - from;
+    let next = target;
+    if (from >= 0 && !jump.current && behind < pace.jump) {
+      // One slide at a time, each read before the next: its words all shown, then a pause.
+      const fast = behind >= pace.behind;
+      const due = Math.max(
+        opened.current.at + (fast ? pace.catchUpMinMs : pace.minMs),
+        typed.current.id === activeSlideId
+          ? typed.current.at + (fast ? pace.catchUpReadMs : pace.readMs)
+          : Number.POSITIVE_INFINITY,
+      );
+      const wait = due - now();
+      if (wait > 0) {
+        if (!Number.isFinite(wait)) return;
+        const t = setTimeout(() => wake((n) => n + 1), wait);
+        return () => clearTimeout(t);
+      }
+      next = list[from + 1]?.id ?? target;
+    }
+    jump.current = false;
+    mark.current = next;
+    setActiveSlide(next);
+  });
 
   // A click or key press anywhere is the teacher acting (the chip itself excepted).
   const writing = writingSlideIds !== undefined;
@@ -124,6 +181,9 @@ export function useFollowWriting({
     if (canvasFocused && writing) setFollowing(false);
   }, [canvasFocused, writing]);
 
-  const resume = useCallback(() => setFollowing(true), []);
+  const resume = useCallback(() => {
+    jump.current = true;
+    setFollowing(true);
+  }, []);
   return { following, target, resume, mark };
 }

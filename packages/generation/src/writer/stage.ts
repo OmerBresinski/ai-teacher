@@ -341,6 +341,11 @@ export type WriterRun = {
    */
   onSlide?: (index: number, slide: WriterSlide) => void;
   /**
+   * The writer's stream has ended and every slide it wrote is laid (`indices`, deck order): no
+   * slide's words are still coming, though pictures, diagrams, checks and notes still run.
+   */
+  onWritten?: (indices: readonly number[]) => void;
+  /**
    * Live writing P4 (TEACH-202 part c): the slide the stream is writing, before it closes. The
    * first draft of a slide comes as soon as its template closes, then its fields as they grow (an
    * open string cut where the stream is), at most one per `draft.ms` (default 200). Read-only and
@@ -1345,6 +1350,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     openSlide(idx, raw);
   }
+  nonFatalSync(
+    () => run.onWritten?.(written.map(([i]) => i)),
+    (e) => log({ ev: "written-hook-failed", err: String(e).slice(0, 200) }),
+  );
   // ── roleStamp: each written slide's role, logged only (no consumer reads it yet) ──
   if (run.roleStamp ?? ROLE_STAMP_DEFAULT)
     for (const [i, role] of slideRoles(plan.slides as (S | undefined)[]))

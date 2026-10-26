@@ -7,6 +7,10 @@ import { SaveIndicator } from "../kit/SaveIndicator";
 import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
+import { FOLLOW_PACE } from "./use-follow-writing";
+
+/** The follow without its reading pauses (its pacing has its own tests in follow-writing). */
+const INSTANT = { ...FOLLOW_PACE, readMs: 0, minMs: 0, catchUpReadMs: 0, catchUpMinMs: 0 };
 
 /*
  * The first-generation hand-over (UX audit 19 Oct, jank 1 and 3-6): while the job writes, the
@@ -52,6 +56,7 @@ function setup(lesson: Lesson, extra: Partial<LessonEditorProps> = {}) {
           onPresent={() => {}}
           writingSlideIds={writing}
           drafts={drafts}
+          followPace={INSTANT}
           {...extra}
         />
       </TooltipProvider>

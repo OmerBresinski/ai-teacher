@@ -1,6 +1,9 @@
 import type { Theme } from "@tj/domain/documents";
 import { accentTint } from "@tj/slides";
 import { Camera, Shapes } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useProposals } from "../../lesson/proposals-context";
+import { useReducedMotion } from "../../present/use-fullscreen";
 
 /**
  * Where a photograph or a diagram goes, and what the model asked for (look/image-slot): a tinted
@@ -46,20 +49,7 @@ export function SlotPlaceholder({
         textAlign: "center",
       }}
     >
-      {kind === "photo" ? (
-        // Live writing P2 (TEACH-202 part e): a soft pulsing sheen says the picture is on its way.
-        // (Not named for the effect's usual word: it contains "immer", which the thumb test bans.)
-        <div
-          aria-hidden
-          data-slot-sheen
-          className="pointer-events-none absolute inset-0 motion-safe:animate-pulse"
-          style={{
-            borderRadius: radius || undefined,
-            background:
-              "linear-gradient(100deg, transparent 15%, rgba(255,255,255,0.35) 50%, transparent 85%)",
-          }}
-        />
-      ) : null}
+      {kind === "photo" ? <PendingSheen radius={radius} /> : null}
       <Icon
         aria-hidden
         size={22}
@@ -83,6 +73,52 @@ export function SlotPlaceholder({
       >
         {text}
       </span>
+    </div>
+  );
+}
+
+/**
+ * A picture still on its way (TEACH-202 part o; Greg 25 Oct: "no animation on image placeholders
+ * to show they're loading"): while the lesson's job runs, a soft band of light sweeps across the
+ * slot every 2.4 s. Once the job has ended no picture will come, so the slot settles, still. With
+ * reduced motion the band never moves. (Not named for the effect's usual word: it contains
+ * "immer", which the thumb test bans.)
+ */
+export function PendingSheen({ radius }: { radius?: number | undefined }) {
+  const { writingSlideIds } = useProposals();
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const coming = writingSlideIds !== undefined;
+  useEffect(() => {
+    if (!coming || reduced) return;
+    const a = ref.current?.animate?.(
+      [
+        { transform: "translateX(-100%)", offset: 0 },
+        { transform: "translateX(100%)", offset: 0.6 },
+        { transform: "translateX(100%)", offset: 1 },
+      ],
+      { duration: 2400, easing: "ease-in-out", iterations: Number.POSITIVE_INFINITY },
+    );
+    return () => a?.cancel();
+  }, [coming, reduced]);
+  if (!coming || reduced) return null;
+  return (
+    <div
+      aria-hidden
+      data-slot-sheen
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ borderRadius: radius || undefined }}
+    >
+      <div
+        ref={ref}
+        style={{
+          position: "absolute",
+          inset: 0,
+          transform: "translateX(-100%)",
+          background:
+            "linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.55) 50%, transparent 80%)",
+        }}
+      />
     </div>
   );
 }

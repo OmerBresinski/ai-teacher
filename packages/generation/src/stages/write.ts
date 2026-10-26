@@ -469,6 +469,22 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         // the next save will carry it, so the client hands over with nothing left to swap.
         if (!offScreen && !closed.has(i)) draft(i, slide, true);
       },
+      // The stream has ended: every slide's words are done, the last one's too, so none reads as
+      // still being written while pictures, checks and notes run (often a minute or more). A slide
+      // the flow or a draft opened that the final deck does not hold is taken back out, rather
+      // than waiting as a blank until the deck is editable.
+      onWritten: (indices) => {
+        if (offScreen) return;
+        const kept = new Set(indices);
+        for (const i of [...progressive.patches().keys()])
+          if (i >= 2 && !kept.has(i)) progressive.drop(i);
+        for (const [j, slide] of latest)
+          if (!closed.has(j)) {
+            closed.add(j);
+            progressive.patch(j, slide, "done");
+          }
+        newest = Math.max(newest, ...indices);
+      },
       ...(live
         ? {
             // The flow names every slide: each joins the deck as a blank at once, so the strip

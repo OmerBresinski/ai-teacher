@@ -12,6 +12,10 @@ import {
 import { LessonEditor } from "./LessonEditor";
 import { createDraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
+import { FOLLOW_PACE } from "./use-follow-writing";
+
+/** The follow without its reading pauses (its pacing has its own tests in follow-writing). */
+const INSTANT = { ...FOLLOW_PACE, readMs: 0, minMs: 0, catchUpReadMs: 0, catchUpMinMs: 0 };
 
 /*
  * First-generation pacing (Greg, 20 Oct 2026, amending TEACH-202 part f): a new lesson's title and
@@ -81,6 +85,7 @@ function setup(lesson: Lesson, { strict = false } = {}) {
             onPresent={() => {}}
             writingSlideIds={writing}
             drafts={store}
+            followPace={INSTANT}
           />
         </TooltipProvider>
       </QueryClientProvider>
@@ -332,8 +337,10 @@ describe("a new lesson's first two slides type out, presentation only", () => {
         },
       ]),
     );
-    await wait(50);
-    // The view does not wait for the reveal: it opens slide 3 now.
+    // The reveal ends at once; the view walks on to slide 3 once slides 1 and 2 show in full
+    // (TEACH-202 part o: a slide is left only when its words are all on screen).
+    const t0 = performance.now();
+    while (open(r.container) !== 3 && performance.now() - t0 < 2000) await wait(25);
     expect(open(r.container)).toBe(3);
     await wait(650);
     expect(thumbText(r.container, 1)).toContain("Year 5");
