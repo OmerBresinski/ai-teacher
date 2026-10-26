@@ -16,7 +16,9 @@
  *   place of its disc. All rows or none; a row whose picture is still being made shows the empty
  *   slot (`PLACEHOLDER_IMAGE`), so nothing vanishes. With row pictures the panel takes no picture,
  *   pie or icon of its own (it keeps its width, ruling 257), and row icons are not drawn: pictures
- *   win over icons.
+ *   win over icons. Pictures on only some rows go to the panel instead: with no visual of its
+ *   own, the panel shows the first of them (TEACH-247 part aj); any others are reported in
+ *   `droppedPictures`, never silent.
  * - Icons are all or none (matched through the icon library); any miss draws numbers and is
  *   reported in `iconMisses`. With icons or a pie the discs take the category colours, so each
  *   row's disc is the swatch of its wedge.
@@ -288,8 +290,22 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   if (misses.length) c.iconMisses = misses;
   const icons = !rowPics && n > 0 && matched.every(Boolean);
 
-  // The panel's visual (none beside row pictures).
-  const panel = rowPics ? null : (input.panel ?? null);
+  // The panel's visual (none beside row pictures). Pictures on only some rows are not drawn as
+  // tiles (all or none), but a picture is never dropped (TEACH-247 part aj: Great Fire s8, a fire
+  // hook picture saved on one of two rows left the dark panel empty): with no visual of its own,
+  // the panel shows the first row picture under the heading.
+  const own = input.panel ?? null;
+  const ownVisual =
+    !!own &&
+    (("shares" in own && Array.isArray(own.shares)) || ("picture" in own && !!own.picture));
+  // The panel holds one picture (two stacked do not fit under a heading in its 313 pt width), so
+  // with two or more the first row's wins: the writer's order, which leads with its main item,
+  // and stable while the others are still being made. The rest are reported, never silent.
+  const pictured = rowPics ? [] : rows.flatMap((r, i) => (r.picture ? [i] : []));
+  const lone = ownVisual ? null : (rows[pictured[0] ?? -1]?.picture ?? null);
+  const dropped = ownVisual ? pictured : pictured.slice(1);
+  if (dropped.length) c.droppedPictures = dropped;
+  const panel = rowPics ? null : lone ? { picture: lone } : own;
   let shares: number[] | null = null;
   let figure: Figure | null = null;
   if (panel && "shares" in panel) {

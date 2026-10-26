@@ -419,6 +419,11 @@ export type TemplateResult = {
   tight?: boolean;
   /** Icon labels the icon library could not match; the slide drew numbers instead (never silent). */
   iconMisses?: string[];
+  /**
+   * Rows (0-based) whose picture the slide does not show (panel-list, TEACH-247 part aj: pictures
+   * on some rows go to the one title panel; any after the first are left off, never silent).
+   */
+  droppedPictures?: number[];
   /** One entry per field with its length and measured limits: the live "62/80" counters. */
   fields?: FieldReport[];
 };
@@ -478,6 +483,8 @@ export type Ctx = {
   /** See `TemplateResult.tight`, `iconMisses` and `fields`. */
   tight?: boolean;
   iconMisses?: string[];
+  /** See `TemplateResult.droppedPictures`. */
+  droppedPictures?: number[];
   fields?: FieldReport[];
   /** Speaker notes the layout writes (the hinge's wrong-option beliefs, TEACH-256 part b). */
   notes?: string;
@@ -2720,6 +2727,7 @@ function layoutOnce(
     ...(c.lost?.length ? { lost: c.lost } : {}),
     ...(c.tight !== undefined ? { tight: c.tight } : {}),
     ...(c.iconMisses?.length ? { iconMisses: c.iconMisses } : {}),
+    ...(c.droppedPictures?.length ? { droppedPictures: c.droppedPictures } : {}),
     ...(c.fields ? { fields: c.fields } : {}),
   };
   const warned = [...new Set(c.els.flatMap((e) => WARNED.get(e) ?? []))];
