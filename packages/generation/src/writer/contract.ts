@@ -61,11 +61,18 @@ export function freeformMenuLines(): {
   const L = drawerLimits();
   const p = L.particles;
   return {
-    labelled: `- labelled-diagram: a simple drawing of one thing with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}.`,
-    labelledRoute: `- labelled-diagram: a drawing of one object with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}; ${LABELLED_ROUTE}.`,
+    labelled: `- labelled-diagram: a simple drawing of one object or piece of apparatus with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}; ${LABELLED_ONLY}.`,
+    labelledRoute: `- labelled-diagram: a drawing of one object or piece of apparatus with up to ${L.labelled.labels} parts labelled, each label ${LIMIT_TEXT.label}; ${LABELLED_ONLY}; ${LABELLED_ROUTE}.`,
     particles: `- particles: up to ${p.panels} panels of atoms or molecules, at least ${p.perPanel} particles in each, for states of matter, diffusion, dissolving, or how temperature, concentration or pressure changes how particles move and collide; ${LIMIT_TEXT.particles}, and no arrows between panels that compare. Organisms, populations and variants are never particles: compare them with bar-chart, table or the compare layout.`,
   };
 }
+
+/**
+ * TEACH-247 part ay: the freehand sketch is for objects and apparatus only. A living thing or a
+ * process is never drawn (freehandBan), so the writer is pointed at what does show it.
+ */
+const LABELLED_ONLY =
+  "objects and apparatus only: a person, animal, plant or body part, or a process, is a library model or a picture";
 
 /** base4g's anatomy routing on the labelled-diagram line (t-anatomy PROPOSAL.md, option C). */
 const LABELLED_ROUTE =
