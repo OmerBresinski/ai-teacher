@@ -73,7 +73,7 @@ import {
 import { type FollowPace, useFollowWriting } from "./use-follow-writing";
 import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
-import { type PillPace, useLinger, useWritingPill } from "./writing-pill";
+import { FINISHING_TEXT, type PillPace, useLinger, useWritingPill } from "./writing-pill";
 
 /*
  * The lesson editor shell (ruling 186): TopBar over InsertRail | Canvas above the Navigator's
@@ -631,7 +631,9 @@ export function LessonEditor({
     pillPace ? { pace: pillPace } : undefined,
   );
   // The chip goes at once when following resumes; at the hand-over it fades with the pill.
-  const chip = useLinger(!!follow.target && !follow.following, writingSlideIds ? 0 : 200);
+  // Only the job's own end fades the chip with the pill; a stop removes both at once.
+  const pillFading = !writingSlideIds && pill.text === FINISHING_TEXT;
+  const chip = useLinger(!!follow.target && !follow.following, pillFading ? 200 : 0);
 
   // UX audit J1: the slide the teacher watched being written turns editable at the hand-over, and
   // its toolbar, actions and tabs would open by themselves. They wait for the teacher: a click or
@@ -978,7 +980,9 @@ function WritingBlocker() {
   return (
     <div
       aria-hidden
-      data-slide-writing-blocker
+      // The read-only marker over a slide the job still owns (ADR 0037). The pill that says why is
+      // `data-writing-pill`, which stays for the whole fill.
+      data-slide-writing-overlay
       className="absolute inset-0 z-20"
       onPointerDownCapture={(e) => e.stopPropagation()}
     />
@@ -995,7 +999,7 @@ function WritingBlocker() {
 function WritingPill({ text, visible, phase }: { text: string; visible: boolean; phase: string }) {
   return (
     <div
-      data-slide-writing-overlay={phase}
+      data-writing-pill={phase}
       className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center transition-opacity duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
       style={{ opacity: visible ? 1 : 0 }}
     >

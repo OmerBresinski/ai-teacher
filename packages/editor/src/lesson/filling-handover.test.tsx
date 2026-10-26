@@ -104,7 +104,7 @@ describe("the filling editor", () => {
     // No draft yet: every slide the job owns keeps its marker, none says "Writing…".
     expect(container.querySelectorAll("[data-navigator] [data-slide-writing]").length).toBe(3);
     expect(container.querySelectorAll("[data-slide-writing-now]").length).toBe(0);
-    expect(container.querySelector("[data-slide-writing-overlay]")?.textContent).toContain(
+    expect(container.querySelector("[data-writing-pill]")?.textContent).toContain(
       "Planning slide 3…",
     );
 
@@ -135,7 +135,7 @@ describe("the filling editor", () => {
     ]);
     const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[1] });
     act(() => rerender(tree(new Set(ids), drafts)));
-    expect(container.querySelector("[data-slide-writing-overlay]")?.textContent).toContain(
+    expect(container.querySelector("[data-writing-pill]")?.textContent).toContain(
       "Writing slide 3 of 3…",
     );
   });
@@ -175,7 +175,9 @@ describe("the filling editor", () => {
     // The job lets go of the open slide: it turns editable, but nothing opens by itself.
     act(() => rerender(tree(undefined)));
     // The pill fades out (jank audit #9) rather than vanishing next to the toolbar.
-    const pill = container.querySelector<HTMLElement>("[data-slide-writing-overlay]");
+    // The slide is no longer marked the job's.
+    expect(container.querySelector("[data-slide-writing-overlay]")).toBeNull();
+    const pill = container.querySelector<HTMLElement>("[data-writing-pill]");
     expect(pill === null || pill.style.opacity === "0").toBe(true);
     expect(queryByRole("button", { name: /^Delete slide/ })).toBeNull();
     // The teacher's click on the canvas brings them back.
@@ -314,7 +316,7 @@ describe("the filling editor", () => {
     const drafts = createDraftStore();
     const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[2] });
     act(() => rerender(tree(new Set(ids), drafts)));
-    const pill = () => container.querySelector("[data-slide-writing-overlay]")?.textContent?.trim();
+    const pill = () => container.querySelector("[data-writing-pill]")?.textContent?.trim();
     expect(pill()).toBe("Planning slide 3…");
     act(() =>
       drafts.set([

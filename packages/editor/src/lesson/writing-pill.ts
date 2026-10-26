@@ -107,14 +107,20 @@ export function useWritingPill(
     visible: next.phase !== "gone",
   }));
   // The first text dwells from the moment it shows, like every other.
-  const lastAt = useRef<number | null>(null);
-  if (lastAt.current === null) lastAt.current = now();
+  const [mountedAt] = useState(now);
+  const lastAt = useRef(mountedAt);
   const want = pillText(next, input.slideIds);
   useEffect(() => {
     if (want === null) {
       if (!shown.visible) {
         if (shown.text === null) return;
         return timer(() => setShown({ text: null, visible: false }), pace.fadeMs);
+      }
+      // The job's own end (from "finishing") fades out at the hand-over. A stop or a failure goes at
+      // once: the stopped notice takes its place, and a half-faded pill is unreadable text.
+      if (shown.text !== FINISHING_TEXT) {
+        setShown({ text: null, visible: false });
+        return;
       }
       setShown((s) => ({ text: s.text, visible: false }));
       return;
@@ -126,7 +132,7 @@ export function useWritingPill(
     };
     // The first text (and the first after a fade) shows at once.
     if (shown.text === null || !shown.visible) return commit();
-    const due = Math.max(now() + pace.settleMs, (lastAt.current ?? 0) + pace.dwellMs);
+    const due = Math.max(now() + pace.settleMs, lastAt.current + pace.dwellMs);
     const wait = due - now();
     if (wait <= 0) return commit();
     return timer(commit, wait);
@@ -143,6 +149,10 @@ export function useLinger(show: boolean, ms: number): { mounted: boolean; visibl
   if (show && !mounted) setMounted(true);
   useEffect(() => {
     if (show || !mounted) return;
+    if (ms <= 0) {
+      setMounted(false);
+      return;
+    }
     const t = setTimeout(() => setMounted(false), ms);
     return () => clearTimeout(t);
   }, [show, mounted, ms]);

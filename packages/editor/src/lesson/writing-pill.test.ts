@@ -144,8 +144,18 @@ describe("useWritingPill", () => {
     r.rerender(look({ writingId: undefined }));
     tick(PILL_PACE.dwellMs * 2);
     expect(r.result.current).toMatchObject({ text: "Writing slide 5 of 11…", visible: true });
+    // A stop mid-writing: the pill goes at once (the stopped notice takes its place).
     r.rerender(look({ active: false }));
-    expect(r.result.current).toMatchObject({ text: "Writing slide 5 of 11…", visible: false });
+    expect(r.result.current).toMatchObject({ text: null, visible: false });
+  });
+
+  test("at the job's own end the finishing pill fades out, then unmounts", () => {
+    const { r, tick } = setup();
+    r.rerender(look({ done: true }));
+    tick(PILL_PACE.dwellMs * 2);
+    expect(r.result.current).toMatchObject({ text: FINISHING_TEXT, visible: true });
+    r.rerender(look({ active: false }));
+    expect(r.result.current).toMatchObject({ text: FINISHING_TEXT, visible: false });
     tick(PILL_PACE.fadeMs);
     expect(r.result.current.text).toBeNull();
   });
