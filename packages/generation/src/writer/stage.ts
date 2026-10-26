@@ -1866,7 +1866,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     (asks.get(i) ?? []).flatMap((a) => {
       const v = visualState(i)(a.key);
       if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
-      if (v?.status === "diagram" && a.type === "diagram")
+      // A drawing the layout could not place is not on the slide (unless it ships with warnings).
+      if (
+        v?.status === "diagram" &&
+        a.type === "diagram" &&
+        (!laid.get(i)?.diagram?.length || warned.has(i))
+      )
         return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
       return [];
     });
@@ -2514,7 +2519,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     unpoint(i);
     return true;
   };
-  const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
+  const fallback = async (i: number, fo: { noPicture?: boolean; wasPicture?: boolean } = {}) => {
     if (!path.has(i) && (await tileFallback(i, fo))) return;
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
       | Extract<VisualAsk, { type: "diagram" }>
@@ -2529,7 +2534,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     const s = plan.slides[i] as S;
     // A picture of the same thing: any kind that shows a thing or process, never data.
-    const pic = !fo.noPicture && pictureFallbackOk(dAsk.kind) ? asPicture(s) : undefined;
+    // A diagram rerouted from a lost picture goes back to a picture whatever its kind: the slide
+    // was planned with a picture (a flow's arrows are its meaning only when it was planned as one).
+    const pic =
+      !fo.noPicture && (fo.wasPicture || pictureFallbackOk(dAsk.kind)) ? asPicture(s) : undefined;
     if (pic) {
       const n0 = notes.get(i);
       const oldAsks = asks.get(i) ?? [];
@@ -2586,6 +2594,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // form and the figure's slot closes (materialise). SIMPLIFY S3: the stand-alone rewrite into
     // words and the fixed figure-dropped slide were the same or worse than this on every replay
     // firing, and the rewrite cost a model call.
+    // The figure is not on the slide (it failed, or drew but did not fit): it is failed from here
+    // on, so the slide is laid without its zone and the notes and checks read the slide as shown
+    // (picq, greatfire 26 Oct s8: a flow that did not fit was dropped from the slide, yet the notes
+    // said "Pupils study the flow diagram").
+    override.set(`${i}:${dAsk.key}`, { status: "failed" });
+    relay(i);
     path.set(i, "unshown");
     unpoint(i);
     if (dAsk.kind === "table" && t.rows.length)
@@ -2662,9 +2676,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       run.vetoed?.(i, lost.key),
       same,
     );
-    // A diagram the reroute asked for goes through the diagram path (never back to a picture).
+    // A diagram the reroute asked for goes through the diagram path. It goes back to a picture
+    // (search, then generation where the rulings allow) only when the lost picture was lost to
+    // time or an error, never to a judge's refusal (picq, greatfire 26 Oct s3 and s8: both pictures
+    // ran out of time, the diagrams failed, and the slides shipped as bare text).
     if (how === "rerouted" && (asks.get(i) ?? []).some((a) => a.type === "diagram")) {
-      await fallback(i, { noPicture: true });
+      await fallback(i, { noPicture: !run.retryable?.(i, lost.key), wasPicture: true });
       how = `to-${path.get(i) ?? "diagram"}`;
     }
     path.set(i, `picture-${how}`);
