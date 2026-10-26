@@ -25,6 +25,7 @@ export default [
   'sort_venn_carroll.js',
   'life_cycle.js',
   'plant_growth.js',
+  'photosynthesis.js',
   'food_chain.js',
   'body_map.js',
   'heart_circulation.js',
