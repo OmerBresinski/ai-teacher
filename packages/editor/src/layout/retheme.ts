@@ -2,7 +2,7 @@ import type { GroupElement, Id, Lesson, Slide, Theme } from "@tj/domain/document
 import { layoutKit } from "../model/layout-kit";
 import * as reducers from "../model/reducers";
 import { type LayoutKit, placeInto, tryRelayout } from "../model/reducers/layout";
-import { renderTheme } from "../model/themes";
+import { renderTheme, THEMES } from "../model/themes";
 import { measureInputsOf } from "./fit-plan";
 import { lintAsDrawn } from "./lint";
 import type { Measurer } from "./reflow";
@@ -145,6 +145,52 @@ export function recolourSlide(slide: Slide, from: Theme, to: Theme): Slide {
     return node;
   };
   return walk(slide) as Slide;
+}
+
+/** Every colour string a slide carries (its words and drawings' sources aside), lower-cased. */
+function slideColours(slide: Slide): Set<string> {
+  const out = new Set<string>();
+  const walk = (node: unknown, key?: string) => {
+    if (key === "diagram" || key === "text") return;
+    if (typeof node === "string") {
+      if (node.startsWith("#")) out.add(node.toLowerCase());
+    } else if (Array.isArray(node)) for (const n of node) walk(n);
+    else if (node && typeof node === "object")
+      for (const [k, v] of Object.entries(node)) walk(v, k);
+  };
+  walk(slide);
+  return out;
+}
+
+/**
+ * A slide in `lesson`'s theme. The generating job writes in the theme the lesson had when it
+ * started, so a slide it sends after the teacher picked another one (or after a reload, when the
+ * row already holds the teacher's pick) still wears the old palette. The palette is read off the
+ * slide: when another theme's colours match it strictly better than the lesson's own, the slide is
+ * recoloured from that theme (P1 26 Oct). Otherwise the slide is returned as it is.
+ */
+export function inLessonTheme(slide: Slide, lesson: Lesson): Slide {
+  const colours = slideColours(slide);
+  if (colours.size === 0) return slide;
+  const score = (theme: Theme) => {
+    let n = 0;
+    for (const c of new Set(Object.values(theme.colors).map((v) => v.toLowerCase())))
+      if (colours.has(c)) n++;
+    return n;
+  };
+  const own = renderTheme(lesson);
+  let best = own;
+  let top = score(own);
+  for (const t of THEMES) {
+    if (t.id === own.id) continue;
+    const theme = renderTheme(lesson, t.id);
+    const n = score(theme);
+    if (n > top) {
+      best = theme;
+      top = n;
+    }
+  }
+  return best === own ? slide : recolourSlide(slide, best, own);
 }
 
 /** Pure: the lesson in `themeId`, fitted to it. Choosing the theme it already has is a no-op. */
