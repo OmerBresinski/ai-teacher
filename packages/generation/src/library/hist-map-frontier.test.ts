@@ -96,10 +96,19 @@ describe("hist_map walls and frontiers", () => {
     expect(marks({ region: "uk", frontiers: [] })).toBe(false);
   });
 
-  test("the writer's fill call is not asked for walls yet: its schema is unchanged", async () => {
+  test("the writer's fill call is asked for walls, and is told what each key is", async () => {
     const m = await model();
-    const s = fillSchema(m.params, "hist_map") as { properties: Record<string, unknown> };
-    expect(Object.keys(s.properties)).not.toContain("frontiers");
+    const s = fillSchema(m.params, "hist_map") as {
+      properties: Record<
+        string,
+        { description?: string; items?: { properties: Record<string, { description?: string }> } }
+      >;
+    };
+    expect(Object.keys(s.properties)).toContain("frontiers");
+    const F = await frontiers();
+    const keys = s.properties.frontiers.items?.properties.line.description ?? "";
+    for (const k of Object.keys(F)) expect(keys).toContain(`${k}:`);
+    expect(s.properties.frontiers.description).toContain("only when the slide is about that line");
   });
 
   test("the wall is drawn and named on the map", async () => {

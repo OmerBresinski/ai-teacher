@@ -250,13 +250,14 @@ export const params = {
         },
       },
     },
-    // Not yet asked of the writer's fill call ('x-fill': false): its wording is the prompt-engineer's.
+    // The fill call reads title and descriptions (x- keys are stripped): the line's description is
+    // the only place the filler learns what each key is, and the array's says when to draw one.
     frontiers: {
       type: "array",
       title: "Walls and frontiers",
-      description: "A named wall or border, drawn along its real course.",
+      description:
+        "A wall or border drawn along its real course. Draw one only when the slide is about that line itself (such as why, when or by whom it was built or agreed, or what it divided), never as a landmark on a map about something else.",
       "x-item": "a wall or frontier",
-      "x-fill": false,
       maxItems: 2,
       default: [],
       items: {
@@ -267,6 +268,8 @@ export const params = {
           line: {
             type: "string",
             title: "Line",
+            description:
+              "hadrians_wall: Hadrian’s Wall (AD 122). antonine_wall: the Antonine Wall (AD 142). alfred_guthrum: the border between Alfred’s lands and the Danelaw (c. AD 886).",
             enum: FRONTIER_KEYS,
             "x-labels": FRONTIER_LABELS,
             default: "hadrians_wall",
@@ -1113,6 +1116,7 @@ function placer(bounds, obstacles, onLand, frame, routeSegs = [], leaders0 = [])
         skip = false,
         inner = null,
         dists = [14, 28, 44, 64, 90, 120, 160, 200, 250, 300, 360, 430, 510, 600],
+        oneGround = null,
       } = {},
     ) {
       let best = null;
@@ -1150,8 +1154,20 @@ function placer(bounds, obstacles, onLand, frame, routeSegs = [], leaders0 = [])
         )
           return;
         const onMap = overlaps(b, frame, -6);
+        // oneGround: a label that straddles a coast hides it (a wall's name over Ireland's shore)
+        const ground = [];
+        // sampled on a grid (corners alone miss a cape poking into the box)
+        if (oneGround)
+          for (let i = 0; i <= 6; i++)
+            for (let j = 0; j <= 3; j++)
+              ground.push(oneGround(b.x + (b.w * i) / 6, b.y + (b.h * j) / 3));
+        // the fewer samples off the label's main ground, the less coast it hides
+        const onL = ground.filter(Boolean).length;
+        const minority = Math.min(onL, ground.length - onL);
         const cost =
-          d + (onMap ? (offMap ? 70 : 0) + (onLand(b.x + b.w / 2, b.y + b.h / 2) ? 40 : 0) : 0);
+          d +
+          (minority ? 60 + 6 * minority : 0) +
+          (onMap ? (offMap ? 70 : 0) + (onLand(b.x + b.w / 2, b.y + b.h / 2) ? 40 : 0) : 0);
         if (!best || cost < best.cost) best = { cost, b, lead };
       };
       if (centre) tryBox({ x: ax - w / 2, y: ay - hh / 2, w, h: hh }, 0);
@@ -1308,6 +1324,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
   // one calm land colour; in Night the land is lifted off the dark sea
   const landFill =
     ctx.name === "night" ? "color-mix(in oklab,var(--paper) 72%,var(--ink) 28%)" : "var(--paper)";
+  let landRings = [];
   {
     const R = { x: F.x - 24, y: F.y - 24, w: F.w + 48, h: F.h + 48 };
     let landD = map.land.getAttribute("d");
@@ -1316,6 +1333,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
       landD = landD.replace(fx(proj(kit)), fine.map((q) => fx(proj(q))).join(" L"));
     // Thinned to what the slide can show (TEACH-247 part x): the world view drew 2.3 MB of coast.
     const rings = clipRings(landD, R).map(thinRing).filter(Boolean);
+    landRings = rings;
     const dAll = rings.map(smoothD).join(" ");
     // one element per ring: drawn as a single path, the browser left holes in the zoomed-in continent
     for (const r of rings)
@@ -1347,6 +1365,17 @@ function renderAt(root, P, ctx, f, last, narrow) {
     if (cp) cp.setAttribute("d", dAll);
   }
   let onLand = () => false;
+  // land by the drawn rings (even-odd), for a wall's name: the hit test above needs a browser
+  const inLand = (x, y) => {
+    let n = 0;
+    for (const r of landRings)
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        const [xi, yi] = r[i],
+          [xj, yj] = r[j];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) n++;
+      }
+    return n % 2 === 1;
+  };
   try {
     const pt = new DOMPoint(0, 0);
     onLand = (x, y) => {
@@ -1601,7 +1630,10 @@ function renderAt(root, P, ctx, f, last, narrow) {
     );
     const w = km / map.kmPerUnit;
     // the bar takes the first map corner clear of every pin, route line and the north arrow
-    const bx = (sx, sy) => ({ x: sx - 24, y: sy - 18, w: w + 48 + 90, h: 66 });
+    // the length is set in the card face (ts-cap, larger than the kit's axis face): the corner held
+    // for it measures those words, so no dot sits under them (TEACH-247 part az: Winchester)
+    const lw = measure(root, `${km} km`, "ts-cap");
+    const bx = (sx, sy) => ({ x: sx - 24, y: sy - 18, w: w + 48 + Math.max(90, lw + 36), h: 66 });
     const spots = [
       [F.x + 32, F.y + F.h - 48],
       [F.x + F.w - w - 120, F.y + F.h - 48],
@@ -1610,7 +1642,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     ];
     const spot = spots.find(([sx, sy]) => {
       const q = bx(sx, sy);
-      return !obstacles.some((o) => overlaps(q, o, 0));
+      return !obstacles.some((o) => overlaps(q, o, o.dot ? 6 : 0));
     });
     // the corner is held while labels are placed; it is checked again against every label and leader before drawing
     scale = { km, bx, spots, spot, box: spot ? bx(...spot) : null };
@@ -1635,7 +1667,9 @@ function renderAt(root, P, ctx, f, last, narrow) {
      and again in the summary. Beside a narrow map they sit in a column, joined by a leader line only. */
   const colX = F.x + F.w + 76,
     // a narrower column (cards wrap to a second line) leaves the map more of the drawing's width
-    MW0 = column ? Math.min(narrow ? 400 : 520, GRID.right - colX - 34) : 340,
+    // a taller map pushes the column right (TEACH-247 part az): without a title the cards may use the
+    // slide's side margin, so they keep their width (the crop ends at the drawn marks)
+    MW0 = column ? Math.min(narrow ? 400 : 520, GRID.right + (lift ? 40 : 0) - colX - 34) : 340,
     maxW = MW0;
   // a size may carry its own width (the two-column key)
   // every wording in a card is a measured text block: it wraps, then shrinks, and the card grows to hold it.
@@ -2239,14 +2273,16 @@ function renderAt(root, P, ctx, f, last, narrow) {
     const pb = probe(label, { maxW: z.maxW, maxLines: 2, lh: z.lh }, { cls: z.cls, lh: z.lh });
     const w = pb.w + 18,
       hh = 38 + (pb.lines.length - 1) * z.lh;
-    const pl = PL.place(fi.anchors.slice(0, 5), null, w, hh, {
+    // from the east end first: both walls and the border end at an open sea or estuary there
+    const pl = PL.place([fi.anchors[5], fi.anchors[0], fi.anchors[6]], null, w, hh, {
       inner: { x: F.x + 4, y: F.y + 4, w: F.w - 8, h: F.h - 8 },
       offMap: false,
+      oneGround: inLand,
       modes: [
         [false, true],
         [true, true],
       ],
-      dists: [14, 22, 30, 40, 56, 72],
+      dists: [14, 22, 30, 40, 56, 72, 90],
     });
     if (!pl) {
       fail(`the name of ${fr.name}`);
@@ -2508,7 +2544,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     ].filter((q) => q !== scale.box);
     if (legend) held.push({ x: colX, y: legend.y, w: legend.w, h: legend.h });
     const clear = (q) =>
-      !held.some((o) => overlaps(q, o, 0)) &&
+      !held.some((o) => overlaps(q, o, o.dot ? 6 : 0)) &&
       !leads.some((l) => segHits(l[0], l[1], l[2], l[3], q));
     const spot = [scale.spot, ...scale.spots].filter(Boolean).find((sp) => clear(scale.bx(...sp)));
     if (spot) {
