@@ -30,10 +30,10 @@ describe("BriefSchema", () => {
     expect(slideTierOf(undefined)).toBe("standard");
   });
 
-  test("Detailed is 13–16; a count stored under the old 13–20 range still reads as Detailed", () => {
+  test("Quick 7–8, Standard 10–12 (ruling 295), Detailed 13–16; an old 13–20 count reads as Detailed", () => {
     expect(SLIDE_TIER_RANGES).toEqual({
-      quick: { min: 6, max: 8 },
-      standard: { min: 9, max: 12 },
+      quick: { min: 7, max: 8 },
+      standard: { min: 10, max: 12 },
       detailed: { min: 13, max: 16 },
     });
     for (const n of [13, 16, 17, 18, 20]) expect(slideTierOf({ slideCount: n })).toBe("detailed");
@@ -46,7 +46,9 @@ describe("BriefSchema", () => {
 
   test("plannerSlideCount: the tier's planner count, inside its range; else an older exact count", () => {
     expect(plannerSlideCount({ slideCount: 6, slideTier: "detailed" })).toBe(16);
-    expect(plannerSlideCount({ slideCount: 6 })).toBe(6);
+    // Ruling 295: an old exact count is held to 7–16, the span the writer's slideRange uses.
+    expect(plannerSlideCount({ slideCount: 6 })).toBe(7);
+    for (const n of [8, 10, 12]) expect(plannerSlideCount({ slideCount: n })).toBe(n);
     expect(plannerSlideCount({ slideTier: "quick" })).toBe(8);
     expect(plannerSlideCount({ slideTier: "standard" })).toBe(10);
     expect(plannerSlideCount({ slideTier: "detailed" })).toBe(16);
