@@ -1829,10 +1829,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         srcs.add(src);
         return true;
       });
+      // A drawing counts only when it is drawn on the slide: a spec the layout refuses (a label
+      // across a line) leaves the slide text-only, so the picture route runs instead (verify10 y8
+      // photosynthesis s4, 26 Oct: the director's chloroplast drawing failed and no painting came).
+      // One that only fits full width is laid as big-visual first, as the tail's relayout would.
+      const undrawn = () => {
+        relay(i);
+        return !!laid.get(i)?.diagram?.length;
+      };
+      let drawn = kind !== "library" || !got || !undrawn();
+      if (!drawn && (plan.slides[i] as S).template === "visual-text") {
+        swapSlide(i, { ...(plan.slides[i] as S), template: "big-visual" });
+        drawn = !undrawn();
+      }
+      if (!drawn)
+        log({ ev: "lost-library-undrawn", slide: i + 1, why: laid.get(i)?.diagram?.slice(0, 2) });
       const ok =
         kind === "split"
           ? all.length > 0 && splitLanded(landed.length, all.length)
-          : got && all.length > 0;
+          : got && drawn && all.length > 0;
       log({
         ev: "lost-picture",
         slide: i + 1,
