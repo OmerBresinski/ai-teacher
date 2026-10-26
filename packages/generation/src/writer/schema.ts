@@ -13,9 +13,10 @@ import { ITEMS_ROW_MAX, rowCaps } from "./items-row-fits";
  * (`diagram-defs.gen.json`) until part d builds them from the drawer's own schema.
  *
  * K1: `flow` numbers every slide from 1 (title and objectives included), so its bounds are the
- * whole lesson, `min..max`; `slides` holds slide 3 onward, `min-2..max-2`. At 9–12 (Standard's range
- * before ruling 295) the output is the pinned schema byte for byte (`schemaText`); Quick and Detailed get the same
- * shape with their own bounds.
+ * whole lesson, `min..max`; `slides` holds slide 3 onward, `min-2..max-2`. Built at 9–12 the output
+ * is the pinned lab schema byte for byte (`schemaText`, held by `writer-prompts.test.ts`). Since
+ * ruling 295 no tier uses 9–12 (Quick 7–8, Standard 10–12, Detailed 13–16), so every production
+ * schema is that same shape with its tier's bounds and differs from the pin in those numbers only.
  */
 
 export type WriterStage = "KS1" | "KS2" | "KS3-5";

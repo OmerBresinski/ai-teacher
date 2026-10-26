@@ -42,11 +42,14 @@ export function slideTierOf(brief: DeckLength | undefined): SlideTier {
 
 /**
  * The exact count an outline planner builds: a tier's planner count (inside its range), else an
- * older lesson's own count, else the Standard tier's.
+ * older lesson's own count held to the tiers' span, else the Standard tier's.
  */
 export function plannerSlideCount(brief: DeckLength | undefined): number {
   if (brief?.slideTier) return PLANNER_COUNT_OF_TIER[brief.slideTier];
   const n = brief?.slideCount;
-  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n)) return n;
+  // Held to the tiers' span (7–16 since ruling 295), as the writer's `slideRange` holds it, so the
+  // planner never plans a count the writer is not asked for (an old 6-slide lesson plans 7).
+  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n))
+    return Math.min(SLIDE_TIER_RANGES.detailed.max, Math.max(SLIDE_TIER_RANGES.quick.min, n));
   return PLANNER_COUNT_OF_TIER[DEFAULT_SLIDE_TIER];
 }

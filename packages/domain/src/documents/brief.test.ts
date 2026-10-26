@@ -46,7 +46,9 @@ describe("BriefSchema", () => {
 
   test("plannerSlideCount: the tier's planner count, inside its range; else an older exact count", () => {
     expect(plannerSlideCount({ slideCount: 6, slideTier: "detailed" })).toBe(16);
-    expect(plannerSlideCount({ slideCount: 6 })).toBe(6);
+    // Ruling 295: an old exact count is held to 7–16, the span the writer's slideRange uses.
+    expect(plannerSlideCount({ slideCount: 6 })).toBe(7);
+    for (const n of [8, 10, 12]) expect(plannerSlideCount({ slideCount: n })).toBe(n);
     expect(plannerSlideCount({ slideTier: "quick" })).toBe(8);
     expect(plannerSlideCount({ slideTier: "standard" })).toBe(10);
     expect(plannerSlideCount({ slideTier: "detailed" })).toBe(16);

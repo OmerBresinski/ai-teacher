@@ -54,5 +54,7 @@ minimums in `SLIDE_TIER_RANGES`: Quick 7–8, Standard 10–12 (the default), De
 unchanged. The planner counts (Quick 8, Standard 10, Detailed 16) are all still inside their
 ranges. The writer still plans near a range's low end (ruling 261); Quick now leaves one slide of
 room for a split, Standard and Detailed two. An older lesson with an exact count and no tier is
-held to 7–16 (ADR 0036 §1), so a stored 6-slide lesson is written at 7. `slideTierOf` is unchanged:
+held to 7–16 (ADR 0036 §1), so a stored 6-slide lesson is written at 7, and the outline
+planners (`plannerSlideCount`) hold an old exact count to the same 7–16, so they plan 7 for it
+too and never plan a count the writer is not asked for. `slideTierOf` is unchanged:
 any count up to 8 still reads as Quick.

@@ -7,8 +7,9 @@ import { schemaText, type WriterStage } from "./schema";
 
 /*
  * Pins (TEACH-110 part b, rows 1 and 2): every ported prompt file is the pinned bytes, and the
- * schema builder at Standard (9–12) gives the pinned schema byte for byte, so the writer's hash
- * (system text and schema, all three stages, the evidence registry's rule) is the pinned one.
+ * schema builder at 9–12 (Standard's range until ruling 295) gives the pinned schema byte for
+ * byte, so the writer's hash (system text and schema, all three stages, the evidence registry's
+ * rule) is the pinned one at those bounds. Production tiers now differ from it in the bounds only.
  */
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
