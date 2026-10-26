@@ -202,6 +202,8 @@ describe("typed callout card", () => {
   // field that bleeds off the slide is square (the golds' field radius 0), so the hinge's
   // full-bleed stage lost its corners in the nine rounded themes; those 45 hinge hashes were
   // re-pinned by script (recompute, write the moved keys), nothing else moved.
+  // TEACH-110 part an (25 Oct 2026): the objectives slide is full-width cards that flow with the
+  // objectives' length, so its 45 hashes were re-pinned by script; nothing else moved.
   test("old lessons: byte-identical to master on every theme and stage (ids aside)", () => {
     const want = MASTER as Record<string, string>;
     let n = 0;

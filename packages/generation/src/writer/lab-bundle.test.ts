@@ -18,7 +18,7 @@ const run = (env: Record<string, string | undefined>) => {
 
 describe("LAB_WRITER_BUNDLE_ID", () => {
   test("production constant is unchanged and is what this test process runs", () => {
-    expect(WRITER_BUNDLE_ID).toBe("base4f-p123");
+    expect(WRITER_BUNDLE_ID).toBe("base4f-p124");
     expect(ACTIVE_WRITER_BUNDLE_ID).toBe(WRITER_BUNDLE_ID);
     expect(writerBundle().id).toBe(WRITER_BUNDLE_ID);
   });

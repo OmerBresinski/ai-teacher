@@ -2,6 +2,7 @@ import base4Defs from "./bundles/base4/diagram-defs.gen.json" with { type: "json
 import * as base4 from "./bundles/base4/prompts.gen";
 import ACTIVITY_MENU_P123 from "./bundles/base4f-p123/activity-menu.txt" with { type: "text" };
 import * as base4fP123 from "./bundles/base4f-p123/prompts.gen";
+import * as base4fP124 from "./bundles/base4f-p124/prompts.gen";
 import ACTIVITY_MENU_G from "./bundles/base4g/activity-menu.txt" with { type: "text" };
 import * as base4g from "./bundles/base4g/prompts.gen";
 
@@ -66,6 +67,11 @@ export const WRITER_BUNDLES = {
   // base4 with three system lines (the recall opener asks what pupils already know; tasks use only
   // what the lesson teaches or pupils know; at least one hinge slide). Same schema and defs.
   "base4f-p123": bundle("base4f-p123", base4fP123, "8a0f9b4f6dde", base4Defs),
+  // base4f-p123 with four prompt files changed (TEACH-110 part am): the objectives' length by key
+  // stage, one pupil line per objective within word and character limits, and the writer's user
+  // turn says what slides beyond teaching and checking each objective once are for. System texts
+  // and schemas are p123's, so the writer hash is the same.
+  "base4f-p124": bundle("base4f-p124", base4fP124, "8a0f9b4f6dde", base4Defs),
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.
@@ -81,7 +87,7 @@ export const WRITER_BUNDLES = {
 export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 
 /** The writer prompt set production ships: the one value to change when a new winner lands. */
-export const WRITER_BUNDLE_ID: WriterBundleId = "base4f-p123";
+export const WRITER_BUNDLE_ID: WriterBundleId = "base4f-p124";
 
 /**
  * True when the process may be deployed: any Railway variable (every Railway environment, staging

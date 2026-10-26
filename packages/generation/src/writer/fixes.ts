@@ -35,7 +35,6 @@ export type Brief = {
   language: string;
   durationMin: number;
   exitTicketOnSlides: boolean;
-  tier: string;
   slides: { min: number; max: number };
   teacherTheme?: string;
 };
@@ -46,13 +45,16 @@ export const promptStage = (k: Stage) => (k === "ks1" ? "KS1" : k === "ks2" ? "K
 /** `objectiveCount` at the middle of the brief's slide range. */
 export function objectiveCount(b: Brief): string {
   const n = Math.round((b.slides.min + b.slides.max) / 2);
-  return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three or four";
+  // Detailed asks for three, not four: a fourth objective at KS1 leaves 44 characters a line.
+  return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three";
 }
 
 /**
  * K3: why a writer output is incomplete, or undefined when it is whole. A stream cut at the token
  * limit, JSON that does not close, or a deck more than 2 under the count fails the job instead of
- * saving the flow's placeholders as a headings-only deck.
+ * saving the flow's placeholders as a headings-only deck. A tier's deck 1 or 2 under its minimum
+ * ships and is logged (`count-miss` in stage.ts, TEACH-110 part ao): never a retry, which would
+ * double the cost and splice two attempts' slides.
  */
 export function writerIncomplete(o: {
   finishReason?: string | null;
@@ -681,12 +683,146 @@ export function applyRepair(
   }
 }
 
+/**
+ * The objectives slide's measured room, in characters a line, for `n` objectives at `stage`
+ * (`objectives-room.gen.json`, from `scripts/objectives-room.ts`): the longest line at which `n`
+ * objectives (1 to 4, one objective its own entry) stay at the body size or larger in every theme.
+ */
+export function pupilCharLimit(stage: Stage, n: number): number {
+  const room = (objectivesRoom as Record<string, Record<string, number>>)[promptStage(stage)];
+  const chars = room?.[n === 1 ? "1 objective" : `${n} objectives`] ?? room?.["4 objectives"];
+  return chars ?? (stage === "ks1" ? 48 : stage === "ks2" ? 60 : 72);
+}
+
 /** The pupil line's word limit: the objectives slide's measured room for this many objectives. */
 export function pupilWordLimit(stage: Stage, n: number): number {
-  const room = (objectivesRoom as Record<string, Record<string, number>>)[promptStage(stage)];
-  const chars = room?.[`${n} objectives`];
-  if (chars) return Math.max(6, Math.floor(chars / 6));
-  return stage === "ks1" ? 8 : stage === "ks2" ? 10 : 12;
+  return Math.max(6, Math.floor(pupilCharLimit(stage, n) / 6));
+}
+
+const STOP = new Set(
+  "a an and are as at be by can do does for from how i in into is it its of on or our that the their them they this to use using we what when where which who why will with you your about after before each more most some such than then these those through up very".split(
+    " ",
+  ),
+);
+/** A word's crude stem: lower case, letters only, a plural or verb ending off. */
+const stem = (w: string) =>
+  w
+    .toLowerCase()
+    .replace(/[^a-z]/g, "")
+    .replace(/(?:ing|ed|es|s|ly)$/, "");
+/** The content words of a line, stemmed, stop words out. */
+export function contentStems(text: string): Set<string> {
+  return new Set(
+    text
+      .split(/[^A-Za-z']+/)
+      .filter((w) => w.length > 2 && !STOP.has(w.toLowerCase()))
+      .map(stem)
+      .filter((w) => w.length > 2),
+  );
+}
+/**
+ * Whether a pupil line is about its own objective: it shares at least one content word (stemmed,
+ * stop words out) with objective `k`, and no other objective shares more. A line in the wrong
+ * place (the model swapped two, or split one) fails this and takes the teacher's wording.
+ */
+export function lineMatchesObjective(line: string, k: number, objectives: string[]): boolean {
+  const words = contentStems(line);
+  const shared = (o: string) => [...contentStems(o)].filter((w) => words.has(w)).length;
+  const own = shared(objectives[k] ?? "");
+  // A tie keeps the line where it is: objectives as close as "unit fractions of amounts" and
+  // "non-unit fractions of amounts" share every word a short pupil line uses.
+  return own >= 1 && objectives.every((o, j) => j === k || shared(o) <= own);
+}
+
+/**
+ * What is wrong with the pupil-wording call's lines for `n` objectives, or undefined when they
+ * can be shown: exactly `n` lines (a line is matched to its objective by position, so a sixth line
+ * or a split objective puts one objective's words beside another's number), each a non-empty
+ * string within the slide's measured room in characters and words.
+ */
+export function pupilLinesProblem(
+  lines: unknown,
+  n: number,
+  stage: Stage,
+  objectives?: string[],
+): string | undefined {
+  if (!Array.isArray(lines)) return "no lines";
+  if (lines.length !== n) return `${lines.length} lines for ${n} objectives`;
+  const chars = pupilCharLimit(stage, n);
+  const words = pupilWordLimit(stage, n);
+  for (const [k, line] of lines.entries()) {
+    if (typeof line !== "string" || !line.trim()) return `line ${k + 1} is empty`;
+    const t = line.trim();
+    if (t.length > chars) return `line ${k + 1} is ${t.length} characters, room ${chars}`;
+    const w = t.split(/\s+/).length;
+    if (w > words) return `line ${k + 1} is ${w} words, limit ${words}`;
+    if (objectives && !lineMatchesObjective(t, k, objectives))
+      return `line ${k + 1} is not about objective ${k + 1}`;
+  }
+  return undefined;
+}
+
+/** Leading words that say nothing about the objective itself. */
+const LEAD_FILLER =
+  /^(?:(?:all\s+|most\s+|some\s+)?(?:pupils|students|children|learners)\s+(?:will|should|can|must)\s+(?:be\s+able\s+to\s+)?|(?:to\s+)?be\s+able\s+to\s+|i\s+can\s+|we\s+(?:will|are\s+learning\s+to)\s+|to\s+)/i;
+/** A trailing qualifier: a condition on the task, not one of its terms. */
+const TAIL_QUALIFIER =
+  /,\s+(?:where|when|so\s+that|in\s+order\s+to|in\s+a\s+range\s+of\s+contexts|in\s+context|over\s+time|using\s+(?:a|an|the)\s+[^,.;]+)(?:[^,.;]*)\.?$/i;
+
+/**
+ * A teacher's objective made shorter without losing what it names (TEACH-110 part an): leading
+ * filler ("Pupils will be able to"), parentheticals ("(for example 1/2 of 8)") and a trailing
+ * qualifier (", where the answer is a whole number") go, in that order, only until the line is
+ * within `max`. Nothing else is cut: a listed term ("fractions and decimals"), a clause or a noun
+ * phrase is never dropped, so the result may still be longer than `max`, and then the slide's own
+ * type steps (down to its floor) hold it. The first letter is capitalised and a full stop ends it.
+ */
+export function shortenObjective(text: string, max: number): string {
+  const tidy = (x: string) => {
+    const t = x
+      .replace(/\s+/g, " ")
+      .replace(/\s+([,.;:])/g, "$1")
+      .trim()
+      .replace(/[\s,;:.]+$/, "");
+    return t ? `${t.charAt(0).toUpperCase()}${t.slice(1)}.` : "";
+  };
+  let t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const steps = [
+    (x: string) => x.replace(LEAD_FILLER, ""),
+    (x: string) => x.replace(/\s*\([^)]*\)/g, ""),
+    (x: string) => x.replace(/[.\s]+$/, "").replace(TAIL_QUALIFIER, ""),
+  ];
+  for (const step of steps) {
+    const next = tidy(step(t));
+    if (next && next.length >= 12) t = next;
+    if (t.length <= max) return t;
+  }
+  return t;
+}
+
+/**
+ * The lines shortened until the slide holds them (`fits`: the objectives slide laid with these
+ * lines reports nothing over). The longest line is shortened first, ten characters at a time, so
+ * the cut falls where it costs least. Gives up (returns the shortest it reached) at 24 characters.
+ */
+export function fitObjectives(
+  lines: string[],
+  fits: (lines: string[]) => boolean,
+  log?: (e: object) => void,
+): string[] {
+  let out = [...lines];
+  // Each line once, longest first: only filler, parentheticals and trailing qualifiers go.
+  const order = out.map((l, k) => ({ l, k })).sort((a, b) => b.l.length - a.l.length);
+  for (const { k } of order) {
+    if (fits(out)) return out;
+    const line = out[k] ?? "";
+    const next = shortenObjective(line, 0);
+    if (next !== line) out = out.map((l, j) => (j === k ? next : l));
+  }
+  // Still over: the full lines stay, the slide sets them under its floor, and it is logged.
+  if (!fits(out)) log?.({ ev: "objectives-under-floor", lines: out.map((l) => l.length) });
+  return out;
 }
 
 export type FillExtras = {
@@ -710,7 +846,11 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     const t = expr.match(/^([\w.]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
     if (t) return get(t[1] as string) ? (t[2] as string) : (t[3] as string);
     const d = expr.match(/^([\w.]+)\s*\?\?\s*"([^"]*)"$/);
-    if (d) return String(get(d[1] as string) ?? d[2]);
+    // An extra (`maxChars` on the pupil call) wins over the brief's field of the same name.
+    if (d) {
+      const k = d[1] as string;
+      return String((Object.hasOwn(x, k) ? x[k] : undefined) ?? get(k) ?? d[2]);
+    }
     if (expr.startsWith("count:") && expr.includes("objectiveCount")) return objectiveCount(b);
     if (expr.startsWith("for each objective") && expr.includes("teacher wording only"))
       return (x.objectives ?? []).map((o, k) => `${k + 1}. ${o.teacher}`).join("\n");
