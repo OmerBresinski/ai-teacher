@@ -192,13 +192,50 @@ describe("real lesson intake", () => {
     expect(post().brief.topic).toBe("The water cycle");
   });
 
-  it("skip planning opens the real editor through the one-job path", async () => {
+  it("skip planning creates the one job and stays on the intake for its planning stage", async () => {
     search = { topic: "Rocks" };
     show();
     fireEvent.click(screen.getByRole("button", { name: "Skip planning" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(post().skipPlanning).toBe(true);
-    expect(navigate.mock.calls[0]?.[0]).toMatchObject({ to: "/l/$lessonId" });
+    // Jank audit F1: never straight to an editor with nothing to show.
+    expect(navigate.mock.calls[0]?.[0]).toMatchObject({
+      to: "/lessons/new",
+      search: { lesson: expect.any(String) },
+      replace: true,
+    });
+    expect(screen.getByRole("heading", { name: "Planning your lesson" })).toBeTruthy();
+  });
+  it("a skipped plan stays on the planning stage until the job stores slides, then opens the editor", async () => {
+    const { artefacts: _artefacts, ...lesson } = generatedLesson();
+    const jobId = crypto.randomUUID();
+    const row = fakeApi.insertLesson(
+      {
+        ...lesson,
+        slides: [],
+        yearGroup: "Year 5",
+        brief: { topic: "The water cycle", durationMin: 60, slideCount: 8 },
+        generation: undefined,
+        plan: { revision: 1, state: "confirmed", jobId, confirmedAt: new Date().toISOString() },
+      } as Lesson,
+      jobId,
+    );
+    installFakeEventSource();
+    search = { lesson: row.id };
+    show();
+    await screen.findByRole("heading", { name: "Planning your lesson" });
+    await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
+    expect(navigate).not.toHaveBeenCalled();
+    // The job stores its first slides; the next read (here the stream's reconnect) moves on.
+    (row.body as Lesson).slides = lesson.slides;
+    FakeEventSource.latest.open();
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/l/$lessonId",
+        params: { lessonId: row.id },
+        replace: true,
+      }),
+    );
   });
   it("preserves blank lesson and source controls including pasted text", async () => {
     search = { source: "1" };

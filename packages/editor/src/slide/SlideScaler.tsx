@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 
 const ScaleContext = createContext(1);
 /** Current slide scale (screen px per slide pt). */
@@ -41,7 +42,8 @@ export function SlideScaler({ zoom = "fit", gutter = 0, className, children, onS
         0.05,
         Math.min((width - gutter * 2) / SLIDE_W, (height - gutter * 2) / SLIDE_H),
       );
-      setFit(s);
+      // Before the browser paints, so a fitted slide never shows a frame at 100% first.
+      flushSync(() => setFit(s));
     });
     ro.observe(el);
     return () => ro.disconnect();

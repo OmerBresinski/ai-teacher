@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent, notFound } from "@tanstack/react-router";
 import { z } from "zod";
+import { EditorShellPending } from "@/components/shell-pending";
 import { libraryCache, libraryQueries } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
 import { authLayoutRoute } from "./auth.route";
@@ -86,6 +87,11 @@ export const lessonEditorRoute = createRoute({
   loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
   head: titleFrom,
   component: lazyRouteComponent(() => import("./lesson-editor.page"), "LessonEditorPage"),
+  // The editor's own frame, never the generic card, while the lesson or the chunk loads. Arriving
+  // from another page (the intake hands over with the lesson and the chunk already loaded), the
+  // page being left stays up for the session check's round trip rather than flashing the frame.
+  pendingComponent: EditorShellPending,
+  pendingMs: 500,
   // A signed-out lesson whose move into the account failed 404s here (TEACH-245, ruling 127).
   notFoundComponent: lazyRouteComponent(
     () => import("@/components/sign-in/claim-declined"),

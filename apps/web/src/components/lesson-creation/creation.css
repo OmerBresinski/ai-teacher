@@ -737,6 +737,16 @@
 html[data-plan-exit] .creation-shell .handover-stage {
   view-transition-name: plan-actor;
 }
+html[data-plan-exit] .creation-step[data-step-out] {
+  view-transition-name: creation-step-out;
+}
+::view-transition-old(creation-step-out) {
+  animation: creation-leave 140ms ease both;
+}
+/* The new step comes in once the old one has gone, so the two headings never overlap. */
+html[data-plan-exit]::view-transition-new(creation-content) {
+  animation: creation-enter 240ms 140ms ease both;
+}
 ::view-transition-group(plan-actor) {
   animation-duration: 520ms;
   animation-timing-function: cubic-bezier(0.3, 0.7, 0.3, 1);

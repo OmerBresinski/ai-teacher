@@ -18,6 +18,7 @@ import {
 } from "@tj/ui";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { ImageSearchClient } from "../images/image-search";
 import { nextStep, ZoomControl } from "../kit/ZoomControl";
 import { SlideScaler } from "../slide/SlideScaler";
@@ -254,13 +255,18 @@ export function Canvas({
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
       const { width, height } = entry.contentRect;
-      setViewW(width);
-      setFitScale(
-        Math.max(
-          0.05,
-          Math.min((width - fitInset - gutterX * 2) / SLIDE_W, (height - gutterY * 2) / SLIDE_H),
-        ),
-      );
+      // Committed before the browser paints (jank audit F3): the observer reports after layout and
+      // before paint, but a plain state update would render a frame later, so the slide would
+      // paint once at 100% and then jump to its fit.
+      flushSync(() => {
+        setViewW(width);
+        setFitScale(
+          Math.max(
+            0.05,
+            Math.min((width - fitInset - gutterX * 2) / SLIDE_W, (height - gutterY * 2) / SLIDE_H),
+          ),
+        );
+      });
     });
     ro.observe(el);
     return () => ro.disconnect();

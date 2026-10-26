@@ -1,6 +1,8 @@
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { BRIEF_TOPIC_MAX } from "@tj/domain/documents";
 import { z } from "zod";
+import { loadCreationMotion } from "@/components/lesson-creation/creation-motion";
+import { CreationShellPending } from "@/components/shell-pending";
 import { pageTitle } from "@/lib/page-title";
 import { flag } from "./documents.route";
 import { guestLayoutRoute } from "./guest.route";
@@ -51,6 +53,14 @@ export const lessonBriefRoute = createRoute({
       throw redirect({ to: "/sign-in", search: { redirect: briefRedirect(search.topic, true) } });
     }
   },
+  // The character's motion loads beside the page's chunk, so the intake opens with its character
+  // drawn rather than adding it a moment later (jank audit F10). Never held for more than 400 ms.
+  loader: () =>
+    Promise.race([
+      loadCreationMotion().catch(() => undefined),
+      new Promise((resolve) => setTimeout(resolve, 400)),
+    ]).then(() => undefined),
   head: () => pageTitle("New lesson"),
   component: lazyRouteComponent(() => import("./lesson-brief.page"), "LessonBriefPage"),
+  pendingComponent: CreationShellPending,
 });
