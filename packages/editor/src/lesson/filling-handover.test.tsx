@@ -7,6 +7,10 @@ import { SaveIndicator } from "../kit/SaveIndicator";
 import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
+import { FOLLOW_PACE } from "./use-follow-writing";
+
+/** The follow without its reading pauses (its pacing has its own tests in follow-writing). */
+const INSTANT = { ...FOLLOW_PACE, readMs: 0, minMs: 0, catchUpReadMs: 0, catchUpMinMs: 0 };
 
 /*
  * The first-generation hand-over (UX audit 19 Oct, jank 1 and 3-6): while the job writes, the
@@ -52,6 +56,7 @@ function setup(lesson: Lesson, extra: Partial<LessonEditorProps> = {}) {
           onPresent={() => {}}
           writingSlideIds={writing}
           drafts={drafts}
+          followPace={INSTANT}
           {...extra}
         />
       </TooltipProvider>
@@ -64,6 +69,28 @@ const row = (c: HTMLElement, n: number) =>
   c.querySelectorAll<HTMLElement>("[data-navigator] [role=option]")[n - 1] ?? null;
 
 describe("the filling editor", () => {
+  test("once the writer has finished, the slides it still holds say the job is finishing", () => {
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    const drafts = createDraftStore();
+    const { container, rerender, tree } = setup(lesson, { writingFinished: true });
+    act(() =>
+      drafts.set([
+        { index: 2, slideId: ids[2] as string, slide: draftOf(ids[2] as string, "Halves of 12") },
+      ]),
+    );
+    // Slides 2 and 3 stay the job's (read-only) until the lesson is editable.
+    act(() => rerender(tree(new Set([ids[1] as Id, ids[2] as Id]), drafts)));
+    expect(container.querySelectorAll("[data-navigator] [data-slide-writing]").length).toBe(2);
+    expect(container.textContent).not.toContain("Writing this slide…");
+    expect(container.querySelector("[data-writing-status]")?.textContent).toBe(
+      "Adding pictures and final checks…",
+    );
+    expect(container.querySelector("[data-slide-writing-now]")?.textContent).toContain(
+      "Finishing…",
+    );
+  });
+
   test("only the slide being written says Writing…, and its thumbnail shows the draft", () => {
     const lesson = seededLesson();
     const ids = lesson.slides.map((s) => s.id);

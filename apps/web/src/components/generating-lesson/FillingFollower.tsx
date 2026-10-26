@@ -8,6 +8,9 @@ import { apiErrorFromResponse } from "@/lib/query";
 import { sessionMutation, sessionRequest } from "@/lib/session-boundary";
 import { JOB_POLL_MS, lastDocumentUpdatedAt, REFETCH_DEBOUNCE_MS } from "./job-sync";
 
+/** The worker's progress message when the writer's stream ends (`@tj/generation` `SLIDES_DRAFTED`). */
+export const SLIDES_DRAFTED = "Slides drafted";
+
 /**
  * Whether the editor opens while the lesson still fills (ADR 0037). Never for a guest: a guest's
  * lesson is read-only anyway, and the generating view keeps its progress and its Stop. Never once
@@ -38,6 +41,7 @@ export function FillingFollower({
   fold,
   onStopped,
   drafts,
+  onDrafted,
 }: {
   jobId: string;
   /** Read the newest row and fold it into the editor (the page's `fold`). */
@@ -49,11 +53,22 @@ export function FillingFollower({
   onStopped?: (jobId: string, outcome: "failed" | "cancelled", message?: string) => void;
   /** Live writing (ADR 0039): the job's slide drafts go here, for the editor's canvas to show. */
   drafts?: DraftStore;
+  /**
+   * The writer's stream has ended (the job's "Slides drafted" progress, TEACH-202 part o): every
+   * slide's words are written, while pictures, checks and notes still run.
+   */
+  onDrafted?: (jobId: string) => void;
 }) {
   const queryClient = useQueryClient();
   const stream = useJobEvents(jobId, queryClient);
   useFeedDrafts(drafts, stream.drafts, stream.terminal !== null);
   const documentUpdatedAt = lastDocumentUpdatedAt(stream.events);
+  const drafted = stream.events.some(
+    ({ event: e }) => e.type === "progress" && e.progress.message === SLIDES_DRAFTED,
+  );
+  useEffect(() => {
+    if (drafted) onDrafted?.(jobId);
+  }, [drafted, onDrafted, jobId]);
 
   // Each persist the stream reports, debounced like the generating view's refetch.
   useEffect(() => {

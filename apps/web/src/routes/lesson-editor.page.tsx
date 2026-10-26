@@ -330,6 +330,8 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
   const [storyStarted, setStoryStarted] = useState(false);
   const [storyFinished, setStoryFinished] = useState(false);
   const [stage, setStage] = useState(() => stageOf([]));
+  /** The job whose writer has finished every slide's words (TEACH-202 part o). */
+  const [draftedJobId, setDraftedJobId] = useState<string | null>(null);
   const checkingSeen = useRef(false);
   if (stage.stage === "checking") checkingSeen.current = true;
   const [worksheetsOpen, setWorksheetsOpen] = useState(false);
@@ -698,6 +700,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         onPromptEdit={onPromptEdit}
         busySlideIds={proposals.busySlideIds}
         writingSlideIds={writing}
+        writingFinished={filling && draftedJobId === fillingJobId}
         drafts={rowRef.current.drafts}
         proposalsBusy={proposals.busy}
         images={images}
@@ -719,6 +722,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           fold={fold}
           onStopped={onStopped}
           drafts={draftStore}
+          onDrafted={setDraftedJobId}
         />
       ) : null}
     </>

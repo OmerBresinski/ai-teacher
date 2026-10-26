@@ -341,6 +341,11 @@ export type WriterRun = {
    */
   onSlide?: (index: number, slide: WriterSlide) => void;
   /**
+   * The writer's stream has ended and every slide it wrote is laid (`indices`, deck order): no
+   * slide's words are still coming, though pictures, diagrams, checks and notes still run.
+   */
+  onWritten?: (indices: readonly number[]) => void;
+  /**
    * Live writing P4 (TEACH-202 part c): the slide the stream is writing, before it closes. The
    * first draft of a slide comes as soon as its template closes, then its fields as they grow (an
    * open string cut where the stream is), at most one per `draft.ms` (default 200). Read-only and
@@ -1345,6 +1350,27 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     openSlide(idx, raw);
   }
+  // Slide 2 with the pupil wording (a small call started with the writer, so it has landed by
+  // now or soon after); any line missing keeps the teacher's. Then slide 2 is final too, and is
+  // handed over with the written slides (TEACH-202 part o).
+  const pupil = await pupilJob;
+  if ("fatal" in pupil) throw pupil.fatal;
+  if (pupil.lines.length) {
+    (plan.objectives ?? []).forEach((o, k) => {
+      const line = pupil.lines[k];
+      if (typeof line === "string" && line.trim()) o.pupil = line.trim();
+    });
+    laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+  }
+  const objectivesShown = laid.has(1);
+  if (objectivesShown) shown(1);
+  nonFatalSync(
+    () =>
+      run.onWritten?.(
+        [...(objectivesShown ? [1] : []), ...written.map(([i]) => i)].sort((a, b) => a - b),
+      ),
+    (e) => log({ ev: "written-hook-failed", err: String(e).slice(0, 200) }),
+  );
   // ── roleStamp: each written slide's role, logged only (no consumer reads it yet) ──
   if (run.roleStamp ?? ROLE_STAMP_DEFAULT)
     for (const [i, role] of slideRoles(plan.slides as (S | undefined)[]))
@@ -1422,16 +1448,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
-  }
-  // Slide 2 with the pupil wording, before editable; any line missing keeps the teacher's.
-  const pupil = await pupilJob;
-  if ("fatal" in pupil) throw pupil.fatal;
-  if (pupil.lines.length) {
-    (plan.objectives ?? []).forEach((o, k) => {
-      const line = pupil.lines[k];
-      if (typeof line === "string" && line.trim()) o.pupil = line.trim();
-    });
-    laid.set(1, codeObjectives({ ...base, index: 1, plan }));
   }
   editable = true;
   await run.onEditable?.(deck());
