@@ -559,6 +559,11 @@ export interface SlideForPicture {
   heading: string;
   text?: string;
   point?: string;
+  /**
+   * TEACH-251 part v: the slide teaches where a real place is (a "locate" or "where" objective):
+   * a locator map from Commons is tried before a photograph of the place.
+   */
+  locate?: boolean;
 }
 
 /**
@@ -584,6 +589,8 @@ export async function findDirected(args: {
   deps: DirectorDeps;
   /** C7: race stock against generation after this long (`findPicture`); absent, one then the other. */
   raceMs?: number;
+  /** How long a locator map may search (TEACH-251 part v); absent, LOCATOR_MAP_MS. */
+  mapMs?: number;
   /** The lesson's picture look, the same on every call of the lesson. */
   look?: LessonLook;
   /** How the director is asked (a batcher); absent, one call for this slot. */
@@ -693,7 +700,38 @@ export async function findDirected(args: {
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
       : b;
-  let out = await findPicture(
+  // TEACH-251 part v: a "where" slide about a real place shows a map of where it is. A Commons
+  // locator map is searched beside the place's own ladder (never before it, so the slot is no
+  // slower), capped at LOCATOR_MAP_MS, and stored in the library like any picture; when one is
+  // found it is placed, else the ladder's picture is.
+  const place =
+    args.slide.locate && direction?.named === "place"
+      ? placeNameOf(req.text, brief.queries ?? [])
+      : null;
+  const mapCtl = new AbortController();
+  const stopMap = () => mapCtl.abort(deps.signal.reason);
+  deps.signal.addEventListener("abort", stopMap, { once: true });
+  const capMap = place
+    ? setTimeout(() => mapCtl.abort(new Error("map-cap")), args.mapMs ?? LOCATOR_MAP_MS)
+    : 0;
+  const mapBrief = place ? locatorBrief(brief, place) : brief;
+  const mapP: Promise<PlacedPhoto | undefined> = place
+    ? findPicture(
+        locatorRequest(req, mapBrief),
+        args.bank,
+        // A real request's search gets no signal from the ladder: the map's own one is passed.
+        () => args.stock(mapBrief, mapCtl.signal),
+        mapCtl.signal,
+      ).then(
+        (o) => o.photo,
+        // The cap's own abort is a miss; the slot's abort and a budget refusal are rethrown.
+        (e: unknown) => {
+          if (!deps.signal.aborted && mapCtl.signal.aborted) return undefined;
+          return whenNonFatal(() => undefined)(e);
+        },
+      )
+    : Promise.resolve(undefined);
+  const ladder = findPicture(
     req,
     args.bank,
     (signal) => args.stock(brief, signal),
@@ -703,6 +741,30 @@ export async function findDirected(args: {
     sharedVerdictCache,
     args.raceMs,
   );
+  // A photo placed first leaves the map a short grace, never the whole cap: the slot is not slower.
+  let graceMap: ReturnType<typeof setTimeout> | 0 = 0;
+  if (place)
+    void ladder.then(
+      (o) => {
+        if (o.photo && !mapCtl.signal.aborted)
+          graceMap = setTimeout(() => mapCtl.abort(new Error("map-grace")), LOCATOR_MAP_GRACE_MS);
+      },
+      () => undefined,
+    );
+  // The cap holds even for a search that does not listen to its signal.
+  const mapCapped = Promise.race([
+    mapP,
+    new Promise<undefined>((resolve) =>
+      mapCtl.signal.addEventListener("abort", () => resolve(undefined), { once: true }),
+    ),
+  ]);
+  const [map, found] = await Promise.all([mapCapped, ladder]).finally(() => {
+    clearTimeout(capMap);
+    clearTimeout(graceMap);
+    deps.signal.removeEventListener("abort", stopMap);
+  });
+  if (place) log({ map: map ? "placed" : "missed", place });
+  let out = map ? { ...found, photo: map, via: "fetched" as const, attempts: 0 } : found;
   // a lesson trial, ruling 163: a past event or person that the scene search missed is shown by a
   // real artefact, coin, map, site or museum object (a Claudius bust), before nothing.
   if (!out.photo && req.depicts && plan.kind === "photo") {
@@ -822,15 +884,84 @@ export async function findDirected(args: {
 const DEPICTS =
   /\b(people|person|man|men|woman|women|child|children|crowd|soldiers?|army|armies|legion(ary|aries)?|troops|king|queen|emperor|ruler|leader|workers?|shoppers?|families|family|villagers|battle|landing|invasion|invad\w*|march\w*|riot|protest|meeting|ceremony|siege|fight\w*|attack\w*|parade|queue)\b/i;
 
+/** How long a locator map search may run beside the place's own ladder (TEACH-251 part v). */
+export const LOCATOR_MAP_MS = 12_000;
+/** How long the map may still run once the place's photograph is placed (TEACH-251 part v). */
+export const LOCATOR_MAP_GRACE_MS = 1_500;
+
+const LEAD_WORD = /^(A|An|The|This|That|These|Those)$/;
+const JOIN_WORD = new Set(["of", "the", "upon", "de", "la", "le"]);
+
+/**
+ * The real place a picture shows, from the director's `shows`: of its proper-name runs ("Roman",
+ * "Hadrian's Wall"), the one the director's own searches name ("Hadrian's Wall locator"), else the
+ * longest; null with none. A lone adjective ("Roman soldiers") is never chosen over a place.
+ */
+export function placeNameOf(shows: string, queries: readonly string[] = []): string | null {
+  const words = shows
+    .replace(/[.,;:()]/g, " ")
+    .replace(/’/g, "'")
+    .split(/\s+/)
+    .filter(Boolean);
+  const proper = (w: string | undefined) => !!w && /^[A-Z][\p{L}'-]*$/u.test(w);
+  const runs: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i] as string;
+    if (!proper(w) || LEAD_WORD.test(w)) continue;
+    const run = [w];
+    let j = i + 1;
+    for (; j < words.length; j++) {
+      const n = words[j] as string;
+      if (proper(n)) run.push(n);
+      else if (JOIN_WORD.has(n.toLowerCase()) && proper(words[j + 1])) run.push(n);
+      else break;
+    }
+    runs.push(run.join(" "));
+    i = j - 1;
+  }
+  const asked = queries.map((q) => q.replace(/’/g, "'").toLowerCase());
+  const named = runs.filter((r) => asked.some((q) => q.includes(r.toLowerCase())));
+  const pool = named.length ? named : runs;
+  const best = pool.reduce<string | null>(
+    (a, r) => (!a || r.split(" ").length > a.split(" ").length ? r : a),
+    null,
+  );
+  return best && best.length >= 3 ? best : null;
+}
+
+/** The bank request for a locator map: real only, keyed by its own request (TEACH-251 part v). */
+export function locatorRequest(req: BankRequest, brief: ImageBrief): BankRequest {
+  return {
+    text: brief.request ?? req.text,
+    named: req.named,
+    ...(req.aspect === undefined ? {} : { aspect: req.aspect }),
+    route: "real",
+    realFallback: "none",
+  };
+}
+
+/** The brief for a Commons locator map of `place` (TEACH-251 part v). */
+export function locatorBrief(brief: ImageBrief, place: string): ImageBrief {
+  return {
+    ...brief,
+    request: `A locator map showing where ${place} is`,
+    mustShow: [`${place} marked on a map`],
+    queries: [`${place} locator map`, `${place} location map`],
+    specific: true,
+  };
+}
+
 /** People in a past scene (who), for `isPastScene`. */
 const SCENE_PEOPLE =
   /\b(soldiers?|guards?|sentr(y|ies)|legionar(y|ies)|troops|travell?ers?|traders?|merchants?|visitors?)\b/i;
 /**
- * What they are doing: movement, watch and trade, never building or simply being there ("the
- * Great Wall built by workers", "the Colosseum with crowds" stay pictures of the monument).
+ * What they are doing: movement, watch and trade, active or passive ("soldiers checking a
+ * trader", "a trader being checked by soldiers", TEACH-251 part u, romans verify4 s7), never
+ * building or simply being there ("the Great Wall built by workers", "the Colosseum with crowds"
+ * stay pictures of the monument).
  */
 const SCENE_DOING =
-  /\b(patroll?ing|patrols?|walking|marching|guarding|keeping watch|standing guard|approaching|crossing|carrying|trading|waiting|checking)\b/i;
+  /\b(patroll?(ing|ed)|patrols?|walking|marching|guarding|keeping watch|standing guard|approaching|crossing|carrying|trading|waiting|(check|stopp|search|question|inspect)(ing|ed))\b/i;
 
 /** A picture of people doing something at a past place: a scene there (ruling 210). */
 export function isPastScene(shows: string): boolean {
