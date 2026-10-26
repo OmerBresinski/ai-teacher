@@ -26,7 +26,7 @@ const QUESTIONS = "The questions and tasks climb in demand";
 const TAUGHT =
   "Its answer is stated in the text of an earlier slide, a lead, point, card or caption: a fact found only in the notes or a picture is not yet taught, so teach it on a slide or ask about something else.";
 const YOUNG =
-  "In Years 1 and 2, those words are at most two short sentences and the picture shows the rest; a further fact goes in the notes or on a slide of its own.";
+  "In Years 1 and 2, a teaching slide's lead, or the text of a slide with no items, is at most two short sentences and the picture shows the rest; a layout of several items, such as steps, a comparison or cards, keeps its own fits, one short sentence or phrase per item. A further fact goes in the notes or on a slide of its own.";
 
 describe("pilot pack v4.14", () => {
   test("production runs v4.14", () => expect(PILOT_PACK_ID).toBe("v4.14"));
@@ -82,6 +82,15 @@ describe("pilot pack v4.14", () => {
     expect(fixture.close.items).toHaveLength(2);
     expect(3 + fixture.slides.length).toBeGreaterThanOrEqual(SLIDE_TIER_RANGES.detailed.min);
     expect(3 + fixture.slides.length).toBeLessThanOrEqual(SLIDE_TIER_RANGES.detailed.max);
+  });
+
+  test("v4.14's wording grows v4.13's by at most 550 characters at each key stage", () => {
+    // Same cap as question-offer.test.ts, kept beside the pack it guards.
+    for (const ks of ["KS1", "KS2", "KS3"] as const) {
+      const grow = PILOT_PACKS["v4.14"].system[ks].length - PILOT_PACKS["v4.13"].system[ks].length;
+      expect(grow).toBeGreaterThan(0);
+      expect(grow).toBeLessThanOrEqual(550);
+    }
   });
 
   test("two lessons at one key stage share the cached first system message", async () => {
