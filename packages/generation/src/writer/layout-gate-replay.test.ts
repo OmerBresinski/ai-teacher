@@ -36,3 +36,22 @@ describe.each(LESSONS)("layout gate on replay %s (TEACH-247 part af)", (b) => {
     expect(out.slides.length).toBeLessThanOrEqual(out.plan.slides.length + 2 * splits + continued);
   });
 });
+
+describe("a picture landing once the lesson is editable never adds a slide (TEACH-247 part af)", () => {
+  test.each(LESSONS)("%s", async (b) => {
+    const events: Ev[] = [];
+    let landed: ((i: number) => void) | undefined;
+    const base = replayServices(b);
+    const services: WriterServices = { ...base, log: (e) => events.push(e as Ev) };
+    const out = await replayRun(b, {
+      services,
+      checks: "log",
+      hooks: { bindPictureLanded: (f) => (landed = f) },
+    });
+    expect(landed).toBeDefined();
+    const seen = events.length;
+    for (let i = 0; i < out.plan.slides.length; i++) landed?.(i);
+    const after = events.slice(seen);
+    expect(after.filter((e) => e.outcome === "split" || e.ev === "fit-continued")).toEqual([]);
+  });
+});

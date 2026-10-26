@@ -2836,7 +2836,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     ),
   ];
   const addedSlides = () => [...continued.values()].reduce((t, c) => t + c.length, 0);
-  const gateSlide = (i: number) => {
+  const gateSlide = (i: number, mayAddSlides = true) => {
     if (continued.has(i) || !repairable(plan.slides[i] as S, i)) return;
     const keys = (asks.get(i) ?? []).map((a) => a.key);
     const kept = keys.map((k) => [k, override.get(`${i}:${k}`)] as const);
@@ -2846,6 +2846,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const gate = layoutGate({
       faults: () => layoutFaultsAt(i),
       split: () => {
+        // A re-gate after a picture lands never adds a slide the teacher was not told about.
+        if (!mayAddSlides) return false;
         if (!continueSlide(i, visualState(i))) return false;
         const parts = continued.get(i)?.length ?? 0;
         if (parts <= MAX_GATE_PARTS && n + addedSlides() <= brief.slides.max) return true;
@@ -2877,9 +2879,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       });
   };
   for (let i = 0; i < n; i++) gateSlide(i);
-  // A picture that lands after the gate is laid again (`bindPictureLanded`): it is judged again. A
-  // dropped visual stays dropped: its `failed` override is read before any landed state.
-  gateAfterLanding = gateSlide;
+  // A picture that lands after the gate is laid again (`bindPictureLanded`): it is judged again,
+  // with no split (only drop the visual, or keep). A dropped visual stays dropped: its `failed`
+  // override is read before any landed state.
+  gateAfterLanding = (i) => gateSlide(i, false);
   for (const [i, p] of path) {
     const warnings = laid.get(i)?.diagramWarnings;
     log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
