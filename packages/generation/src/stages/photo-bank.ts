@@ -361,6 +361,9 @@ export async function findPicture(
     /** The safety retry runs once at most, with its own line; a second refusal ends the picture. */
     let safetyRetried = false;
     for (let attempt = 0; attempt < MADE_ATTEMPTS; attempt++) {
+      // A race this generation lost (a picture already won) starts no further try: its judge
+      // may answer after the win, and a retry then would be a painting started after it.
+      if (sig.aborted && !signal.aborted) return undefined;
       let made: MadePicture | undefined;
       try {
         made = await bank.generate(req, faithful, sig, hint);
