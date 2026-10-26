@@ -2519,7 +2519,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     unpoint(i);
     return true;
   };
-  const fallback = async (i: number, fo: { noPicture?: boolean } = {}) => {
+  const fallback = async (i: number, fo: { noPicture?: boolean; wasPicture?: boolean } = {}) => {
     if (!path.has(i) && (await tileFallback(i, fo))) return;
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
       | Extract<VisualAsk, { type: "diagram" }>
@@ -2534,7 +2534,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     const s = plan.slides[i] as S;
     // A picture of the same thing: any kind that shows a thing or process, never data.
-    const pic = !fo.noPicture && pictureFallbackOk(dAsk.kind) ? asPicture(s) : undefined;
+    // A diagram rerouted from a lost picture goes back to a picture whatever its kind: the slide
+    // was planned with a picture (a flow's arrows are its meaning only when it was planned as one).
+    const pic =
+      !fo.noPicture && (fo.wasPicture || pictureFallbackOk(dAsk.kind)) ? asPicture(s) : undefined;
     if (pic) {
       const n0 = notes.get(i);
       const oldAsks = asks.get(i) ?? [];
@@ -2678,7 +2681,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // time or an error, never to a judge's refusal (picq, greatfire 26 Oct s3 and s8: both pictures
     // ran out of time, the diagrams failed, and the slides shipped as bare text).
     if (how === "rerouted" && (asks.get(i) ?? []).some((a) => a.type === "diagram")) {
-      await fallback(i, { noPicture: !run.retryable?.(i, lost.key) });
+      await fallback(i, { noPicture: !run.retryable?.(i, lost.key), wasPicture: true });
       how = `to-${path.get(i) ?? "diagram"}`;
     }
     path.set(i, `picture-${how}`);
