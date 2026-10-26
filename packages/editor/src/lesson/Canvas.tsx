@@ -132,7 +132,6 @@ export function Canvas({
   // The Answer tab and the last reveal step are the same state (SPEC §6), decided once.
   const showingAnswer = useAnswerShowing(slide);
 
-  const [scale, setScale] = useState(1);
   /** What 'fit' resolves to: the scroll region minus the gutter, measured on the region itself. */
   const [fitScale, setFitScale] = useState(1);
   /** The scroll region's width, for moving the slide clear of a pane over the canvas. */
@@ -173,13 +172,7 @@ export function Canvas({
     [onFocusChange],
   );
 
-  const onScale = useCallback(
-    (s: number) => {
-      setScale(s);
-      onScaleChange?.(s);
-    },
-    [onScaleChange],
-  );
+  const onScale = useCallback((s: number) => onScaleChange?.(s), [onScaleChange]);
 
   /**
    * The slide never scrolls inside its own frame. Typing past the bottom of a text box made
@@ -252,31 +245,37 @@ export function Canvas({
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    // The first report is committed before the browser paints (jank audit F3): the observer
-    // reports after layout and before paint, but a plain state update would render a frame later,
-    // so the slide would paint once at 100% and then jump to its fit. Later resizes update as usual.
+    const apply = (width: number, height: number) => {
+      setViewW(width);
+      setFitScale(
+        Math.max(
+          0.05,
+          Math.min((width - fitInset - gutterX * 2) / SLIDE_W, (height - gutterY * 2) / SLIDE_H),
+        ),
+      );
+    };
+    // The fit is measured here, in the layout effect, so it is committed before anything else runs
+    // (genux review J2, TEACH-247 part ap): waiting for the observer's first report left a frame
+    // at 100% that the next frame resized to the fit (960 to 1008 px wide at 1440). The scroller
+    // has no padding or border, so its client box is the observer's content box.
+    if (el.clientWidth > 0 || el.clientHeight > 0) apply(el.clientWidth, el.clientHeight);
+    // Later reports: a first one still commits before paint (jank audit F3), the rest as usual.
     let first = true;
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
       const { width, height } = entry.contentRect;
-      const apply = () => {
-        setViewW(width);
-        setFitScale(
-          Math.max(
-            0.05,
-            Math.min((width - fitInset - gutterX * 2) / SLIDE_W, (height - gutterY * 2) / SLIDE_H),
-          ),
-        );
-      };
       if (first) {
         first = false;
-        flushSync(apply);
-      } else apply();
+        flushSync(() => apply(width, height));
+      } else apply(width, height);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, [gutterX, gutterY, fitInset]);
   const effectiveZoom = zoom === "fit" ? fitScale : zoom;
+  // The scale the slide is drawn at, decided here rather than read back from `SlideScaler` (its report
+  // comes in an effect, a frame after the slide): the content box and the chrome size from it at once.
+  const scale = effectiveZoom;
 
   /* ---- zoom about the pointer ------------------------------------------ */
   useEffect(() => {
