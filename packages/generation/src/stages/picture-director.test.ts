@@ -17,6 +17,7 @@ import {
   createDirectorBatcher,
   directPicture,
   illustrationPrompt,
+  monumentInView,
   PERIOD_LANDMARK_LINE,
   planPicture,
   splitSubjects,
@@ -84,18 +85,18 @@ describe("planPicture", () => {
     expect(p.request.style).toBe("illustration");
   });
 
-  // TEACH-251 part r (romans verify3 s8): the director filed a patrol at Hadrian's Wall under
-  // `place`, so a real miss left the slide bare. Ruling 210: a scene or reconstruction at a real
-  // place in its own time is painted; the place as it is today stays real-only.
-  test("a past scene at a real place is painted on a miss; the place alone stays real-only", () => {
+  // TEACH-251 part r (romans verify3 s8) painted a scene at a real place on a miss. Part ai
+  // (ruling 296, romans rompic s8): a scene at a real named monument is the monument, so it stays
+  // real-only; a scene with no named monument in view is still painted.
+  test("a past scene with no named monument in view is painted on a miss; the monument stays real-only", () => {
     const scene = photoPlan(
       dir({
         route: "commons",
         named: "place",
         period: "Roman Britain, 2nd century CE",
-        pictures: [pic({ shows: "Roman soldiers walking beside Hadrian's Wall" })],
+        pictures: [pic({ shows: "Roman soldiers walking across open moorland" })],
       }),
-      { text: "Reconstruction of Roman soldiers patrolling Hadrian's Wall", named: null },
+      { text: "Reconstruction of Roman soldiers patrolling the frontier", named: null },
     );
     expect(scene.request.route).toBe("real");
     expect(scene.request.realFallback).toBe("illustration");
@@ -140,10 +141,9 @@ describe("planPicture", () => {
           "A reconstruction of a trader being checked by Roman soldiers at a narrow gateway in Hadrian's Wall.",
         ),
       ),
-    ).toBe("illustration");
-    expect(fallbackOf(real("Soldiers stopping a cart at the gate of Hadrian's Wall"))).toBe(
-      "illustration",
-    );
+    ).toBe("none");
+    expect(fallbackOf(real("Soldiers stopping a cart at the gate of Hadrian's Wall"))).toBe("none");
+    expect(fallbackOf(real("Soldiers stopping a cart at a gate"))).toBe("illustration");
     // Still the monument: a gate "guarded by" soldiers, or soldiers merely standing there.
     expect(fallbackOf(real("A gateway in Hadrian's Wall guarded by soldiers"))).toBe("none");
     expect(fallbackOf(real("Roman soldiers at Hadrian's Wall"))).toBe("none");
@@ -833,5 +833,88 @@ describe("illustrationPrompt: no later landmark in a period painting", () => {
     expect(lines[3]).toBe(PERIOD_LANDMARK_LINE);
     expect(PERIOD_LANDMARK_LINE).toContain("unless the picture is about it");
     expect(PERIOD_LANDMARK_LINE).toContain("as it stood then");
+  });
+});
+
+// TEACH-251 part ai (ruling 296): real places, monuments and buildings are real-only. Asks from
+// romans rompic (s8, s9, s10) and greatfire verify7 (director replies, cassettes).
+describe("a past scene at a named monument is never painted", () => {
+  const romans = "Why the Romans built Hadrian's Wall";
+  const plan = (shows: string, text: string, named: "place" | "event", title: string) =>
+    planPicture(
+      dir({ route: "commons", named, period: "Roman Britain, AD 122", pictures: [pic({ shows })] }),
+      { ...ask, text, named: null, lessonTitle: title },
+    );
+  const fallbackOf = (p: ReturnType<typeof planPicture>) =>
+    p.kind === "photo" ? (p.request.realFallback ?? "none") : p.kind;
+  test("s8: a guarded gateway through Hadrian's Wall stays real-only", () => {
+    const p = plan(
+      "A guarded gateway through Hadrian’s Wall, with soldiers checking a waiting traveller and goods carried by a pack animal.",
+      "A reconstruction of a guarded Roman gateway on Hadrian’s Wall, with soldiers checking a trader and a pack animal.",
+      "place",
+      romans,
+    );
+    expect(fallbackOf(p)).toBe("none");
+    if (p.kind === "photo") expect(p.request.route).toBe("real");
+  });
+  test("s9: a lookout on a watchtower on the wall stays real-only", () => {
+    expect(
+      fallbackOf(
+        plan(
+          "A Roman lookout watches open land from a watchtower on Hadrian’s Wall as soldiers set out from a nearby fort.",
+          "A reconstruction showing a Roman lookout on a wall watchtower and soldiers leaving a nearby fort.",
+          "place",
+          romans,
+        ),
+      ),
+    ).toBe("none");
+    // The lesson's own monument by its kind word: soldiers patrolling "the wall".
+    expect(fallbackOf(plan("Roman soldiers patrolling along the wall", "x", "place", romans))).toBe(
+      "none",
+    );
+  });
+  test("s10: a traveller near the wall, the wall not shown, is still painted", () => {
+    expect(
+      fallbackOf(
+        plan(
+          "A traveller carrying baskets across open land near Hadrian’s Wall.",
+          "Two separate reconstructions of new situations near Hadrian’s Wall, one showing a traveller with baskets and one showing distant movement on open land, without showing the defensive structures pupils must choose.",
+          "place",
+          romans,
+        ),
+      ),
+    ).toBe("illustration");
+  });
+  test("the Great Fire's buckets, street and hooks scenes are still painted", () => {
+    const fire = "The Great Fire of London";
+    for (const [shows, text] of [
+      [
+        "A reconstruction of Londoners throwing water from leather buckets onto flames at a burning building during the Great Fire of London.",
+        "A reconstruction of Londoners throwing water from leather buckets onto a burning building in 1666.",
+      ],
+      [
+        "A reconstruction of Londoners passing leather buckets from the River Thames along a line towards the Great Fire of London.",
+        "A reconstruction of Londoners passing leather buckets along a line from the River Thames towards a fire in 1666.",
+      ],
+      [
+        "A reconstruction of wooden London houses with a narrow street and flames crossing between the buildings.",
+        "A reconstruction of wooden houses on a narrow London street in 1666, with flames crossing between buildings.",
+      ],
+      [
+        "A painted reconstruction of Londoners using long fire hooks to pull down a timber house beside burning houses, leaving a clear gap between them.",
+        "A reconstruction of Londoners pulling down a timber house with long fire hooks to leave a gap beside burning houses in 1666.",
+      ],
+    ] as const) {
+      expect(fallbackOf(plan(shows, text, "event", fire))).toBe("illustration");
+    }
+  });
+  test("monumentInView reads names and kinds, never a city or a river", () => {
+    expect(monumentInView("Londoners in a street in London", "The Great Fire of London")).toBe(
+      false,
+    );
+    expect(monumentInView("buckets from the River Thames")).toBe(false);
+    expect(monumentInView("crowds outside Old St Paul's Cathedral")).toBe(false);
+    expect(monumentInView("crowds at Old St Paul's Cathedral")).toBe(true);
+    expect(monumentInView("soldiers at Housesteads", "Life at Housesteads Roman Fort")).toBe(true);
   });
 });
