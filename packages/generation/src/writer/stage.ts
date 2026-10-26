@@ -195,6 +195,11 @@ export type WriterRun = {
   services: WriterServices;
   /** A visual's state; absent: every slot is an open placeholder. */
   visual?: (index: number, key: string, ask: VisualAsk) => VisualState;
+  /**
+   * This run is the job's retry (an earlier attempt kept finished slides): a deck under the tier's
+   * minimum ships and is logged instead of failing (TEACH-110 part ao).
+   */
+  retried?: boolean;
   /** The writer's text, recorded (replay); absent: the streamed call. */
   recordedWriter?: { text: string; finishReason?: string | null };
   /** Why a placed picture was vetoed (the reroute call is told); the director's, TEACH-251. */
@@ -1300,6 +1305,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     text: main.text,
     minSlides: brief.slides.min,
     maxSlides: brief.slides.max,
+    ...(run.retried ? { retried: true } : {}),
   });
   if (incomplete) {
     log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });
@@ -1321,11 +1327,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   if (closed.note) log({ ev: "close-missing", level: "warn", why: closed.note });
   out.slides = closed.slides;
-  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring.
+  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring. A tier's
+  // deck still under its minimum on the retry ships too, logged (TEACH-110 part ao).
+  const writtenCount = out.slides?.length ?? 0;
   const miss =
     brief.slides.min === brief.slides.max
-      ? countMiss(out.slides?.length ?? 0, brief.slides.max)
-      : undefined;
+      ? countMiss(writtenCount, brief.slides.max)
+      : writtenCount + 2 < brief.slides.min
+        ? countMiss(writtenCount, brief.slides.min)
+        : undefined;
   if (miss) log({ ev: "count-miss", level: "warn", ...miss });
   plan.design = out.design;
   plan.flow = out.flow;

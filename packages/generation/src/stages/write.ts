@@ -430,6 +430,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     const services = aiWriterServices(deps);
     out = await runWriter({
       brief: writerBrief(lesson),
+      // The job's retry: a deck under the tier's minimum ships, logged (TEACH-110 part ao).
+      ...(offScreen ? { retried: true } : {}),
       objectives,
       bundle: writerBundleOf(lesson),
       // The pilot layouts (TEACH-110 part s): the writer runs the pilot pack, its system text

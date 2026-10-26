@@ -78,7 +78,7 @@ describe("K3: an incomplete writer output (row 5)", () => {
     }
     expect(countMiss(8, 10)).toBeUndefined();
   });
-  test("a tier's range holds at its minimum: Detailed 13 to 16 does not ship 12 (TEACH-110 part ao)", () => {
+  test("a tier's minimum is asked again once, then ships (TEACH-110 part ao)", () => {
     const text = (deck: number) => JSON.stringify({ slides: Array.from({ length: deck - 2 }) });
     expect(writerIncomplete({ text: text(12), minSlides: 13, maxSlides: 16 })).toBe(
       "12 slides with title and objectives, under the tier's 13",
@@ -88,6 +88,14 @@ describe("K3: an incomplete writer output (row 5)", () => {
     );
     for (const deck of [13, 16, 17])
       expect(writerIncomplete({ text: text(deck), minSlides: 13, maxSlides: 16 })).toBeUndefined();
+    // On the job's retry a short tier deck ships (logged as a count miss), even 3 under.
+    for (const deck of [12, 10])
+      expect(
+        writerIncomplete({ text: text(deck), minSlides: 13, maxSlides: 16, retried: true }),
+      ).toBeUndefined();
+    expect(
+      writerIncomplete({ text: text(3), minSlides: 13, maxSlides: 16, retried: true }),
+    ).toBeUndefined();
     // The close slide counts: 11 slides plus the close is 13 with title and objectives.
     const closed = JSON.stringify({ slides: Array.from({ length: 10 }), close: {} });
     expect(writerIncomplete({ text: closed, minSlides: 13, maxSlides: 16 })).toBeUndefined();
