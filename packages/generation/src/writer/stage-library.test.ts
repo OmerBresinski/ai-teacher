@@ -25,6 +25,7 @@ type El = Record<string, unknown>;
 async function run(
   fill: (attempt: number) => unknown,
   shape: {
+    template?: string;
     side?: boolean;
     points?: boolean;
     heading?: string;
@@ -43,7 +44,7 @@ async function run(
   const out = JSON.parse(main.text) as { slides: Record<string, unknown>[] };
   const first = out.slides[0] as Record<string, unknown>;
   // Library models are full slides: big-visual with its lead, no points (unless a test asks).
-  if (!shape.side) first.template = "big-visual";
+  if (!shape.side) first.template = shape.template ?? "big-visual";
   if (!shape.side && !shape.points) delete first.points;
   if (shape.heading) first.heading = shape.heading;
   first.figure = {
@@ -168,6 +169,14 @@ describe("writer stage: library models", () => {
       expect.objectContaining({ ev: "lib-side-slot", model: "fractions" }),
     );
     expect(svgOfDataUrl(String(diagram?.src))).not.toContain("theme-primary");
+  }, 60_000);
+
+  test("a model on a figure slide is drawn by the library, not sent to the drawer (TEACH-251 part z)", async () => {
+    const m = await loadModel("fractions");
+    const { fills, events } = await run(() => m?.presets[0]?.params, { template: "figure" });
+    expect(fills.length).toBe(1);
+    expect(events).not.toContainEqual(expect.objectContaining({ ev: "lib-side-slot" }));
+    expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
   }, 60_000);
 
   test("a model off the lesson's menu (the schema lists the stage's whole catalogue) goes to the drawer, no fill", async () => {
