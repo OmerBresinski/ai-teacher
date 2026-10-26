@@ -29,6 +29,7 @@ import { waveCDefs, waveCMenu } from "./wave-c";
  * request carries exactly one def per question layout, with nothing they replaced still reachable.
  */
 type J = Record<string, any>;
+const PUPIL_LINE = "Every line is written for the pupils who read it";
 const STAGES: readonly WriterStage[] = ["KS1", "KS2", "KS3-5"];
 const KS = { KS1: "KS1", KS2: "KS2", "KS3-5": "KS3" } as const;
 const fitsOf = (line: string) =>
@@ -155,8 +156,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.10", () => {
-    expect(PILOT_PACK_ID).toBe("v4.10");
+  test("production runs v4.11", () => {
+    expect(PILOT_PACK_ID).toBe("v4.11");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
@@ -228,7 +229,14 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         // Wave C (TEACH-110 part v) is new teaching layouts, not the question layouts: left out.
         const st = ks === "KS3" ? "KS3-5" : ks;
         const waveLines = new Set(Object.values(waveCMenu(st)));
-        const lines = r.system.split("\n").filter((l) => !waveLines.has(l));
+        // v4.11 lengthened the pupil-line rule (wording, not a question layout): v4.10's line stands
+        // in for it here, so only that delta is left out; its own cap is the test below.
+        const pupil = (v: "v4.10" | "v4.11") =>
+          PILOT_PACKS[v].system[ks].split("\n").find((l) => l.startsWith(PUPIL_LINE)) as string;
+        const lines = r.system
+          .split("\n")
+          .filter((l) => !waveLines.has(l))
+          .map((l) => (id === "v4.11" && l.startsWith(PUPIL_LINE) ? pupil("v4.10") : l));
         const kept = lines.filter((l) =>
           id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),
         );
@@ -238,6 +246,14 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         return kept.join("\n").length + JSON.stringify(schema).length;
       };
       expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));
+    }
+  });
+  test("v4.11's pupil-line rule grows v4.10's by at most 900 characters at each key stage", () => {
+    for (const ks of ["KS1", "KS2", "KS3"] as const) {
+      const pupil = (v: "v4.10" | "v4.11") =>
+        PILOT_PACKS[v].system[ks].split("\n").find((l) => l.startsWith(PUPIL_LINE)) as string;
+      expect(pupil("v4.11").length - pupil("v4.10").length).toBeGreaterThan(0);
+      expect(pupil("v4.11").length - pupil("v4.10").length).toBeLessThanOrEqual(900);
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {

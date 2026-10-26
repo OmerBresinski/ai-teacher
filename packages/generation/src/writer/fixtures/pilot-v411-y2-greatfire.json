@@ -1,0 +1,330 @@
+{
+  "design": {
+    "picture_style": "illustration"
+  },
+  "flow": [
+    {
+      "slide": 1,
+      "does": "Recall what water does to flames",
+      "shape": "recall",
+      "look_at": {
+        "kind": "picture",
+        "shows": "The Great Fire of London"
+      },
+      "layout": "title",
+      "size": "Title 5 words; subtitle 6/8 words",
+      "teaches": []
+    },
+    {
+      "slide": 2,
+      "does": "Share the lesson objectives",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "objectives",
+      "size": "Approved objectives supplied by code",
+      "teaches": []
+    },
+    {
+      "slide": 3,
+      "does": "Locate and date the fire's beginning",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "picture",
+        "shows": "A bakery in Pudding Lane"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 17/24 words",
+      "teaches": [1]
+    },
+    {
+      "slide": 4,
+      "does": "Explain why wooden houses spread fire",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Closely packed wooden London houses"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 18/24 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 5,
+      "does": "Explain how strong winds spread flames",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Wind pushing flames between houses"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 16/24 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 6,
+      "does": "Check understanding of wind and wood",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "hinge",
+      "size": "Stem 8/11 words; 3 options 4/5, 4/5, 4/5 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 7,
+      "does": "Teach how water buckets fought flames",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "picture",
+        "shows": "People throwing bucket water onto flames"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 17/24 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 8,
+      "does": "Explain why people pulled houses down",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "People pulling down a wooden house"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 18/24 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 9,
+      "does": "Apply the idea of a gap",
+      "shape": "check",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Burning houses beside an empty space"
+      },
+      "layout": "discussion fig",
+      "size": "Stem 14/18 words",
+      "teaches": [2, 3]
+    },
+    {
+      "slide": 10,
+      "does": "Check the beginning and bucket use",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "practice",
+      "size": "2 tasks 10/14, 12/14 words",
+      "teaches": [1, 3]
+    },
+    {
+      "slide": 11,
+      "does": "Deepen understanding of wind carrying sparks",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Wind carrying sparks towards another roof"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 18/24 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 12,
+      "does": "Apply firefighting ideas to new settings",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "practice",
+      "size": "2 tasks 11/14, 11/14 words",
+      "teaches": [2, 3]
+    },
+    {
+      "slide": 13,
+      "does": "Check the beginning and removing wooden houses",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "exit-ticket",
+      "size": "2 questions 9/9, 9/9 words",
+      "teaches": [1, 2, 3]
+    }
+  ],
+  "title": {
+    "template": "title",
+    "fit": "fig",
+    "heading": "The Great Fire of London",
+    "lead": "What can water do to flames?",
+    "picture": {
+      "shows": "The Great Fire of London spreading through seventeenth-century streets",
+      "must_see": ["burning timber houses", "orange roof flames", "narrow London street"],
+      "subject": "named"
+    }
+  },
+  "slides": [
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Where did it begin?",
+      "lead": "The Great Fire of London began in a bakery in Pudding Lane in London, in September 1666.",
+      "points": [],
+      "figure": {
+        "shows": "A historical reconstruction of the Pudding Lane bakery where the Great Fire began",
+        "must_see": ["timber bakery building", "small bakery oven", "flames inside bakery"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Wooden houses",
+      "lead": "Many houses had wooden walls. Wood burns easily, and the houses were close enough for flames to spread.",
+      "points": [],
+      "figure": {
+        "shows": "A historical reconstruction of closely packed timber houses during the Great Fire",
+        "must_see": ["exposed wooden beams", "closely packed houses", "flames reaching next door"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Strong winds",
+      "lead": "Strong winds pushed the flames towards other houses. This helped the fire spread through London's streets.",
+      "points": [],
+      "figure": {
+        "shows": "Strong winds driving the Great Fire towards neighbouring timber houses",
+        "must_see": ["flames leaning sideways", "smoke blowing sideways", "nearby timber houses"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "hinge",
+      "heading": "What helped the fire spread through wooden streets?",
+      "options": [
+        {
+          "text": "Wind pushed the flames.",
+          "icon": null,
+          "why": null
+        },
+        {
+          "text": "Wind cooled the flames.",
+          "icon": null,
+          "why": "The pupil applies the everyday experience of blowing to cool something hot to a large fire."
+        },
+        {
+          "text": "Wood stopped the flames.",
+          "icon": null,
+          "why": "The pupil treats wooden walls as barriers without recognising that the walls themselves burn."
+        }
+      ]
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Water buckets",
+      "lead": "People carried water in buckets and threw it onto flames. Water could put out small fires.",
+      "points": [],
+      "figure": {
+        "shows": "People using leather water buckets to fight a small fire during the Great Fire of London",
+        "must_see": ["leather water buckets", "water hitting flames", "people carrying buckets"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Pulling houses down",
+      "lead": "People pulled down houses to make gaps. With less wood to burn, the fire could not spread as easily.",
+      "points": [],
+      "figure": {
+        "shows": "People pulling down a timber house ahead of the Great Fire to create a gap",
+        "must_see": ["ropes pulling beams", "partly dismantled house", "gap between houses"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "discussion",
+      "fit": "fig",
+      "heading": "An empty space",
+      "lead": "Imagine houses beside a fire are removed. Why might this help protect houses beyond?",
+      "picture": {
+        "shows": "An imagined row of timber houses with burning houses separated from unburnt houses by a cleared gap",
+        "must_see": ["burning timber houses", "wide cleared gap", "unburnt houses beyond"],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "practice",
+      "heading": "What have you learned?",
+      "picture": null,
+      "items": [
+        {
+          "question": "Write the street and year where the Great Fire began.",
+          "answer": "Pudding Lane, 1666",
+          "working": null
+        },
+        {
+          "question": "Imagine a small fire starts beside a well. How could buckets help?",
+          "answer": "People could fill buckets with water and throw it onto the flames.",
+          "working": null
+        }
+      ]
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Sparks can travel",
+      "lead": "Strong winds also carried burning sparks through the air. Sparks landing on wood could start another fire.",
+      "points": [],
+      "figure": {
+        "shows": "Wind carrying burning sparks from a burning London house towards another timber roof during the Great Fire",
+        "must_see": ["burning wooden house", "airborne glowing sparks", "sparks reaching roof"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "practice",
+      "heading": "Use your ideas",
+      "picture": null,
+      "items": [
+        {
+          "question": "Imagine sparks reach a wooden shed. Why could the shed burn?",
+          "answer": "The sparks could set fire to the wood because wood burns easily.",
+          "working": null
+        },
+        {
+          "question": "Imagine buckets are empty and flames approach. How could removing houses help?",
+          "answer": "Removing houses makes gaps with less wood for the fire to burn.",
+          "working": null
+        }
+      ]
+    }
+  ],
+  "close": {
+    "template": "exit-ticket",
+    "heading": "Before you go",
+    "items": [
+      {
+        "question": "Where and when did the Great Fire begin?",
+        "answer": "Pudding Lane, 1666",
+        "working": null
+      },
+      {
+        "question": "Why did removing wooden houses slow the fire?",
+        "answer": "It made gaps with less wood for the fire to burn.",
+        "working": null
+      }
+    ]
+  }
+}
