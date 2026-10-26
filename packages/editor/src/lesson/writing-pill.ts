@@ -76,8 +76,33 @@ export const PILL_PACE = {
   dwellMs: 900,
   /** The pill fades out over this long at the hand-over, then unmounts. */
   fadeMs: 200,
+  /**
+   * A count that moved on by more than one (or any planning count) steps through every number at
+   * this pace rather than skipping (Greg 26 Oct: the count went 8 → 10, 11 → 13).
+   */
+  stepMs: 220,
 };
 export type PillPace = typeof PILL_PACE;
+
+const COUNT = /^(Planning slide|Writing slide) (\d+)(.*)$/;
+
+/**
+ * The next text to show on the way from `shown` to `want`: a count of the same kind moves one
+ * number at a time (Planning slide 8 → 9 → 10, Writing slide 11 → 12 → 13), so it never skips a
+ * slide. `step` is true when the move is one of several to catch up (or a planning count), which
+ * goes at `stepMs` rather than the full dwell. Pure.
+ */
+export function stepText(shown: string | null, want: string): { text: string; step: boolean } {
+  const b = want.match(COUNT);
+  // "Planning the slides…" counts on from slide 3 (the title and objectives come first).
+  const a = (shown === "Planning the slides…" ? "Planning slide 2…" : shown)?.match(COUNT);
+  if (!a || !b || a[1] !== b[1]) return { text: want, step: false };
+  const from = Number(a[2]);
+  const to = Number(b[2]);
+  if (to <= from) return { text: want, step: false };
+  const planning = b[1] === "Planning slide";
+  return { text: `${b[1]} ${from + 1}${b[3]}`, step: planning || to - from > 1 };
+}
 
 type Timer = (fn: () => void, ms: number) => () => void;
 const TIMER: Timer = (fn, ms) => {
@@ -126,13 +151,17 @@ export function useWritingPill(
       return;
     }
     if (want === shown.text && shown.visible) return;
+    // The first text (and the first after a fade) shows at once.
+    const fresh = shown.text === null || !shown.visible;
+    const next = fresh ? { text: want, step: false } : stepText(shown.text, want);
     const commit = () => {
       lastAt.current = now();
-      setShown({ text: want, visible: true });
+      setShown({ text: next.text, visible: true });
     };
-    // The first text (and the first after a fade) shows at once.
-    if (shown.text === null || !shown.visible) return commit();
-    const due = Math.max(now() + pace.settleMs, lastAt.current + pace.dwellMs);
+    if (fresh) return commit();
+    const due = next.step
+      ? lastAt.current + pace.stepMs
+      : Math.max(now() + pace.settleMs, lastAt.current + pace.dwellMs);
     const wait = due - now();
     if (wait <= 0) return commit();
     return timer(commit, wait);
