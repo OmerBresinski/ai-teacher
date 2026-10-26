@@ -234,10 +234,19 @@ export function wordCount(slide: Pick<Slide, "elements">): number {
 /** A run laid out but not shown yet: transparent, with no highlight wash or strike. */
 const UNTYPED = "transparent";
 function hidden(node: Node): Node {
-  const marks = ((node as { marks?: { type: string; attrs?: object }[] }).marks ?? []).filter(
-    (m) => m.type !== "textStyle" && m.type !== "highlight",
-  );
-  return { ...node, marks: [...marks, { type: "textStyle", attrs: { color: UNTYPED } }] } as Node;
+  type Mark = { type: string; attrs?: Record<string, unknown> };
+  const marks = (node as { marks?: Mark[] }).marks ?? [];
+  // The run keeps its size and font (its textStyle attrs), so it lays out as it will show; only
+  // its colour goes, with any highlight wash or strike.
+  const style = marks.find((m) => m.type === "textStyle")?.attrs ?? {};
+  const { highlight: _h, strikeStep: _s, ...kept } = style;
+  return {
+    ...node,
+    marks: [
+      ...marks.filter((m) => m.type !== "textStyle" && m.type !== "highlight"),
+      { type: "textStyle", attrs: { ...kept, color: UNTYPED } },
+    ],
+  } as Node;
 }
 
 /** `text` cut after its `n`th word (whitespace before that word kept, after it dropped). */

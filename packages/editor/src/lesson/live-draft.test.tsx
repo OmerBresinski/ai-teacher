@@ -53,6 +53,44 @@ describe("revealSlide", () => {
     expect(revealSlide(s, 6).slide.elements.length).toBe(2);
   });
 
+  test("an untyped run keeps its size and font, only its colour goes (review of #638)", () => {
+    const sized = {
+      id: "s9",
+      kind: "content",
+      elements: [
+        {
+          id: "e0",
+          type: "text",
+          x: 0,
+          y: 0,
+          w: 400,
+          h: 80,
+          doc: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "text",
+                    text: "Big bold words here",
+                    marks: [
+                      { type: "textStyle", attrs: { fontSize: 40, font: "display", highlight: 2 } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as Slide;
+    const json = JSON.stringify(revealSlide(sized, 2).slide);
+    expect(json).toContain(
+      '"text":" words here","marks":[{"type":"textStyle","attrs":{"fontSize":40,"font":"display","color":"transparent"}}]',
+    );
+  });
+
   test("a card shows with the words after it; a picture slot shows from the start", () => {
     const s = slideOf("s4", "Roots hold the plant", "Stems carry water");
     const card = { id: "card", type: "shape", shape: "rounded", x: 0, y: 200, w: 400, h: 80 };
