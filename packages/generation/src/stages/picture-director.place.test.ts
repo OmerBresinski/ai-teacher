@@ -533,3 +533,48 @@ describe("picture tracing never touches the picture", () => {
       expect(line).not.toHaveProperty(key);
   });
 });
+
+// Ruling 296 (amends 210): a generic period object with no Commons or stock hit is generated; a real
+// place with none keeps its placeholder.
+describe("ruling 296 (placement)", () => {
+  const fire = (named: PictureDirection["named"], shows: string, writerNamed: boolean) => {
+    const { images, calls } = placer({ commons: async () => [], pexels: async () => [] });
+    const { bank, made } = spyBank();
+    const outcomes: PictureOutcome[] = [];
+    const run = placeWriterPicture({
+      ask: ask({ shows, mustSee: [], named: writerNamed }),
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      bank,
+      direct: async () =>
+        direction({
+          named,
+          period: "London, 1666",
+          pictures: [{ shows, mustShow: [], queries: [shows], imagePrompt: `${shows}.` }],
+        }),
+      onOutcome: (o) => outcomes.push(o),
+    });
+    return { run, made, outcomes, calls };
+  };
+  test("a leather fire bucket missed by Commons and stock is generated, as an illustration", async () => {
+    const { run, made, outcomes, calls } = fire(
+      "object",
+      "A 17th-century leather fire bucket",
+      false,
+    );
+    await run;
+    expect(calls.some((c) => c.startsWith("commons:"))).toBe(true);
+    expect(made).toHaveLength(1);
+    expect(made[0]?.route).toBe("real");
+    expect(made[0]?.style).toBe("illustration");
+    expect(outcomes[0]?.reason).not.toBe("real-miss-no-fallback");
+  });
+  test("the Pudding Lane bakery (a real place) missed by Commons and stock stays empty", async () => {
+    const { run, made, outcomes } = fire("place", "The Pudding Lane bakery", true);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
+});

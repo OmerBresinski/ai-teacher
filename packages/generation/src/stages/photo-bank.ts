@@ -58,6 +58,24 @@ export const REAL_FALLBACK: Record<HistoryPolicy | "present", Record<NamedKind, 
   present: { event: "none", person: "none", work: "none", place: "faithful", object: "none" },
 };
 
+/**
+ * Ruling 296 (amends 210, 26 Oct 2026): a real thing's fallback when Commons and stock miss. Real
+ * places, monuments and works, real people and events keep ruling 163's table (real-only under
+ * `strict`). A generic object or artefact of a period (a leather fire bucket, a Roman oil lamp) may
+ * be generated: the director's `object` that the writer did not mark `named`, since the writer
+ * marks a subject named only when it must show one particular real thing. A unique, identifiable
+ * artefact or document (the Rosetta Stone) is named, so it stays real-only. A past object is drawn
+ * as the painted illustration (`illustration`), never photo style (ruling 163).
+ */
+export function realFallbackFor(
+  kind: NamedKind,
+  policy: HistoryPolicy | "present",
+  writerNamed: boolean,
+): RealFallback {
+  if (kind === "object" && !writerNamed) return "illustration";
+  return REAL_FALLBACK[policy][kind];
+}
+
 /** Ruling 163's policy, a code default (Greg confirmed `strict`, 6 Oct): config ships in code. */
 export const HISTORY_POLICY: HistoryPolicy = "strict";
 

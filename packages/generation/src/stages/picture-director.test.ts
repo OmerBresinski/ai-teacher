@@ -525,8 +525,13 @@ describe("ruling 163 ships in code", () => {
     process.env.HISTORY_POLICY = "illustrate";
     try {
       expect(historyPolicy()).toBe("strict");
+      // A named object is a particular artefact (ruling 296): real-only, like a person or a work.
+      const namedAsk = { text: "The Mary Rose's bronze cannon", named: "The Mary Rose cannon" };
       for (const named of ["person", "work", "object"] as const) {
-        const p = photoPlan(dir({ route: "commons", named, period: "England, 1540s" }));
+        const p = photoPlan(
+          dir({ route: "commons", named, period: "England, 1540s" }),
+          namedAsk as never,
+        );
         expect(p.request.realFallback).toBe("none");
         expect(p.request.style).toBeUndefined();
       }
@@ -624,5 +629,66 @@ describe("split at ask (TEACH-167 part b)", () => {
     const wives = "Three wives of Henry VIII: a first wife, a second wife and a third wife";
     expect(splitSubjects(photoAsk(wives))).toBeUndefined();
     expect(splitSubjects(photoAsk(wives, { named: true }))).toBeUndefined();
+  });
+});
+
+// Ruling 296 (amends 210): AI pictures are fine for a generic object or artefact of a period; real
+// places, monuments, real people and unique, identifiable artefacts or documents stay real-only.
+describe("ruling 296: which real things may fall back to a generated picture", () => {
+  const hist = (named: PictureDirection["named"], text: string, writerNamed: string | null) =>
+    photoPlan(dir({ route: "commons", named, period: "London, 1666" }), {
+      text,
+      named: writerNamed,
+    } as never);
+  test("a generic period object (a leather fire bucket) falls back to a painted illustration", () => {
+    for (const text of [
+      "A 17th-century leather fire bucket",
+      "A hand water squirt used to fight fires in 1666",
+    ]) {
+      const p = hist("object", text, null);
+      expect(p.request.route).toBe("real");
+      expect(p.brief.specific).toBe(true);
+      expect(p.request.realFallback).toBe("illustration");
+      expect(p.request.style).toBe("illustration");
+      expect(p.request.imagePrompt).toContain("London, 1666");
+    }
+  });
+  test("a present-day generic object the director sent to Commons is generated as any picture", () => {
+    const p = photoPlan(dir({ route: "commons", named: "object" }), {
+      text: "A fire extinguisher",
+      named: null,
+    });
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBeUndefined();
+    expect(p.request.imagePrompt).toBe(pic().imagePrompt);
+  });
+  test("a real place (the Pudding Lane bakery) stays real-only, named or not", () => {
+    for (const writerNamed of ["Pudding Lane bakery", null])
+      expect(
+        hist("place", "A reconstruction of the Pudding Lane bakery", writerNamed).request
+          .realFallback,
+      ).toBe("none");
+  });
+  test("a named person stays real-only", () => {
+    expect(hist("person", "Samuel Pepys", "Samuel Pepys").request.realFallback).toBe("none");
+  });
+  test("a historic monument stays real-only", () => {
+    expect(
+      hist("place", "The Monument to the Great Fire", "The Monument").request.realFallback,
+    ).toBe("none");
+    expect(
+      hist("work", "The Monument to the Great Fire", "The Monument").request.realFallback,
+    ).toBe("none");
+  });
+  test("a unique artefact (the Rosetta Stone) stays real-only", () => {
+    const p = photoPlan(dir({ route: "commons", named: "object", period: "Egypt, 196 BC" }), {
+      text: "The Rosetta Stone",
+      named: "Rosetta Stone",
+    } as never);
+    expect(p.request.realFallback).toBe("none");
+    expect(p.request.style).toBeUndefined();
+  });
+  test("an event keeps ruling 163's table", () => {
+    expect(hist("event", "The Great Fire of London", null).request.realFallback).toBe("none");
   });
 });

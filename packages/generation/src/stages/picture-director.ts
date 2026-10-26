@@ -51,7 +51,7 @@ import {
   type MadePicture,
   mustShowOf,
   type PictureBank,
-  REAL_FALLBACK,
+  realFallbackFor,
   sharedVerdictCache,
 } from "./photo-bank";
 import {
@@ -479,7 +479,9 @@ export function planPicture(
   if (!first) return keep();
   // A historical scene with no named kind is read as an event (an illustration under `strict`).
   const kind = d.named ?? (depicts ? "event" : "object");
-  const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
+  const fallback = real
+    ? realFallbackFor(kind, period ? historyPolicy() : "present", !!ask.named)
+    : undefined;
   const mustShow = countedPhoto
     ? uniq([
         `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
