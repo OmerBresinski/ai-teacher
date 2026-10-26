@@ -224,7 +224,14 @@ export function wordCard(c: Ctx, value: string, r: Rect, what: string, label?: s
   });
   const d = label ? stripDisc(c, "body") : 0;
   const w = r.w - 24;
-  const role: Role = kit.measure(c, value, "lead", w, 700) <= r.h - 36 - d ? "lead" : "body";
+  // The largest step whose lines fit the card and whose longest word fits its width: a word is
+  // never broken inside (TEACH-247 part ap: Great Fire Y2 verify6 s10, "Firebreak/s made" in
+  // Crayon Box's wide face). Small is the floor; past it the word is named in `over`.
+  const fitsAt = (x: Role) =>
+    kit.measure(c, value, x, w, 700) <= r.h - 36 - d && kit.wordsFit(c, value, x, w, c.s[x], 700);
+  const role: Role =
+    (["lead", "body", "small"] as const).find(fitsAt) ??
+    (kit.wordsFit(c, value, "small", w, c.s.small, 700) ? "body" : "small");
   const h = kit.measure(c, value, role, w, 700);
   if (h > r.h - 24 - d) c.over.push(`${what} word ${Math.round(h / lineH(c, role))} lines`);
   if (!kit.wordsFit(c, value, role, w, c.s[role], 700)) c.over.push(`${what} word too wide`);

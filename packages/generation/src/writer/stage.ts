@@ -1,5 +1,6 @@
 import { safeErrorWhere } from "@tj/domain";
 import { MAX_CONFIRMED_OBJECTIVES, type Slide, type Theme } from "@tj/domain/documents";
+import { textFaults } from "@tj/slides";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
@@ -204,6 +205,11 @@ export class WriterIncompleteError extends Error {
 }
 
 export type WriterRun = {
+  /**
+   * The theme the lesson row holds now (TEACH-247 part ap): read once before the checks, and when
+   * the teacher picked another theme while the job wrote, every slide is laid again in it.
+   */
+  themeNow?: () => Promise<string | undefined>;
   brief: Brief;
   /** The approved objectives, teacher wording (the plan screen's). */
   objectives: string[];
@@ -2089,8 +2095,32 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const gasTexts = () =>
     Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
+  // TEACH-247 part ap: the theme the lesson row holds now. A teacher who picks another theme while
+  // the job writes gets every slide laid again in it before the checks, so geometry and checks are
+  // both in the faces the slides are drawn in (Great Fire Y2 verify6: laid in Splash, drawn in
+  // Crayon Box, a question's second line ran into the next and a sort card broke "Firebreak/s").
+  const themeNow = await nonFatal(
+    () => run.themeNow?.(),
+    () => undefined,
+  );
+  if (themeNow && themeNow !== base.theme.id) {
+    const from = base.theme.id;
+    base.theme = getTheme(themeNow, brief.keyStage);
+    for (let i = 0; i < n; i++)
+      if (i === 1) laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+      else relay(i);
+    log({ ev: "theme-now", from, to: base.theme.id });
+  }
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  // TEACH-247 part ap: words on words and words broken inside, measured in the deck's theme. Log
+  // only for now: never a check fault, so it cannot drop a visual or start a repair until its
+  // false-positive rate is known (stacked or grouped boxes, long hyphenated words, URLs).
+  for (let i = 0; i < n; i++) {
+    const sl = laid.get(i)?.slide;
+    const faults = sl ? textFaults(sl as Slide, base.theme) : [];
+    if (faults.length) log({ ev: "text-faults", slide: i + 1, faults });
+  }
   // Each slide's check in the debug record: the fault lines and the measured overflows (which
   // element, by how much), failing or not.
   if (run.services.debug)

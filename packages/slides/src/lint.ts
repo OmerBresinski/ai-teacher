@@ -21,10 +21,13 @@
 
 import {
   type Id,
+  type RichDoc,
+  type RichNode,
   SLIDE_H,
   SLIDE_W,
   type Slide,
   type SlideElement,
+  type TextElement,
   type Theme,
 } from "@tj/domain/documents";
 import { explanationReserve, owesExplanationLane, RESERVED_LINES } from "./explanation-metrics";
@@ -40,6 +43,8 @@ import {
   type Measurer,
   textPartsOf,
 } from "./reflow";
+import { measureHeadless } from "./text-measure";
+import { resolveTextStyle } from "./text-style";
 
 /** A pair of ids whose boxes intersect. Always ordered by draw order. */
 export type OverlapPair = [Id, Id];
@@ -321,6 +326,52 @@ export function answersFaults(slide: Slide, measure?: Measurer): string[] {
   for (const el of drawn.elements) {
     if (isBackdrop(el) || isBleed(el)) continue;
     if (el.y + el.h > SLIDE_H + EPS) out.push(`clipped: ${el.id} runs past the slide's foot`);
+  }
+  return out;
+}
+
+/**
+ * Words on words, measured in the theme the slide is drawn in (TEACH-247 part ap). For every text
+ * box: a word wider than the box (the browser breaks it inside, "Firebreak/s"), and a box whose
+ * words take more lines than its height holds where the next text box below it starts (a
+ * question's second line running into the next question). Its own prefixes (`text-wide:`,
+ * `text-runs-into:`), never the layout gate's `clipped:` / `overlap:`: the writer logs them only. The boxes are trusted for position;
+ * lines are counted by the headless ruler (`measureHeadless`), the theme's real font advances with
+ * each box's own style. Answers slides have their own rules (`answersFaults`) and are skipped.
+ */
+export function textFaults(slide: Slide, theme: Theme): string[] {
+  if (slide.answersRole) return [];
+  const measure = measureHeadless(theme);
+  const texts = slide.elements.filter(
+    (e): e is TextElement => e.type === "text" && e.w > EPS && e.h > EPS,
+  );
+  const out: string[] = [];
+  const para = (text: string): RichDoc => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  });
+  for (const e of texts) {
+    const words: string[] = [];
+    const walk = (n: RichNode) => {
+      if (n.type === "text") words.push(n.text ?? "");
+      for (const c of n.content ?? []) walk(c);
+    };
+    for (const c of e.doc.content ?? []) walk(c);
+    const text = words.join(" ");
+    if (!text.trim()) continue;
+    const preset = e.style.preset ?? "body";
+    const r = resolveTextStyle(e.style, theme, preset);
+    const inset = 2 * r.padding;
+    const at = (doc: RichDoc) =>
+      measure({ doc, width: e.w, style: e.style, preset, inset, chrome: 0 });
+    const one = r.fontSize * r.lineHeight;
+    const wide = [...new Set(text.split(/\s+/))].find((w) => w && at(para(w)) > one + 0.5);
+    if (wide) out.push(`text-wide: "${wide}" is wider than its box ${e.id}`);
+    const h = at(e.doc) + inset;
+    const below = texts
+      .filter((o) => o !== e && o.y >= e.y + e.h - EPS && o.x < e.x + e.w && o.x + o.w > e.x)
+      .sort((a, b) => a.y - b.y)[0];
+    if (below && e.y + h > below.y + 1) out.push(`text-runs-into: ${e.id} runs into ${below.id}`);
   }
   return out;
 }
