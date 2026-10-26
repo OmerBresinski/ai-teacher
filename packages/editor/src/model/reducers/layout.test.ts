@@ -236,6 +236,107 @@ describe("splitLayout (ruling 215)", () => {
   });
 });
 
+// TEACH-110 part an: slide 2's objectives are an adaptive group. A rename or delete detaches it
+// (elements kept as they are); an edit saves and reloads as it was, and the next edit still
+// re-lays; a child bound to a point the ref no longer has detaches instead of writing elsewhere.
+describe("the objectives group under teacher edits", () => {
+  const OBJ: LayoutRef = {
+    template: "objectives",
+    input: {
+      heading: "Today we are learning to",
+      points: ["Name the parts of a plant.", "Say what roots do.", "Say what leaves do."],
+    },
+  };
+  function objectivesSlide(): { lesson: Lesson; slideId: string } {
+    const lesson = newLesson("Plants");
+    const first = lesson.slides[0];
+    if (!first) throw new Error("newLesson has a slide");
+    const theme = renderTheme(lesson);
+    first.elements = [kit.layoutGroup(OBJ, theme, kit.stageOf(theme, lesson.ageBand), "g1")];
+    return { lesson, slideId: first.id };
+  }
+  const points = (l: Lesson) => kit.getAtPath(groupOf(l).layout as LayoutRef, "points");
+
+  test("renaming an item detaches the group; every element is kept", () => {
+    const { lesson, slideId } = objectivesSlide();
+    const item = named(groupOf(lesson), "Item")[1] as TextElement;
+    const out = settle(lesson, r.updateElement(lesson, slideId, item.id, { name: "Roots" }));
+    expect(groupOf(out).layout).toBeUndefined();
+    expect(groupOf(out).children.map((c) => c.id)).toEqual(
+      groupOf(lesson).children.map((c) => c.id),
+    );
+  });
+
+  test("deleting an item detaches the group; the other items keep their words", () => {
+    const { lesson, slideId } = objectivesSlide();
+    const item = named(groupOf(lesson), "Item")[1] as TextElement;
+    const out = settle(lesson, r.deleteElements(lesson, slideId, [item.id]));
+    expect(groupOf(out).layout).toBeUndefined();
+    const left = named(groupOf(out), "Item").map(words);
+    expect(left).toHaveLength(2);
+    expect(left[0]).toContain("Name the parts");
+    expect(left[1]).toContain("Say what leaves do");
+  });
+
+  test("an edit survives a save and reload, and the next edit re-lays", () => {
+    const { lesson, slideId } = objectivesSlide();
+    const typed = settle(
+      lesson,
+      r.updateElement(lesson, slideId, "g1:points.1", {
+        doc: docFromText("Say how roots take in water from the soil."),
+      }),
+    );
+    // What autosave sends and the next load returns: the JSON, parsed by the server's schema.
+    const saved = parseLesson(JSON.parse(JSON.stringify(typed)));
+    expect(groupOf(saved).layout).toEqual(groupOf(typed).layout);
+    expect(points(saved)).toEqual([
+      "Name the parts of a plant.",
+      "Say how roots take in water from the soil.",
+      "Say what leaves do.",
+    ]);
+    const again = settle(
+      saved,
+      r.updateElement(saved, slideId, "g1:points.2", { doc: docFromText("Say what leaves make.") }),
+    );
+    expect(groupOf(again).layout).toBeDefined();
+    expect((points(again) as string[])[2]).toBe("Say what leaves make.");
+    expect((points(again) as string[])[0]).toBe("Name the parts of a plant.");
+  });
+
+  test("a child bound to a point the ref no longer has detaches; no other point is written", () => {
+    const { lesson, slideId } = objectivesSlide();
+    // An older save: the ref lost its third point, the slide still draws it.
+    const g = groupOf(lesson);
+    const stale = {
+      ...lesson,
+      slides: lesson.slides.map((s) =>
+        s.id !== slideId
+          ? s
+          : {
+              ...s,
+              elements: [
+                {
+                  ...g,
+                  layout: {
+                    ...OBJ,
+                    input: { ...OBJ.input, points: (OBJ.input.points as string[]).slice(0, 2) },
+                  },
+                },
+              ],
+            },
+      ),
+    } as Lesson;
+    const out = settle(
+      stale,
+      r.updateElement(stale, slideId, "g1:points.2", { doc: docFromText("Say what leaves make.") }),
+    );
+    expect(groupOf(out).layout).toBeUndefined();
+    expect(words(groupOf(out).children.find((c) => c.id === "g1:points.2"))).toContain(
+      "leaves make",
+    );
+  });
+});
+
 describe("undo", () => {
   test("add is one undo step; undo restores the three cards exactly", () => {
     const { lesson: seed, slideId } = seeded(3);
