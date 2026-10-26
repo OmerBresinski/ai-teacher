@@ -265,6 +265,18 @@ export const lintAsDrawn = (slide: Slide, measure: Measurer, theme: Theme): Slid
 /** `ANSWERS_NAMES.hidden` / `.cover` (templates/end-answers.ts), named here to keep lint template-free. */
 const ANSWER_DISC = "Hidden answer";
 const ANSWER_COVER = "Revealed";
+/**
+ * The ledger's words (`ANSWERS_NAMES` kicker, source, answer, sentence, working, correction): the
+ * rows that stack. The heading's full-width box under the "Teacher only" pill is by design.
+ */
+const LEDGER_TEXT = new Set([
+  "Kicker",
+  "Source title",
+  "Answer",
+  "Model answer",
+  "Working",
+  "Correction",
+]);
 
 /**
  * The layout faults on a guard or Answers slide, as the renderer draws it, in the ship gate's
@@ -273,7 +285,8 @@ const ANSWER_COVER = "Revealed";
  * clean Answers slide has overlaps, and the deck's checks skipped these slides. That hid a disc
  * left behind its moved cover over the answer above ("?.dding Lane") and an answer pushed past
  * the slide's foot (TEACH-247 part ai, Great Fire Y2 s15/s16). The rules here are the template's
- * own: each disc sits under its cover, on its answer's first line, and nothing runs off the slide.
+ * own: each disc sits under its cover, on its answer's first line, no words run into other words,
+ * and nothing runs off the slide.
  */
 export function answersFaults(slide: Slide, measure?: Measurer): string[] {
   if (!slide.answersRole) return [];
@@ -291,6 +304,20 @@ export function answersFaults(slide: Slide, measure?: Measurer): string[] {
       Math.abs(a.x - disc.x) <= 1 && a.y <= disc.y + 1 && disc.y < a.y + Math.max(a.h, disc.h);
     if (!answers.some(line)) out.push(`overlap: hidden answer ${disc.id} is off its answer's line`);
   }
+  // Words on words (TEACH-247 part am): each text box at the height its words take as drawn. An
+  // answer measured in one theme's faces and drawn in a wider one wraps a line more and its last
+  // line lands on the next answer (Great Fire Y2 verify4 s15: "easily." over answer 2). The disc
+  // rules above never look at two texts.
+  const texts = drawn.elements.filter(
+    (e) => e.type === "text" && LEDGER_TEXT.has(e.name ?? "") && e.w > EPS && e.h > EPS,
+  );
+  for (let i = 0; i < texts.length; i++)
+    for (let j = i + 1; j < texts.length; j++) {
+      const a = texts[i] as SlideElement;
+      const b = texts[j] as SlideElement;
+      if (intersects(inset(rectOf(a)), inset(rectOf(b))))
+        out.push(`overlap: ${a.id} runs into ${b.id}`);
+    }
   for (const el of drawn.elements) {
     if (isBackdrop(el) || isBleed(el)) continue;
     if (el.y + el.h > SLIDE_H + EPS) out.push(`clipped: ${el.id} runs past the slide's foot`);

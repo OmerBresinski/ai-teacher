@@ -447,10 +447,24 @@ export function relayAnswersSlide(
   if (k < 0) return null;
   // The page split is read from names and counts alone (kickers, badges) and the answers from the
   // lesson's questions, so the other pages may still be in the old theme's places and faces.
-  const pages = storedPages(stored, answerGroupsOf(slides.filter((s) => !s.answersRole)));
+  const groups = answerGroupsOf(slides.filter((s) => !s.answersRole));
+  const pages = storedPages(stored, groups);
   const page = pages?.[k];
-  if (!page) return null;
-  return relaidIfSameWords(slide, layoutAnswersPage(page, theme, stage));
+  if (!page || !pages) return null;
+  const asStored = (p: AnswersPage) => layoutAnswersPage(p, theme, stage, { squeeze: true });
+  // A teacher's words keep the slide theirs.
+  if (wordsOf(asStored(page).slide) !== wordsOf(slide)) return null;
+  // TEACH-247 part am: the split the old theme made may not fit the new theme's faces. When every
+  // stored page is untouched and the new theme splits the answers over as many pages, page k is
+  // the builder's own page k (each page of the end, re-laid in the same pass, takes its own).
+  // Otherwise the stored split stays and a page that does not fit steps its type down.
+  const untouched = stored.every((s, i) => {
+    const p = pages[i];
+    return p !== undefined && wordsOf(asStored(p).slide) === wordsOf(s);
+  });
+  const fresh = endAnswerSlides(groups, theme, stage).filter((s) => s.answersRole === "answers");
+  const built = untouched && fresh.length === stored.length ? fresh[k] : undefined;
+  return { ...slide, elements: keepIds(built ?? asStored(page).slide, slide) };
 }
 
 /**
