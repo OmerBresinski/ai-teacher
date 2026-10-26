@@ -1,6 +1,7 @@
 import { safeErrorWhere } from "@tj/domain";
 import { MAX_CONFIRMED_OBJECTIVES, type Slide, type Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
+import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { type DebugKind, recordDebug } from "../debug";
@@ -599,6 +600,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const override = new Map<string, VisualState>();
   /** `restore` puts a slide's override and drawn states back as they were when it was swapped. */
   const states = slideStates<VisualState>([override, drawnDiagrams]);
+  const holdsPlaceholder = (i: number) =>
+    (laid.get(i)?.slide.elements ?? []).some(
+      (e) =>
+        (e as { type?: string; src?: string }).type === "image" &&
+        (e as { src?: string }).src === PLACEHOLDER_IMAGE,
+    );
+  /** Every slide is written and asked for: a slot with no ask now will never get one. */
+  let streamOver = false;
   const visualState = (i: number) => (key: string) => {
     const o = override.get(`${i}:${key}`);
     if (o) return o;
@@ -608,7 +617,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (was)
       return run.visual ? run.visual(i, was.key, was.ask) : ({ status: "pending" } as VisualState);
     const a = (asks.get(i) ?? []).find((x) => x.key === key);
-    return a && run.visual ? run.visual(i, key, a) : ({ status: "pending" } as VisualState);
+    if (a && run.visual) return run.visual(i, key, a);
+    // A slot nothing was asked for is never filled: once the deck is editable it is failed, so
+    // the slide is laid without it and never ships a placeholder (picq, greatfire 26 Oct s9).
+    return { status: streamOver ? "failed" : "pending" } as VisualState;
   };
   // Slides whose diagram ships with warnings (no room drew it cleanly): every later relay keeps it.
   const warned = new Set<number>();
@@ -1848,12 +1860,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       earlyLost.set(i, job);
       void Promise.allSettled([job]);
     }
+  streamOver = true;
   if (run.beforeEditable) {
     await run.beforeEditable();
     await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
   }
+  // A slide still showing an open slot that nothing fills is laid again without it.
+  for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
   // Editable never waits for an early retry: one still running is waited for in its slide's tail.
   editable = true;
   await run.onEditable?.(deck());
