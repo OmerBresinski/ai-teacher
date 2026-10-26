@@ -11,7 +11,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_count_miss: ["level"],
   gen_coverage_unmet: ["level"],
   gen_diagram_call: ["attempt", "key"],
-  gen_diagram_done: ["key", "ok", "slide", "via"],
+  gen_diagram_done: ["key", "ok", "slide", "to", "via"],
   gen_diagram_final_fault: ["fault", "key", "via"],
   gen_diagram_relaid: ["ok", "slide"],
   gen_drafts: ["ms", "n", "peeks"],
