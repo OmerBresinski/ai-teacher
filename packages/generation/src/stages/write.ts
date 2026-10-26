@@ -527,7 +527,11 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       libraryModelBody: true,
       libraryPanelsOff: true,
       libraryLabelOverlap: false,
-      libraryLabelFloor: false,
+      // TEACH-251 part w (romans verify3 s3: the Hadrian's Wall map's labels at 11.7 pt): a model's
+      // type grows toward the 18 pt floor where it is placed, up to twice the kit's size. With
+      // checks only logging, a size that would break or overlap its words is backed off from, so
+      // the largest clean size is kept and the model is never dropped for it.
+      libraryLabelFloor: true,
       // With no image placer a photo is failed (text-only), but a diagram is drawn by the stage
       // itself: it stays an open slot until the deck is editable, so a slide never loses its
       // figure column at the hand-over and gets it back when the drawing lands (TEACH-202 part f).
