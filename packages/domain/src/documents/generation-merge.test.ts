@@ -45,7 +45,13 @@ const el = (s: Slide, id: string) => s.elements.find((e) => e.id === id) as Reco
 const typed = (l: Lesson, value: string): Lesson => ({
   ...l,
   slides: l.slides.map((s) =>
-    s.id === "w1" ? { ...s, elements: [textElement("w1-t", value), ...s.elements.slice(1)] } : s,
+    s.id === "w1"
+      ? {
+          ...s,
+          teacherEdited: true,
+          elements: [textElement("w1-t", value), ...s.elements.slice(1)],
+        }
+      : s,
   ),
 });
 
@@ -116,7 +122,12 @@ describe("mergeJobLesson (ADR 0037, ruling 189)", () => {
       ...base,
       slides: base.slides.map((s) =>
         s.id === "w1"
-          ? { ...s, elements: s.elements.filter((e) => e.id !== "w1-pic"), notes: "My notes." }
+          ? {
+              ...s,
+              teacherEdited: true,
+              elements: s.elements.filter((e) => e.id !== "w1-pic"),
+              notes: "My notes.",
+            }
           : s,
       ),
     };
@@ -246,9 +257,9 @@ describe("a starting job (no slide states yet)", () => {
     const merged = mergeJobLesson(startingJobBase(row), refitted(row), theirs);
     expect(merged.slides.map((s) => s.id)).toEqual(["w1"]);
     expect(sameJson(slide(merged, "w1"), slide(theirs, "w1"))).toBe(true);
-    // Without the starting base the re-fit reads as an edit and the dropped slide survives.
+    // An unmarked re-fit is never the teacher's (TEACH-251 part p), with or without that base.
     const naive = mergeJobLesson(row, refitted(row), theirs);
-    expect(naive.slides.map((s) => s.id)).toContain("w2");
+    expect(naive.slides.map((s) => s.id)).toEqual(["w1"]);
   });
 
   test("a slide the job splits comes in as the job's two slides, both still writing", () => {
@@ -303,6 +314,7 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
         s.id === "w1"
           ? ({
               ...s,
+              teacherEdited: true,
               elements: [textElement("w1-t", "Puddles dry up."), s.elements[1]],
             } as Slide)
           : s,
@@ -321,6 +333,7 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
         s.id === "w1"
           ? ({
               ...s,
+              teacherEdited: true,
               elements: [s.elements[0], imageElement("w1-pic", { src: "/files/mine.png" })],
             } as Slide)
           : s,
@@ -331,7 +344,7 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
   });
 });
 
-describe("a late picture or diagram lands on a finished slide the editor only re-themed (TEACH-251 part p)", () => {
+describe("ownership is the teacher's mark, never inferred from a diff (TEACH-251 part p)", () => {
   // Great Fire Y2 replay (26 Oct): the editor recoloured every job slide into the picked theme, so
   // each counted as the teacher's; diagrams and pictures the job made late were dropped.
   const styled = (color: string, size: number) =>
@@ -344,37 +357,50 @@ describe("a late picture or diagram lands on a finished slide the editor only re
     ...l,
     slides: l.slides.map((s) => (s.id === "w1" ? ({ ...s, elements, ...extra } as Slide) : s)),
   });
+  const mark = { teacherEdited: true } as const;
   const w1 = (l: Lesson) => slide(l, "w1");
   const ids = (l: Lesson) => w1(l).elements.map((e) => e.id);
 
-  test("no slot left, editor recoloured the slide, the job adds a diagram: it lands", () => {
+  test("an unmarked slide the editor recoloured, with no slot left, takes the job's diagram", () => {
     const base = withW1(filling(), [styled("#111111", 32)]);
     const mine = withW1(base, [styled("#c0392b", 28)]);
     const theirs = withW1(base, [styled("#111111", 32), diagram()]);
-    const merged = mergeJobLesson(base, mine, theirs);
-    expect(ids(merged)).toEqual(["w1-t", "w1-fig"]);
+    expect(w1(mergeJobLesson(base, mine, theirs))).toEqual(w1(theirs));
   });
 
-  test("a recoloured placeholder the job swaps for a diagram: the diagram lands, no placeholder", () => {
-    const ph = imageElement("w1-pic", { src: "", backdrop: { color: "#eeeeee" } } as never);
+  test("an unmarked recoloured placeholder the job swaps for a diagram: the job's slide, no placeholder", () => {
+    const ph = imageElement("w1-pic", { src: "" });
     const base = withW1(filling(), [styled("#111111", 32), ph]);
-    const mine = withW1(base, [
-      styled("#c0392b", 28),
-      { ...ph, backdrop: { color: "#fde2e2" }, x: 600 } as unknown as SlideElement,
-    ]);
+    const mine = withW1(base, [styled("#c0392b", 28), { ...ph, x: 600 }]);
     const theirs = withW1(base, [styled("#111111", 32), diagram()]);
     const merged = mergeJobLesson(base, mine, theirs);
     expect(ids(merged)).toEqual(["w1-t", "w1-fig"]);
     expect(JSON.stringify(w1(merged))).not.toContain('"src":""');
   });
 
+  test("a teacher's move, resize, recolour and font size on a done slide survive a late picture", () => {
+    const ph = imageElement("w1-pic", { src: "" });
+    const base = withW1(filling(), [styled("#111111", 32), ph]);
+    const mineText = { ...styled("#c0392b", 40), x: 12, y: 300, w: 500, h: 120 };
+    const mine = withW1(base, [mineText, ph], mark);
+    const theirs = withW1(base, [
+      styled("#111111", 32),
+      imageElement("w1-photo", { src: "/files/puddle.jpg" }),
+    ]);
+    const merged = w1(mergeJobLesson(base, mine, theirs));
+    expect(el(merged, "w1-t")).toEqual(mineText as never);
+    expect(el(merged, "w1-photo")).toMatchObject({ src: "/files/puddle.jpg" });
+    expect(merged.teacherEdited).toBe(true);
+  });
+
   test("a teacher who changed the words keeps them and still gets the late picture", () => {
     const ph = imageElement("w1-pic", { src: "" });
     const base = withW1(filling(), [styled("#111111", 32), ph]);
-    const mine = withW1(base, [
-      textElement("w1-t", "Puddles dry up in the sun."),
-      { ...ph, x: 40 },
-    ]);
+    const mine = withW1(
+      base,
+      [textElement("w1-t", "Puddles dry up in the sun."), { ...ph, x: 40 }],
+      mark,
+    );
     const theirs = withW1(base, [
       styled("#111111", 32),
       imageElement("w1-photo", { src: "/files/puddle.jpg" }),
@@ -385,9 +411,9 @@ describe("a late picture or diagram lands on a finished slide the editor only re
     expect(JSON.stringify(w1(merged))).toContain("Puddles dry up in the sun.");
   });
 
-  test("a teacher who changed the words and the slide had no slot left still gets the diagram", () => {
+  test("a teacher who changed the words, on a slide with no slot left, still gets the diagram", () => {
     const base = withW1(filling(), [styled("#111111", 32)]);
-    const mine = withW1(base, [textElement("w1-t", "Puddles dry up.")]);
+    const mine = withW1(base, [textElement("w1-t", "Puddles dry up.")], mark);
     const theirs = withW1(base, [styled("#111111", 32), diagram()]);
     const merged = mergeJobLesson(base, mine, theirs);
     expect(ids(merged)).toEqual(["w1-t", "w1-fig"]);
@@ -397,7 +423,7 @@ describe("a late picture or diagram lands on a finished slide the editor only re
   test("a teacher who deleted the picture box does not get it back", () => {
     const ph = imageElement("w1-pic", { src: "" });
     const base = withW1(filling(), [styled("#111111", 32), ph]);
-    const mine = withW1(base, [styled("#111111", 32)]);
+    const mine = withW1(base, [styled("#111111", 32)], mark);
     const swapped = withW1(base, [styled("#111111", 32), diagram()]);
     expect(ids(mergeJobLesson(base, mine, swapped))).toEqual(["w1-t"]);
     const filled = withW1(base, [styled("#111111", 32), { ...ph, src: "/files/p.jpg" }]);
@@ -406,10 +432,11 @@ describe("a late picture or diagram lands on a finished slide the editor only re
 
   test("a teacher who added their own picture keeps the visual area: no second picture", () => {
     const base = withW1(filling(), [styled("#111111", 32)]);
-    const mine = withW1(base, [
-      styled("#111111", 32),
-      imageElement("mine", { src: "/files/m.png" }),
-    ]);
+    const mine = withW1(
+      base,
+      [styled("#111111", 32), imageElement("mine", { src: "/files/m.png" })],
+      mark,
+    );
     const theirs = withW1(base, [styled("#111111", 32), diagram()]);
     expect(ids(mergeJobLesson(base, mine, theirs))).toEqual(["w1-t", "mine"]);
   });

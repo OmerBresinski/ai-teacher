@@ -7,7 +7,6 @@ import { SaveIndicator } from "../kit/SaveIndicator";
 import { inLessonTheme } from "../layout/retheme";
 import { loadLayoutKit } from "../model/layout-kit";
 import { renderTheme } from "../model/themes";
-import { AUTOSAVE_MS } from "../model/use-autosave";
 import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
@@ -242,9 +241,7 @@ describe("the filling editor", () => {
     expect(container.querySelector("[data-writing-status]")).toBe(region);
   });
 
-  // TEACH-251 part p: a fold with nothing of the teacher's in it (here only the editor's fit stamp)
-  // is not sent while the job writes; it is saved once, quietly, when the job has ended.
-  test("a generator fold alone is saved once the job ends and never shows Unsaved changes", async () => {
+  test("a generator fold alone reaches the save path but never shows Unsaved changes", async () => {
     const lesson = { ...seededLesson(), fitVersion: 5 };
     const ids = lesson.slides.map((s) => s.id);
     const ref: { current: LessonEditorHandle | null } = { current: null };
@@ -264,14 +261,8 @@ describe("the filling editor", () => {
     const el = container.querySelector("[data-save-state]");
     expect(el?.getAttribute("data-save-state")).toBe("saved");
     expect(el?.hasAttribute("data-save-quiet")).toBe(true);
-    await new Promise((r) => setTimeout(r, AUTOSAVE_MS + 300));
-    expect(saved.some((l) => l.title === "From the job")).toBe(false);
-    act(() => rerender(tree(undefined)));
     await waitFor(() => expect(saved.at(-1)?.title).toBe("From the job"));
     expect(saved.at(-1)?.fitVersion).toBe(5);
-    expect(container.querySelector("[data-save-state]")?.getAttribute("data-save-state")).not.toBe(
-      "unsaved",
-    );
   });
 
   // P0 25 Oct 2026: every row the job wrote flipped the indicator to "Unsaved changes" and back,
@@ -350,8 +341,8 @@ describe("the filling editor", () => {
     };
     const { rerender, tree } = setup(lesson, { editorRef: ref, onSave });
     act(() => rerender(tree(new Set([ids[2] as Id]))));
-    // The job, still in the opening theme: rewords slide 1 (the teacher's, once re-themed), adds
-    // notes to slide 3 and writes a new slide after it.
+    // The job, still in the opening theme: rewrites slide 1 (re-themed by the editor, never marked
+    // as the teacher's: TEACH-251 part p), adds notes to slide 3 and writes a new slide after it.
     const first = lesson.slides[0] as Slide;
     const jobWords = {
       ...first,
@@ -388,5 +379,37 @@ describe("the filling editor", () => {
       renderTheme(last).colors.accent,
     );
     expect(JSON.stringify(last.slides[0])).not.toContain("JOB WORDS");
+  });
+
+  // TEACH-251 part p: a re-theme while the job writes is the editor redrawing every slide, not the
+  // teacher's change to any of them: nothing is marked, so the job's late work still lands.
+  test("a theme pick while the job writes marks no slide as the teacher's", async () => {
+    await loadLayoutKit();
+    const seeded = seededLesson();
+    const ids = seeded.slides.map((s) => s.id);
+    const lesson: Lesson = {
+      ...seeded,
+      generation: {
+        jobId: "job",
+        stage: "planned",
+        startedAt: "2026-10-26T04:00:00.000Z",
+        promptVersions: {},
+        usage: { calls: 1, inputTokens: 1, outputTokens: 1, costUsd: 0 },
+        findings: [],
+        slideStates: Object.fromEntries(ids.map((id) => [id, "done" as const])),
+      },
+    };
+    const other = lesson.themeId === "exam-hall" ? "playground" : "exam-hall";
+    const ref: { current: LessonEditorHandle | null } = { current: null };
+    const saved: Lesson[] = [];
+    const onSave = (l: Lesson) => {
+      saved.push(l);
+      return Promise.resolve();
+    };
+    const { rerender, tree } = setup(lesson, { editorRef: ref, onSave });
+    act(() => rerender(tree(new Set([ids[2] as Id]))));
+    act(() => ref.current?.retheme(other));
+    await waitFor(() => expect(saved.at(-1)?.themeId).toBe(other));
+    expect((saved.at(-1) as Lesson).slides.some((s) => s.teacherEdited)).toBe(false);
   });
 });

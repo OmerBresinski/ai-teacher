@@ -836,7 +836,28 @@ export function holdsFitStamp(
   lockedBy: string | null | undefined,
   jobId: string,
 ): boolean {
-  return !!lockedBy && lockedBy === jobId && onlyFitStampDiffers(mine, row);
+  return (
+    !!lockedBy &&
+    lockedBy === jobId &&
+    (onlyFitStampDiffers(mine, row) || onlyEditorCopyDiffers(mine, row))
+  );
+}
+
+/**
+ * Whether `mine` differs from the job's row only where the editor drew it, not the teacher
+ * (TEACH-251 part p): its stamps (`fitVersion`, `updatedAt`) and slides the teacher has not marked
+ * (`teacherEdited`), which the editor recolours and re-fits into the lesson's theme. The job's
+ * merge takes its own copy of those anyway, so the save waits for the job to end; a marked slide,
+ * a slide added or deleted, or any other field is the teacher's and saves at once.
+ */
+export function onlyEditorCopyDiffers(mine: Lesson, row: Lesson): boolean {
+  const drawn = (l: Lesson) => ({
+    ...l,
+    fitVersion: 0,
+    updatedAt: "",
+    slides: l.slides.map((s) => (s.teacherEdited ? s : { id: s.id })),
+  });
+  return sameValue(drawn(mine), drawn(row));
 }
 
 /** Deep equality of JSON values, key order ignored; an `undefined` field counts as absent. */

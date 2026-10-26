@@ -45,49 +45,23 @@ export function hasEditableSlides(lesson: Pick<Lesson, "generation" | "slides">)
 const isSlot = (el: SlideElement) =>
   el.type === "image" || (el as { figure?: unknown }).figure !== undefined;
 
-/** Keys that only say where an element sits or how it is styled: a fit, a re-theme or a nudge. */
-const MECHANICAL = new Set([
-  "x",
-  "y",
-  "w",
-  "h",
-  "rotation",
-  "from",
-  "to",
-  "fontFamily",
-  "fontSize",
-  "fontWeight",
-  "lineHeight",
-  "letterSpacing",
-  "padding",
-  "radius",
-  "strokeWidth",
-  "shadow",
-  "autoHeight",
-  "autoFit",
-  "fixedSize",
-]);
-
-/**
- * What a teacher can change on purpose, without what the editor changes on its own: positions and
- * sizes (a fit, a nudge), faces and sizes of type (a re-fit), and colours (a re-theme recolours
- * every colour string). Words, pictures, diagrams and the element list stay. A diagram's source is
- * kept whole.
- */
-function substance(node: unknown, key?: string): unknown {
-  if (key === "diagram" || key === "figure") return node;
-  if (typeof node === "string")
-    return key !== "text" && /^#[0-9a-f]{3,8}$/i.test(node) ? "#" : node;
-  if (Array.isArray(node)) return node.map((n) => substance(n));
-  if (node && typeof node === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(node)) {
-      if (!MECHANICAL.has(k) && v !== undefined) out[k] = substance(v, k);
-    }
-    return out;
-  }
-  return node;
+/** An element without its place on the slide: moving or resizing a slot does not claim it. */
+function content(el: SlideElement): Record<string, unknown> {
+  const {
+    x: _x,
+    y: _y,
+    w: _w,
+    h: _h,
+    rotation: _r,
+    ...rest
+  } = el as SlideElement & {
+    rotation?: number;
+  };
+  return rest;
 }
+
+/** Whether the teacher changed this slide while the job ran (`Slide.teacherEdited`). */
+export const isTeacherEdited = (slide: Slide): boolean => slide.teacherEdited === true;
 
 /** `next` placed where the teacher put `kept`. */
 function inPlace(next: SlideElement, kept: SlideElement): SlideElement {
@@ -103,16 +77,12 @@ function inPlace(next: SlideElement, kept: SlideElement): SlideElement {
 }
 
 /**
- * A slide the teacher's copy differs from `base`, with the job's late work that may still land.
+ * A slide the teacher changed while the job ran (`teacherEdited`), with the job's late work that
+ * may still land. The teacher's slide is kept whole: words, layout, styles and slide fields.
  *
- * - A copy that differs from `base` only mechanically (the editor's fit on open, a re-theme's
- *   colours and type sizes, a nudge) is not the teacher's work: it takes the job's slide whole,
- *   late pictures and diagrams included, and the editor draws it in the lesson's theme again.
- * - A slide the teacher really changed keeps the teacher's words and layout. A picture or diagram
- *   the job made late still lands: in a slot the teacher left (moving, resizing or restyling it is
- *   fine), or as a new slot on the slide when the teacher has neither deleted nor added a picture
- *   or diagram there (its visual area is as the job left it). A slot the teacher deleted is never
- *   refilled.
+ * - A picture or diagram the job made late lands in a slot the teacher left as it was (moving or
+ *   resizing it is fine), or as a new slot when the teacher has neither deleted nor added a
+ *   picture or diagram on the slide. A slot the teacher deleted is never refilled.
  * - A slot the job took out with nothing in its place goes from the teacher's copy too when the
  *   teacher left it: never a placeholder (picq, 26 Oct).
  * - Notes the teacher has not changed take the job's.
@@ -124,12 +94,8 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
   const m = byId(mine.elements);
   const untouched = (el: SlideElement) => {
     const was = b.get(el.id);
-    return was !== undefined && sameJson(substance(el), substance(was));
+    return was !== undefined && sameJson(content(el), content(was));
   };
-  const sameIds =
-    mine.elements.length === base.elements.length && mine.elements.every((e) => b.has(e.id));
-  if (sameIds && mine.elements.every(untouched) && sameJson(mine.notes, base.notes)) return theirs;
-
   // Slots the job replaced with a new element (a placeholder swapped for a diagram), in order.
   const gone = base.elements.filter((e) => isSlot(e) && !t.has(e.id)).map((e) => e.id);
   const arrived = theirs.elements.filter((e) => isSlot(e) && !b.has(e.id) && !m.has(e.id));
@@ -176,8 +142,9 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
  *
  * - `generation` is always the job's (states, usage, stage);
  * - any other top-level field the teacher changed (title, theme) keeps the teacher's value;
- * - a slide the teacher did not change takes the job's copy; one the teacher changed keeps the
- *   teacher's words and takes only late slots and untouched notes (`mergeEditedSlide`);
+ * - a slide the teacher did not mark as changed (`teacherEdited`) takes the job's copy; a marked
+ *   one keeps the teacher's slide and takes only late slots and untouched notes
+ *   (`mergeEditedSlide`);
  * - a slide the teacher deleted stays deleted, one the teacher added stays, in the teacher's
  *   order; slides new from the job land after the slide they follow in the job's copy.
  */
@@ -212,8 +179,10 @@ export function mergeJobLesson(base: Lesson | undefined, mine: Lesson, theirs: L
       // The teacher's new slide, or one both copies gained since `base`: the job's copy wins only
       // when it is the same slide the teacher has.
       slides.push(next !== undefined && sameJson(own, next) ? next : own);
-    } else if (sameJson(own, was)) {
-      // Untouched: the job's copy, or gone when the job dropped it.
+    } else if (!isTeacherEdited(own) || sameJson(own, was)) {
+      // Not the teacher's (TEACH-251 part p): the job's copy, or gone when the job dropped it. A
+      // copy that differs only by the editor's own fit, re-theme or stamps is not marked; the
+      // editor draws the job's copy in the lesson's theme again.
       if (next !== undefined) slides.push(next);
     } else {
       slides.push(next === undefined ? own : mergeEditedSlide(was, own, next));

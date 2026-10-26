@@ -106,6 +106,13 @@ export type Slide = {
    * should be (`dirOf`); a slide is mirrored only when its stamp differs.
    */
   dir?: DirStamp;
+  /**
+   * Set when the teacher changed this slide (typing, a drag, a resize, a style control, an
+   * insert or a delete) while a job filled the lesson (ADR 0037, TEACH-251 part p). The editor sets
+   * it on a real action only, never on its own fit, re-theme or stamps; the job's merge keeps a
+   * marked slide as the teacher's and takes the job's copy of any other.
+   */
+  teacherEdited?: true;
 };
 
 /** A freed adaptive layout's group, kept so the teacher can turn Free layout off again. */
@@ -936,6 +943,7 @@ export const SlideSchema = z
       .optional(),
     answersRole: z.enum(["guard", "answers"]).optional(),
     dir: DirStampSchema.optional(),
+    teacherEdited: z.literal(true).optional(),
   })
   .superRefine((slide, ctx) => {
     // Ids are the addressing scheme for the whole model: enforce uniqueness and referential
