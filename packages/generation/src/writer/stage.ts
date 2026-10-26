@@ -73,6 +73,7 @@ import {
   layoutsFor,
   lineMatchesObjective,
   linkSteps,
+  lookForSlide,
   lookOf,
   lostFault,
   OVERFLOW,
@@ -1188,7 +1189,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? s.heading ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
     // which asks for none gets the picture from look's phrase.
-    const look = lookOf(plan.flow?.find((x) => x.slide === idx + 1));
+    const entry = plan.flow?.find((x) => x.slide === idx + 1);
+    const look = lookForSlide(entry, s);
+    if (!look && lookOf(entry)?.kind === "picture")
+      log({ ev: "look-other-slide", slide: idx + 1, planned: entry?.layout ?? null });
     const added = withLook(s, look);
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });

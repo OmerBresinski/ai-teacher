@@ -871,6 +871,28 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
 }
 
 /** The flow's visual decision (`look_at` in this schema). */
+/**
+ * The flow entry's look, for slide `s` only when the entry plans that slide: the flow's layout
+ * names the slide's template. When the writer writes fewer slides than its flow (the close moves
+ * up), entry k is another slide's plan; its picture would land on a layout with no room for it
+ * (genlab Y1 plants, 26 Oct: a practice slide's "seedling and flowering plant in rain" was
+ * generated for the exit ticket, 31 s and $0.0063, then never shown).
+ */
+export function lookForSlide(
+  f:
+    | {
+        layout?: string;
+        look?: { kind: string; shows: string | null };
+        look_at?: { kind: string; shows: string | null };
+      }
+    | undefined,
+  s: { template?: unknown },
+): { kind: string; shows: string } | undefined {
+  const planned = typeof f?.layout === "string" ? f.layout.trim().split(/\s+/)[0] : undefined;
+  if (planned && typeof s.template === "string" && planned !== s.template) return undefined;
+  return lookOf(f);
+}
+
 export function lookOf(
   f:
     | {
