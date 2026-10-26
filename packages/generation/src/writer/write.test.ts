@@ -269,6 +269,11 @@ describe("the library through the production write stage (PR #450 review)", () =
     };
     return JSON.stringify(out);
   };
+  // A Year 5 maths lesson, so equal_groups is on the lesson's menu (the stage's menu is filtered by
+  // year and subject; a model off it goes to the drawer, `lib-off-menu`). The sample brief is
+  // Year 8 science, whose menu never offered equal_groups: the old per-lesson schema would have
+  // refused the pick, and the fake writer here does not read the schema.
+  const lesson = (): Lesson => ({ ...planned(), subject: "Maths", yearGroup: "Year 5" });
   const isFill = (call: FakeCall) => (call.systemText ?? "").startsWith("Set the parameters");
   /** The fake with the model ask; `fill` answers the fill (and repair) calls. */
   const libraryAi = (fill: () => string) =>
@@ -289,7 +294,7 @@ describe("the library through the production write stage (PR #450 review)", () =
 
   test("a model the writer picks is filled by the fill call and drawn", async () => {
     const ai = libraryAi(() => JSON.stringify({ groups: 4, size: 6, division: "sharing" }));
-    const out = await write(initialState(planned()), recordingDeps(ai));
+    const out = await write(initialState(lesson()), recordingDeps(ai));
     expect(out.lesson.generation?.stage).toBe("generated");
     const fills = ai.calls.filter(isFill);
     expect(fills).toHaveLength(1);
@@ -312,7 +317,7 @@ describe("the library through the production write stage (PR #450 review)", () =
   ] as const) {
     test(`${what}: the slide falls back to the drawer and the lesson is generated`, async () => {
       const ai = libraryAi(fill);
-      const out = await write(initialState(planned()), recordingDeps(ai));
+      const out = await write(initialState(lesson()), recordingDeps(ai));
       expect(out.lesson.generation?.stage).toBe("generated");
       expect(ai.calls.filter(isFill).length).toBeGreaterThanOrEqual(1);
       const drawer = ai.calls.filter(

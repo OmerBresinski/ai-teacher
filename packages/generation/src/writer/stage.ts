@@ -1,5 +1,5 @@
 import { safeErrorWhere } from "@tj/domain";
-import type { Slide, Theme } from "@tj/domain/documents";
+import { MAX_CONFIRMED_OBJECTIVES, type Slide, type Theme } from "@tj/domain/documents";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
@@ -767,25 +767,33 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           },
         )
       : [];
+  // The schema is the head of the writer's cached prompt (ai-services `writerSystem`), so it
+  // carries nothing of this lesson: the model ids are the stage's whole catalogue and
+  // `flow[].teaches` runs to the most objectives a teacher can confirm. The menu the writer reads
+  // stays this lesson's (filtered and ranked, in the system text after the breakpoint); notes
+  // count only the lesson's own numbers (`objectiveCoverage`).
+  const schemaIds =
+    run.library && run.drawDiagrams && models.length
+      ? await nonFatal(
+          async () => (await catalogue(stageKey)).map((m) => m.id),
+          () => models.map((m) => m.id),
+        )
+      : models.map((m) => m.id);
+  const menuIds = new Set(models.map((m) => m.id));
   const activities = run.activities ?? ACTIVITIES_DEFAULT;
   const libbed = libSchema(
     writerSchema(stageKey, brief.slides, P, {
-      objectives: run.objectives.length,
+      objectives: Math.max(run.objectives.length, MAX_CONFIRMED_OBJECTIVES),
       ...(run.tileVisuals !== undefined ? { tileVisuals: run.tileVisuals } : {}),
       ...(run.callouts !== undefined ? { callouts: run.callouts } : {}),
       ...(run.cardsGrid !== undefined ? { cardsGrid: run.cardsGrid } : {}),
       ...(run.bannerText !== undefined ? { bannerText: run.bannerText } : {}),
       ...(run.hook !== undefined ? { hook: run.hook } : {}),
     }),
-    models.map((m) => m.id),
+    schemaIds,
   );
   const pilot = run.pilotPack
-    ? pilotRequest(run.pilotPack, stageKey, libbed, (sc) =>
-        libSchema(
-          sc,
-          models.map((m) => m.id),
-        ),
-      )
+    ? pilotRequest(run.pilotPack, stageKey, libbed, (sc) => libSchema(sc, schemaIds))
     : undefined;
   const unsplit = pilot ? pilot.schema : activities ? withActivities(libbed, stageKey) : libbed;
   // A pack's base schema is already split per fit (`template~fit`): arrival strips `fit`, and the
@@ -982,6 +990,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           if (slot !== "full") {
             const kind = BASE_KIND[String(want.model ?? "")] ?? FALLBACK_KIND;
             log({ ev: "lib-side-slot", slide: i + 1, model: want.model, kind });
+            return { ...a, kind, labels: [], spec: undefined };
+          }
+          // The schema lists the stage's whole catalogue (it is the cached prefix); a model off
+          // this lesson's menu (another year or subject) goes to the drawer, as before the change.
+          if (!menuIds.has(String(want.model ?? ""))) {
+            const kind = BASE_KIND[String(want.model ?? "")] ?? FALLBACK_KIND;
+            log({ ev: "lib-off-menu", slide: i + 1, model: want.model, kind });
             return { ...a, kind, labels: [], spec: undefined };
           }
           if (modelPoints(s).length)
