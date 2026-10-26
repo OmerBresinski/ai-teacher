@@ -1,0 +1,4419 @@
+{
+  "id": "01a176dc-f1da-771e-8f05-467f33864b62",
+  "title": "The Great Fire of London",
+  "facts": {
+    "outline": [],
+    "questions": [],
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Describe where and when the Great Fire of London started."
+      },
+      {
+        "id": "o2",
+        "text": "Explain how wooden houses, narrow streets and strong winds spread the fire."
+      },
+      {
+        "id": "o3",
+        "text": "Describe how people used buckets, fire hooks and pulled-down houses."
+      }
+    ],
+    "vocabulary": [],
+    "durationMin": 45,
+    "misconceptions": [],
+    "workedExamples": []
+  },
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "The Great Fire of London, with Ludgate and Old St. Paul's",
+          "fit": "cover",
+          "src": "/files/01a176dc-ed54-75d6-b564-c9675163cb1a/images/01a176dd-da5d-72cd-98a5-f3d3193bcc8c.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "commons-1599453",
+            "author": "Unknown author Unknown author",
+            "licence": "Public domain",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:The_Great_Fire_of_London,_with_Ludgate_and_Old_St._Paul%27s.JPG",
+            "evidence": {
+              "alt": "The Great Fire of London, with Ludgate and Old St. Paul's",
+              "count": "several",
+              "visible": ["timber house frames", "burning rooftops", "closely packed houses"],
+              "thumbnail": "data:image/jpeg;base64,/9j/4QA+RXhpZgAAT…(trimmed)",
+              "promptVersion": "pick-or-requery-photo.v17"
+            },
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:The_Great_Fire_of_London,_with_Ludgate_and_Old_St._Paul%27s.JPG",
+            "photographer": "Unknown author Unknown author",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:The_Great_Fire_of_London,_with_Ludgate_and_Old_St._Paul%27s.JPG"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 192,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#1A52A8",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 121,
+          "w": 402.67,
+          "x": 58,
+          "y": 228,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Great Fire of London",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 56,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 600,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 467,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 467,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Tell where and when the Great Fire of London began.",
+                "Tell how wooden houses, narrow streets and strong winds spread the fire.",
+                "Tell how people used buckets, fire hooks and pulled-down houses."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 58,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 51,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 122,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#1A52A8",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 152,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#1A52A8",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 93,
+              "w": 752,
+              "x": 83,
+              "y": 130,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Tell where and when the Great Fire of London began.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 236,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#1A52A8",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 266,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#1A52A8",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 93,
+              "w": 752,
+              "x": 83,
+              "y": 244,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Tell how wooden houses, narrow streets and strong winds spread the fire.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 350,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#1A52A8",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 380,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#1A52A8",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 93,
+              "w": 752,
+              "x": 83,
+              "y": 358,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Tell how people used buckets, fire hooks and pulled-down houses.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "kind": "image-text",
+      "notes": "Running\nRead the information together an…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s3-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where did it start?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 223,
+          "w": 392,
+          "x": 64,
+          "y": 190,
+          "id": "d-s3-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Great Fire of London started on 2 September 1666, in a bakery on a street called Pudding Lane.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 261,
+          "w": 392,
+          "x": 504,
+          "y": 194,
+          "id": "d-s3-Photo-0",
+          "alt": "A view inside a timber bakery on Pudding Lane, with flames beginning in the oven at night.",
+          "fit": "cover",
+          "src": "/files/01a176dc-ed54-75d6-b564-c9675163cb1a/images/01a176de-2c96-7602-a108-d48120b902f4.png",
+          "name": "Photo",
+          "type": "image",
+          "radius": 26,
+          "source": {
+            "id": "01a176de-2c96-7602-a108-d48120b902f4",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "open-response",
+      "notes": "Running\nGive pupils about 3 minutes to a…(trimmed)",
+      "elements": [
+        {
+          "h": 37,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s4-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Remember the beginning",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 414,
+          "w": 299,
+          "x": 661,
+          "y": 139,
+          "id": "d-s4-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41.333333333333336,
+          "w": 41.333333333333336,
+          "x": 64,
+          "y": 217,
+          "id": "d-s4-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 79,
+          "w": 504.66666666666663,
+          "x": 124.33333333333334,
+          "y": 198,
+          "id": "d-s4-Question-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Which city needs a memorial to this fire?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Question",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41.333333333333336,
+          "w": 41.333333333333336,
+          "x": 704,
+          "y": 217,
+          "id": "d-s4-Answer_to_come-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DCEBF5",
+          "name": "Answer to come",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#1A52A8",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 45.333333333333336,
+          "w": 45.333333333333336,
+          "x": 702,
+          "y": 215,
+          "id": "d-s4-Answer_cover-0",
+          "fill": "#DDF0F8",
+          "name": "Answer cover",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 38,
+          "w": 224,
+          "x": 704,
+          "y": 219,
+          "id": "d-s4-Answer-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "London",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 41.333333333333336,
+          "w": 41.333333333333336,
+          "x": 64,
+          "y": 328,
+          "id": "d-s4-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 79,
+          "w": 504.66666666666663,
+          "x": 124.33333333333334,
+          "y": 310,
+          "id": "d-s4-Question-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Which street would a starting-place marker name?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Question",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41.333333333333336,
+          "w": 41.333333333333336,
+          "x": 704,
+          "y": 328,
+          "id": "d-s4-Answer_to_come-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DCEBF5",
+          "name": "Answer to come",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#1A52A8",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 45.333333333333336,
+          "w": 45.333333333333336,
+          "x": 702,
+          "y": 326,
+          "id": "d-s4-Answer_cover-1",
+          "fill": "#DDF0F8",
+          "name": "Answer cover",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 38,
+          "w": 224,
+          "x": 704,
+          "y": 330,
+          "id": "d-s4-Answer-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Pudding Lane",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 41.333333333333336,
+          "w": 41.333333333333336,
+          "x": 64,
+          "y": 440,
+          "id": "d-s4-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 79,
+          "w": 504.66666666666663,
+          "x": 124.33333333333334,
+          "y": 421,
+          "id": "d-s4-Question-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Which year belongs on a Great Fire calendar?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Question",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41.333333333333336,
+          "w": 41.333333333333336,
+          "x": 704,
+          "y": 440,
+          "id": "d-s4-Answer_to_come-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DCEBF5",
+          "name": "Answer to come",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#1A52A8",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 45.333333333333336,
+          "w": 45.333333333333336,
+          "x": 702,
+          "y": 438,
+          "id": "d-s4-Answer_cover-2",
+          "fill": "#DDF0F8",
+          "name": "Answer cover",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 38,
+          "w": 224,
+          "x": 704,
+          "y": 441,
+          "id": "d-s4-Answer-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1666",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 3
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. London\n2. Pudding Lane\n3. 1666"
+      }
+    },
+    {
+      "id": "s5",
+      "kind": "image-text",
+      "notes": "Running\nRead the explanation and study t…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s5-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why did fire spread?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 268,
+          "w": 392,
+          "x": 64,
+          "y": 167,
+          "id": "d-s5-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Wooden houses burned easily. Narrow streets left small gaps between houses. Strong winds blew flames and sparks towards more houses.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 261,
+          "w": 392,
+          "x": 504,
+          "y": 194,
+          "id": "d-s5-Photo-0",
+          "alt": "A view of the Great Fire of London spreading between closely packed wooden houses, with flames bent by wind and sparks reaching nearby roofs.",
+          "fit": "cover",
+          "src": "/files/01a176dc-ed54-75d6-b564-c9675163cb1a/images/01a176de-37d1-7616-b743-485d0921abe9.png",
+          "name": "Photo",
+          "type": "image",
+          "radius": 26,
+          "source": {
+            "id": "01a176de-37d1-7616-b743-485d0921abe9",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "kind": "diagram",
+      "notes": "Running\nAllow about 3 minutes. Ask pupil…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Sparks travelled through the air",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 134,
+          "w": 832,
+          "x": 64,
+          "y": 160,
+          "id": "d-s6-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Sparks are tiny burning pieces. Strong winds carried them onto other wooden roofs, where new fires could start.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 194,
+          "w": 832,
+          "x": 64,
+          "y": 310,
+          "id": "d-s6-Panel-0",
+          "fill": "#d6e8f3",
+          "name": "Panel",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 150,
+          "w": 788,
+          "x": 86,
+          "y": 332,
+          "id": "d-s6-Diagram-0",
+          "alt": "Glowing sparks blow from a burning timber house onto a wooden roof, where new flames start.",
+          "fit": "contain",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%…(trimmed)",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 2,
+          "diagram": {
+            "fs": 28,
+            "kind": "drawer",
+            "spec": {
+              "alt": "Glowing sparks blow from a burning timber house onto a wooden roof, where new flames start.",
+              "kind": "flow",
+              "steps": [
+                {
+                  "label": "Burning timber house"
+                },
+                {
+                  "label": "Glowing sparks"
+                },
+                {
+                  "label": "Wind carries sparks to roof"
+                }
+              ],
+              "layout": "chain"
+            }
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "kind": "multiple-choice",
+      "notes": "Running\nGive pupils about 3 minutes to c…(trimmed)",
+      "elements": [
+        {
+          "h": 358,
+          "w": 960,
+          "x": 0,
+          "y": 182,
+          "id": "d-s7-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 115,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s7-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why did narrow streets help fire reach the next house?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 214,
+          "id": "d-s7-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 232,
+          "id": "d-s7-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 677,
+          "x": 150,
+          "y": 236,
+          "id": "d-s7-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Houses were close together.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 311,
+          "id": "d-s7-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 329,
+          "id": "d-s7-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#7E5600",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 677,
+          "x": 150,
+          "y": 333,
+          "id": "d-s7-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Narrow streets made sparks cold.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 408,
+          "id": "d-s7-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 426,
+          "id": "d-s7-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 677,
+          "x": 150,
+          "y": 430,
+          "id": "d-s7-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Streets were made of wood.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s7-Option-0",
+            "correct": true
+          },
+          {
+            "id": "d-s7-Option-1",
+            "correct": false
+          },
+          {
+            "id": "d-s7-Option-2",
+            "correct": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "s8",
+      "kind": "content",
+      "notes": "Running\nGive pupils about 2 minutes to study the tool. Ask them to think quietly about what it could do, then share ideas with a partner. Take a few suggestions before moving on.\n\nMisconceptions\nPupils may think the hook was for carrying water. Explain that people used it to pull down burning roofs or houses and make a gap for the fire to stop at.\n\nBackground\nThe long pole let people pull at buildings from farther away. Making a gap between buildings helped create a firebreak.",
+      "elements": [
+        {
+          "h": 521,
+          "w": 960,
+          "x": 0,
+          "y": 0,
+          "id": "d-s8-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 960,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "rows": [
+                {
+                  "icon": null,
+                  "name": "Buckets",
+                  "text": "People threw water onto flames.",
+                  "picture": null
+                },
+                {
+                  "icon": null,
+                  "name": "Fire hooks",
+                  "text": "People pulled burning wood down.",
+                  "picture": {
+                    "alt": "A seventeenth-century fire hook with a long wooden pole and a curved metal hook.",
+                    "photo": "/files/01a176dc-ed54-75d6-b564-c9675163cb1a/images/01a176df-0757-7604-88cc-34dad2b8ddce.png",
+                    "aspect": 1.5,
+                    "request": "A seventeenth-century fire hook with a long wooden pole and curved metal hook. long wooden pole. curved metal hook"
+                  }
+                }
+              ],
+              "panel": null,
+              "heading": "Fighting fire",
+              "template": "panel-list"
+            },
+            "template": "panel-list"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 960,
+              "x": 0,
+              "y": 0,
+              "id": "d-s8-layout:~Background-0",
+              "fill": "#FFFDF7",
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 540,
+              "w": 313,
+              "x": 0,
+              "y": 0,
+              "id": "d-s8-layout:~Title_panel-0",
+              "fill": "#232120",
+              "name": "Title panel",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 102,
+              "w": 233,
+              "x": 40,
+              "y": 64,
+              "id": "d-s8-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Fighting fire",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#FFFDF7",
+                "preset": "title",
+                "padding": 0,
+                "fontSize": 51,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1
+              }
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 360,
+              "y": 125,
+              "id": "d-s8-layout:~Row_circle-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#D2E5F1",
+              "name": "Row circle",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#232120",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 44,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 36,
+              "w": 414,
+              "x": 482,
+              "y": 114,
+              "id": "d-s8-layout:rows.0.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Buckets",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 83,
+              "w": 414,
+              "x": 482,
+              "y": 152,
+              "id": "d-s8-layout:rows.0.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "People threw water onto flames.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.25
+              }
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 360,
+              "y": 316,
+              "id": "d-s8-layout:~Row_circle-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#D2E5F1",
+              "name": "Row circle",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#232120",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 44,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 36,
+              "w": 414,
+              "x": 482,
+              "y": 305,
+              "id": "d-s8-layout:rows.1.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Fire hooks",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 83,
+              "w": 414,
+              "x": 482,
+              "y": 344,
+              "id": "d-s8-layout:rows.1.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "People pulled burning wood down.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.25
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 414,
+              "x": 482,
+              "y": 270,
+              "id": "d-s8-layout:~Divider-0",
+              "fill": "#F5C9CF",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "kind": "image-text",
+      "notes": "Running\nRead the explanation and discuss the image for about 4 minutes. Ask pupils to explain what changed when houses were pulled down.\n\nMisconceptions\nPupils may think pulling down houses gave the fire more fuel. Explain that removing houses made a gap, leaving less material for the fire to burn across.\n\nBackground\nPeople deliberately demolished buildings to create firebreaks. A firebreak is a space or barrier that makes it harder for a fire to spread.",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s9-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Making a gap",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 223,
+          "w": 392,
+          "x": 64,
+          "y": 190,
+          "id": "d-s9-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "People pulled down houses to make wider gaps. With no house in the gap, there was less to burn.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 292,
+          "w": 392,
+          "x": 504,
+          "y": 178,
+          "id": "d-s9-Photo-0",
+          "alt": "William Russell Birch - The Great Fire of London in the Year 1666",
+          "fit": "cover",
+          "src": "/files/01a176dc-ed54-75d6-b564-c9675163cb1a/images/01a176de-4bf4-703d-8781-a4858ba39d16.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 26,
+          "source": {
+            "id": "commons-69561453",
+            "author": "William Russell Birch",
+            "licence": "Public domain",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:William_Russell_Birch_-_The_Great_Fire_of_London_in_the_Year_1666.jpg",
+            "evidence": {
+              "alt": "William Russell Birch - The Great Fire of London in the Year 1666",
+              "count": "several",
+              "visible": ["burning house row", "wide cleared gap", "scattered low rubble"],
+              "thumbnail": "data:image/jpeg;base64,/9j/2wBDAAQDAwQDA…(trimmed)",
+              "promptVersion": "pick-or-requery-photo.v17"
+            },
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:William_Russell_Birch_-_The_Great_Fire_of_London_in_the_Year_1666.jpg",
+            "photographer": "William Russell Birch",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:William_Russell_Birch_-_The_Great_Fire_of_London_in_the_Year_1666.jpg"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "kind": "open-response",
+      "notes": "Running\nGive pupils about 4 minutes to a…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s10-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Choose a useful tool",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 147,
+          "id": "d-s10-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 64,
+          "y": 172,
+          "id": "d-s10-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 392,
+          "x": 64,
+          "y": 229,
+          "id": "d-s10-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine people carrying river water to a fire. Which tool would they use?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 147,
+          "id": "d-s10-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 504,
+          "y": 172,
+          "id": "d-s10-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 392,
+          "x": 504,
+          "y": 229,
+          "id": "d-s10-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine people pulling burning roof wood down. Which tool would help them reach?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Buckets\n2. Fire hooks"
+      }
+    },
+    {
+      "id": "s11",
+      "kind": "discussion",
+      "notes": "Running\nGive pupils about 3 minutes to t…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s11-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Could fire cross?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 328,
+          "w": 832,
+          "x": 64,
+          "y": 160,
+          "id": "d-s11-Panel-0",
+          "fill": "#d6e8f3",
+          "name": "Panel",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 229,
+          "w": 680,
+          "x": 140,
+          "y": 210,
+          "id": "d-s11-Prompt-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine a wide gap between houses. How could strong winds still help fire reach the next house?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Prompt",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "notes": "Running\nAllow about 5 minutes for pupils…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s12-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Use what you know",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 147,
+          "id": "d-s12-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 64,
+          "y": 172,
+          "id": "d-s12-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 392,
+          "x": 64,
+          "y": 229,
+          "id": "d-s12-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine wooden houses far apart. Why might fire spread less easily between them?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 147,
+          "id": "d-s12-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 504,
+          "y": 172,
+          "id": "d-s12-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 392,
+          "x": 504,
+          "y": 229,
+          "id": "d-s12-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine no water is left. How could people stop flames reaching more wooden houses?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. The wider gaps make it harder for flames to reach the next house.\n2. People could pull down houses to make a wider gap with less to burn."
+      }
+    },
+    {
+      "id": "s13",
+      "kind": "exit-ticket",
+      "notes": "Running\nGive pupils about 5 minutes to c…(trimmed)",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s13-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Your final check",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 254,
+          "w": 960,
+          "x": 0,
+          "y": 286,
+          "id": "d-s13-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 333,
+          "w": 746,
+          "x": 107,
+          "y": 153,
+          "id": "d-s13-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 28,
+          "w": 660,
+          "x": 150,
+          "y": 177,
+          "id": "d-s13-Kicker-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "EXIT TICKET",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 221,
+          "id": "d-s13-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 150,
+          "y": 246,
+          "id": "d-s13-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 83,
+          "w": 603,
+          "x": 207,
+          "y": 246,
+          "id": "d-s13-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where and on what date did the fire start?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 352,
+          "id": "d-s13-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 150,
+          "y": 376,
+          "id": "d-s13-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 83,
+          "w": 603,
+          "x": 207,
+          "y": 376,
+          "id": "d-s13-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why did pulling down houses help stop fire spreading?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. It started in a bakery on Pudding Lane in London on 2 September 1666.\n2. It made wider gaps, so there was less wood for the fire to burn."
+      }
+    },
+    {
+      "id": "glx343rimn",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "VN5NqR0OTD",
+          "fill": "#DDF0F8",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "5p5CyFNWhy",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#2E7D32",
+          "strokeWidth": 6
+        },
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "-QKzlH128k",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 37,
+          "w": 832,
+          "x": 64,
+          "y": 375,
+          "id": "jLtrgQqhGl",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard"
+    },
+    {
+      "id": "ozS1siUw-h",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "NR5ny6YyjP",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 3)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 283,
+          "x": 613,
+          "y": 49,
+          "id": "PWontbAtxw",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 638,
+          "y": 60,
+          "id": "rk_iSs5L9J",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 34,
+          "w": 283,
+          "x": 677,
+          "y": 58,
+          "id": "he3Cy-E2Cb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "LxIMXZcLrh",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 68,
+          "w": 190,
+          "x": 64,
+          "y": 176,
+          "id": "ORFssfXZPr",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Remember the beginning",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 147,
+          "id": "d35M2cXC_r",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 147,
+          "id": "LThGEcTrXM",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 146,
+          "id": "-itNbmO6av",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 43,
+          "w": 538,
+          "x": 358,
+          "y": 146,
+          "id": "AcuSKaqLqi",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "London",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 211,
+          "id": "zYxywHJVuf",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 211,
+          "id": "9tJZlmYmC9",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 210,
+          "id": "9YoBhPHeVy",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 43,
+          "w": 538,
+          "x": 358,
+          "y": 210,
+          "id": "3tSnxIQSMF",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Pudding Lane",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 276,
+          "id": "fuOx84ezHd",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 276,
+          "id": "l7fw6MYFJP",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 275,
+          "id": "sDb3bq8oUN",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 43,
+          "w": 538,
+          "x": 358,
+          "y": 275,
+          "id": "RTUzYOsPQK",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1666",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 1,
+          "w": 832,
+          "x": 64,
+          "y": 352,
+          "id": "-SGyhZ9TsD",
+          "fill": "#F5C9CF",
+          "name": "Rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 387,
+          "id": "mwucYHG8EB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 68,
+          "w": 190,
+          "x": 64,
+          "y": 417,
+          "id": "1RRBjyTSmQ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Choose a useful tool",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 388,
+          "id": "YRALHqR3N-",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 388,
+          "id": "MkqKqH0JIy",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 387,
+          "id": "Tmxa1APYPq",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 43,
+          "w": 222,
+          "x": 358,
+          "y": 387,
+          "id": "ommHl3mZJp",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Buckets",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 616,
+          "y": 388,
+          "id": "Mu5l3Rk5N4",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 673,
+          "y": 388,
+          "id": "OjJiFSpysb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 672,
+          "y": 387,
+          "id": "ThiAw2LSWt",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 43,
+          "w": 222,
+          "x": 673,
+          "y": 387,
+          "id": "Otc9O_kgu-",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Fire hooks",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        }
+      ],
+      "answersRole": "answers"
+    },
+    {
+      "id": "dlawuvHgKu",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "IGUziFWlVC",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 3)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 283,
+          "x": 613,
+          "y": 49,
+          "id": "knF52XMdki",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 638,
+          "y": 60,
+          "id": "z9_cpQxi7d",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 34,
+          "w": 283,
+          "x": 677,
+          "y": 58,
+          "id": "_29vXOCVsr",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "Ni3Xe0l1EO",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 68,
+          "w": 190,
+          "x": 64,
+          "y": 176,
+          "id": "7Ryxc3vjc0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Use what you know",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 147,
+          "id": "0Lo_kKi59S",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 147,
+          "id": "DjZ7Azhy8l",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 146,
+          "id": "E3E8sE6Fi9",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 86,
+          "w": 538,
+          "x": 358,
+          "y": 146,
+          "id": "edmnCfh0uQ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The wider gaps make it harder for flames to reach the next house.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 292,
+          "id": "UqRWqrpu0X",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 292,
+          "id": "nr3WZOesQ1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 291,
+          "id": "C-c42Yqbqq",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 86,
+          "w": 538,
+          "x": 358,
+          "y": 291,
+          "id": "58XLInveo0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "People could pull down houses to make a wider gap with less to burn.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers"
+    },
+    {
+      "id": "SatrtlMoq9",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 58,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "4257-6H0S2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (3 of 3)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 283,
+          "x": 613,
+          "y": 49,
+          "id": "xzKvJikweR",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 638,
+          "y": 60,
+          "id": "TC0Pw6v_wO",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 34,
+          "w": 283,
+          "x": 677,
+          "y": 58,
+          "id": "U8SX_rUIjN",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "NskRL7MqBq",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "EXIT TICKET",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 68,
+          "w": 190,
+          "x": 64,
+          "y": 176,
+          "id": "J_JsXDGBXh",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Your final check",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 147,
+          "id": "B6MSOdeQdW",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 147,
+          "id": "H62Q-tuw41",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 146,
+          "id": "WH6EpiF9kB",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 129,
+          "w": 538,
+          "x": 358,
+          "y": 146,
+          "id": "Oil5yRjOhl",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "It started in a bakery on Pudding Lane in London on 2 September 1666.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 335,
+          "id": "NhwfqrXM_U",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 335,
+          "id": "VTdgtQp8JJ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 334,
+          "id": "3Ws66hi1Ii",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 86,
+          "w": 538,
+          "x": 358,
+          "y": 334,
+          "id": "N1u0Q4D9LR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "It made wider gaps, so there was less wood for the fire to burn.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers"
+    }
+  ]
+}
