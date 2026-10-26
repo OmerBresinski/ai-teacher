@@ -486,3 +486,44 @@ describe("TEACH-251 part v: a locator-map search keeps map files only", () => {
     );
   });
 });
+
+describe("Commons renditions (TEACH-251 part ah)", () => {
+  // romans verify7: a 640 px geograph file's thumburl is the original (thumbnail_unscaled), so the
+  // judge's thumbnail was the whole file from upload.wikimedia.org; 91 of 134 such downloads got 429.
+  const unscaled = (
+    width: number,
+    name = "Hadrian%27s_Wall_at_Housesteads_-_geograph.org.uk_-_8311.jpg",
+  ) => {
+    const pg = page(1, "CC BY-SA 2.0");
+    const info = pg.imageinfo[0] as Record<string, unknown>;
+    info.url = `https://upload.wikimedia.org/wikipedia/commons/b/b8/${name}`;
+    info.thumburl = `${info.url}?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled`;
+    info.width = width;
+    info.height = 480;
+    return { query: { pages: [pg] } };
+  };
+
+  test("an unscaled original is judged from a scaled thumbnail, never the original", () => {
+    const [photo] = commonsPhotosOf(unscaled(640));
+    expect(photo?.src.tiny).toBe(
+      "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Hadrian%27s_Wall_at_Housesteads_-_geograph.org.uk_-_8311.jpg/250px-Hadrian%27s_Wall_at_Housesteads_-_geograph.org.uk_-_8311.jpg",
+    );
+    expect(photo?.src.medium).toContain("/thumb/b/b8/");
+    expect(photo?.src.medium).toMatch(/\/500px-Hadrian/);
+    // The stored picture is still the original (fetched through the client's busy retries).
+    expect(photo?.src.large).toContain("upload.wikimedia.org/wikipedia/commons/b/b8/");
+  });
+
+  test("a file no wider than the rendition is its own rendition", () => {
+    const [photo] = commonsPhotosOf(unscaled(240));
+    expect(photo?.src.tiny).toContain("upload.wikimedia.org/wikipedia/commons/b/b8/");
+    expect(photo?.src.tiny).not.toContain("/thumb/");
+  });
+
+  test("a scaled thumburl is rewritten to the width as before", () => {
+    const [photo] = commonsPhotosOf({ query: { pages: [page(2, "CC0")] } });
+    expect(photo?.src.tiny).toBe(
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Hadrian's_Wall_2.jpg/250px-Hadrian's_Wall_2.jpg",
+    );
+  });
+});

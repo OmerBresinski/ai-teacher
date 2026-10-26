@@ -666,7 +666,10 @@ export const LOCATOR_QUERY = /\b(locator|location) map\b/i;
  * AD 122 shows Hadrian's Wall..."). Its searches that name a map then look at Commons map files;
  * the ordinary search refuses every map, so all 53 candidates were churches and stars.
  */
-export const MAP_REQUEST = /^\s*(?:an?\s+|the\s+)?(?:[\w’'-]+\s+){0,2}maps?\b/i;
+// TEACH-251 part ah (romans verify7 s4): a library map's fallback ask is its drawing intent, "Show a
+// north-up map of Britain ...", so an imperative opening verb is allowed before the map.
+export const MAP_REQUEST =
+  /^\s*(?:(?:show|draw|make|use|give)\s+)?(?:an?\s+|the\s+)?(?:[\w’'-]+\s+){0,2}maps?\b/i;
 export const MAP_QUERY = /\bmaps?\b/i;
 export const wantsMap = (brief: { request?: string; mustShow?: readonly string[] }): boolean =>
   MAP_REQUEST.test(brief.request ?? "");
@@ -798,7 +801,14 @@ export async function pickDirectedPhoto(args: {
     ...(real && lesson.title ? queryCandidates({ subject: lesson.title }) : []),
     ...factQueryHints(lesson, index),
     ...queryCandidates(brief),
-  ].filter((q, i, all) => all.indexOf(q) === i);
+  ]
+    .filter((q, i, all) => all.indexOf(q) === i)
+    // TEACH-251 part ah: a map ask searches map files only. Its words-of-the-title searches ("why
+    // romans built", "show north up") look at photographs and filled romans verify7's map pool
+    // with 29 churches, stars and a car; they are kept only when no search names a map.
+    .filter((q, _i, all) =>
+      wantsMap(brief) && all.some((x) => MAP_QUERY.test(x)) ? MAP_QUERY.test(q) : true,
+    );
   const search = (query: string, source: PhotoSourceName) =>
     searchDirected(images, query, deps.signal, source, brief.aspect, mapsSearch(query, brief));
   const gather = async (source: PhotoSourceName): Promise<"busy" | undefined> => {
@@ -934,6 +944,21 @@ export async function pickDirectedPhoto(args: {
         unclear: !verdict.clear,
         noneVisible: brief.mustShow.length > 0 && itemsSeenDirected(brief, verdict).length === 0,
       });
+    }
+    // TEACH-251 part ah (romans verify7 s3): the judge picked a photo another slide placed while
+    // this judge call ran (the title took it 2.5 s earlier). That is not a miss: the pick is struck
+    // off and the judge looks again at the rest of what it was shown that is still free.
+    const takenMeanwhile =
+      !picked && Boolean(verdict.pick) && shortlisted.some((c) => c.id === verdict.pick);
+    if (takenMeanwhile && round < MAX_JUDGE_CALLS - 1) {
+      deps.logger.info({ stage: "illustrate", slideIndex: index, pickTaken: true });
+      const rest = fresh(shortlisted).filter((c) => c.id !== verdict.pick);
+      if (rest.length > 0) {
+        pool = fresh(pool).filter((c) => c.id !== verdict.pick);
+        // The judge's new look is at what it was shown, still free, ahead of the rest of the pool.
+        pool = [...rest, ...pool.filter((c) => !rest.some((r) => r.id === c.id))];
+        continue;
+      }
     }
     // A pick the gate refused with no better search offered is struck off, and the judge looks
     // again at the rest.

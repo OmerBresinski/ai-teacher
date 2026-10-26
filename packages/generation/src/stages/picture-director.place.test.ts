@@ -358,6 +358,61 @@ describe("pickDirectedPhoto (judge v17, Commons first)", () => {
     expect(r.outcome).toBe("placed");
   });
 
+  test("a pick another slide placed during the judge call is struck off and the rest judged (TEACH-251 part ah)", async () => {
+    // romans verify7 s3: the judge picked the photo the title placed 2.5 s earlier, so the slot
+    // ended empty with three more Housesteads photos shown and still free.
+    const first = photo("c1", "commons");
+    const { images } = placer({ commons: async () => [first, photo("c2", "commons")] });
+    const ai = createFakeAi({
+      script: [
+        verdict({ pick: "c1", onSubject: true, clear: true, fits: true, visible: ["Henry VIII"] }),
+        verdict({ pick: "c2", onSubject: true, clear: true, fits: true, visible: ["Henry VIII"] }),
+      ],
+    });
+    // The title slide takes c1 once the judge has been asked (after the search, before the verdict).
+    const taken = new (class extends Set<string> {
+      override has(key: string) {
+        return super.has(key) || (ai.calls.length > 0 && key === first.pageUrl);
+      }
+    })();
+    const r = await pickDirectedPhoto({
+      lesson: sampleBriefLesson(),
+      index: 2,
+      brief,
+      images,
+      deps: recordingDeps(ai),
+      taken,
+    });
+    expect(r.outcome).toBe("placed");
+    if (r.outcome === "placed") expect(r.photo.src).toContain("c2");
+  });
+
+  test("a map ask searches only its map queries (TEACH-251 part ah)", async () => {
+    const { images, calls } = placer({ commons: async () => [] });
+    const r = await pickDirectedPhoto({
+      lesson: { ...sampleBriefLesson(), title: "Why the Romans built Hadrian's Wall" },
+      index: 3,
+      brief: {
+        ...writerAskBrief(
+          ask({
+            shows: "Show a north-up map of Britain with north marked",
+            mustSee: [],
+            named: false,
+          }),
+        ),
+        specific: true,
+        queries: ["Hadrian's Wall map", "Britain map"],
+      },
+      images,
+      deps: recordingDeps(createFakeAi({ script: [verdict({}), verdict({})] })),
+    });
+    expect(r.outcome).toBe("empty");
+    expect(calls.filter((c) => c.startsWith("commons:"))).toEqual([
+      "commons:Hadrian's Wall map",
+      "commons:Britain map",
+    ]);
+  });
+
   test("Commons throwing during the requery falls back to Pexels; the slot is not failed", async () => {
     let commonsCalls = 0;
     const { images, calls } = placer({
