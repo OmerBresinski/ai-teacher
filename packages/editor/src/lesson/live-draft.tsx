@@ -231,6 +231,15 @@ export function wordCount(slide: Pick<Slide, "elements">): number {
   return n;
 }
 
+/** A run laid out but not shown yet: transparent, with no highlight wash or strike. */
+const UNTYPED = "transparent";
+function hidden(node: Node): Node {
+  const marks = ((node as { marks?: { type: string; attrs?: object }[] }).marks ?? []).filter(
+    (m) => m.type !== "textStyle" && m.type !== "highlight",
+  );
+  return { ...node, marks: [...marks, { type: "textStyle", attrs: { color: UNTYPED } }] } as Node;
+}
+
 /** `text` cut after its `n`th word (whitespace before that word kept, after it dropped). */
 function cutWords(text: string, n: number): { text: string; used: number } {
   const re = /\S+/g;
@@ -374,18 +383,27 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
   let atStart = -1;
   const cutDoc = (e: El): Node => {
     let left = shownOf(e);
-    const cutNode = (node: Node): Node | undefined => {
+    // The words of a line that has started are all laid out, the untyped ones transparent, so the
+    // line breaks (and balanced wrapping) are those of the arrived text and never move as the typing
+    // goes on (judge 638b: the quiz heading typed on one line, then jumped to two). A block with no
+    // shown word yet is left out, as before.
+    const cutNode = (node: Node, started: boolean): Node[] => {
       if (node.type === "text") {
-        if (left <= 0) return undefined;
-        const c = cutWords(node.text ?? "", left);
+        if (left <= 0) return started ? [hidden(node)] : [];
+        const text = node.text ?? "";
+        const c = cutWords(text, left);
         left -= c.used;
-        return c.text ? { ...node, text: c.text } : undefined;
+        if (c.text.length >= text.length) return [node];
+        const rest = hidden({ ...node, text: text.slice(c.text.length) });
+        return c.text ? [{ ...node, text: c.text }, rest] : [rest];
       }
-      if (!node.content) return node;
-      const content = node.content.map(cutNode).filter((x): x is Node => x !== undefined);
-      return { ...node, content };
+      if (!node.content) return [node];
+      const leaf = node.content.every((k) => k.type === "text" || !k.content);
+      if (leaf && left <= 0) return [];
+      return [{ ...node, content: node.content.flatMap((k) => cutNode(k, leaf || started)) }];
     };
-    return cutNode((e as { doc?: unknown }).doc as Node) as Node;
+    const doc = (e as { doc?: unknown }).doc as Node;
+    return cutNode(doc, false)[0] ?? { ...doc, content: [] };
   };
   const walk = (els: readonly El[]): El[] =>
     els.flatMap((e) => {
@@ -575,8 +593,12 @@ function caretBox(
   if (!el) return null;
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let lastText: Text | null = null;
-  for (let n = walker.nextNode(); n; n = walker.nextNode())
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    // Laid-out words not typed yet (transparent) are never where the caret goes.
+    const c = n.parentElement ? getComputedStyle(n.parentElement).color : "";
+    if (c === "transparent" || /rgba\([^)]*,\s*0\)$/.test(c)) continue;
     if ((n.textContent ?? "").trim()) lastText = n as Text;
+  }
   if (!lastText) return null;
   const range = document.createRange();
   const len = (lastText.textContent ?? "").replace(/\s+$/, "").length;

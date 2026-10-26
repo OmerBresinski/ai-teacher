@@ -41,7 +41,10 @@ describe("revealSlide", () => {
     const r = revealSlide(s, 6);
     expect(JSON.stringify(r.slide)).toContain('"text":"Find a quarter of 24"');
     expect(JSON.stringify(r.slide)).toContain('"text":"Divide"');
-    expect(JSON.stringify(r.slide)).not.toContain("four");
+    // The rest of a started line is laid out, transparent, so its breaks never move (judge 638b).
+    expect(JSON.stringify(r.slide)).toContain(
+      '"text":" by four","marks":[{"type":"textStyle","attrs":{"color":"transparent"}}]',
+    );
     expect(r.at).toBe("e1");
     expect(revealSlide(s, 8).at).toBeUndefined();
     // A box shows with its first word, never empty before it (TEACH-202 part o).
