@@ -10,13 +10,12 @@ import {
 } from "@tj/domain/documents";
 import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
 import { ExportControl } from "@tj/editor/export";
+import { layoutKit, loadLayoutKit } from "@tj/editor/layout-kit";
 import {
   displayInTheme,
   GeneratingThemeDialog,
   LessonEditor,
   type LessonEditorHandle,
-  layoutKit,
-  loadLayoutKit,
   ThemeCallout,
 } from "@tj/editor/lesson";
 import { type DraftStore, draftStoreFor } from "@tj/editor/live-draft";
@@ -63,7 +62,11 @@ import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { rememberTheme } from "@/lib/brief-memory";
 import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
-import { GeneratingLesson, GenerationCompanion } from "@/lib/lesson-editor-preload";
+import {
+  GeneratingLesson,
+  GenerationCompanion,
+  preloadLayoutKit,
+} from "@/lib/lesson-editor-preload";
 import { resumeLesson } from "@/lib/lesson-intake";
 import { isFullDocument, kindOf, libraryCache, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
@@ -391,6 +394,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     (themeId: string) => {
       setPickedTheme(themeId);
       writePickedTheme(lessonId, themeId);
+      preloadLayoutKit();
     },
     [lessonId],
   );
@@ -406,9 +410,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     setEditorHandle(handle);
   }, []);
   // The re-theme re-lays adaptive layouts with the slides' template code, which loads lazily; with
-  // it not yet loaded (a reload, or a pick on a cold page) the editor applies the theme only once
-  // the import lands, so its first paint showed the old theme. While a pick is pending, load that
-  // code first and hold the editor back until it is here (TEACH-202 part v).
+  // it not yet loaded the editor applies the theme only once the import lands, so its first paint
+  // would show the old theme. The intake, the route loader and a pick here preload it, so it is
+  // normally ready by mount; on the rare cold page (a reload with a pick kept) the editor's shell
+  // waits for it. A failed import is logged and the editor mounts; its re-theme then applies the
+  // theme late, as before (TEACH-202 part v).
   const [kitReady, setKitReady] = useState(() => layoutKit() !== null);
   const waitingForKit = pickedTheme !== null && !kitReady;
   useEffect(() => {
@@ -417,11 +423,18 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     const ready = () => {
       if (live) setKitReady(true);
     };
-    loadLayoutKit().then(ready, ready);
+    loadLayoutKit().then(ready, (error: unknown) => {
+      console.warn("layout-kit: the re-lay code failed to load; the theme goes on late", {
+        ev: "layout-kit-load-failed",
+        lessonId,
+        error,
+      });
+      ready();
+    });
     return () => {
       live = false;
     };
-  }, [waitingForKit]);
+  }, [waitingForKit, lessonId]);
   useLayoutEffect(() => {
     if (!editorHandle || (stoppedJobId && !keepEditing) || !pickedTheme) return;
     editorHandle.retheme(pickedTheme);
