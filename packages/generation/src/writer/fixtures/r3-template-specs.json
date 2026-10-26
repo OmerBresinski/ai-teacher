@@ -1,0 +1,187 @@
+{
+  "note": "Sol-written template specs from the early-Oct R3 CF runs (DIAGRAM-AUDIT quality/specs.jsonl, 5 Oct), copied as written",
+  "rows": [
+    {
+      "run": "CF-v",
+      "brief": "y8-geography-rivers-flooding",
+      "slide": 6,
+      "spec": {
+        "kind": "hydrograph",
+        "alt": "Rainfall peaks before discharge; a short lag separates the peaks, with a steep rising limb and a slower falling limb.",
+        "title": "Response to a storm",
+        "shape": "flashy",
+        "marks": ["peak-rainfall", "peak-discharge", "lag-time", "rising-limb", "falling-limb"]
+      }
+    },
+    {
+      "run": "CF-v",
+      "brief": "y8-rivers-flooding-new",
+      "slide": 4,
+      "spec": {
+        "kind": "river",
+        "alt": "A river bend has fastest flow beside an eroding outer bank and a gentle slope built by deposition on the inner bank.",
+        "title": "The village river bend",
+        "view": "meander-section",
+        "labels": [
+          {
+            "part": "outer-bank",
+            "text": "Outer bank"
+          },
+          {
+            "part": "fastest-flow",
+            "text": "Faster flow"
+          },
+          {
+            "part": "erosion",
+            "text": "Erosion"
+          },
+          {
+            "part": "inner-bank",
+            "text": "Inner bank"
+          },
+          {
+            "part": "deposition",
+            "text": "Deposition"
+          }
+        ]
+      }
+    },
+    {
+      "run": "CF-v",
+      "brief": "y8-rivers-flooding-new",
+      "slide": 6,
+      "spec": {
+        "kind": "hydrograph",
+        "alt": "Rainfall peaks before a steep, high discharge peak; a short lag separates them and discharge then falls.",
+        "title": "A rapid river response",
+        "shape": "flashy",
+        "marks": ["peak-rainfall", "peak-discharge", "lag-time", "rising-limb", "falling-limb"]
+      }
+    },
+    {
+      "run": "CF2-v",
+      "brief": "y8-rivers-flooding-new",
+      "slide": 6,
+      "spec": {
+        "kind": "hydrograph",
+        "alt": "Illustrative rainfall peaks at hour 1 and discharge peaks at hour 3, giving a lag time of two hours.",
+        "title": "Illustrative Severn response",
+        "shape": "gentle",
+        "values": {
+          "peakRainfall": 15,
+          "peakDischarge": 40,
+          "baseFlow": 5,
+          "lagHours": 2
+        }
+      }
+    },
+    {
+      "run": "CF3-v",
+      "brief": "y8-geography-rivers-flooding",
+      "slide": 6,
+      "spec": {
+        "kind": "hydrograph",
+        "alt": "A storm hydrograph shows peak rainfall of 20 millimetres, peak discharge of 80 cubic metres per second, and a two-hour lag between the peaks.",
+        "title": "The village storm",
+        "shape": "flashy",
+        "values": {
+          "peakRainfall": 20,
+          "peakDischarge": 80,
+          "lagHours": 2
+        },
+        "marks": ["peak-rainfall", "peak-discharge", "lag-time"]
+      }
+    },
+    {
+      "run": "CF3-v",
+      "brief": "y8-rivers-flooding-new",
+      "slide": 4,
+      "spec": {
+        "kind": "river",
+        "alt": "A river bend has faster flow beside an eroding outer river cliff and slower flow beside a deposited inner slip-off slope.",
+        "title": "A changing river bend",
+        "view": "meander-section",
+        "labels": [
+          {
+            "part": "river-cliff",
+            "text": "River cliff"
+          },
+          {
+            "part": "slip-off-slope",
+            "text": "Slip-off slope"
+          },
+          {
+            "part": "fastest-flow",
+            "text": "Faster flow"
+          },
+          {
+            "part": "erosion",
+            "text": "Erosion"
+          },
+          {
+            "part": "deposition",
+            "text": "Deposition"
+          }
+        ]
+      }
+    },
+    {
+      "run": "CF4-v",
+      "brief": "y8-rivers-flooding-new",
+      "slide": 4,
+      "spec": {
+        "kind": "river",
+        "alt": "A V-shaped valley with steep sides and a small river channel, showing erosion cutting down into the river bed.",
+        "title": "An upper-course valley",
+        "view": "v-valley",
+        "labels": [
+          {
+            "part": "valley-side",
+            "text": "Valley side"
+          },
+          {
+            "part": "channel",
+            "text": "Channel"
+          },
+          {
+            "part": "river-bed",
+            "text": "River bed"
+          },
+          {
+            "part": "vertical-erosion",
+            "text": "Vertical erosion"
+          }
+        ]
+      }
+    },
+    {
+      "run": "CF4-v",
+      "brief": "y8-rivers-flooding-new",
+      "slide": 5,
+      "spec": {
+        "kind": "river",
+        "alt": "A river bend with faster flow beside the outer river cliff and a slip-off slope on the inner bank.",
+        "title": "The village's river bend",
+        "view": "meander-plan",
+        "labels": [
+          {
+            "part": "river-cliff",
+            "text": "River cliff"
+          },
+          {
+            "part": "slip-off-slope",
+            "text": "Slip-off slope"
+          },
+          {
+            "part": "fastest-flow",
+            "text": "Fastest flow"
+          },
+          {
+            "part": "flow-direction",
+            "text": "Flow direction"
+          }
+        ]
+      }
+    }
+  ]
+}
