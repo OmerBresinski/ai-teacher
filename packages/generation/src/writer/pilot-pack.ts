@@ -36,6 +36,9 @@ import t103 from "./bundles/pilot-v4.10-menu/system-KS3.template.txt" with { typ
 import t111 from "./bundles/pilot-v4.11-menu/system-KS1.template.txt" with { type: "text" };
 import t112 from "./bundles/pilot-v4.11-menu/system-KS2.template.txt" with { type: "text" };
 import t113 from "./bundles/pilot-v4.11-menu/system-KS3.template.txt" with { type: "text" };
+import t121 from "./bundles/pilot-v4.12-menu/system-KS1.template.txt" with { type: "text" };
+import t122 from "./bundles/pilot-v4.12-menu/system-KS2.template.txt" with { type: "text" };
+import t123 from "./bundles/pilot-v4.12-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -270,10 +273,35 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.12 (TEACH-110 part at): v4.11 with fuller teaching slides, plain recall, plausible wrong
+  // options, varied question openings and a reconstruction marked generic. A teaching slide states
+  // its point's core facts with one concrete detail; a recall question asks plainly; every wrong
+  // option is a half-learned answer; "imagine"-type openers at most once a lesson; a scene or
+  // reconstruction at a real place is a generic picture (ruling 210). Schema and code as v4.11;
+  // templates differ in 5 lines.
+  "v4.12": {
+    id: "v4.12",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t121, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t122, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t123, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.11";
+export const PILOT_PACK_ID: PilotPackId = "v4.12";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)

@@ -6,7 +6,7 @@ import { sampleBriefLesson } from "../testing";
 import { writerSystem } from "./ai-services";
 import { withClose } from "./close";
 import fixture from "./fixtures/pilot-v411-y2-greatfire.json" with { type: "json" };
-import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
 import { type WriterReq, type WriterServices, writerMaxTokens } from "./services";
 import { runWriter } from "./stage";
@@ -24,8 +24,6 @@ const dir = (v: string) => new URL(`./bundles/pilot-${v}-menu/`, import.meta.url
 const read = (v: string, name: string) => readFileSync(new URL(name, dir(v)), "utf8");
 
 describe("pilot pack v4.11", () => {
-  test("production runs v4.11", () => expect(PILOT_PACK_ID).toBe("v4.11"));
-
   for (const stage of STAGES) {
     const ks = KS[stage];
 
