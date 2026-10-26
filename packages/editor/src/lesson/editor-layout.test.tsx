@@ -149,3 +149,34 @@ describe("clearShift: the slide moves left, never smaller, to clear a pane over 
     expect(clearShift(2000, contentW, gutterX, PANE_MIN)).toBe(0);
   });
 });
+
+describe("the slide opens at its fitted size (TEACH-247 part ap)", () => {
+  test("the first render after mount is already fitted, before any resize report", () => {
+    windowWidth(1440);
+    const proto = HTMLElement.prototype;
+    const w = Object.getOwnPropertyDescriptor(proto, "clientWidth");
+    const h = Object.getOwnPropertyDescriptor(proto, "clientHeight");
+    // Only the canvas's scroll region has a size; nothing ever fires a ResizeObserver here.
+    const size = (px: number) =>
+      function (this: HTMLElement) {
+        return this.hasAttribute("data-canvas-scroller") ? px : 0;
+      };
+    Object.defineProperty(proto, "clientWidth", { configurable: true, get: size(2000) });
+    Object.defineProperty(proto, "clientHeight", { configurable: true, get: size(400) });
+    try {
+      const { container } = renderEditor();
+      const content = container.querySelector<HTMLElement>("[data-canvas-content]");
+      const frame = container.querySelector<HTMLElement>("[data-slide-frame]");
+      // Bound by height: the slide is drawn smaller than 100% straight away, and the content box
+      // round it is sized from the same scale (not from 100% until the scaler reports back).
+      const scaled = frame?.parentElement?.parentElement;
+      const drawn = Number.parseFloat(scaled?.style.width ?? "");
+      expect(drawn).toBeGreaterThan(0);
+      expect(drawn).toBeLessThan(960);
+      expect(Number.parseFloat(content?.style.height ?? "")).toBeLessThan(540);
+    } finally {
+      if (w) Object.defineProperty(proto, "clientWidth", w);
+      if (h) Object.defineProperty(proto, "clientHeight", h);
+    }
+  });
+});
