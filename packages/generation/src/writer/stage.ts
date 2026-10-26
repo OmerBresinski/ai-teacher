@@ -106,7 +106,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
-import { LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
+import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
 import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -2876,8 +2876,23 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
     const asks0 = asks.get(i) ?? [];
+    const imagesOn = () =>
+      (laid.get(i)?.slide.elements ?? []).filter((e) => e.type === "image").length;
+    const images0 = imagesOn();
     const gate = layoutGate({
       faults: () => layoutFaultsAt(i),
+      // TEACH-251 part s: the other layout for the same words, kept only when it still shows every
+      // visual the slide had (a map is not traded for room) and clears every layout fault.
+      switchLayout: () => {
+        if (!images0) return false;
+        for (const template of GATE_SWITCH[String(s0.template ?? "")] ?? []) {
+          swapSlide(i, { ...s0, template });
+          if (imagesOn() >= images0 && !layoutFaultsAt(i).length) return true;
+          restore(i, s0, n0, asks0);
+        }
+        return false;
+      },
+      undoSwitch: () => restore(i, s0, n0, asks0),
       split: () => {
         // A re-gate after a picture lands never adds a slide the teacher was not told about.
         if (!mayAddSlides) return false;
