@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { getTheme } from "@tj/slides/themes";
 import { withLook } from "./fixes";
 import { materialise, visualsOf } from "./materialise";
+import { PILOT_PACKS, type PilotPackId, pilotRequest } from "./pilot-pack";
+import { writerSchema } from "./schema";
 import { waveCCountCaps, waveCDefs, waveCMenu, waveCWords } from "./wave-c";
 
 /*
@@ -54,11 +57,33 @@ const ctx = (visual: () => unknown, draft = false) =>
   ({ ...(base as object), index: INDEX, visual, ...(draft ? { draft } : {}) }) as never;
 
 describe("the reasons slide's question picture", () => {
-  test("the schema offers one optional picture on reasons", () => {
-    const defs = waveCDefs("KS1") as { reasons: { properties: S; required?: string[] } };
+  test("the schema offers one optional picture on reasons, only behind the switch", () => {
+    type D = { reasons: { properties: S; required?: string[] } };
+    const defs = waveCDefs("KS1", false, true) as D;
     expect(defs.reasons.properties.picture).toEqual({
       anyOf: [{ $ref: "#/$defs/picture" }, { type: "null" }],
     });
+    expect((waveCDefs("KS1") as D).reasons.properties.picture).toBeUndefined();
+  });
+
+  test("a pack with reasonsPicture sends the field; live v4.16 does not", () => {
+    const packs = PILOT_PACKS as unknown as Record<string, unknown>;
+    const reasonsOf = (id: string) => {
+      const req = pilotRequest(
+        id as PilotPackId,
+        "KS2",
+        writerSchema("KS2", SLIDE_TIER_RANGES.standard),
+        (x) => x,
+      );
+      return (req.schema.$defs as Record<string, { properties: S }>).reasons?.properties ?? {};
+    };
+    packs["test-reasons-picture"] = { ...PILOT_PACKS["v4.16"], reasonsPicture: true };
+    try {
+      expect(reasonsOf("test-reasons-picture").picture).toBeDefined();
+    } finally {
+      delete packs["test-reasons-picture"];
+    }
+    expect(reasonsOf("v4.16").picture).toBeUndefined();
   });
 
   test("the menu wording is unchanged by the field (the prompt-engineer's, pack v4.17)", () => {
@@ -116,5 +141,11 @@ describe("the reasons slide's question picture", () => {
     );
     expect((out.slide.picture as { shows: string }).shows).toBe("London burning in 1666");
     expect(out.slide.template).toBe("reasons");
+  });
+
+  test("a reasons slide whose schema offered no picture gets none from the look", () => {
+    const { picture: _, ...noField } = SLIDE;
+    const out = withLook(noField, { kind: "picture", shows: "London burning in 1666" });
+    expect(out.slide).toBe(noField);
   });
 });

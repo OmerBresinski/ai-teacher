@@ -123,6 +123,11 @@ export type PilotPack = {
    * Detailed plan of 13 had to close early and its flow entries stopped matching its slides.
    */
   tierSlides?: boolean;
+  /**
+   * The reasons slide offers one optional question picture (`picture`, TEACH-247 part ba), checked
+   * against the picture cells (reasons-picture-capacity.json). Only with menu wording that offers it.
+   */
+  reasonsPicture?: boolean;
 };
 
 /** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
@@ -494,7 +499,9 @@ export function pilotRequest(
     ...(pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {}),
     ...(pack.questionDefs ? questionDefs(writerStageOf(ks)) : {}),
     ...(pack.catalogueIcons ? { "layout-icon": layoutIconDef() } : {}),
-    ...(pack.waveC ? waveCDefs(writerStageOf(ks), !!schema.$defs["dg-model-full"]) : {}),
+    ...(pack.waveC
+      ? waveCDefs(writerStageOf(ks), !!schema.$defs["dg-model-full"], !!pack.reasonsPicture)
+      : {}),
   };
   const refs = (schema.properties.slides.items.anyOf as J[]).filter(
     (r) => !replaced.has(String(r.$ref).split("/").pop() ?? ""),

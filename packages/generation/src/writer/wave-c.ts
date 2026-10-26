@@ -84,7 +84,7 @@ export const WAVE_C_FLOW_SHAPES: string[] = (L47.flowShapes as string[]).flatMap
  * photo only and step-model is not offered (pe-wavec2: both pointed at diagram-side, which holds no
  * model, so neither could carry one).
  */
-export function waveCDefs(s: WriterStage, hasModels = false): J {
+export function waveCDefs(s: WriterStage, hasModels = false, reasonsPicture = false): J {
   const age = AGE[s];
   const w = (WORKED_CAPACITY as J)[age];
   const ns = stageCells(s).map((c) => c.n);
@@ -135,8 +135,9 @@ export function waveCDefs(s: WriterStage, hasModels = false): J {
         Math.max(...rn, ...cn),
       ),
       // TEACH-247 part ba: one optional photo of the thing, place or event the question asks about,
-      // at the foot of the question panel (the myth proof's picture plumbing).
-      picture: picOrNull,
+      // at the foot of the question panel (the myth proof's picture plumbing). Only a pack whose
+      // menu offers it (`reasonsPicture`): live v4.16's menu says reasons carry no picture.
+      ...(reasonsPicture ? { picture: picOrNull } : {}),
     }),
     "figure-slide": obj({
       template: lit("figure"),

@@ -483,6 +483,8 @@ export function withLook(
   if (tpl === "explain")
     return { slide: { ...s, template: "visual-text", figure: pic }, how: "explain-to-visual-text" };
   const field = FIGURE_FIELD[tpl];
+  // A reasons slide takes a picture only where its schema offered one (pack `reasonsPicture`).
+  if (tpl === "reasons" && !("picture" in s)) return { slide: s };
   return field ? { slide: { ...s, [field]: pic }, how: `${field}-from-look` } : { slide: s };
 }
 
