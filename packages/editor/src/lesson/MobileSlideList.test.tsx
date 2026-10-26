@@ -124,8 +124,12 @@ describe("MobileSlideList review fixes", () => {
       } as Slide["elements"][number],
     ],
   });
-  const words = (el: Element | null | undefined) =>
-    (el?.textContent ?? "").trim().split(/\s+/).filter(Boolean).length;
+  // Words on show: laid-out words not typed yet are transparent (judge 638b) and not counted.
+  const words = (el: Element | null | undefined) => {
+    const copy = el?.cloneNode(true) as Element | undefined;
+    for (const t of copy?.querySelectorAll('[style*="transparent"]') ?? []) t.remove();
+    return (copy?.textContent ?? "").trim().split(/\s+/).filter(Boolean).length;
+  };
   function scene(reveal?: FirstSlidesReveal) {
     const lesson = seededLesson();
     const target = lesson.slides[1];

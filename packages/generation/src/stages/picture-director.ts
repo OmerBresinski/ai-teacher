@@ -1177,6 +1177,13 @@ export interface WriterPictures {
 export const WRITER_PICTURE_DEADLINE_MS = 45_000;
 
 /**
+ * picq (greatfire 26 Oct): past the deadline, a slot whose picture is already generated (paid
+ * for) and is only waiting on its judge gets this much longer before it is stopped. The run lost
+ * two generated pictures at editable and two more in the retry round, each 1-2 s from its verdict.
+ */
+export const WRITER_MADE_GRACE_MS = 15_000;
+
+/**
  * Split at ask (TEACH-167 part b): the subjects of a lone generic picture that names three or four
  * things after a colon ("Three golden retrievers: a small puppy, an older puppy and an adult dog"),
  * or undefined. One image of several subjects is the picture the generator and the judge fail
@@ -1255,6 +1262,35 @@ export function createWriterPictures(opts: {
      * The slide's tail (`settleSlide`) waits for it after editable, as for any later round.
      */
     own?: boolean;
+    /** A generated picture landed for this slot (paid); its judge may still be running. */
+    made?: boolean;
+  };
+  /**
+   * The bank as one slot sees it: a generated picture marks the slot `made`, so a deadline that
+   * passes while its judge runs waits `WRITER_MADE_GRACE_MS` more instead of throwing it away.
+   */
+  const watched = (slot: Slot, b: PictureBank): PictureBank => ({
+    lookup: (req, signal) => b.lookup(req, signal),
+    remember: (req, photo) => b.remember(req, photo),
+    generate: (req, faithful, signal, retry) =>
+      b.generate(req, faithful, signal, retry).then((made) => {
+        if (made) slot.made = true;
+        return made;
+      }),
+    ...(b.reject ? { reject: (photo: PlacedPhoto) => b.reject?.(photo) ?? Promise.resolve() } : {}),
+  });
+  /** After a deadline: the slots among `list` still pending with a generated picture, waited for. */
+  const graceForMade = async (list: Slot[]) => {
+    const late = list.filter((x) => x.state.status === "pending" && x.made);
+    if (!late.length || opts.deps.signal.aborted) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      Promise.all(late.map((x) => x.done)),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, WRITER_MADE_GRACE_MS);
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
   };
   /** The round's deps with the slot's own stop on the signal. */
   const slotDeps = (slot: Slot): PipelineDeps => {
@@ -1394,7 +1430,7 @@ export function createWriterPictures(opts: {
       deps: slotDeps(slot),
       taken,
       ...(slot.own ? (opts.direct ? { direct: opts.direct } : {}) : direct ? { direct } : {}),
-      ...(bank ? { bank } : {}),
+      ...(bank ? { bank: watched(slot, bank) } : {}),
       ...(opts.look ? { look: opts.look } : {}),
       onOutcome: (o) => {
         reason = o.reason;
@@ -1771,12 +1807,11 @@ export function createWriterPictures(opts: {
         opts.deps.signal.addEventListener("abort", onAbort, { once: true });
       });
       // An early re-ask (Slot.own) is not the round's: editable never waits for it.
-      await Promise.race([
-        Promise.all([...slots.values()].filter((s) => !s.own).map((s) => s.done)),
-        deadline,
-      ]);
+      const round = [...slots.values()].filter((s) => !s.own);
+      await Promise.race([Promise.all(round.map((s) => s.done)), deadline]);
       if (timer) clearTimeout(timer);
       if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
+      await graceForMade(round);
       // Placements still running stop spending (the deadline or the cancel).
       stopper.abort();
       // A later round (lostPic) starts on a fresh stopper and batcher.
@@ -1829,6 +1864,7 @@ export function createWriterPictures(opts: {
       await Promise.race([Promise.all(mine().map(([, s]) => s.done)), deadline]);
       if (timer) clearTimeout(timer);
       if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
+      await graceForMade(mine().map(([, s]) => s));
       if (opts.deps.signal.aborted)
         throw Object.assign(new Error("The lesson was stopped while its pictures were placed."), {
           name: "AbortError",

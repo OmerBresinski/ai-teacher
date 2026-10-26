@@ -41,13 +41,54 @@ describe("revealSlide", () => {
     const r = revealSlide(s, 6);
     expect(JSON.stringify(r.slide)).toContain('"text":"Find a quarter of 24"');
     expect(JSON.stringify(r.slide)).toContain('"text":"Divide"');
-    expect(JSON.stringify(r.slide)).not.toContain("four");
+    // The rest of a started line is laid out, transparent, so its breaks never move (judge 638b).
+    expect(JSON.stringify(r.slide)).toContain(
+      '"text":" by four","marks":[{"type":"textStyle","attrs":{"color":"transparent"}}]',
+    );
     expect(r.at).toBe("e1");
     expect(revealSlide(s, 8).at).toBeUndefined();
     // A box shows with its first word, never empty before it (TEACH-202 part o).
     expect(revealSlide(s, 0).slide.elements.length).toBe(0);
     expect(revealSlide(s, 1).slide.elements.map((e) => e.id)).toEqual(["e0"]);
     expect(revealSlide(s, 6).slide.elements.length).toBe(2);
+  });
+
+  test("an untyped run keeps its size and font, only its colour goes (review of #638)", () => {
+    const sized = {
+      id: "s9",
+      kind: "content",
+      elements: [
+        {
+          id: "e0",
+          type: "text",
+          x: 0,
+          y: 0,
+          w: 400,
+          h: 80,
+          doc: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "text",
+                    text: "Big bold words here",
+                    marks: [
+                      { type: "textStyle", attrs: { fontSize: 40, font: "display", highlight: 2 } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as Slide;
+    const json = JSON.stringify(revealSlide(sized, 2).slide);
+    expect(json).toContain(
+      '"text":" words here","marks":[{"type":"textStyle","attrs":{"fontSize":40,"font":"display","color":"transparent"}}]',
+    );
   });
 
   test("a card shows with the words after it; a picture slot shows from the start", () => {
@@ -127,6 +168,56 @@ describe("the editor shows a writing slide's drafts and hands over to the saved 
     const kept = client.getQueryData<Lesson>(KEY);
     expect(JSON.stringify(kept)).not.toContain('"The heart pumps blood"');
     expect(saves.every((l) => !JSON.stringify(l).includes('"The heart pumps blood"'))).toBe(true);
+  });
+
+  test("a planned slide whose layout arrives before any word keeps its outline (ruling 278)", async () => {
+    const lesson = seededLesson();
+    // Planning: slide 3 is the next planned slide, so the follow opens its outline (ruling 278).
+    lesson.slides = lesson.slides.slice(0, 3);
+    const id = lesson.slides[2]?.id as Id;
+    // Planned: only its muted "Planned" line, as the job adds it.
+    (lesson.slides[2] as Slide).elements = [
+      { ...textEl("p0", "Name four parts"), name: "Planned" } as never,
+    ];
+    const { store, tree } = setup(lesson);
+    const layout: Slide = {
+      id,
+      kind: "content",
+      elements: [
+        { ...textEl("h", ""), name: "Heading" } as never,
+        { id: "pic", type: "image", src: "x", x: 500, y: 120, w: 400, h: 300 } as never,
+      ],
+    };
+    store.set([{ index: 2, slideId: id, slide: layout }]);
+    const r = render(tree(new Set([id])));
+    await act(() => settle());
+    // The breathing outline, not the empty layout and not a blank slide.
+    expect(
+      r.container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]'),
+    ).not.toBeNull();
+    expect(r.container.querySelector('[data-slide-clip] [data-element-id="pic"]')).toBeNull();
+    // Its first word arrives: the region rules take over (title first, picture with it).
+    act(() =>
+      store.set([
+        {
+          index: 2,
+          slideId: id,
+          slide: {
+            ...layout,
+            elements: [
+              { ...textEl("h", "Roots"), name: "Heading" } as never,
+              layout.elements[1] as never,
+            ],
+          },
+        },
+      ]),
+    );
+    await act(() => settle());
+    expect(
+      r.container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]'),
+    ).toBeNull();
+    expect(r.container.querySelector('[data-slide-clip] [data-element-id="pic"]')).not.toBeNull();
+    expect(canvasText(r.container)).toContain("Roots");
   });
 
   test("a slide turning done before its saved words arrive keeps its draft until they do", async () => {

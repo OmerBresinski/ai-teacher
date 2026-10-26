@@ -6,6 +6,7 @@
 import type { Slide } from "@tj/domain/documents";
 import { resolveIcon } from "@tj/slides/icons";
 import { PENDING_ICON } from "@tj/slides/templates";
+import { FIGURE_NAMES } from "@tj/slides/templates/figure";
 import { fromWriterActivity, isWriterActivity } from "./activities";
 import { slideNoEmDash } from "./checks";
 import type { SlideDraft } from "./draft";
@@ -121,15 +122,30 @@ export function layDraft(
       if (s.template === "hinge" && typeof s.correct === "number")
         s = shuffleHinge(s, `${ctx.brief.id}:${ctx.index}:${String(s.stem ?? "")}`);
       s = iconsFromNames(s, draft.open);
-      // `draft`: a picture still to come holds its slot while the slide fills.
+      // `draft`: a picture still to come holds its slot while the slide fills. The plan holds this
+      // slide as it stands, as it will when the slide closes: a rule that reads the deck (the one
+      // figure slide a lesson may have) lays the draft as it will lay the closed slide, so the
+      // picture box does not change size or place at the hand-over (Greg 26 Oct: "Four plant
+      // parts" was drafted as a big picture with a centred caption, then closed as the figure).
+      // Padded with explicit undefineds, never holes, when the plan has fewer slides than the index.
+      const slides: (S | undefined)[] = [...ctx.plan.slides];
+      while (slides.length < ctx.index) slides.push(undefined);
+      slides[ctx.index] = s;
+      const plan = { ...ctx.plan, slides };
       const lay = (x: S) =>
-        materialise(x, { ...ctx, draft: true, visual: () => ({ status: "pending" }) });
-      let m = lay(s);
-      // A figure half streamed may not lay out yet: its planned slot holds until it does.
+        materialise(x, { ...ctx, plan, draft: true, visual: () => ({ status: "pending" }) });
+      let m = layFigureRoom(s, lay);
+      // A figure half streamed may not lay out yet: its planned slot holds until it does. On the
+      // figure slide a model still drawing lays as the topic's icon plate, a different box: the
+      // planned slot holds there too, so the box keeps its size until the slide closes.
       const field = VISUAL_FIELD[String(s.template)];
-      if (field && s[field] != null && !hasVisual(m.slide.elements)) {
-        const held = lay(reserveLook({ ...s, [field]: undefined }, look));
-        if (hasVisual(held.slide.elements)) m = held;
+      if (
+        field &&
+        s[field] != null &&
+        (!hasVisual(m.slide.elements) || iconPlate(m.slide.elements))
+      ) {
+        const held = layFigureRoom(reserveLook({ ...s, [field]: undefined }, look), lay);
+        if (hasVisual(held.slide.elements) && !iconPlate(held.slide.elements)) m = held;
       }
       // Pilot layouts come out of `materialise` with the closed slide's own ids already.
       // TEACH-17 part b (C1): a worked example's rows are its reveals, not hidden answers; the
@@ -175,6 +191,9 @@ const VISUAL_FIELD: Record<string, string> = {
   "exit-ticket": "figure",
   discussion: "picture",
   title: "picture",
+  // The figure slide streams its caption before its figure: the slot holds from the first word, so
+  // the caption types under the picture box's final size (Greg 26 Oct).
+  figure: "figure",
 };
 
 /**
@@ -200,6 +219,27 @@ export function reserveLook(s: S, look: { kind: string; shows: string | null } |
     ...s,
     [field]: { shows, must_see: [shows], subject: "generic", ask: null, ask_without: null },
   };
+}
+
+/**
+ * The figure slide gives its figure the room its one caption line leaves, and the writer streams
+ * the caption after the heading: laid as it stands, the picture box would shrink when the caption's
+ * first word arrives (Greg 26 Oct: "Four plant parts" grew and moved while its caption typed). A
+ * draft with no caption yet is laid with one and the caption taken off again, so the box has its
+ * final size from the first word.
+ */
+function layFigureRoom(s: S, lay: (x: S) => Materialised): Materialised {
+  if (s.template !== "figure" || String(s.caption ?? s.lead ?? "").trim()) return lay(s);
+  const m = lay({ ...s, caption: "Caption" });
+  const elements = m.slide.elements.filter(
+    (e) => (e as { name?: string }).name !== FIGURE_NAMES.caption,
+  );
+  return { ...m, slide: { ...m.slide, elements } };
+}
+
+/** The figure slide's stand-in for a figure it could not make: the plate with the topic's icon. */
+function iconPlate(els: readonly El[]): boolean {
+  return els.some((e) => (e as { name?: string }).name === FIGURE_NAMES.plate);
 }
 
 /** The laid slide shows a picture, a diagram or their open slot (anything but words and shapes). */
