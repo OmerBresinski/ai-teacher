@@ -39,6 +39,7 @@ import {
 } from "@tj/slides/diagrams";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage } from "@tj/slides/themes";
+import { freehandBan } from "./body-figure";
 import { nonFatal, nonFatalSync } from "./services";
 
 type J = Record<string, unknown>;
@@ -409,7 +410,11 @@ export function noHeadingTitle<T>(spec: T, words: string): T {
   return rest as T;
 }
 
-/** The structured call the drawer makes (P1's call on gpt-6-luna, low; not strict). */
+/**
+ * The structured call the drawer makes (P1's call on gpt-6-luna, low). Strict only for a
+ * labelled drawing (TEACH-247 part ay): its `subject` tag decides whether it is drawn at all, so
+ * decoding must always give one. Other kinds stay non-strict, as measured.
+ */
 export type DrawerCall = (req: {
   model: "gpt-6-luna";
   effort: "low";
@@ -417,7 +422,7 @@ export type DrawerCall = (req: {
   user: string;
   schema: J;
   name: "diagram";
-  strict: false;
+  strict: boolean;
   timeoutMs: number;
 }) => Promise<{ out?: unknown }>;
 
@@ -446,6 +451,8 @@ export type DrawnWriterDiagram = {
    * stage shows the lesson's library model on a full slide, else a picture of the same thing.
    */
   body?: true;
+  /** TEACH-247 part ay: the library models to try for a banned drawing, in order, before a picture. */
+  models?: string[];
 };
 
 /**
@@ -460,11 +467,6 @@ export function withRequiredSubject(schema: J, kind: string): J {
   return out;
 }
 
-/** True for a drawer spec that names its subject a living body (never drawn from primitives). */
-export const isLivingBodySpec = (spec: unknown): boolean =>
-  (spec as { kind?: unknown; subject?: unknown } | undefined)?.kind === "labelled-diagram" &&
-  (spec as { subject?: unknown }).subject === "living_body";
-
 /**
  * base4's drawer fallback (`services.ts` specCallsRound5): the wire schema, the request with the
  * writer's spec and why it did not draw, one retry told the parse fault. Never throws.
@@ -475,7 +477,15 @@ async function drawerCall(
 ): Promise<{ spec?: unknown; fault: string }> {
   if (!(DIAGRAM_KINDS as readonly string[]).includes(ask.kind))
     return { fault: `no drawer for the kind ${ask.kind}` };
-  const schema = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  // A labelled drawing goes strict (part ay): a missing or invalid `subject` is banned as a living
+  // body, so an honest object drawing must never lose the tag. strictForm makes its optional
+  // fields nullable and closes every object; dropNulls below takes the nulls out before the parse.
+  // Probed 26 Oct: the strict form has no OpenAI schema faults, and 3 of 3 asks on gpt-6-luna low
+  // tagged, parsed and routed as the non-strict call did.
+  const strict = ask.kind === "labelled-diagram";
+  const wire = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  const { $schema: _s, ...open } = wire;
+  const schema = strict ? (strictForm(open) as J) : wire;
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -493,7 +503,7 @@ async function drawerCall(
               : user,
             schema,
             name: "diagram",
-            strict: false,
+            strict,
             timeoutMs: DRAWER_TIMEOUT_MS,
           })
         ).out,
@@ -586,10 +596,18 @@ export async function drawWriterDiagram(
         };
       }
       const r = await drawerCall(ask, deps);
-      // TEACH-247 part ad: one drawer call names the subject; a living body is never rendered.
-      if (r.spec && isLivingBodySpec(r.spec)) {
-        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind });
-        return { via: "none", fault: "a living body is not drawn from shapes", body: true };
+      // TEACH-247 parts ad, ay: a freehand drawing of a living body or a science process is never
+      // rendered: the drawer's tag `living_body`, a missing tag, or a living word or process in
+      // the ask or the spec (`freehandBan`).
+      const ban = r.spec ? freehandBan(ask, r.spec) : undefined;
+      if (ban) {
+        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind, ...ban });
+        return {
+          via: "none",
+          fault: "a living body or a process is not drawn from shapes",
+          body: true,
+          models: ban.models,
+        };
       }
       if (r.spec) {
         // On an asking slide the drawer's spec (a retry or a library fallback included) is held to

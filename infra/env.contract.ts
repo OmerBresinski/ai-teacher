@@ -254,7 +254,7 @@ const CONTRACT = [
     format: "origin-pattern-list",
     files: ["api"],
     description:
-      "Optional comma-separated origin GLOBS for per-deployment Vercel preview URLs (`*` = one DNS label, no path), e.g. `https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`. Set on Railway production so PR environments (copies of production) inherit it; the api ignores it when no preview origin matches. Unset locally.",
+      "Optional comma-separated origin GLOBS for per-deployment Vercel preview URLs (`*` = one DNS label, no path), e.g. `https://teaching-journey-web-*-omerbresinskis-projects.vercel.app`. Set on Railway production; PR environments are off (ADR 0010 amendment), and if re-enabled they inherit it. The api ignores it when no preview origin matches. Unset locally.",
   },
   {
     name: "BETTER_AUTH_SECRET",
@@ -283,7 +283,7 @@ const CONTRACT = [
     railwayValue: "https://${{RAILWAY_PUBLIC_DOMAIN}}",
     description:
       "Public origin of this API; magic links are `<BETTER_AUTH_URL>/auth/magic-link/verify?...`. On Railway the reference `https://$" +
-      "{{RAILWAY_PUBLIC_DOMAIN}}` resolves per environment: the custom domain `api.dayback.app` in production (TEACH-78; Railway swaps in a custom domain once attached, and with two attached it may keep the older one: check the rendered value before a cutover), `api-ai-teacher-pr-<n>.up.railway.app` in a PR environment. Keep the reference; an explicit value would be copied into PR environments and point their magic links at production.",
+      "{{RAILWAY_PUBLIC_DOMAIN}}` resolves per environment: the custom domain `api.dayback.app` in production (TEACH-78; Railway swaps in a custom domain once attached, and with two attached it may keep the older one: check the rendered value before a cutover). PR environments are off (ADR 0010 amendment); if re-enabled, it resolves to `api-ai-teacher-pr-<n>.up.railway.app` there. Keep the reference; an explicit value would be copied into PR environments and point their magic links at production.",
   },
   {
     name: "COOKIE_DOMAIN",
@@ -297,7 +297,7 @@ const CONTRACT = [
     files: ["api"],
     railwayValue: ".dayback.app",
     description:
-      "Parent domain of the session cookie (`.dayback.app`) so teach.dayback.app and api.dayback.app share it (TEACH-78, ADR 0010; `.bresinski.org` before). Ignored with a boot warning when BETTER_AUTH_URL is not under it, so check the api boot log after changing either. Unset locally (the Vite proxy makes web and api same-origin). PR environments inherit it (hence `both`); their api is on `*.up.railway.app`, not under it, so `effectiveCookieDomain()` ignores it with a boot warning and the cookie is host-only.",
+      "Parent domain of the session cookie (`.dayback.app`) so teach.dayback.app and api.dayback.app share it (TEACH-78, ADR 0010; `.bresinski.org` before). Ignored with a boot warning when BETTER_AUTH_URL is not under it, so check the api boot log after changing either. Unset locally (the Vite proxy makes web and api same-origin). PR environments are off (ADR 0010 amendment); if re-enabled they inherit it (hence `both`); their api is on `*.up.railway.app`, not under it, so `effectiveCookieDomain()` ignores it with a boot warning and the cookie is host-only.",
   },
   {
     name: "COOKIE_SAMESITE",
@@ -326,7 +326,7 @@ const CONTRACT = [
     values: ["console", "resend"],
     files: ["api"],
     description:
-      "Magic-link delivery. `resend` (Railway, TEACH-35) sends through Resend and needs RESEND_API_KEY + MAIL_FROM; `console` (local) prints each link in the api log and is refused in production unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1. Set by hand on production (PR environments are copies of it); provision.sh deliberately does not seed it, so a freshly provisioned api refuses to boot until mail is configured rather than falling back to links in the log.",
+      "Magic-link delivery. `resend` (Railway, TEACH-35) sends through Resend and needs RESEND_API_KEY + MAIL_FROM; `console` (local) prints each link in the api log and is refused in production unless ALLOW_CONSOLE_MAIL_IN_PRODUCTION=1. Set by hand on production (PR environments, off since the ADR 0010 amendment, would copy it); provision.sh deliberately does not seed it, so a freshly provisioned api refuses to boot until mail is configured rather than falling back to links in the log.",
   },
   {
     name: "RESEND_API_KEY",
@@ -339,7 +339,7 @@ const CONTRACT = [
     format: "string",
     files: ["api"],
     description:
-      "Resend send-only API key (resend.com → API Keys, permission 'Sending access'). Required when MAIL_PROVIDER=resend; the api refuses to boot without it. Set on Railway production, inherited by PR environments (they deliver sign-in mail the same way), never in git.",
+      "Resend send-only API key (resend.com → API Keys, permission 'Sending access'). Required when MAIL_PROVIDER=resend; the api refuses to boot without it. Set on Railway production (PR environments are off; if re-enabled they inherit it), never in git.",
   },
   {
     name: "MAIL_FROM",
@@ -531,7 +531,7 @@ const CONTRACT = [
     format: "string",
     files: ["api"],
     description:
-      "Cloudflare Turnstile secret key (TEACH-243; Cloudflare dashboard → Turnstile → the widget for the web hostnames). When set, `POST /auth/sign-in/anonymous` and `POST /auth/sign-in/magic-link` require an `x-captcha-response` token (400 missing, 403 failed). Required when NODE_ENV=production: set the real key on Railway production before TEACH-223 merges, or the api does not boot. Railway PR environments ignore it and run Cloudflare's test secret (`withPrEnvironmentDefaults`, keyed on `RAILWAY_ENVIRONMENT_NAME`), matching the preview web build. Unset locally turns the check off. Tests and e2e use Cloudflare's always-pass test secret `1x0000000000000000000000000000000AA` (always-fail: `2x0000000000000000000000000000000AA`). Pairs with VITE_TURNSTILE_SITE_KEY: set both, or neither.",
+      "Cloudflare Turnstile secret key (TEACH-243; Cloudflare dashboard → Turnstile → the widget for the web hostnames). When set, `POST /auth/sign-in/anonymous` and `POST /auth/sign-in/magic-link` require an `x-captcha-response` token (400 missing, 403 failed). Required when NODE_ENV=production: set the real key on Railway production before TEACH-223 merges, or the api does not boot. Railway PR environments (off; ADR 0010 amendment) ignore it and run Cloudflare's test secret (`withPrEnvironmentDefaults`, keyed on `RAILWAY_ENVIRONMENT_NAME`), matching the preview web build. Unset locally turns the check off. Tests and e2e use Cloudflare's always-pass test secret `1x0000000000000000000000000000000AA` (always-fail: `2x0000000000000000000000000000000AA`). Pairs with VITE_TURNSTILE_SITE_KEY: set both, or neither.",
   },
 
   // --- storage (ADR 0026) ------------------------------------------------------------------------
@@ -1285,7 +1285,7 @@ const CONTRACT = [
     setBy: "manual",
     runtimeOnly: true,
     description:
-      "Vercel Preview only. `https://api-ai-teacher-pr-{pr}.up.railway.app` (Railway names PR environments after the GitHub repo, `ai-teacher-pr-<n>`; confirmed with PR #30): `scripts/vercel-env.ts` replaces `{pr}` with VERCEL_GIT_PULL_REQUEST_ID to point the preview at the Railway PR api. Never in a local .env.",
+      "Vercel Preview only (previews and Railway PR environments are off, ADR 0010 amendment). `https://api-ai-teacher-pr-{pr}.up.railway.app` (Railway names PR environments after the GitHub repo, `ai-teacher-pr-<n>`; confirmed with PR #30): `scripts/vercel-env.ts` replaces `{pr}` with VERCEL_GIT_PULL_REQUEST_ID to point the preview at the Railway PR api. Never in a local .env.",
   },
   {
     name: "VITE_API_URL_FALLBACK",

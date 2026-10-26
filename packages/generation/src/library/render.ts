@@ -579,17 +579,60 @@ function bboxOf(el: Element): { x: number; y: number; width: number; height: num
 /** The drawn area: every visible mark's box, ignoring full-slide grounds and the foot. */
 /** The share of a text's measured width the crop adds on each side (TEACH-251 part ad). */
 export const TEXT_SLACK = 0.12;
+/**
+ * The box a `clip-path` whose clip is one rectangle shows (a map's frame), in slide units, or
+ * undefined for any other clip. TEACH-247: hist_map's coast runs 24 past its frame and today's
+ * borders run off a close map; both are clipped at the frame, but the crop kept their full width.
+ */
+function rectClip(svg: Element, el: Element, m: M): Box | undefined {
+  const ref = /url\(#([^)]+)\)/.exec(el.getAttribute("clip-path") ?? "")?.[1];
+  if (!ref) return undefined;
+  const cp = [...svg.querySelectorAll("clipPath")].find((c) => c.getAttribute("id") === ref);
+  const kids = cp ? [...cp.children] : [];
+  if (kids.length !== 1 || kids[0]?.tagName.toLowerCase() !== "rect") return undefined;
+  const r = kids[0] as Element;
+  const [x, y, w, h] = ["x", "y", "width", "height"].map((k) => Number(r.getAttribute(k) ?? 0));
+  if (![x, y, w, h].every((v) => Number.isFinite(v as number))) return undefined;
+  if (m[1] !== 0 || m[2] !== 0) return undefined;
+  const xs = [m[0] * (x as number) + m[4], m[0] * ((x as number) + (w as number)) + m[4]];
+  const ys = [m[3] * (y as number) + m[5], m[3] * ((y as number) + (h as number)) + m[5]];
+  return {
+    x0: Math.min(...xs),
+    y0: Math.min(...ys),
+    x1: Math.max(...xs),
+    y1: Math.max(...ys),
+  };
+}
+
 function drawnBox(svg: Element, foot: Element | null) {
   let [x0, y0, x1, y1] = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, -1e9, -1e9];
-  const walk = (el: Element, m: M) => {
+  const walk = (el: Element, m: M, clip?: Box) => {
     const tag = el.tagName.toLowerCase();
     if (SKIP_TAGS.includes(tag)) return;
     if (el === foot || el.classList.contains("off") || el.classList.contains("grain")) return;
     if (el.classList.contains("live")) return;
     const mm = mul(m, parseTransform(el.getAttribute("transform")));
+    const own = rectClip(svg, el, mm);
+    const cl = own
+      ? clip
+        ? {
+            x0: Math.max(own.x0, clip.x0),
+            y0: Math.max(own.y0, clip.y0),
+            x1: Math.min(own.x1, clip.x1),
+            y1: Math.min(own.y1, clip.y1),
+          }
+        : own
+      : clip;
     const pts = ownPoints(el);
     if (pts?.length) {
-      const t = pts.map(([x, y]) => [mm[0] * x + mm[2] * y + mm[4], mm[1] * x + mm[3] * y + mm[5]]);
+      const t = pts.map(([x, y]) => {
+        const px = mm[0] * x + mm[2] * y + mm[4];
+        const py = mm[1] * x + mm[3] * y + mm[5];
+        // what a frame clips away is not seen, so it does not widen the crop
+        return cl
+          ? [Math.min(Math.max(px, cl.x0), cl.x1), Math.min(Math.max(py, cl.y0), cl.y1)]
+          : [px, py];
+      });
       const xs = t.map((p) => p[0] as number);
       const ys = t.map((p) => p[1] as number);
       const bw = Math.max(...xs) - Math.min(...xs);
@@ -608,7 +651,7 @@ function drawnBox(svg: Element, foot: Element | null) {
         y1 = Math.max(y1, ...ys);
       }
     }
-    if (tag !== "text") for (const c of el.children) walk(c, mm);
+    if (tag !== "text") for (const c of el.children) walk(c, mm, cl);
   };
   for (const c of svg.children) walk(c, ID);
   return Number.isFinite(x0) && x1 > x0 && y1 > y0 ? { x0, y0, x1, y1 } : undefined;
