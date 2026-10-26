@@ -1287,8 +1287,13 @@ export function createWriterPictures(opts: {
     own?: boolean;
     /** A generated picture landed for this slot (paid); its judge may still be running. */
     made?: boolean;
-    /** Called when `made` goes back to false (refused, or a new generation started). */
-    unmade?: () => void;
+    /** Generations in flight for this slot (a first painting or a retry after a refusal). */
+    painting?: number;
+    /**
+     * The grace waits on this slot (`settle` and `settleSlide` may both hold one): each is told
+     * when the slot has no made picture and no painting left.
+     */
+    idle?: Set<() => void>;
   };
   /**
    * The bank as one slot sees it: a generated picture marks the slot `made`, so a deadline that
@@ -1297,46 +1302,69 @@ export function createWriterPictures(opts: {
   const watched = (slot: Slot, b: PictureBank): PictureBank => ({
     lookup: (req, signal) => b.lookup(req, signal),
     remember: (req, photo) => b.remember(req, photo),
-    // Only a picture that is made and waiting on its judge earns the grace: a new generation in
-    // flight (a retry after a refusal) or a refused picture does not.
+    // Only a picture that is made and waiting on its judge starts the grace: a new generation in
+    // flight at the deadline or a refused picture does not. Inside the grace, a retry painting
+    // after a refusal keeps the rest of the window and is placed if it lands in time.
     generate: (req, faithful, signal, retry) => {
-      unmake(slot);
-      return b.generate(req, faithful, signal, retry).then((made) => {
-        if (made) slot.made = true;
-        return made;
-      });
+      slot.made = false;
+      slot.painting = (slot.painting ?? 0) + 1;
+      return b.generate(req, faithful, signal, retry).then(
+        (made) => {
+          slot.painting = (slot.painting ?? 1) - 1;
+          if (made) slot.made = true;
+          else checkIdle(slot);
+          return made;
+        },
+        (e: unknown) => {
+          slot.painting = (slot.painting ?? 1) - 1;
+          checkIdle(slot);
+          throw e;
+        },
+      );
     },
     ...(b.reject
       ? {
           reject: (photo: PlacedPhoto) => {
-            unmake(slot);
+            slot.made = false;
+            checkIdle(slot);
             return b.reject?.(photo) ?? Promise.resolve();
           },
         }
       : {}),
   });
-  const unmake = (slot: Slot) => {
-    slot.made = false;
-    slot.unmade?.();
+  /**
+   * After a refusal or a failed painting: the slot's grace waiters are told once it is clear no
+   * retry painting started. The bank's retry starts as soon as `reject` settles, so the check runs
+   * on the next timer turn, after those promise steps.
+   */
+  const checkIdle = (slot: Slot) => {
+    if (!slot.idle?.size) return;
+    setTimeout(() => {
+      if (slot.made || slot.painting) return;
+      for (const tell of [...(slot.idle ?? [])]) tell();
+    }, 0);
   };
   /**
    * After a deadline: the slots among `list` still pending with a generated picture, waited for.
-   * Each slot's grace ends with its judge: once the made picture is refused (or a new generation
-   * starts after a refusal) there is nothing paid left to wait for, so the round does not hold the
-   * rest of the grace for a picture that cannot land in it (greatfire verify4, 26 Oct: slides 3 and
-   * 6 were refused 2-4 s into the grace and their tail sat out the other 11-13 s).
+   * A slot's grace ends when it is done, or when its picture was refused and no retry painting
+   * started (nothing paid is left to wait for); a retry painting keeps the rest of the window.
+   * greatfire verify4 (26 Oct) lost 11 s here; review of #661: a picture matters more than
+   * seconds at job end, since the teacher can already edit.
    */
   const graceForMade = async (list: Slot[]) => {
     const late = list.filter((x) => x.state.status === "pending" && x.made);
     if (!late.length || opts.deps.signal.aborted) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const tells: [Slot, () => void][] = [];
     await Promise.race([
       Promise.all(
         late.map((x) =>
           Promise.race([
             x.done,
             new Promise<void>((resolve) => {
-              x.unmade = resolve;
+              x.idle ??= new Set();
+              x.idle.add(resolve);
+              tells.push([x, resolve]);
             }),
           ]),
         ),
@@ -1346,7 +1374,7 @@ export function createWriterPictures(opts: {
       }),
     ]);
     if (timer) clearTimeout(timer);
-    for (const x of late) x.unmade = undefined;
+    for (const [x, tell] of tells) x.idle?.delete(tell);
   };
   /** The round's deps with the slot's own stop on the signal. */
   const slotDeps = (slot: Slot): PipelineDeps => {

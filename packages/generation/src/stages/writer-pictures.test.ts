@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, jest, test } from "bun:test";
 import { BudgetReservationError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Lesson, PhotoSource } from "@tj/domain/documents";
@@ -17,6 +17,7 @@ import {
   ILLUSTRATION_LINE,
   STOCK_ONLY_BANK,
   setLookOf,
+  WRITER_MADE_GRACE_MS,
   type WriterPhotoAsk,
   withPhotoSources,
   writerAskBrief,
@@ -1564,40 +1565,114 @@ describe("a generated picture waiting on its judge outlives the deadline (picq, 
     expect(pictures.state(4, "card.0").status).toBe("photo");
   });
 
-  // greatfire verify4 (26 Oct): both retry-round paintings were refused 2-4 s into the grace and
-  // their new generations held the slides' tails for the rest of it (11-13 s before editable).
-  test("the grace ends when the judge refuses the made picture, not at its 15 s cap", async () => {
-    let generated = 0;
-    const refusing = {
-      ...made(() => undefined),
-      generate: (_req: unknown, _faithful: unknown, signal?: AbortSignal) => {
-        generated += 1;
-        if (generated === 1) return made(() => undefined).generate();
-        // The generation after the refusal is still running when the grace is judged.
-        return new Promise<never>((_, reject) =>
-          signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true }),
-        );
+  // Fake timers drive the deadline (20 ms), the judges and the 15 s grace: nothing waits on the
+  // wall clock. `drive` advances the clock in 10 ms steps, letting promises run between steps.
+  const flush = async () => {
+    for (let k = 0; k < 50; k++) await Promise.resolve();
+  };
+  const drive = async (p: Promise<unknown>, maxMs: number) => {
+    let over = false;
+    p.then(
+      () => {
+        over = true;
       },
-    };
-    const pictures = createWriterPictures({
+      () => {
+        over = true;
+      },
+    );
+    let t = 0;
+    await flush();
+    while (!over && t < maxMs) {
+      jest.advanceTimersByTime(10);
+      t += 10;
+      await flush();
+    }
+    return { over, t };
+  };
+  const later = <T>(ms: number, v: T) => new Promise<T>((r) => setTimeout(() => r(v), ms));
+  const madeOne = (made(() => undefined) as { generate: () => Promise<unknown> }).generate;
+  // A bank whose paintings land after `paintMs[n]` (the first at once), each judged by the script.
+  const painter = (paintMs: number[], onGenerate: () => number) => ({
+    ...made(() => undefined),
+    generate: async () => {
+      const n = onGenerate();
+      return later(paintMs[n - 1] ?? 0, await madeOne());
+    },
+  });
+  const refuse = verdict({});
+  const pass = verdict({
+    pick: "made",
+    onSubject: true,
+    clear: true,
+    fits: true,
+    visible: ["a ship"],
+  });
+  const withPictures = (bank: unknown, script: unknown[]) =>
+    createWriterPictures({
       lesson: { ...sampleBriefLesson(), subject: "History" },
       country: "UK",
       images: images({}),
-      // The refusal comes 60 ms in, after the 20 ms deadline: the grace has started.
-      deps: recordingDeps(
-        createFakeAi({
-          script: [async () => new Promise<string>((r) => setTimeout(() => r(verdict({})), 60))],
-          fallback: verdict({}),
-        }),
-      ),
-      bank: refusing as never,
+      deps: recordingDeps(createFakeAi({ script: script as never, fallback: refuse })),
+      bank: bank as never,
       direct: directGenerate,
     });
-    pictures.start(4, bucket, slide);
-    const t = Date.now();
-    await pictures.settleSlide(4, 20);
-    expect(generated).toBe(2);
-    expect(Date.now() - t).toBeLessThan(2_000);
-    expect(pictures.state(4, "card.0").status).toBe("failed");
+
+  // review of #661: the teacher can already edit, so a picture matters more than seconds at job
+  // end. The first painting is refused 60 ms in (inside the grace); its retry lands at 5 s.
+  test("a retry painting started inside the grace keeps the window and is placed", async () => {
+    jest.useFakeTimers();
+    try {
+      let generated = 0;
+      const pictures = withPictures(
+        painter([0, 5_000], () => ++generated),
+        [async () => later(60, refuse), pass],
+      );
+      pictures.start(4, bucket, slide);
+      const r = await drive(pictures.settleSlide(4, 20), 20_000);
+      expect(r.over).toBe(true);
+      expect(generated).toBe(2);
+      expect(pictures.state(4, "card.0").status).toBe("photo");
+      expect(r.t).toBeLessThan(WRITER_MADE_GRACE_MS);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // greatfire verify4 (26 Oct): a refused painting with no retry left holds nothing paid.
+  test("a refusal with no retry painting ends the grace, not its 15 s cap", async () => {
+    jest.useFakeTimers();
+    try {
+      let generated = 0;
+      const pictures = withPictures(
+        painter([0, 0, 0], () => ++generated),
+        [async () => later(60, refuse), refuse, refuse],
+      );
+      pictures.start(4, bucket, slide);
+      const r = await drive(pictures.settleSlide(4, 20), 20_000);
+      expect(r.over).toBe(true);
+      expect(generated).toBe(3);
+      expect(r.t).toBeLessThan(1_000);
+      expect(pictures.state(4, "card.0").status).toBe("failed");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("settle and settleSlide waiting on one slot are both told", async () => {
+    jest.useFakeTimers();
+    try {
+      let generated = 0;
+      const pictures = withPictures(
+        painter([0, 0, 0], () => ++generated),
+        [async () => later(60, refuse), refuse, refuse],
+      );
+      pictures.start(4, bucket, slide);
+      const both = Promise.all([pictures.settle(20), pictures.settleSlide(4, 20)]);
+      const r = await drive(both, 20_000);
+      expect(r.over).toBe(true);
+      expect(r.t).toBeLessThan(1_000);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
