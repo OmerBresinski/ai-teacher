@@ -60,6 +60,55 @@ function content(el: SlideElement): Record<string, unknown> {
   return rest;
 }
 
+/** Keys that only say where an element sits or how big its type is: a fit or a re-theme. */
+const MECHANICAL = new Set([
+  "x",
+  "y",
+  "w",
+  "h",
+  "rotation",
+  "from",
+  "to",
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "lineHeight",
+  "letterSpacing",
+  "padding",
+  "radius",
+  "strokeWidth",
+  "autoHeight",
+  "autoFit",
+  "fixedSize",
+  "fitVersion",
+  "updatedAt",
+]);
+
+/** A slide or lesson without what a fit or a re-theme changes: geometry, type sizes, colours. */
+function substance(node: unknown, key?: string): unknown {
+  if (key === "diagram" || key === "figure") return node;
+  if (typeof node === "string")
+    return key !== "text" && /^#[0-9a-f]{3,8}$/i.test(node) ? "#" : node;
+  if (Array.isArray(node)) return node.map((n) => substance(n));
+  if (node && typeof node === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (!MECHANICAL.has(k) && v !== undefined) out[k] = substance(v, k);
+    }
+    return out;
+  }
+  return node;
+}
+
+/**
+ * Whether two copies differ at most mechanically (TEACH-251 part p): the same words, elements,
+ * notes and slide fields, apart from geometry, type sizes, colours and stamps. Never decides
+ * ownership on its own; it only lets the editor drop a copy it can prove is its own repaint.
+ */
+export function sameSubstance(a: unknown, b: unknown): boolean {
+  return sameJson(substance(a), substance(b));
+}
+
 /** Whether the teacher changed this slide while the job ran (`Slide.teacherEdited`). */
 export const isTeacherEdited = (slide: Slide): boolean => slide.teacherEdited === true;
 
@@ -149,8 +198,9 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
 }
 
 /**
- * `mine` with every slide the teacher has not marked (`teacherEdited`) taken from `ref` (the row,
- * or the base of a fold) where `ref` has it: what the editor merges and sends while a job writes
+ * `mine` with every slide the teacher has not marked (`teacherEdited`) and that differs from
+ * `ref`'s copy only mechanically (`sameSubstance`) taken from `ref` (the row, or the base of a
+ * fold): what the editor merges and sends while a job writes
  * (TEACH-251 part p). Its own repaint into the lesson's theme and its fit are never sent as the
  * teacher's, so the job's late pictures and diagrams land; the editor draws them again.
  */
@@ -160,6 +210,9 @@ export function withoutEditorCopies(mine: Lesson, ref: Lesson): Lesson {
   const slides = mine.slides.map((s) => {
     const r = refOf.get(s.id);
     if (isTeacherEdited(s) || r === undefined || r === s) return s;
+    // Only a provable repaint or fit is dropped: an unmarked slide with any other difference (a
+    // mark missed) is kept as the teacher's. A missed mark can cost a late picture, never an edit.
+    if (!sameSubstance(s, r)) return s;
     changed = true;
     return r;
   });

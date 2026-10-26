@@ -7,6 +7,7 @@ import {
   type RichDoc,
   type SlideElement,
   sameJson,
+  sameSubstance,
   type Theme,
   type Worksheet,
   withoutEditorCopies,
@@ -1181,17 +1182,20 @@ function inTeachersTheme(merged: Lesson, theirs: Lesson, base?: Lesson): Lesson 
 /**
  * `doc` with every slide a teacher's step changed since `prev` marked `teacherEdited` (ADR 0037,
  * TEACH-251 part p): the job's merge keeps those as the teacher's. Only for a generated lesson
- * (one a job may still write); a step that changed the theme is the editor redrawing every slide
- * and marks none.
+ * (one a job may still write).
  */
 export function markTeacherEdited(prev: Lesson | undefined, doc: Lesson): Lesson {
-  if (!prev || !doc.generation || prev.themeId !== doc.themeId) return doc;
+  if (!prev || !doc.generation) return doc;
+  // A step that changed the theme redraws every slide: only a slide whose words, elements, notes
+  // or fields changed beyond that redraw is marked (an edit in the same step as a theme pick).
+  const retheme = prev.themeId !== doc.themeId;
   const before = new Map(prev.slides.map((s) => [s.id, s]));
   let changed = false;
   const slides = doc.slides.map((s) => {
     if (s.teacherEdited) return s;
     const was = before.get(s.id);
     if (was === s || (was !== undefined && sameJson(was, s))) return s;
+    if (retheme && was !== undefined && sameSubstance(was, s)) return s;
     changed = true;
     return { ...s, teacherEdited: true as const };
   });

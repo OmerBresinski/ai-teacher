@@ -61,6 +61,25 @@ describe("markTeacherEdited", () => {
     expect(markTeacherEdited(plain as Lesson, edited)).toBe(edited);
   });
 
+  test("an edit in the same step as a theme pick is marked; the redraw of other slides is not", () => {
+    const step = {
+      ...base,
+      themeId: "crayon",
+      slides: [
+        slideOf("a", [textElement("a-t", "Puddles dry up.")]),
+        slideOf("b", [
+          text("b-t", {
+            x: 3,
+            style: { preset: "body", color: "#ff0000", fontSize: 20 },
+          } as Partial<SlideElement>),
+        ]),
+      ],
+    };
+    const out = markTeacherEdited(base, step);
+    expect(get(out, "a").teacherEdited).toBe(true);
+    expect(get(out, "b").teacherEdited).toBeUndefined();
+  });
+
   test("an unchanged copy is returned as it is", () => {
     const same = { ...base, slides: base.slides.map((s) => ({ ...s })) };
     expect(markTeacherEdited(base, same)).toBe(same);

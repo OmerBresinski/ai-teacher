@@ -377,6 +377,16 @@ describe("the teacher's mark adds certainty; its absence never discards an edit 
     const theirs = withW1(base, [styled("#111111", 32), diagram()]);
     const merged = mergeJobLesson(base, withoutEditorCopies(mine, base), theirs);
     expect(w1(merged)).toEqual(w1(theirs));
+    // An unmarked slide whose words changed (a mark missed) is kept as the teacher's.
+    const typedUnmarked = withW1(base, [textElement("w1-t", "Puddles dry up.")]);
+    expect(withoutEditorCopies(typedUnmarked, base)).toBe(typedUnmarked);
+    const merged2 = mergeJobLesson(base, withoutEditorCopies(typedUnmarked, base), theirs);
+    expect(JSON.stringify(w1(merged2))).toContain("Puddles dry up.");
+    // An unmarked slide with an element added or notes changed is kept too.
+    const added = withW1(base, [styled("#111111", 32), textElement("extra", "Note")]);
+    expect(withoutEditorCopies(added, base)).toBe(added);
+    const noted = withW1(base, [styled("#111111", 32)], { notes: "Mine." });
+    expect(withoutEditorCopies(noted, base)).toBe(noted);
     // A marked slide is never swapped for the reference copy.
     const marked = withW1(base, [styled("#c0392b", 28)], mark);
     expect(withoutEditorCopies(marked, base)).toBe(marked);

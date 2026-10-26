@@ -56,6 +56,36 @@ describe("a teacher's unsaved change across an unmount", () => {
     expect(onRestored).toHaveBeenCalledTimes(1);
   });
 
+  // TEACH-251 part p: a kept change rejoins through the history, so the slides it changed are
+  // marked as the teacher's (the job's merge keeps them); slides it did not change stay unmarked.
+  test("a kept slide change restored on the next open is marked as the teacher's", async () => {
+    const seeded = seededLesson();
+    const base: Lesson = {
+      ...seeded,
+      generation: {
+        jobId: "job",
+        stage: "planned",
+        startedAt: "2026-10-26T04:00:00.000Z",
+        promptVersions: {},
+        usage: { calls: 1, inputTokens: 1, outputTokens: 1, costUsd: 0 },
+        findings: [],
+        slideStates: Object.fromEntries(seeded.slides.map((s) => [s.id, "done" as const])),
+      },
+    };
+    const kept = structuredClone(base);
+    const second = kept.slides[1];
+    if (second) second.elements = [shape(300, 200)];
+    const onRestored = mock((_applied: boolean) => {});
+    const { onSave } = renderEditor(structuredClone(base), {
+      restore: { lesson: kept, base },
+      onRestored,
+    });
+    await waitFor(() => expect(onRestored).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 3_000 });
+    const saved = onSave.mock.calls.at(-1)?.[0];
+    expect(saved?.slides.map((s) => s.teacherEdited === true)).toEqual([false, true, false]);
+  });
+
   test("a kept copy that the row already holds changes nothing and says nothing", async () => {
     const base = seededLesson();
     const onRestored = mock((_applied: boolean) => {});
