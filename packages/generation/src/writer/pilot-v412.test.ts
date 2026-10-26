@@ -55,6 +55,12 @@ describe("pilot pack v4.12", () => {
       expect(text).toContain("Every wrong option, in a hinge or in any question with options");
       expect(text).toContain("opens at most one question in the whole lesson");
       expect(text).toContain("which its shows calls a reconstruction");
+      expect(text).toContain(
+        "A monument is never a reconstruction: a picture of a monument is named.",
+      );
+      expect(text).toContain(
+        "a task that opens with an instruction, such as Draw or Explain, counts as a question here",
+      );
       // No word marks a made-up case by example any more, and the bakery example is gone.
       expect(text).not.toContain('"imagine"');
       expect(text).not.toContain('"suppose"');
