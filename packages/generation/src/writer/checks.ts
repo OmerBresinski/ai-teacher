@@ -91,9 +91,18 @@ export function checkSlide(a: {
   for (const o of a.over) faults.push(`overflow: ${o}`);
   if (a.diagram?.length)
     faults.push(`diagram: figure could not be drawn: ${a.diagram.slice(0, 3).join("; ")}`);
-  // Clipping: anything past the slide's edge.
+  // Clipping: anything past the slide's edge. A picture bleeding past an edge, still mostly on the
+  // slide, and a wordless full-bleed `surface:` ground (the question set's answer column runs to
+  // the foot) are drawn that way by design (TEACH-247 part af); a picture mostly off the slide,
+  // or a surface carrying words (a badge), is clipped.
+  const onSlide = (e: SlideElement) =>
+    inter(e, { x: 0, y: 0, w: W, h: H }) / Math.max(1, e.w * e.h);
+  const bleeds = (e: SlideElement) =>
+    (e.type === "image" && onSlide(e) >= 0.5) ||
+    ((e.name ?? "").startsWith("surface:") && !plain((e as { doc?: unknown }).doc).trim());
   for (const e of s.elements)
-    if (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1)
+    if (bleeds(e)) continue;
+    else if (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1)
       faults.push(`clipped: ${label(e)} runs off the slide`);
   // Overlap: text over text, text over a picture or diagram (markers and panels under text are by
   // design). Two boxes never on screen at the same click do not overlap: a build's earlier card
