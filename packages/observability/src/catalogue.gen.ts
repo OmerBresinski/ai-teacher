@@ -134,4 +134,5 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_unshared_pile: ["key", "total", "via"],
   gen_unshown_strip: ["how", "removed", "slide"],
   gen_visual_path: ["path", "slide"],
+  gen_written_hook_failed: [],
 };
