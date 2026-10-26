@@ -504,3 +504,54 @@ describe("the teacher's mark adds certainty; its absence never discards an edit 
     expect(ids(mergeJobLesson(base, mine, theirs))).toEqual(["w1-t", "mine"]);
   });
 });
+
+describe("TEACH-247 part av: a held frame the job never filled", () => {
+  const FRAME = "data:image/svg+xml;utf8,%3Csvg%3E%3C/svg%3E";
+  const base: Slide = {
+    id: "h1",
+    kind: "content",
+    elements: [textElement("h1-t", "Fire spread fast."), imageElement("h1-pic", { src: FRAME })],
+    notes: "n",
+  } as Slide;
+  // The job's final deck: the picture never came, so the slide is laid without its frame.
+  const theirs: Slide = { ...base, elements: [textElement("h1-t", "Fire spread fast.")] } as Slide;
+  test("goes from the teacher's edited slide when left where the job put it; their words stay", async () => {
+    const mine: Slide = {
+      ...base,
+      teacherEdited: true,
+      elements: [
+        textElement("h1-t", "Fire spread fast through wooden houses."),
+        { ...base.elements[1], opacity: 0.8 } as SlideElement,
+      ],
+    } as Slide;
+    const { mergeEditedSlide } = await import("./generation-merge");
+    const merged = mergeEditedSlide(base, mine, theirs);
+    expect(merged.elements.map((e) => e.id)).toEqual(["h1-t"]);
+    expect(merged.elements[0]).toEqual(mine.elements[0] as SlideElement);
+  });
+  test.each([
+    ["moved", { x: 500 }],
+    ["resized", { w: 120, h: 90 }],
+    ["relabelled", { alt: "fire" }],
+    ["renamed", { name: "Map frame" }],
+  ])("a frame the teacher %s stays (their intent)", async (_how, change) => {
+    const mine: Slide = {
+      ...base,
+      teacherEdited: true,
+      elements: [base.elements[0], { ...base.elements[1], ...change } as SlideElement],
+    } as Slide;
+    const { mergeEditedSlide } = await import("./generation-merge");
+    const merged = mergeEditedSlide(base, mine, theirs);
+    expect(merged.elements.map((e) => e.id)).toEqual(["h1-t", "h1-pic"]);
+  });
+  test("a picture the teacher put in the frame stays", async () => {
+    const mine: Slide = {
+      ...base,
+      teacherEdited: true,
+      elements: [base.elements[0], { ...base.elements[1], src: "/files/ws/mine.jpg" }],
+    } as Slide;
+    const { mergeEditedSlide } = await import("./generation-merge");
+    const merged = mergeEditedSlide(base, mine, theirs);
+    expect(merged.elements.map((e) => e.id)).toEqual(["h1-t", "h1-pic"]);
+  });
+});

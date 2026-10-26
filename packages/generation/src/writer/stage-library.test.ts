@@ -33,6 +33,7 @@ async function run(
     model?: string;
     noDrawer?: boolean;
     placeMore?: (i: number, asks: VisualAsk[]) => Promise<void>;
+    placed?: Set<string>;
     onEditable?: (slides: { elements?: unknown[] }[]) => void;
   } = {},
 ) {
@@ -79,7 +80,15 @@ async function run(
     brief,
     objectives,
     services: { ...replayServices(B), log: (e) => events.push(e as El) },
-    visual: recordedVisuals(B),
+    visual: shape.placed
+      ? (i: number, key: string, a: VisualAsk) =>
+          shape.placed?.has(`${i}:${key}`)
+            ? ({
+                status: "photo",
+                photo: { src: "/files/test/map.png", alt: key, aspect: 1.4, request: key },
+              } as never)
+            : recordedVisuals(B)(i, key, a)
+      : recordedVisuals(B),
     recordedWriter: { text: JSON.stringify(out), finishReason: main.finishReason ?? null },
     drawDiagrams: { callDrawer },
     library: true,
@@ -221,6 +230,37 @@ describe("writer stage: library models", () => {
     }
     // The model's intent is what the picture shows (a library model has no `shows`).
     expect(asked[0]?.shows).toBe("one half of a circle shaded");
+  }, 60_000);
+
+  test("a hist_map that marks nothing goes to a map picture, never the drawer (TEACH-251 part ac)", async () => {
+    const asked: VisualAsk[] = [];
+    const placed = new Set<string>();
+    const { events, slide } = await run(
+      () => ({ region: "uk", todayBorders: false, north: true }),
+      {
+        model: "hist_map",
+        placed,
+        placeMore: async (i, asks) => {
+          asked.push(...asks);
+          for (const a of asks) placed.add(`${i}:${a.key}`);
+        },
+      },
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "lib-fallback", model: "hist_map" }),
+    );
+    expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", to: "picture" }));
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "visual-path", slide: 3, path: "picture" }),
+    );
+    // No drawer call for this slide: the drawer cannot draw a real map.
+    expect(events.some((e) => e.slide === 3 && e.ev === "diagram-call")).toBe(false);
+    // The slot's picture ask is the map the model was asked to draw, and the found picture is shown.
+    const photo = asked.find((a) => a.type === "photo");
+    expect(photo?.shows).toBe("one half of a circle shaded");
+    const els = (slide?.elements ?? []) as El[];
+    expect(els.some((e) => e.type === "image" && e.src === "/files/test/map.png")).toBe(true);
+    expect(els.some((e) => e.name === "Icon" || e.name === "Diagram")).toBe(false);
   }, 60_000);
 
   test("a slide whose tail throws is kept as it was at editable; the lesson still ships", async () => {
