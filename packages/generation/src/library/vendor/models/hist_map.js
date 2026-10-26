@@ -27,6 +27,9 @@ import {
   withDefaults,
 } from "../kit/index.js";
 import {
+  FRONTIER_KEYS,
+  FRONTIER_LABELS,
+  FRONTIERS,
   inView,
   kmBetween,
   landOf,
@@ -246,6 +249,44 @@ export const params = {
         },
       },
     },
+    // Not yet asked of the writer's fill call ('x-fill': false): its wording is the prompt-engineer's.
+    frontiers: {
+      type: "array",
+      title: "Walls and frontiers",
+      description: "A named wall or border, drawn along its real course.",
+      "x-item": "a wall or frontier",
+      "x-fill": false,
+      maxItems: 2,
+      default: [],
+      items: {
+        type: "object",
+        required: ["line"],
+        default: { line: "hadrians_wall", label: "", colour: "auto" },
+        properties: {
+          line: {
+            type: "string",
+            title: "Line",
+            enum: FRONTIER_KEYS,
+            "x-labels": FRONTIER_LABELS,
+            default: "hadrians_wall",
+          },
+          label: {
+            type: "string",
+            title: "Name on the map",
+            description: "Leave empty to use ours.",
+            maxLength: 40,
+            default: "",
+          },
+          colour: {
+            type: "string",
+            title: "Colour",
+            enum: COLOURS,
+            "x-labels": COLOUR_LABELS,
+            default: "auto",
+          },
+        },
+      },
+    },
     todayBorders: {
       type: "boolean",
       title: "End with today’s borders, faint (maps of Britain only)",
@@ -399,6 +440,19 @@ export const presets = [
       todayBorders: true,
     },
   },
+  {
+    id: "y4-roman-walls",
+    name: "Year 4: Hadrian’s Wall and the Antonine Wall",
+    params: {
+      title: "The edge of Roman Britain",
+      region: "uk",
+      dates: "bc-ad",
+      dateRange: { from: "AD 40", to: "AD 200" },
+      events: [{ place: "York", date: "AD 71", label: "The Romans build a fortress at York" }],
+      territories: [{ area: "roman_britain_122", colour: "2" }],
+      frontiers: [{ line: "hadrians_wall" }, { line: "antonine_wall" }],
+    },
+  },
 ];
 
 /* ------------------------------------------------------------------ the map's geometry (no DOM) */
@@ -423,17 +477,22 @@ function projFor(region) {
 // a map narrow enough gets a callout column on its right (cards never sit on the map)
 const COLUMN_MIN = 340;
 // f < 1 draws a column map smaller (same region, same shape), to give a crowded key more room
-const mapBox = (region, f = 1) => {
+// `top` < MAPBOX.y draws a column map taller (TEACH-247): with no title (every slide's drawing; the
+// slide's heading is the title) there is no band to keep clear, and the years head the card column.
+// A tall map is height-bound in a wide slot, so the band's height went straight off the map's size.
+export const LIFT_TOP = 40;
+const mapBox = (region, f = 1, top = MAPBOX.y) => {
   const w = projFor(region).w;
-  return w < MAPBOX.w - COLUMN_MIN
-    ? {
-        x: GRID.left,
-        y: MAPBOX.y + (MAPBOX.h * (1 - f)) / 2,
-        w: w * f,
-        h: MAPBOX.h * f,
-        column: true,
-      }
-    : MAPBOX;
+  if (w >= MAPBOX.w - COLUMN_MIN) return MAPBOX;
+  const H = GRID.bottom - top;
+  const wt = (w * H) / MAPBOX.h;
+  return {
+    x: GRID.left,
+    y: top + (H * (1 - f)) / 2,
+    w: wt * f,
+    h: H * f,
+    column: true,
+  };
 };
 const FIRST_SPACEFLIGHT = 1961;
 const splitList = (s) =>
@@ -442,7 +501,7 @@ const splitList = (s) =>
     .map((x) => x.trim())
     .filter(Boolean);
 const NUM = ["no", "one", "two", "three", "four", "five", "six"];
-const plural = (n, w) => `${NUM[n] || n} ${w}${n === 1 ? "" : "s"}`;
+const plural = (n, w, many) => `${NUM[n] || n} ${n === 1 ? w : many || `${w}s`}`;
 
 function model(P) {
   const st = P.dates || "bc-ad",
@@ -514,6 +573,19 @@ function model(P) {
         (!String(t.date || "").trim() || !String(t.source || "").trim() || poly.length < 3),
     };
   });
+  const fronts = (P.frontiers || []).map((f, i) => {
+    const L = FRONTIERS[f.line];
+    return {
+      ...f,
+      i,
+      L,
+      name: f.label || L.name,
+      d: parseDate(L.date),
+      line: L.line,
+      // brown for the first line, purple for a second: two walls in one key never share a colour
+      col: f.colour && f.colour !== "auto" ? +f.colour : i === 0 ? 1 : 6,
+    };
+  });
   const borders = !!P.todayBorders && ["uk", "south", "northsea"].includes(P.region);
   const range = P.dateRange || {};
   const from = parseDate(range.from),
@@ -527,6 +599,7 @@ function model(P) {
     events,
     terrs: terrs.filter((t) => !t.incomplete),
     allTerrs: terrs,
+    fronts,
     borders,
     from,
     to,
@@ -708,6 +781,31 @@ export function validate(raw) {
         });
     }
   });
+  // a wall or border is drawn whole, in its own years, or not at all: no part of a line is guessed
+  M.fronts.forEach((fr) => {
+    const path = `frontiers.${fr.i}.line`;
+    if (!inR(fr.d))
+      R.push({
+        path,
+        reason: `${fr.name} was built in ${M.dl(fr.d)}, outside the years this map covers (${span}). Widen “Years the map covers” or take it out.`,
+      });
+    if (!fr.line.every((q) => inView(M.V, q)))
+      return R.push({
+        path,
+        reason: `${fr.name} is not wholly on a map of ${where}. Choose a map that shows all of it, such as Britain and Ireland.`,
+      });
+    let len = 0;
+    for (let j = 1; j < fr.line.length; j++) {
+      const [x1, y1] = proj(...fr.line[j - 1]),
+        [x2, y2] = proj(...fr.line[j]);
+      len += Math.hypot(x2 - x1, y2 - y1);
+    }
+    if (len < 24)
+      R.push({
+        path,
+        reason: `${fr.name} is too short to see on a map of ${where}. Choose a closer map, such as Britain and Ireland.`,
+      });
+  });
   if (P.todayBorders && !M.borders)
     W.push("Today’s borders are only drawn on maps of Britain, so that step is left out.");
   return result(R, W);
@@ -742,6 +840,15 @@ function plan(P) {
       caption: `${dl(e.d)}, ${e.p.name}: ${e.label}.`,
     }),
   );
+  M.fronts.forEach((fr) =>
+    items.push({
+      key: `line:${fr.i}`,
+      t: fr.d.astro,
+      o: 3,
+      fr,
+      caption: `${dl(fr.d)}: ${fr.name}, from ${fr.L.from} to ${fr.L.to}.`,
+    }),
+  );
   items.sort((a, b) => a.t - b.t || a.o - b.o);
   [...M.terrs]
     .sort((a, b) => a.d.astro - b.d.astro)
@@ -759,6 +866,7 @@ function plan(P) {
     M.routes.length ? plural(M.routes.length, "journey") : null,
     M.events.length ? plural(M.events.length, "event") : null,
     M.terrs.length ? plural(M.terrs.length, "area") : null,
+    M.fronts.length ? plural(M.fronts.length, "wall or border", "walls or borders") : null,
   ].filter(Boolean);
   const list =
     bits.length > 1
@@ -791,6 +899,12 @@ export function notes(P) {
       const km = kmBetween(r.a.ll, r.b.ll);
       const via = splitList(r.via);
       return `${r.a.name} to ${r.b.name} is about ${fmtKm(km).toLocaleString("en-GB")} km in a straight line${via.length ? `; the route went by ${via.join(", ")}` : ""}. The line shows the way they went, not every turn.${r.d.approx ? " “c.” means about: the date comes from evidence, not a record." : ""}`;
+    }
+    if (it.fr) {
+      const fr = it.fr;
+      let km = 0;
+      for (let j = 1; j < fr.line.length; j++) km += kmBetween(fr.line[j - 1], fr.line[j]);
+      return `${fr.L.name} ran about ${fmtKm(km).toLocaleString("en-GB")} km, from ${fr.L.from} to ${fr.L.to}. The line is drawn after ${fr.L.source}. Ask: why would people build a line across the land here?`;
     }
     if (it.e) return `Point to ${it.e.p.name} on the map. Ask: why might this have happened here?`;
     if (it.tr) {
@@ -1087,7 +1201,9 @@ function thinRing(ring) {
       dmax = THIN;
     for (let i = a + 1; i < b; i++) {
       const [px, py] = ring[i];
-      const dd = L ? Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / L : Math.hypot(px - ax, py - ay);
+      const dd = L
+        ? Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / L
+        : Math.hypot(px - ax, py - ay);
       if (dd > dmax) {
         dmax = dd;
         far = i;
@@ -1178,7 +1294,9 @@ function renderAt(root, P, ctx, f, last, narrow) {
     N = ctx.N;
   const bi = (k) => b[k] ?? 0;
   const V = M.V;
-  const box = mapBox(P.region, f);
+  // no title: a column map takes the band above it, and the years head the card column
+  const lift = !P.title && !!mapBox(P.region).column;
+  const box = mapBox(P.region, f, lift ? LIFT_TOP : MAPBOX.y);
   let column = !!box.column;
   const columnMap = column;
   const map = basemap(root, V.kit, { box, view: V.view || undefined, a: { s: bi("map") } });
@@ -1215,8 +1333,13 @@ function renderAt(root, P, ctx, f, last, narrow) {
         e.tagName === "path" &&
         e !== map.land &&
         /sky-top/.test(e.getAttribute("fill") || e.getAttribute("style") || ""),
-    ))
-      lk.setAttribute("d", clipRings(lk.getAttribute("d"), R).map(straightD).join(" ") || "M0 0");
+    )) {
+      // a lake off this view is taken out: an empty "M0 0" stood at the slide's corner and the crop
+      // kept the whole top-left margin for it (TEACH-247)
+      const d = clipRings(lk.getAttribute("d"), R).map(straightD).join(" ");
+      if (d) lk.setAttribute("d", d);
+      else lk.remove();
+    }
     const cp = map.g.querySelector('clipPath[id$="-land"] path');
     if (cp) cp.setAttribute("d", dAll);
   }
@@ -1248,6 +1371,30 @@ function renderAt(root, P, ctx, f, last, narrow) {
   const routeInfo = [],
     lineBoxes = [],
     routeSegs = [];
+  /* walls and frontiers: a strong line on a paper halo, over the areas and under the journeys */
+  const frontInfo = [];
+  for (const fr of M.fronts) {
+    const k = bi(`line:${fr.i}`);
+    const pts = fr.line.map(proj);
+    const d = "M" + pts.map(fx).join(" L");
+    const g = h("g", { s: k }, terrG);
+    const stroke = { fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" };
+    h("path", { d, stroke: "var(--paper)", "stroke-width": 11, ...stroke }, g);
+    h("path", { d, stroke: `var(--era-${fr.col}-text)`, "stroke-width": 6, ...stroke }, g);
+    for (let j = 1; j < pts.length; j++) {
+      const [x1, y1] = pts[j - 1],
+        [x2, y2] = pts[j];
+      routeSegs.push([x1, y1, x2, y2]);
+      const n = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8));
+      for (let q = 0; q <= n; q++) {
+        const x = x1 + ((x2 - x1) * q) / n,
+          y = y1 + ((y2 - y1) * q) / n;
+        lineBoxes.push({ x: x - 6, y: y - 6, w: 12, h: 12, soft: true });
+      }
+    }
+    const at = (u) => pts[Math.round(u * (pts.length - 1))];
+    frontInfo.push({ fr, k, anchors: [0.5, 0.35, 0.65, 0.2, 0.8, 0, 1].map(at) });
+  }
   for (const r of M.routes) {
     const k = bi(`route:${r.i}`);
     const col = `var(--era-${r.col}-text)`;
@@ -1316,10 +1463,10 @@ function renderAt(root, P, ctx, f, last, narrow) {
   const spanX = columnMap ? F.x + F.w + 76 : GRID.right - spanW;
   if (columnMap && !P.title) {
     computed(
-      T(root, spanX, GRID.titleY, spanText, "ts-small", { cls: "strong", s: bi("map") }),
+      T(root, spanX, F.y + 26, spanText, "ts-small", { cls: "strong", s: bi("map") }),
       "dateRange.from",
     );
-    obstacles.push({ x: spanX, y: 50, w: spanW, h: 40 });
+    obstacles.push({ x: spanX, y: F.y - 2, w: spanW, h: 40 });
   } else if (GRID.left + titleW + 48 + spanW <= GRID.right) {
     computed(
       T(root, GRID.right, GRID.titleY, spanText, "ts-small", {
@@ -1345,6 +1492,8 @@ function renderAt(root, P, ctx, f, last, narrow) {
       `The title is too long to leave room for the years “${spanText}”. They are still in the caption.`,
     );
   const sideR = GRID.right - (F.x + F.w);
+  // the card column starts under the years when they head it
+  const colTop = columnMap && !P.title ? F.y + 44 : F.y;
   /* pins: every place a journey starts or ends at, or an event happens at */
   const pins = new Map();
   // places that share a spot at this scale (London and the River Thames) share one dot and one label
@@ -1604,43 +1753,69 @@ function renderAt(root, P, ctx, f, last, narrow) {
       ),
     );
   }
+  // a name in its colour and a date: an area's card, and a wall's
+  const nameDate = (z, name, date, tcol, namePath, onDate) => {
+    const maxW = z.maxW || MW0;
+    const nb = probe(name, { maxLines: 2, a: { cls: "strong" } }, z),
+      dw = measure(root, date, z.cls);
+    const nl = nb.lines.length,
+      nh = nl * nb.lh;
+    const nw = nb.w;
+    const one = nl === 1 && nw + 12 + dw <= maxW;
+    return {
+      w: (one ? nw + 12 + dw : Math.max(nw, dw)) + 34,
+      h: z.pad + nh + (one ? 0 : z.lh),
+      body: (g, pl) => {
+        textBlock(g, pl.x + 20, pl.y + z.base, name, {
+          cls: z.cls,
+          maxW,
+          maxLines: 2,
+          lh: z.lh,
+          a: { fill: tcol, cls: "strong" },
+          edit: namePath,
+        });
+        const dEl = T(
+          g,
+          one ? pl.x + 32 + nw : pl.x + 20,
+          one ? pl.y + z.base : pl.y + z.base + nh,
+          date,
+          z.cls,
+          { fill: "var(--ink-2)" },
+        );
+        onDate(dEl);
+      },
+    };
+  };
+  for (const fi of frontInfo) {
+    const fr = fi.fr;
+    const tcol = `var(--era-${fr.col}-text)`;
+    const mk = (z) =>
+      nameDate(z, fr.name, M.dl(fr.d), tcol, `frontiers.${fr.i}.label`, (el) =>
+        computed(el, `frontiers.${fr.i}.line`),
+      );
+    cards.push(
+      Object.assign(
+        {
+          what: `the line “${fr.name}”`,
+          k: fi.k,
+          bar: tcol,
+          anchors: fi.anchors,
+          tiny: mk(TINY),
+          make: mk,
+        },
+        mk(SZ),
+      ),
+    );
+  }
   for (const t of M.terrs) {
     if (!t.at) continue;
-    const date = M.dl(t.d);
     const tcol = `var(--era-${t.col}-text)`;
-    const mk = (z) => {
-      const maxW = z.maxW || MW0;
-      const nb = probe(t.name, { maxLines: 2, a: { cls: "strong" } }, z),
-        dw = measure(root, date, z.cls);
-      const nl = nb.lines.length,
-        nh = nl * nb.lh;
-      const nw = nb.w;
-      const one = nl === 1 && nw + 12 + dw <= maxW;
-      return {
-        w: (one ? nw + 12 + dw : Math.max(nw, dw)) + 34,
-        h: z.pad + nh + (one ? 0 : z.lh),
-        body: (g, pl) => {
-          textBlock(g, pl.x + 20, pl.y + z.base, t.name, {
-            cls: z.cls,
-            maxW,
-            maxLines: 2,
-            lh: z.lh,
-            a: { fill: tcol, cls: "strong" },
-            edit: `territories.${t.i}.label`,
-          });
-          const dEl = T(
-            g,
-            one ? pl.x + 32 + nw : pl.x + 20,
-            one ? pl.y + z.base : pl.y + z.base + nh,
-            date,
-            z.cls,
-            { fill: "var(--ink-2)" },
-          );
-          if (t.custom) editable(dEl, `territories.${t.i}.date`);
-          else computed(dEl, `territories.${t.i}.area`);
-        },
-      };
-    };
+    const mk = (z) =>
+      nameDate(z, t.name, M.dl(t.d), tcol, `territories.${t.i}.label`, (el) =>
+        t.custom
+          ? editable(el, `territories.${t.i}.date`)
+          : computed(el, `territories.${t.i}.area`),
+      );
     const near = column
       ? [proj(t.at)]
       : [
@@ -2058,7 +2233,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     named = false;
   if (column) {
     // stack the cards beside the map, each as close as it can be to the height of what it points at
-    const top = F.y,
+    const top = colTop,
       bot = F.y + F.h,
       gap = 14;
     // each card points from the rightmost anchor whose leader to the column passes no label or the north arrow
@@ -2148,8 +2323,8 @@ function renderAt(root, P, ctx, f, last, narrow) {
       named = true;
       for (const c of cards) if (c.named) c.tiny = c.named.tiny;
       const byK = cards.slice().sort((p, q) => p.k - q.k);
-      const kTop = MAPBOX.y,
-        avail = MAPBOX.h;
+      const kTop = lift ? colTop : MAPBOX.y,
+        avail = lift ? GRID.bottom - colTop : MAPBOX.h;
       const rowsOf = (z) =>
         byK.map((c) => {
           const v = z ? c.make(z) : c.tiny;
@@ -2197,7 +2372,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     }
   }
   if (column) {
-    const top = F.y,
+    const top = colTop,
       bot = F.y + F.h;
     const lead = (c, y, hh) => {
       const l = [c.ax, c.ay, colX, clamp(c.ay, y + 14, y + hh - 14)];
