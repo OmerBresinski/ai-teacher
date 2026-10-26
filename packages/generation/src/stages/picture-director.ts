@@ -1131,6 +1131,52 @@ export const STOCK_ONLY_BANK: PictureBank = {
 /** A map is a real source, never a made picture: it is searched as a named thing first. */
 export const isMapRequest = (shows: string) => /\bmaps?\b/i.test(shows);
 
+/** Opening words of a drawing intent and dating words, never a place's name. */
+const NOT_A_PLACE = new Set([
+  "why",
+  "how",
+  "what",
+  "where",
+  "when",
+  "who",
+  "which",
+  "show",
+  "draw",
+  "highlight",
+  "label",
+  "mark",
+  "use",
+  "do",
+  "make",
+  "ad",
+  "bc",
+  "a",
+  "the",
+]);
+
+/**
+ * The Commons searches of a map ask (TEACH-251 part ah, romans verify7 s4): "<name> map" for the
+ * places its words name, longest names first, then the lesson title's. The ask had no searches of
+ * its own, so map-first searched "show north up" and "why romans built" among photographs.
+ */
+export function mapQueriesOf(shows: string, title = ""): string[] {
+  const names = (text: string) =>
+    [...text.matchAll(/\b[A-Z][\w’'-]*(?:\s+(?:of\s+)?[A-Z][\w’'-]*)*/g)]
+      .map((m) => m[0].replace(/’/g, "'").trim())
+      .map((n) =>
+        n
+          .split(/\s+/)
+          .filter((w, k) => k > 0 || !NOT_A_PLACE.has(w.toLowerCase()))
+          .join(" "),
+      )
+      .filter((n) => n && !NOT_A_PLACE.has(n.toLowerCase()) && !/^[A-Z]+$/.test(n));
+  const fromShows = names(shows).sort((a, b) => b.split(" ").length - a.split(" ").length);
+  const all = [...fromShows, ...names(title)].filter(
+    (n, k, list) => list.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === k,
+  );
+  return all.slice(0, 3).map((n) => `${n} map`);
+}
+
 /** An ask's `shows`, or "" when the slide sent none (asks are read off model JSON). */
 const showsOf = (ask: { shows?: unknown }): string =>
   typeof ask.shows === "string" ? ask.shows : "";
@@ -1217,7 +1263,11 @@ export async function placeWriterPicture(args: {
   return nonFatal(
     async (): Promise<DirectedPhoto | undefined> => {
       if (isMapRequest(ask.shows)) {
-        const map = await stock({ ...b, specific: true });
+        const map = await stock({
+          ...b,
+          specific: true,
+          queries: mapQueriesOf(ask.shows, lesson.title),
+        });
         if (map) {
           args.onOutcome?.({ director: "map-first", via: "fetched", route: "real" });
           deps.logger.info(

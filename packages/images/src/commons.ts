@@ -237,6 +237,35 @@ function atWidth(thumb: string, width: number): string {
   return thumb.replace(/\/\d+px-([^/]+)$/, `/${width}px-$1`);
 }
 
+/** Where Commons serves its scaled renditions (the API's own `thumburl` host). */
+const THUMB_ORIGIN = "https://thumb.wikimedia.org";
+
+/**
+ * A file's rendition at `width` (TEACH-251 part ah, romans verify7). A file no wider than the
+ * search's `iiurlwidth` comes back with `thumburl` set to the original itself
+ * (`utm_content=thumbnail_unscaled`, every 640 px geograph.org.uk photo), so `atWidth` had no
+ * `/NNNpx-` to rewrite and the judge's "thumbnail" was the whole original from upload.wikimedia.org:
+ * 91 of 134 such downloads were refused 429 and others were over MAX_THUMB_BYTES, so the Housesteads
+ * fort photos never reached the judge. The scaled path is built from the original's own path when
+ * the file is wider than `width`; a smaller file is its own rendition.
+ */
+export function renditionAt(
+  info: { url: string; thumburl?: string; width: number },
+  width: number,
+): string {
+  const large = info.thumburl ?? info.url;
+  if (/\/thumb\/[^?#]*\/\d+px-[^/]+$/.test(large)) return atWidth(large, width);
+  if (info.width <= width) return large;
+  const m = /^https:\/\/[^/]+\/wikipedia\/commons\/([0-9a-f])\/([0-9a-f]{2})\/([^/?#]+)/.exec(
+    info.url,
+  );
+  if (!m) return large;
+  const [, a, ab, name] = m;
+  // A vector or TIFF original is rendered as PNG or JPEG, named with the extra extension.
+  const ext = /\.svg$/i.test(name ?? "") ? ".png" : /\.tiff?$/i.test(name ?? "") ? ".jpg" : "";
+  return `${THUMB_ORIGIN}/wikipedia/commons/thumb/${a}/${ab}/${name}/${width}px-${name}${ext}`;
+}
+
 /** A Commons photo in the shape the pipeline already judges and stores. */
 export type CommonsPhoto = PhotoResult & {
   provider: "commons";
@@ -288,8 +317,8 @@ function toPhoto(
     pageUrl: credit.sourceUrl,
     src: {
       large,
-      medium: info.thumburl ? atWidth(info.thumburl, MEDIUM_WIDTH) : large,
-      tiny: info.thumburl ? atWidth(info.thumburl, TINY_WIDTH) : large,
+      medium: renditionAt(info, MEDIUM_WIDTH),
+      tiny: renditionAt(info, TINY_WIDTH),
     },
     provider: "commons",
     credit,
