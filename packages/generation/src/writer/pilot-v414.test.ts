@@ -30,7 +30,7 @@ const YOUNG =
 
 describe("pilot pack v4.14", () => {
   test("v4.14 was production until v4.15 (TEACH-251 part aj)", () =>
-    expect(PILOT_PACK_ID).toBe("v4.15"));
+    expect(PILOT_PACK_ID).toBe("v4.16"));
 
   for (const stage of STAGES) {
     const ks = KS[stage];
