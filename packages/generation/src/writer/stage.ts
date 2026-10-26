@@ -5,7 +5,14 @@ import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { type DebugKind, recordDebug } from "../debug";
-import { BASE_KIND, catalogue, FALLBACK_KIND, libSchema, libSystem } from "../library/catalogue";
+import {
+  BASE_KIND,
+  catalogue,
+  FALLBACK_KIND,
+  libSchema,
+  libSystem,
+  PICTURE_FALLBACK,
+} from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
 import {
@@ -1032,6 +1039,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             alt: typeof want.alt === "string" ? want.alt : undefined,
           });
           if (drew === undefined || drew === true) return undefined;
+          // A map the library could not mark goes to a picture (a Commons map), never the drawer.
+          if (PICTURE_FALLBACK.has(String(want.model ?? ""))) {
+            drawnDiagrams.set(`${i}:${a.key}`, { status: "failed" });
+            log({
+              ev: "diagram-done",
+              slide: i + 1,
+              key: a.key,
+              via: "none",
+              ok: false,
+              to: "picture",
+            });
+            relay(i);
+            shown(i);
+            return undefined;
+          }
           return { ...a, kind: drew, labels: [], spec: undefined };
         },
         // A throw anywhere in the library path is the drawer's job, never a rejected batch.
