@@ -16,7 +16,11 @@ import {
 } from "@tj/slides/templates";
 import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
 // TEACH-239 part b (C7): the figure slide's writer rules (a leaf: no drawing code).
-import { FIGURE_WIDE_ASPECT, figureSlideAllowed } from "@tj/slides/templates/figure-rules";
+import {
+  FIGURE_CAPTION_CAP,
+  FIGURE_WIDE_ASPECT,
+  figureSlideAllowed,
+} from "@tj/slides/templates/figure-rules";
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
@@ -925,7 +929,16 @@ export function toInput(
       const icon = str(s.icon).trim();
       const accent = s.accentWord ? { accentWord: str(s.accentWord) } : {};
       // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
-      if (!figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
+      // TEACH-251 part ae (romans verify6 s4): the figure slide's caption is one line, and the
+      // template cuts a longer one with "…" ("Bowness-on-Solway: 73…"). A caption over the age's
+      // one-line cap is never cut: the slide takes the big layout, whose lead wraps under the figure.
+      const capAge = /ks1/i.test(String(ctx.stage))
+        ? "early"
+        : /ks2/i.test(String(ctx.stage))
+          ? "primary"
+          : "secondary";
+      const longCaption = caption.length > FIGURE_CAPTION_CAP[capAge];
+      if (longCaption || !figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
         return f
           ? {
               template: "photo" in f ? "big-picture" : "big-diagram",
