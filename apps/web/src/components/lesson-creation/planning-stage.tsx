@@ -21,8 +21,8 @@ export function readingOrder() {
 }
 
 /**
- * Leave the planning stage for the column layout: Plan shrinks from centre stage to its side slot
- * (a view transition), then the objectives step shows. Without view transitions or with reduced
+ * Move between the planning stage and the column layout: Plan grows to centre stage or shrinks to
+ * its side slot (a view transition) while the old step fades out and the new one fades in. Without view transitions or with reduced
  * motion the step simply changes.
  */
 export function leaveStage(update: () => void) {
@@ -32,6 +32,13 @@ export function leaveStage(update: () => void) {
   // Name the character in both layouts only for this transition, so the two snapshots pair up.
   const root = document.documentElement;
   root.dataset.planExit = "";
+  // The step being left fades where it stands, in its own group: shared with the next step, the
+  // old heading would slide across the new one while the two cross-fade (jank audit F4).
+  const outgoing = document.querySelector<HTMLElement>(".creation-step");
+  if (outgoing) outgoing.dataset.stepOut = "";
   const transition = document.startViewTransition(() => flushSync(update));
-  void transition.finished.finally(() => delete root.dataset.planExit);
+  void transition.finished.finally(() => {
+    delete root.dataset.planExit;
+    if (outgoing) delete outgoing.dataset.stepOut;
+  });
 }

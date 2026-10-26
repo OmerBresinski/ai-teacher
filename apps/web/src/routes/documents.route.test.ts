@@ -33,6 +33,21 @@ async function loaderThrows(
   }
 }
 
+describe("the lesson editor's pending hold", () => {
+  it("keeps the page being left only for an in-app navigation; a cold load gets the router default", async () => {
+    const { appLoad } = await import("@/lib/app-load");
+    const before = appLoad.resolved;
+    try {
+      appLoad.resolved = false;
+      expect(lessonEditorRoute.options.pendingMs).toBeUndefined();
+      appLoad.resolved = true;
+      expect(lessonEditorRoute.options.pendingMs).toBe(500);
+    } finally {
+      appLoad.resolved = before;
+    }
+  });
+});
+
 describe("document routes", () => {
   it("a held id loads its document (the control for the not-found cases)", async () => {
     const load = lessonEditorRoute.options.loader as (opts: unknown) => Promise<{ title: string }>;

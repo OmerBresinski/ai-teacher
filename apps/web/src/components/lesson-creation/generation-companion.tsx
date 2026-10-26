@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { loadGsap } from "@/lib/gsap";
+import type { loadGsap } from "@/lib/gsap";
 import { CHARACTER_ENTRY_SECONDS, type CharacterOrigin } from "./character-origin";
+import { creationMotionNow, loadCreationMotion } from "./creation-motion";
 import { GenerationStory } from "./generation-story";
 
 /** Long enough for the worksheet-to-slides pass to read before the stage clears. */
@@ -33,18 +34,17 @@ export function GenerationCompanion({
   hold?: boolean;
   onExited: () => void;
 }) {
-  const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
-  const [rigModule, setRigModule] = useState<typeof import("./motion/handover-rig.js") | null>(
-    null,
-  );
+  // Preloaded on the teacher's Continue or Skip planning (`preloadCreationMotion`), so the motion is
+  // usually here on the first frame; when it is not, the scrim fades in rather than wiping the editor.
+  const [motion, setMotion] = useState(creationMotionNow);
+  const late = useRef(motion === null);
   useEffect(() => {
+    if (motion) return;
     let cancelled = false;
     // Motion is lazy: the editor never waits for the characters' chunk.
-    void Promise.all([loadGsap(), import("./motion/handover-rig.js")])
-      .then(([runtime, module]) => {
-        if (cancelled) return;
-        setRigModule(module);
-        setGsap(runtime);
+    void loadCreationMotion()
+      .then((loaded) => {
+        if (!cancelled) setMotion(loaded);
       })
       .catch(() => {
         /* The editor remains usable without decorative motion. */
@@ -52,7 +52,9 @@ export function GenerationCompanion({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [motion]);
+  const gsap = motion?.gsap ?? null;
+  const rigModule = motion?.rig ?? null;
   const stage = useRef<HTMLDivElement>(null);
   const scrim = useRef<HTMLDivElement>(null);
   const first = useRef(true);
@@ -111,7 +113,15 @@ export function GenerationCompanion({
     const box = destination.getBoundingClientRect();
     if (first.current && !reduced.matches && !skipIntro) {
       first.current = false;
-      gsap.set(scrim.current, { autoAlpha: 1 });
+      // On the editor's first frame the scrim continues the intake's page; over an editor already
+      // on screen (the motion arrived late) it fades in, never in one frame.
+      if (late.current)
+        gsap.fromTo(
+          scrim.current,
+          { autoAlpha: 0 },
+          { autoAlpha: 1, duration: 0.3, ease: "power1.out" },
+        );
+      else gsap.set(scrim.current, { autoAlpha: 1 });
       const width = Math.min(620, window.innerWidth - 32);
       const centre = {
         x: (window.innerWidth - box.width) / 2,
@@ -176,6 +186,10 @@ export function GenerationCompanion({
       };
     } else {
       const immediate = first.current || reduced.matches;
+      // Opening on a lesson already being written (a reload): the character fades into its slot
+      // once, rather than appearing in one frame.
+      if (first.current && skipIntro && !reduced.matches)
+        gsap.fromTo(actor, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35, ease: "power1.out" });
       first.current = false;
       // A flight in the air is never cut: it lands, then eases onto this slot (its onComplete).
       const flying = !immediate && flight.current?.isActive();

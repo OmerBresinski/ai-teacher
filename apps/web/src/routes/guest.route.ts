@@ -1,4 +1,5 @@
 import { createRoute, redirect } from "@tanstack/react-router";
+import { GuestPendingPage } from "@/components/shell-pending";
 import { sanitiseRedirectPath } from "@/lib/auth-redirect";
 import { type Me, meQueryOptions } from "@/lib/query";
 import { assertCurrentSession } from "@/lib/session-boundary";
@@ -29,6 +30,8 @@ export function guestAccess(me: Me | null, pathname: string): "allow" | "sign-in
 export const guestLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "guest",
+  // A cold load of a lesson or the intake waits here for `/me`: it shows that page's own shell.
+  pendingComponent: GuestPendingPage,
   beforeLoad: async ({ context, location }): Promise<{ me: Me | null }> => {
     const me = await context.queryClient.fetchQuery({ ...meQueryOptions, staleTime: 0 });
     assertCurrentSession(context.queryClient);

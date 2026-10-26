@@ -41,7 +41,7 @@ import { generationHandoff, lessonWorksheetsQuery } from "@/lib/lesson-worksheet
 import { sessionBoundary } from "@/lib/session-boundary";
 import "@/components/lesson-creation/creation.css";
 import { EmptyLesson } from "@/components/empty-lesson";
-import { RoutePendingPage } from "@/components/route-pending-page";
+import { EditorShellPending } from "@/components/shell-pending";
 import {
   forgetPreviewLesson,
   previewLesson,
@@ -61,6 +61,7 @@ import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { rememberTheme } from "@/lib/brief-memory";
 import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
+import { GeneratingLesson, GenerationCompanion } from "@/lib/lesson-editor-preload";
 import { resumeLesson } from "@/lib/lesson-intake";
 import { isFullDocument, kindOf, libraryCache, libraryQueries } from "@/lib/library";
 import { openPrintTab } from "@/lib/print-tab";
@@ -75,19 +76,14 @@ import {
 } from "@/lib/unsaved-change";
 import { lessonEditorRoute } from "./documents.route";
 
-// Both are off the editor's first paint (and its chunk budget): the worksheets dialog pulls the
-// worksheet recipes, the companion the creation motion. Each mounts only when it is needed.
+// Off the editor's first paint (and its chunk budget): the worksheets dialog pulls the worksheet
+// recipes. It mounts only when it is needed. The companion and the generating view are in
+// `lesson-editor-preload.ts`, which the intake warms before it hands over.
 const LessonWorksheets = lazy(() =>
   import("@/components/generating-lesson/LessonWorksheets").then((m) => ({
     default: m.LessonWorksheets,
   })),
 );
-const GenerationCompanion = lazy(() =>
-  import("@/components/lesson-creation/generation-companion").then((m) => ({
-    default: m.GenerationCompanion,
-  })),
-);
-
 // A signed-out visitor's read-only body and sign-in sheet (TEACH-245): off a teacher's editor
 // chunk, loaded only for an anonymous session (the sheet only once it is opened).
 const LessonViewer = lazy(() =>
@@ -100,14 +96,6 @@ const SignInSheet = lazy(() =>
 // The slide stylesheet (theme fonts, rich-text rules, reveal motion) travels with every route that
 // paints a slide (ADR 0022 §7): a direct load of `/l/…` must not depend on the library chunk.
 import "@tj/editor/styles/editor.css";
-
-// The generating view renders the editor's shell geometry with the slide renderer, a chunk most
-// editor loads never need: only a lesson still under its `lesson.plan` lock reaches it (bundle-conditional).
-const GeneratingLesson = lazy(() =>
-  import("@/components/generating-lesson").then(({ GeneratingLesson }) => ({
-    default: GeneratingLesson,
-  })),
-);
 
 /**
  * `/l/$lessonId` — the lesson editor (TEACH-103). The loader has already resolved the document (or
@@ -404,14 +392,23 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     },
     [lessonId],
   );
-  const editing = !!data && isFullDocument(data) && !!meta && !meta.generatingJobId;
-  // A layout effect, so the editor's first paint is already in the picked theme.
+  // A theme picked before the editor opened (the generating view's dialog) goes on once, when the
+  // editor mounts (the filling editor included), and is then forgotten: held back to the end it
+  // used to overwrite a theme the teacher picked in the editor since. It goes through the
+  // editor's own re-theme, the same path as a pick in its Theme dialog, so it is one undo step,
+  // saved like any edit, and the job's later slides are drawn in it. A layout effect, so the
+  // editor's first paint is already in the picked theme.
+  const [editorHandle, setEditorHandle] = useState<LessonEditorHandle | null>(null);
+  const attachEditor = useCallback((handle: LessonEditorHandle | null) => {
+    editorRef.current = handle;
+    setEditorHandle(handle);
+  }, []);
   useLayoutEffect(() => {
-    if (!editing || (stoppedJobId && !keepEditing) || !pickedTheme || !editorRef.current) return;
-    editorRef.current.retheme(pickedTheme);
+    if (!editorHandle || (stoppedJobId && !keepEditing) || !pickedTheme) return;
+    editorHandle.retheme(pickedTheme);
     writePickedTheme(lessonId, null);
     setPickedTheme(null);
-  }, [editing, stoppedJobId, keepEditing, pickedTheme, lessonId]);
+  }, [editorHandle, stoppedJobId, keepEditing, pickedTheme, lessonId]);
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   // Try again (UX-A): a new job writes the rest. The row it starts from is read first, so the next
@@ -495,7 +492,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     if (active && active !== document.body) return;
     name.focus({ preventScroll: true });
   }, [handoffJob, anonymous, slideCount]);
-  if (!data || !isFullDocument(data) || !meta) return <RoutePendingPage />;
+  if (!data || !isFullDocument(data) || !meta) return <EditorShellPending />;
   if (kindOf(data) !== "lesson" || !("slides" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "worksheet" }} />;
   }
@@ -635,7 +632,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     ) : undefined;
   const shownLesson = displayInTheme(data, pickedTheme);
   const content = !editorOpen ? (
-    <Suspense fallback={<RoutePendingPage />}>
+    <Suspense fallback={<EditorShellPending />}>
       <GeneratingThemeDialog
         open={themeOpen}
         lesson={shownLesson}
@@ -660,7 +657,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
       />
     </Suspense>
   ) : anonymous ? (
-    <Suspense fallback={<RoutePendingPage />}>
+    <Suspense fallback={<EditorShellPending />}>
       <LessonViewer
         lesson={data}
         companion={companionSlot}
@@ -693,7 +690,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         worksheet={worksheet}
         onOpenWorksheet={onOpenWorksheet}
         onNewWorksheet={onNewWorksheet}
-        editorRef={editorRef}
+        editorRef={attachEditor}
         initialSlideId={viewedSlideId ?? undefined}
         onFactsChanged={proposals.onFactsChanged}
         onRegenerate={proposals.onRegenerate}

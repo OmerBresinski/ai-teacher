@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 
 const ScaleContext = createContext(1);
 /** Current slide scale (screen px per slide pt). */
@@ -34,6 +35,7 @@ export function SlideScaler({ zoom = "fit", gutter = 0, className, children, onS
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || zoom !== "fit") return;
+    let first = true;
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
       const { width, height } = entry.contentRect;
@@ -41,7 +43,11 @@ export function SlideScaler({ zoom = "fit", gutter = 0, className, children, onS
         0.05,
         Math.min((width - gutter * 2) / SLIDE_W, (height - gutter * 2) / SLIDE_H),
       );
-      setFit(s);
+      // The first fit before the browser paints, so a slide never shows a frame at 100% first.
+      if (first) {
+        first = false;
+        flushSync(() => setFit(s));
+      } else setFit(s);
     });
     ro.observe(el);
     return () => ro.disconnect();

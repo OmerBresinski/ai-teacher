@@ -1,6 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent, notFound } from "@tanstack/react-router";
 import { z } from "zod";
+import { EditorShellPending } from "@/components/shell-pending";
+import { appLoad } from "@/lib/app-load";
 import { libraryCache, libraryQueries } from "@/lib/library";
 import { pageTitle } from "@/lib/page-title";
 import { authLayoutRoute } from "./auth.route";
@@ -83,9 +85,28 @@ export const lessonEditorRoute = createRoute({
   getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId",
   validateSearch: (search) => lessonEditorSearchSchema.parse(search),
-  loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
+  loader: async ({ context, params }) => {
+    const document = await loadDocument(context.queryClient, params.lessonId);
+    // A lesson still being written (a reload, a pasted link) needs the companion and its motion:
+    // fetched beside the editor's chunk so the character is there with the editor's first frame.
+    const meta = context.queryClient.getQueryData<{ generatingJobId?: string | null }>(
+      libraryQueries.documentMeta(params.lessonId).queryKey,
+    );
+    if (meta?.generatingJobId)
+      void import("@/lib/lesson-editor-preload").then((m) => m.preloadLessonEditor());
+    return document;
+  },
   head: titleFrom,
   component: lazyRouteComponent(() => import("./lesson-editor.page"), "LessonEditorPage"),
+  // The editor's own frame, never the generic card, while the lesson or the chunk loads. Arriving
+  // from another page (the intake hands over with the lesson and the chunk already loaded), the
+  // page being left stays up for the session check's round trip rather than flashing the frame;
+  // a cold load has no page to keep, so its frame shows after the router's default delay. Read
+  // per navigation: the router keeps this options object and reads `pendingMs` from it each time.
+  pendingComponent: EditorShellPending,
+  get pendingMs() {
+    return appLoad.resolved ? 500 : undefined;
+  },
   // A signed-out lesson whose move into the account failed 404s here (TEACH-245, ruling 127).
   notFoundComponent: lazyRouteComponent(
     () => import("@/components/sign-in/claim-declined"),
