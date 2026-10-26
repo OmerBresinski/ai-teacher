@@ -19,19 +19,19 @@
   },
   "devDependencies": {
     "@tj/config": "workspace:*",
-    "@types/bun": "1.4.2",
-    "mastra": "1.31.3",
+    "@types/bun": "1.4.4",
+    "mastra": "1.35.0",
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@mastra/core": "1.71.0",
+    "@mastra/core": "1.79.0",
     "@tj/ai": "workspace:*",
     "@tj/domain": "workspace:*",
     "@tj/images": "workspace:*",
     "@tj/slides": "workspace:*",
-    "ai": "7.0.114",
+    "ai": "7.0.150",
     "happy-dom": "21.0.4",
-    "pino": "10.3.1",
-    "zod": "4.6.6"
+    "pino": "10.4.0",
+    "zod": "4.6.7"
   }
 }
