@@ -27,6 +27,7 @@
  * library model is that step's do line.
  */
 import type { ImageElement } from "@tj/domain/documents";
+import { svgFontFamily } from "../diagrams";
 import { uid } from "../factories";
 import { v2Colors } from "../theme-v2";
 import { type Ctx, type Figure, G, kit, type Stage, type TemplateInput } from "./index";
@@ -126,14 +127,10 @@ export function restyleModelSvg(src: string, t: Ctx["t"]): string {
   if (!/<svg\b/.test(svg)) return src;
   const v = v2Colors(t);
   const ink = t.colors.ink;
-  // A drawing in an <img> cannot see the page's font variables: the face's named families only.
-  const font =
-    t.fonts.body
-      .split(",")
-      .map((f) => f.trim())
-      .filter((f) => f && !f.startsWith("var("))
-      .join(",")
-      .replace(/[<>{}]/g, "") || "sans-serif";
+  // A drawing in an <img> cannot see the page's font variables: each `var(--font-*)` becomes the
+  // family it names (the face the drawing was measured in, which the editor embeds). Stripping it
+  // left the stack's fallback, Verdana, wider than the measure: "Roman BritainAD 122" (verify8 S4).
+  const font = svgFontFamily(t.fonts.body).replace(/[<>{}]/g, "") || "sans-serif";
   // The kit's own hues stay (water blue, life green) until the theme's colour slots (TEACH-215 c)
   // land; red is our accent, and the off-palette purple, parts and plate become ink and sand.
   const css =

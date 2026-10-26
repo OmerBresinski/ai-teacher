@@ -13,7 +13,8 @@ import { type Audience, audienceBlock, example, HOUSE_RULES } from "./shared";
  * that photo — and `count`, or a `query` (one better standalone search), or neither. A
  * deterministic gate places only when the subject is clear and at least one `mustShow` item is
  * visible (TEACH-241; TEACH-220 required every item); the text is then written
- * to what the photo shows. Bump `version` whenever the wording changes.
+ * to what the photo shows. v19 (TEACH-251 part al): writing meant to be read (a map's labels) in
+ * another language than the lesson's makes `fits` false. Bump `version` whenever the wording changes.
  */
 
 export type PickOrRequeryInput = {
@@ -172,8 +173,8 @@ const EXAMPLE_REQUERY: PickOrRequery = {
 };
 
 /**
- * The rules for a painting the generator made, in the user turn so the pinned system text (v17) and
- * every real photograph's request stay byte for byte (TEACH-251 part x; rulings 163, 209, 210,
+ * The rules for a painting the generator made, in the user turn so the system text and every real
+ * photograph's request stayed byte for byte when they were added in v18 (TEACH-251 part x; rulings 163, 209, 210,
  * 296). The photograph rules refused usable paintings for a person "as prominent as the scene" or
  * flames "large rather than small", and passed four of seven paintings with a later landmark in
  * the background. A painting is judged only on what makes it wrong for pupils.
@@ -188,7 +189,7 @@ export const MADE_PICTURE_RULES = [
 ].join("\n");
 
 export const pickOrRequeryPrompt = {
-  version: "pick-or-requery-photo.v18",
+  version: "pick-or-requery-photo.v19",
   system: [
     "You choose the photograph for one slide of a school lesson from stock-photo search results. You see each candidate photograph (numbered to match its id) and its caption.",
     "",
@@ -200,7 +201,7 @@ export const pickOrRequeryPrompt = {
     "- `onSubject`: true only when the main thing in the photograph you pick is an example of the wanted subject itself — the same kind of animal, plant, object or place — seen whole, near the centre, as the lesson uses it. A different animal with similar parts is not the subject (a llama's teeth are not rodent incisors; a rabbit is not a rodent). A photograph that only shares the theme is not the subject either: a scene, a related object, the same object in another setting (syringes in a clinic for a lesson on gases), a statue or reconstruction for an artefact. It shows the subject as this slide teaches it: a slide about the past wants what survives from that time, so the same place as it looks today, with nothing of that time in view, is not the subject (a modern street on the site of a medieval market is not the market). When in doubt, false. A pick with `onSubject` false is never used.",
     "- `kindMatches`: when the wanted subject or a required item names a sex, an age or a kind of its animal, plant or thing (a hen or a cockerel, a ewe or a ram, a calf or a cow), true only when the subject you pick is that one, judged on the features that tell them apart, and say which feature in `why`; `null` when nothing of the kind is named. A pick with `kindMatches` false is never used.",
     "- `clear`: true unless something you can see stops a class of this year group making out the subject on a projector. It is false only for one of these: something stands in front of the subject or a required item (a fence, cage, bars, glass, grass, hands or text); the frame's edge cuts off a required subject's head, or so much of a required item that pupils cannot see what the slide needs of it (a tail, a foot, the edge of a body, or steam, water or sky running on past the frame is fine); the subject takes up less than about a quarter of the picture; or, for pupils up to Year 6, other animals, people or objects are as prominent as the subject. A plain or natural setting behind the subject is fine, and a check you are unsure of counts as passed. A pick with `clear` false is never used: when the only candidate that fits is not clear, give a `query` that would find a clearer one instead.",
-    "- `fits`: true when the photograph you pick is what the slide wants: the required items it must show, as worded (its kind, age and number): every one when the list says so, otherwise at least one, so a missing extra item is not a reason to refuse; and only those relations the wanted description states in words (where things are relative to each other, what they are doing); a relation it does not state is not required. One relation always applies, whether or not the description states it: whenever a young animal and an adult of its kind are both in the picture, pupils must read them as this one grows into that one, so both are the same breed or kind with the same colouring and markings; a young one and an adult of different colourings do not fit. Refuse `fits` only for a clear miss you can name, not for a doubt. A pose or viewing angle in the wording is a framing hint, not a requirement. When a period and place are given, nothing visible may belong to another time or place. A pick with `fits` false is never used.",
+    "- `fits`: true when the photograph you pick is what the slide wants: the required items it must show, as worded (its kind, age and number): every one when the list says so, otherwise at least one, so a missing extra item is not a reason to refuse; and only those relations the wanted description states in words (where things are relative to each other, what they are doing); a relation it does not state is not required. One relation always applies, whether or not the description states it: whenever a young animal and an adult of its kind are both in the picture, pupils must read them as this one grows into that one, so both are the same breed or kind with the same colouring and markings; a young one and an adult of different colourings do not fit. Refuse `fits` only for a clear miss you can name, not for a doubt. A pose or viewing angle in the wording is a framing hint, not a requirement. When a period and place are given, nothing visible may belong to another time or place. Writing meant to be read in the picture (labels, a key, a title or captions on a map, diagram or chart) must be in the lesson's language, given on its Language line: when such writing is in another language, `fits` is false and `why` names that language, unless the lesson teaches that language. Place names written as the lesson's language writes them are fine, and so is writing that is part of the subject itself, such as an inscription on an artefact or a sign in a real scene. A pick with `fits` false is never used.",
     "- `why`: one sentence on what decided your answer, naming what you saw.",
     "- `visible`: for the photo you pick, which of the required items you can actually see in it — only those, each copied whole and exactly as listed, even when one item names several things. Look at the picture for these. Who or what it is, where and when it was taken cannot be seen: read them from the candidate's caption, which is its source's own record (title, description, date), and decide whether the picture and its record together are what the slide wants. `count`: whether the photo shows one of the subject or several. `boxes`: for each item in `visible`, where it sits in that photo, as fractions of its width and height from its left and top edges (0 to 1).",
     "- Pick nothing if no candidate is the subject showing at least one required item; then suggest a `query` that would — one that names the subject itself exactly: two to four plain words, British English, a standalone stock-photo query that carries the lesson's context and is none of the searches already tried.",

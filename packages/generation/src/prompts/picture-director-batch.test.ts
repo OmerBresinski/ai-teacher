@@ -9,7 +9,7 @@ import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "./picture-director-batch";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /**
- * The pins: the director (v12), its batched prompt (v2) and the photo judge (v17) as the writer planner
+ * The pins: the director (v12), its batched prompt (v2) and the photo judge (v19) as the writer planner
  * ships them. A wording change bumps the version and this hash in the same commit.
  */
 describe("picture prompt pins", () => {
@@ -25,9 +25,10 @@ describe("picture prompt pins", () => {
     expect(sha(system)).toBe(DIRECTOR_SYSTEM_SHA);
   });
 
-  // v18 = v17's pinned system text plus the painted-picture rules in the user turn (TEACH-251 part x).
-  test("the photo judge is v18 and its system prompt is still v17's pinned text", () => {
-    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v18");
+  // v18 added the painted-picture rules in the user turn (TEACH-251 part x); v19 adds the
+  // lesson-language rule for writing in the picture to `fits` (TEACH-251 part al).
+  test("the photo judge is v19 and its system prompt is pinned", () => {
+    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v19");
     expect(sha(pickOrRequeryPrompt.system)).toBe(JUDGE_SYSTEM_SHA);
   });
 });
@@ -53,7 +54,7 @@ const DIRECTOR_EDITS: [string, string][] = [
 ];
 
 const DIRECTOR_SYSTEM_SHA = "e6006c679ac6f6f881bdc4bf5fe7280c626f46d502509a51e1e6192c0e1f70c3";
-const JUDGE_SYSTEM_SHA = "b56d123687d97c8572a236402effe13d0e7b446ddcf25b9f2b4b30e2bc0cd395";
+const JUDGE_SYSTEM_SHA = "7dc9bfe4dc6a4e0e3b8ecae821f7c7b7897529bc2eca990a792337a6006ffca2";
 
 /**
  * Independent of the modules above: the lab's own files at base4 (lab/ab 92f1b36d), checked
@@ -72,7 +73,7 @@ describe("base4 lab pins (not circular)", () => {
       expect(sha(read(file))).toBe(manifest.labPins[pin] as string);
   });
 
-  test("the director v12 and batch v2 are the lab's texts plus only the listed edits; judge v17 equal", () => {
+  test("the director v12 and batch v2 are the lab's texts plus only the listed edits; judge v17 plus v19's sentences", () => {
     const edited = (t: string) => {
       for (const [from, to] of DIRECTOR_EDITS) {
         expect(t.split(from).length).toBe(2);
@@ -82,7 +83,12 @@ describe("base4 lab pins (not circular)", () => {
     };
     const { system } = pictureDirectorPrompt({ aspect: 1, mustShow: [] } as never);
     expect(system).toBe(edited(read("picture-director.v11.system.txt")));
-    expect(pickOrRequeryPrompt.system).toBe(read("pick-or-requery-photo.v17.system.txt"));
+    // v19 (TEACH-251 part al) inserts the lesson-language rule into `fits` and changes nothing else.
+    const v19 = pickOrRequeryPrompt.system;
+    const from = v19.indexOf(" Writing meant to be read in the picture");
+    const to = v19.indexOf(" A pick with `fits` false is never used.", from);
+    expect(from).toBeGreaterThan(0);
+    expect(v19.slice(0, from) + v19.slice(to)).toBe(read("pick-or-requery-photo.v17.system.txt"));
     expect(PICTURE_DIRECTOR_BATCH_SYSTEM).toBe(edited(read("director-batch.base4.txt")));
   });
 
