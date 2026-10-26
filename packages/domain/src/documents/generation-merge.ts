@@ -109,6 +109,12 @@ export function sameSubstance(a: unknown, b: unknown): boolean {
   return sameJson(substance(a), substance(b));
 }
 
+/**
+ * The generator's open picture frame (`@tj/slides` PLACEHOLDER_IMAGE, an inline grey SVG; this
+ * package imports nothing internal). A real picture is a stored file, never an inline SVG.
+ */
+const PLACEHOLDER_SRC = /^data:image\/svg\+xml/;
+
 /** Whether the teacher changed this slide while the job ran (`Slide.teacherEdited`). */
 export const isTeacherEdited = (slide: Slide): boolean => slide.teacherEdited === true;
 
@@ -174,8 +180,29 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
   );
   const addedSlot = mine.elements.some((e) => isSlot(e) && !b.has(e.id));
   const dropped = new Set(gone.filter((id) => !replacement.has(id)));
+  // TEACH-247 part av: an empty picture frame the job held open and then took out (its picture
+  // never came) goes from a slide the teacher edited elsewhere: still the job's placeholder
+  // (`src` as the job laid it) where the job put it, under its name. A frame the teacher moved,
+  // resized, rotated, renamed or relabelled is theirs and stays.
+  const INTENT = ["src", "x", "y", "w", "h", "rotation", "name", "alt"] as const;
+  const heldFrame = (el: SlideElement) => {
+    const src = (b.get(el.id) as { type?: string; src?: unknown } | undefined)?.src;
+    return el.type === "image" && typeof src === "string" && PLACEHOLDER_SRC.test(src);
+  };
+  const emptyFrame = (el: SlideElement) => {
+    const was = b.get(el.id) as Record<string, unknown> | undefined;
+    const now = el as unknown as Record<string, unknown>;
+    return (
+      now.type === "image" &&
+      was?.type === "image" &&
+      now.figure === undefined &&
+      typeof now.src === "string" &&
+      PLACEHOLDER_SRC.test(now.src) &&
+      INTENT.every((k) => sameJson(now[k], was[k]))
+    );
+  };
   const elements = mine.elements
-    .filter((el) => !(dropped.has(el.id) && untouched(el)))
+    .filter((el) => !(dropped.has(el.id) && (heldFrame(el) ? emptyFrame(el) : untouched(el))))
     .map((el) => {
       if (!isSlot(el) || !untouched(el)) return el;
       const swap = replacement.get(el.id);
