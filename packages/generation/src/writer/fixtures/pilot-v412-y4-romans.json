@@ -1,0 +1,336 @@
+{
+  "design": {
+    "picture_style": "illustration"
+  },
+  "flow": [
+    {
+      "slide": 1,
+      "does": "Recall why people build walls",
+      "shape": "recall",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Hadrian’s Wall today"
+      },
+      "layout": "title",
+      "size": "Subtitle 7/8 words",
+      "teaches": []
+    },
+    {
+      "slide": 2,
+      "does": "Introduce the approved objectives",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "objectives",
+      "size": "Automatically filled from approved objectives",
+      "teaches": []
+    },
+    {
+      "slide": 3,
+      "does": "Teach the wall’s location and starting date",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Wall across northern countryside"
+      },
+      "layout": "visual-text key-card-fig",
+      "size": "Lead and points 33/50 words; card label 2/2, term 0/3, number 6/6, unit 0/1",
+      "teaches": [1]
+    },
+    {
+      "slide": 4,
+      "does": "Locate the frontier on a Britain map",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "diagram",
+        "shows": "Wall across northern Roman Britain"
+      },
+      "layout": "figure-slide",
+      "size": "Caption 9/10 words",
+      "teaches": [1]
+    },
+    {
+      "slide": 5,
+      "does": "Explain defence and control of crossings",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "reasons",
+      "size": "Question 6/6 words; three heads 1/5 each; lines 9/9, 8/9, 9/9 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 6,
+      "does": "Explain how forts supported the frontier soldiers",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Reconstructed Roman fort beside wall"
+      },
+      "layout": "visual-text points-2-fig",
+      "size": "Lead 9/12 words; points 8/11, 8/11 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 7,
+      "does": "Distinguish milecastle gates from tower lookout posts",
+      "shape": "a contrast",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Milecastle and tower reconstructions"
+      },
+      "layout": "split-compare",
+      "size": "Two sides with pictures; texts 8/8, 7/8 words; titles 1/3 each",
+      "teaches": [3]
+    },
+    {
+      "slide": 8,
+      "does": "Correct the belief nobody could cross",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "myth",
+      "size": "Claim 8/12 words; fact 14/18 words; no proof",
+      "teaches": [2]
+    },
+    {
+      "slide": 9,
+      "does": "Check understanding of controlled movement",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "hinge",
+      "size": "Question 10/11 words; three options 9/15, 9/15, 9/15 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 10,
+      "does": "Apply guarding knowledge to new frontier situations",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "practice",
+      "size": "Two tasks 19/24, 19/24 words",
+      "teaches": [2, 3]
+    },
+    {
+      "slide": 11,
+      "does": "Check location date purpose and guarding buildings",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "exit-ticket",
+      "size": "Three questions 11/11, 10/11, 10/11 words",
+      "teaches": [1, 2, 3]
+    }
+  ],
+  "title": {
+    "template": "title",
+    "fit": "fig",
+    "heading": "Why the Romans built Hadrian’s Wall",
+    "lead": "What can a wall keep out?",
+    "picture": {
+      "shows": "Hadrian’s Wall today, shown in colour across the countryside near Housesteads",
+      "must_see": ["stone wall remains", "rolling northern countryside", "wall following ridge"],
+      "subject": "named"
+    }
+  },
+  "slides": [
+    {
+      "template": "visual-text",
+      "fit": "key-card-fig",
+      "heading": "A frontier in northern Britain",
+      "lead": "Emperor Hadrian ordered building to begin in AD 122.",
+      "points": [
+        "Hadrian’s Wall stood in northern Britain, in what is now northern England.",
+        "It stretched from the River Tyne to the Solway Firth."
+      ],
+      "icon": "roman shield",
+      "cards": [
+        {
+          "kind": "fact",
+          "label": "Building began",
+          "term": null,
+          "meaning": null,
+          "examples": null,
+          "num": "AD 122",
+          "unit": null
+        }
+      ],
+      "figure": {
+        "shows": "Hadrian’s Wall near Housesteads in the landscape today",
+        "must_see": ["surviving stone wall", "wall along ridge", "open countryside beyond"],
+        "subject": "named"
+      }
+    },
+    {
+      "template": "figure",
+      "heading": "Where was Hadrian’s Wall?",
+      "caption": "The wall marked a frontier across northern Roman Britain.",
+      "icon": "roman shield",
+      "figure": {
+        "kind": "model",
+        "model": "hist_map",
+        "intent": "Show a north-up map of Britain with a small north arrow. Shade Roman-controlled land south of Hadrian’s Wall differently from land to its north. Mark Hadrian’s Wall accurately from the River Tyne near modern Wallsend to the Solway Firth near Bowness-on-Solway. Label Britain, River Tyne, Solway Firth and Hadrian’s Wall. Show the modern England–Scotland border as a light dashed reference line, labelled Modern border, clearly north of the wall. Do not suggest the wall stood on that border.",
+        "alt": "Hadrian’s Wall crosses northern Britain from the River Tyne in the east to the Solway Firth in the west, south of today’s England–Scotland border."
+      }
+    },
+    {
+      "template": "reasons",
+      "heading": "Why did Romans build the wall?",
+      "lead": null,
+      "kind": "reasons",
+      "items": [
+        {
+          "head": "Defence",
+          "line": "The wall made raids into Roman land more difficult.",
+          "icon": "roman shield"
+        },
+        {
+          "head": "Movement",
+          "line": "Soldiers checked people entering Roman land through gates.",
+          "icon": "portcullis"
+        },
+        {
+          "head": "Trade",
+          "line": "Soldiers could check traders’ goods and collect taxes there.",
+          "icon": "coin"
+        }
+      ]
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-2-fig",
+      "heading": "Forts housed the soldiers",
+      "lead": "Forts were large army bases along Hadrian’s Wall.",
+      "points": [
+        "Barracks gave soldiers places to live and sleep.",
+        "Soldiers left forts to patrol and guard gates."
+      ],
+      "figure": {
+        "shows": "A reconstruction of a Roman fort beside Hadrian’s Wall, with soldiers leaving its gate",
+        "must_see": [
+          "large enclosed fort",
+          "rows of barracks",
+          "soldiers at gate",
+          "wall beside fort"
+        ],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "split-compare",
+      "heading": "Small buildings helped soldiers guard the wall",
+      "accentWord": null,
+      "sides": [
+        {
+          "title": "Milecastles",
+          "text": "Gates stood about one Roman mile apart, guarded.",
+          "quote": null,
+          "picture": {
+            "shows": "A reconstruction of a milecastle on Hadrian’s Wall, a small enclosed guarded gateway",
+            "must_see": [
+              "wall crossing gateway",
+              "small enclosed courtyard",
+              "soldiers guarding gate"
+            ],
+            "subject": "generic"
+          }
+        },
+        {
+          "title": "Watchtowers",
+          "text": "Soldiers watched for danger between the milecastles.",
+          "quote": null,
+          "picture": {
+            "shows": "A reconstruction of a watchtower on Hadrian’s Wall with soldiers looking over the countryside",
+            "must_see": ["tower beside wall", "soldiers looking out", "countryside beyond wall"],
+            "subject": "generic"
+          }
+        }
+      ]
+    },
+    {
+      "template": "myth",
+      "heading": "Was everyone kept out?",
+      "myth": {
+        "opening": "straight",
+        "verdict": "myth",
+        "claim": "The wall stopped everyone from entering Roman land.",
+        "fact": "People could pass through guarded gates, where Roman soldiers checked them and their goods.",
+        "factEm": "pass through guarded gates",
+        "proof": null
+      }
+    },
+    {
+      "template": "hinge",
+      "heading": "What was a wall gate meant to let soldiers do?",
+      "options": [
+        {
+          "text": "Allow people through after checking them and their goods.",
+          "icon": null,
+          "why": null
+        },
+        {
+          "text": "Keep every person out, even those coming to trade.",
+          "icon": null,
+          "why": "The pupil treats the frontier as a complete ban on crossing rather than a controlled crossing."
+        },
+        {
+          "text": "Allow traders through without checking them or their goods.",
+          "icon": null,
+          "why": "The pupil knows trade could continue but misses the soldiers’ role in checking crossings and goods."
+        }
+      ]
+    },
+    {
+      "template": "practice",
+      "heading": "You are guarding the frontier",
+      "picture": null,
+      "items": [
+        {
+          "question": "A trader arrives with wool to sell through a wall gate. How should soldiers handle this arrival, and why?",
+          "answer": "Soldiers should check the trader and the wool to control entry and trade, collecting any tax due.",
+          "working": null
+        },
+        {
+          "question": "Soldiers need somewhere to sleep and somewhere to watch distant countryside. Which buildings suit these jobs, and why?",
+          "answer": "Forts provide barracks for sleeping, while watchtowers let soldiers look out for danger.",
+          "working": null
+        }
+      ]
+    }
+  ],
+  "close": {
+    "template": "exit-ticket",
+    "heading": "Show what you have learned",
+    "items": [
+      {
+        "question": "Where in Britain was Hadrian’s Wall, and when did building begin?",
+        "answer": "Northern Britain, AD 122.",
+        "working": null
+      },
+      {
+        "question": "How did guarded gates help Romans control trade across their frontier?",
+        "answer": "Soldiers could check traders’ goods and collect taxes at the gates.",
+        "working": null
+      },
+      {
+        "question": "Which building would guard a crossing about every Roman mile?",
+        "answer": "A milecastle.",
+        "working": null
+      }
+    ]
+  }
+}
