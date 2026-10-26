@@ -81,3 +81,125 @@ describe("settleSlide: one slide's later picture round", () => {
     expect(pictures.vetoed(5, "picture")).toContain("ran out of time");
   });
 });
+
+describe("whenSlideDone and the early re-ask (the lost picture retried before editable)", () => {
+  const make = (direct: () => Promise<PictureDirection | undefined>) =>
+    createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct,
+    });
+
+  test("waits for one slide's placements without failing another slide's or ending the round", async () => {
+    let release: (d: PictureDirection) => void = () => {};
+    const slow = new Promise<PictureDirection>((r) => {
+      release = r;
+    });
+    let calls = 0;
+    const pictures = make(async () => (calls++ === 0 ? noPhoto : slow));
+    pictures.start(3, ask, slide);
+    pictures.start(4, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+    expect(pictures.state(4, "picture").status).toBe("pending");
+    // The round has not ended: a key never started is still pending, not failed.
+    expect(pictures.state(9, "never").status).toBe("pending");
+    release(noPhoto);
+    await pictures.whenSlideDone(4, 5_000);
+    expect(pictures.vetoed(4, "picture")).toContain("No real photograph");
+  });
+
+  test("a failed single ask is asked once more as soon as its own placement is over", async () => {
+    let calls = 0;
+    const pictures = make(async () => {
+      calls++;
+      return noPhoto;
+    });
+    pictures.start(3, ask, slide);
+    // Before its placement is over it is not asked again.
+    expect(pictures.canReask(3, "picture")).toBe(false);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(pictures.canReask(3, "picture")).toBe(true);
+    pictures.start(3, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(calls).toBe(2);
+    // Once per round: a third ask is refused until the round settles.
+    pictures.start(3, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    expect(calls).toBe(2);
+  });
+
+  test("settle neither waits for nor stops an early re-ask; the slide's own settle waits for it", async () => {
+    let release: (d: PictureDirection) => void = () => {};
+    const slow = new Promise<PictureDirection>((r) => {
+      release = r;
+    });
+    let calls = 0;
+    const pictures = make(async () => (calls++ === 0 ? noPhoto : slow));
+    pictures.start(3, ask, slide);
+    await pictures.whenSlideDone(3, 5_000);
+    // The early re-ask (before the round settles) runs on the job's signal, not the round's.
+    pictures.start(3, ask, slide);
+    await pictures.settle(5_000);
+    // Editable is not held for it, and it is still running, not failed by the round's end.
+    expect(pictures.state(3, "picture").status).toBe("pending");
+    release(noPhoto);
+    await pictures.settleSlide(3, 5_000);
+    expect(calls).toBe(2);
+    expect(pictures.vetoed(3, "picture")).toContain("No real photograph");
+  });
+});
+
+describe("whenSlideDone: its deadline, a cancel, and the re-ask after it", () => {
+  const never = new Promise<PictureDirection>(() => {});
+  const build = (direct: () => Promise<PictureDirection | undefined>, signal?: AbortSignal) =>
+    createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: {
+        ...recordingDeps(createFakeAi({ script: [] })),
+        ...(signal ? { signal } : {}),
+      },
+      direct,
+    });
+
+  test("the deadline ends the wait; the slot stays pending (never marked failed) and is not re-asked", async () => {
+    let calls = 0;
+    const pictures = build(async () => {
+      calls++;
+      return never;
+    });
+    pictures.start(3, ask, slide);
+    const t = Date.now();
+    await pictures.whenSlideDone(3, 30);
+    expect(Date.now() - t).toBeLessThan(1_000);
+    expect(pictures.state(3, "picture").status).toBe("pending");
+    // Its placement is not over: no early re-ask.
+    expect(pictures.canReask(3, "picture")).toBe(false);
+    pictures.start(3, ask, slide);
+    expect(calls).toBe(1);
+  });
+
+  test("a cancel ends the wait at once", async () => {
+    const ac = new AbortController();
+    const pictures = build(async () => never, ac.signal);
+    pictures.start(3, ask, slide);
+    const waiting = pictures.whenSlideDone(3, 60_000);
+    ac.abort();
+    const t = Date.now();
+    await waiting;
+    expect(Date.now() - t).toBeLessThan(1_000);
+  });
+
+  test("a cancel before the wait: it returns at once", async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const pictures = build(async () => never, ac.signal);
+    const t = Date.now();
+    await pictures.whenSlideDone(3, 60_000);
+    expect(Date.now() - t).toBeLessThan(1_000);
+  });
+});

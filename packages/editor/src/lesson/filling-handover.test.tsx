@@ -4,6 +4,9 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { SaveIndicator } from "../kit/SaveIndicator";
+import { inLessonTheme } from "../layout/retheme";
+import { loadLayoutKit } from "../model/layout-kit";
+import { renderTheme } from "../model/themes";
 import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
@@ -57,6 +60,7 @@ function setup(lesson: Lesson, extra: Partial<LessonEditorProps> = {}) {
           writingSlideIds={writing}
           drafts={drafts}
           followPace={INSTANT}
+          pillPace={{ settleMs: 0, dwellMs: 0, fadeMs: 0 }}
           {...extra}
         />
       </TooltipProvider>
@@ -100,8 +104,8 @@ describe("the filling editor", () => {
     // No draft yet: every slide the job owns keeps its marker, none says "Writing…".
     expect(container.querySelectorAll("[data-navigator] [data-slide-writing]").length).toBe(3);
     expect(container.querySelectorAll("[data-slide-writing-now]").length).toBe(0);
-    expect(container.querySelector("[data-slide-writing-overlay]")?.textContent).toContain(
-      "Planning the slides…",
+    expect(container.querySelector("[data-writing-pill]")?.textContent).toContain(
+      "Planning slide 3…",
     );
 
     act(() =>
@@ -131,7 +135,7 @@ describe("the filling editor", () => {
     ]);
     const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[1] });
     act(() => rerender(tree(new Set(ids), drafts)));
-    expect(container.querySelector("[data-slide-writing-overlay]")?.textContent).toContain(
+    expect(container.querySelector("[data-writing-pill]")?.textContent).toContain(
       "Writing slide 3 of 3…",
     );
   });
@@ -170,7 +174,11 @@ describe("the filling editor", () => {
     expect(queryByRole("button", { name: /^Delete slide/ })).toBeNull();
     // The job lets go of the open slide: it turns editable, but nothing opens by itself.
     act(() => rerender(tree(undefined)));
+    // The pill fades out (jank audit #9) rather than vanishing next to the toolbar.
+    // The slide is no longer marked the job's.
     expect(container.querySelector("[data-slide-writing-overlay]")).toBeNull();
+    const pill = container.querySelector<HTMLElement>("[data-writing-pill]");
+    expect(pill === null || pill.style.opacity === "0").toBe(true);
     expect(queryByRole("button", { name: /^Delete slide/ })).toBeNull();
     // The teacher's click on the canvas brings them back.
     const canvas = container.querySelector("[data-slide-frame]") as HTMLElement;
@@ -225,7 +233,7 @@ describe("the filling editor", () => {
     act(() => rerender(tree(new Set([ids[1] as Id]))));
     const region = container.querySelector("[data-writing-status]");
     expect(region?.getAttribute("role")).toBe("status");
-    expect(region?.textContent).toContain("Planning the slides…");
+    expect(region?.textContent).toContain("Planning slide 3…");
     // Slide 1 is done: the same region stays mounted, empty.
     act(() => {
       fireEvent.click(row(container, 1) as HTMLElement);
@@ -308,13 +316,67 @@ describe("the filling editor", () => {
     const drafts = createDraftStore();
     const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[2] });
     act(() => rerender(tree(new Set(ids), drafts)));
-    const pill = () => container.querySelector("[data-slide-writing-overlay]")?.textContent?.trim();
-    expect(pill()).toBe("Planning the slides…");
+    const pill = () => container.querySelector("[data-writing-pill]")?.textContent?.trim();
+    expect(pill()).toBe("Planning slide 3…");
     act(() =>
       drafts.set([
         { index: 2, slideId: ids[2] as string, slide: draftOf(ids[2] as string, "Divide by four") },
       ]),
     );
-    expect(pill()).toBe("Writing this slide…");
+    // One format for the whole fill: the slide being written and how many there are.
+    expect(pill()).toBe("Writing slide 3 of 3…");
+  });
+
+  test("a job write and a theme pick in the same tick: the job's slide is kept, in the new theme; the teacher's words are never overwritten", async () => {
+    await loadLayoutKit();
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    const other = lesson.themeId === "exam-hall" ? "playground" : "exam-hall";
+    const ref: { current: LessonEditorHandle | null } = { current: null };
+    const saved: Lesson[] = [];
+    const onSave = (l: Lesson) => {
+      saved.push(l);
+      return Promise.resolve();
+    };
+    const { rerender, tree } = setup(lesson, { editorRef: ref, onSave });
+    act(() => rerender(tree(new Set([ids[2] as Id]))));
+    // The job, still in the opening theme: rewords slide 1 (the teacher's, once re-themed), adds
+    // notes to slide 3 and writes a new slide after it.
+    const first = lesson.slides[0] as Slide;
+    const jobWords = {
+      ...first,
+      elements: first.elements.map((e) =>
+        e.type === "text" ? { ...e, doc: doc("JOB WORDS") } : e,
+      ),
+    } as Slide;
+    // A slide the job drew with the opening theme's accent (a recipe palette colour).
+    const added = {
+      ...(lesson.slides[2] as Slide),
+      id: "job-new",
+      background: { color: renderTheme(lesson).colors.accent },
+    } as Slide;
+    const theirs: Lesson = {
+      ...lesson,
+      slides: [
+        jobWords,
+        lesson.slides[1] as Slide,
+        { ...(lesson.slides[2] as Slide), notes: "job" },
+        added,
+      ],
+    };
+    act(() => {
+      ref.current?.retheme(other);
+      ref.current?.receiveGenerated(lesson, theirs);
+    });
+    await waitFor(() => expect(saved.at(-1)?.slides.map((s) => s.id)).toContain("job-new"));
+    const last = saved.at(-1) as Lesson;
+    expect(last.themeId).toBe(other);
+    // Every slide wears the new theme's palette: nothing of the job's old theme is saved.
+    for (const slide of last.slides) expect(inLessonTheme(slide, last)).toBe(slide);
+    expect(last.slides.find((s) => s.id === ids[2])?.notes).toBe("job");
+    expect(last.slides.find((s) => s.id === "job-new")?.background?.color).toBe(
+      renderTheme(last).colors.accent,
+    );
+    expect(JSON.stringify(last.slides[0])).not.toContain("JOB WORDS");
   });
 });

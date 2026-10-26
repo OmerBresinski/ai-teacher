@@ -27,7 +27,7 @@ test.describe("real lesson intake over the fake worker", () => {
     await reachObjectives(page, "States of matter and the particle model");
     await expect(page.getByRole("textbox", { name: /^Objective / })).not.toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Slides" })).toContainText(
-      "Standard, 9–12 slides",
+      "Standard, 10–12 slides",
     );
     await expect(page.getByRole("combobox", { name: "Lesson length" })).toHaveCount(0);
 

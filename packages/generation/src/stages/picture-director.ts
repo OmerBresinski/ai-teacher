@@ -477,18 +477,17 @@ export function planPicture(
     .filter((p) => p.shows && p.imagePrompt);
   const first = pictures[0];
   if (!first) return keep();
-  // A historical scene with no named kind is read as an event; any other missing kind stays null,
-  // which is real-only (ruling 296 never generates a real thing it cannot classify).
-  const kind = d.named ?? (depicts ? "event" : null);
-  const ruledFallback = ruled
-    ? realFallbackFor(
-        kind,
-        period ? historyPolicy() : "present",
-        // A forced-real slot (a named set's panel, a named history card) is real-only: ruling 209
-        // never puts a generated panel beside real ones.
-        !!ask.named || opts.real === true,
-      )
-    : undefined;
+  // Only the director's own kind counts. An unclassified ask stays null, which is real-only, even
+  // a depicting past scene: it could be a portrait, a place or a monument (rulings 163, 296). Only
+  // an explicit `event` is painted, whether or not the writer named it (rulings 163, 210).
+  const kind = d.named ?? null;
+  // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
+  // ruling 209 never puts a generated panel beside real ones.
+  const ruledFallback = !ruled
+    ? undefined
+    : opts.real === true
+      ? "none"
+      : realFallbackFor(kind, period ? historyPolicy() : "present", !!ask.named);
   // Ruling 296: a present-day generic object the director sent to Commons is searched like a real
   // thing (Commons, then stock), then made as any generic picture is: the generic route, the
   // lesson's look. A past one stays on the real route with the painted illustration (ruling 163).
@@ -1136,6 +1135,12 @@ export interface WriterPictures {
    * later rounds (lostPic, a diagram's picture fallback) never wait on or cancel each other.
    */
   settleSlide(index: number, deadlineMs?: number): Promise<void>;
+  /**
+   * Resolves once every placement slide `index` has started is over (placed or failed), without
+   * failing what is still pending or ending the round: the stage's early lost-picture retry waits
+   * on it while other slides' pictures are still coming.
+   */
+  whenSlideDone(index: number, deadlineMs?: number): Promise<void>;
   /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
   vetoed(index: number, key: string): string | undefined;
   /**
@@ -1244,12 +1249,18 @@ export function createWriterPictures(opts: {
     done: Promise<void>;
     /** Cancels this slot's own placement (`forget`: its slide was opened again). */
     stop: AbortController;
+    /**
+     * An early re-ask (the stage's lost picture, asked again before the round settles): it runs
+     * on the job's own signal, not the round's, so `settle` neither waits for it nor stops it.
+     * The slide's tail (`settleSlide`) waits for it after editable, as for any later round.
+     */
+    own?: boolean;
   };
   /** The round's deps with the slot's own stop on the signal. */
-  const slotDeps = (slot: Slot): PipelineDeps => ({
-    ...deps,
-    signal: AbortSignal.any([deps.signal, slot.stop.signal]),
-  });
+  const slotDeps = (slot: Slot): PipelineDeps => {
+    const base = slot.own ? opts.deps : deps;
+    return { ...base, signal: AbortSignal.any([base.signal, slot.stop.signal]) };
+  };
   type Box = { item: string; left: number; top: number; right: number; bottom: number };
   // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
   // A second round (lostPic's single pictures after editable) gets a fresh stopper and batcher.
@@ -1258,6 +1269,7 @@ export function createWriterPictures(opts: {
     ...opts.deps,
     signal: AbortSignal.any([opts.deps.signal, stopper.signal]),
   };
+  const roundDeps = () => deps;
   const makeDirect = () =>
     opts.direct ?? (opts.batchSystem ? createDirectorBatcher(deps, opts.batchSystem) : undefined);
   const bank = opts.bank ?? opts.maker?.bank;
@@ -1277,6 +1289,8 @@ export function createWriterPictures(opts: {
   let setLook = opts.look;
   /** Keys asked again in a later round (`start` after `settle`), so a round re-asks a key once. */
   const reasked = new Set<string>();
+  /** Single slots whose own placement is over (an early retry may ask them again). */
+  const over = new WeakSet<object>();
 
   /** A placed picture as the stage reads it: its OWN aspect (the ranged slots shape round it). */
   const photoState = (
@@ -1312,7 +1326,7 @@ export function createWriterPictures(opts: {
   // A rejection is a stop (placeWriterPicture's nonFatal and makePictureSet rethrow only those) or
   // the deadline's own abort: it is kept, and settle rethrows a stop.
   const onError =
-    (slot: Slot, roundStop = stopper) =>
+    (slot: Slot, roundStop = slot.own ? slot.stop : stopper) =>
     (error: unknown) => {
       if (slot.state.status !== "pending") return;
       slot.state = { status: "failed" };
@@ -1379,7 +1393,7 @@ export function createWriterPictures(opts: {
       images: opts.images,
       deps: slotDeps(slot),
       taken,
-      ...(direct ? { direct } : {}),
+      ...(slot.own ? (opts.direct ? { direct: opts.direct } : {}) : direct ? { direct } : {}),
       ...(bank ? { bank } : {}),
       ...(opts.look ? { look: opts.look } : {}),
       onOutcome: (o) => {
@@ -1566,6 +1580,8 @@ export function createWriterPictures(opts: {
     subjects: string[],
     asks: SetAsk[],
   ): Promise<void> => {
+    // An early re-ask runs on the job's signal (Slot.own), not the round's.
+    const sdeps = () => (slot.own ? opts.deps : roundDeps());
     const k = id(index, ask.key);
     const bytes = new Map<string, Uint8Array>();
     /**
@@ -1582,7 +1598,7 @@ export function createWriterPictures(opts: {
       );
     };
     const run = async (): Promise<void> => {
-      deps.logger.info(
+      sdeps().logger.info(
         { stage: "generate", picture: k, panels: asks.length },
         "picture split at ask",
       );
@@ -1595,12 +1611,12 @@ export function createWriterPictures(opts: {
             bytes.set(saved.src, png);
             return saved;
           },
-          ...directedSetJudges(opts.lesson, deps),
+          ...directedSetJudges(opts.lesson, sdeps()),
           ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
           ...(maker.allow ? { allow: maker.allow } : {}),
           ...(maker.spent ? { spent: maker.spent } : {}),
-          signal: AbortSignal.any([deps.signal, slot.stop.signal]),
-          log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+          signal: AbortSignal.any([sdeps().signal, slot.stop.signal]),
+          log: (event) => sdeps().logger.info({ stage: "generate", ...event }, "picture set"),
         },
         setLook,
       );
@@ -1651,7 +1667,14 @@ export function createWriterPictures(opts: {
       const k = id(index, ask.key);
       const prev = slots.get(k);
       // A later round (lostPic's split after settle) may ask a failed key again, once per round.
-      if (prev && !(settled && prev.state.status === "failed" && !reasked.has(k))) return;
+      // An early retry (the stage's lost picture, before editable) may ask a single failed key
+      // again once its own placement is over, also once per round.
+      if (
+        prev &&
+        !((settled || over.has(prev)) && prev.state.status === "failed" && !reasked.has(k))
+      )
+        return;
+      const early = !!prev && !settled;
       if (prev) {
         reasked.add(k);
         heldPhotos.delete(k);
@@ -1674,6 +1697,7 @@ export function createWriterPictures(opts: {
         state: { status: "pending" },
         done: Promise.resolve(),
         stop: new AbortController(),
+        ...(early ? { own: true } : {}),
       };
       if (ask.set) {
         if (!opts.maker) {
@@ -1725,6 +1749,11 @@ export function createWriterPictures(opts: {
         prev?.miss === "director-code" ? false : undefined,
       );
       slots.set(k, slot);
+      // Its own placement is over: a failed single ask may be asked again before the round ends.
+      void slot.done.then(
+        () => over.add(slot),
+        () => over.add(slot),
+      );
     },
     state(index, key) {
       const slot = slots.get(id(index, key));
@@ -1741,7 +1770,11 @@ export function createWriterPictures(opts: {
         onAbort = () => resolve();
         opts.deps.signal.addEventListener("abort", onAbort, { once: true });
       });
-      await Promise.race([Promise.all([...slots.values()].map((s) => s.done)), deadline]);
+      // An early re-ask (Slot.own) is not the round's: editable never waits for it.
+      await Promise.race([
+        Promise.all([...slots.values()].filter((s) => !s.own).map((s) => s.done)),
+        deadline,
+      ]);
       if (timer) clearTimeout(timer);
       if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
       // Placements still running stop spending (the deadline or the cancel).
@@ -1759,10 +1792,29 @@ export function createWriterPictures(opts: {
       settled = true;
       reasked.clear();
       for (const slot of slots.values())
-        if (slot.state.status === "pending") {
+        if (slot.state.status === "pending" && !slot.own) {
           slot.state = { status: "failed" };
           slot.miss = "deadline";
         }
+    },
+    async whenSlideDone(index, deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
+      const prefix = `${index}:`;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let ended = false;
+      const deadline = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, deadlineMs);
+        if (opts.deps.signal.aborted) resolve();
+        else opts.deps.signal.addEventListener("abort", () => resolve(), { once: true });
+      }).then(() => {
+        ended = true;
+      });
+      for (;;) {
+        const mine = [...slots].filter(([k]) => k.startsWith(prefix)).map(([, s]) => s.done);
+        await Promise.race([Promise.all(mine), deadline]);
+        const now = [...slots].filter(([k]) => k.startsWith(prefix)).map(([, s]) => s.done);
+        if (ended || now.every((d) => mine.includes(d))) break;
+      }
+      if (timer) clearTimeout(timer);
     },
     async settleSlide(index, deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
       const prefix = `${index}:`;
@@ -1804,7 +1856,9 @@ export function createWriterPictures(opts: {
     canReask(index, key) {
       const k = id(index, key);
       const prev = slots.get(k);
-      return !prev || (settled && prev.state.status === "failed" && !reasked.has(k));
+      return (
+        !prev || ((settled || over.has(prev)) && prev.state.status === "failed" && !reasked.has(k))
+      );
     },
     retryable(index, key) {
       const miss = slots.get(id(index, key))?.miss;

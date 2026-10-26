@@ -1275,7 +1275,9 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
     /** Per panel, the writer's `named` (overrides `named`). */
     namedAt?: (k: number) => boolean;
     /** The director's `named` kind for every panel. */
-    kind?: "object" | "place" | null;
+    kind?: "object" | "place" | "event" | null;
+    /** The director's period for every panel. */
+    period?: string;
     /** The single-picture bank (default: stock only). */
     bank?: typeof STOCK_ONLY_BANK;
     key?: (k: number) => string;
@@ -1331,6 +1333,7 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         return direction({
           route: opts.hit(words) || opts.kind ? "commons" : "none",
           named: opts.kind ?? null,
+          period: opts.period ?? null,
           pictures: [
             {
               shows: words,
@@ -1403,6 +1406,31 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
       hit: (w) => w === STONE,
       namedAt: (k) => k === 0,
       kind: "object",
+      bank: {
+        ...STOCK_ONLY_BANK,
+        generate: async (req) => {
+          made.push(req.text);
+          return undefined;
+        },
+      },
+    });
+    expect(made).toHaveLength(0);
+    expect(r.prompts).toHaveLength(0);
+    expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
+    expect(r.providers.has("generated")).toBe(false);
+  });
+
+  test("rulings 163, 210 keep 209: a past event beside a named real panel is never painted", async () => {
+    const STONE = "The Rosetta Stone in the British Museum";
+    const FIRE = "The Great Fire spreading across London";
+    const made: string[] = [];
+    const r = await run({
+      lesson: { subject: "History" },
+      panels: [STONE, FIRE],
+      hit: (w) => w === STONE,
+      namedAt: (k) => k === 0,
+      kind: "event",
+      period: "London, 1666",
       bank: {
         ...STOCK_ONLY_BANK,
         generate: async (req) => {

@@ -1,8 +1,13 @@
-import type { Lesson, Slide } from "@tj/domain/documents";
+import { type Lesson, type Slide, sameJson } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogHeader, DialogTitle } from "@tj/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
-import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
+import {
+  inLessonTheme,
+  recolourSlide,
+  rethemeFromReducer,
+  rethemeMeasureInputs,
+} from "../layout/retheme";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
 import {
@@ -55,7 +60,14 @@ function themeFacesPending(themeId: string): Promise<unknown> | null {
 }
 
 /** The themes, the preview and the transaction. Mounted only while the picker is open. */
-function ThemePanel({ onClose }: { onClose: () => void }) {
+function ThemePanel({
+  onClose,
+  cancelRef,
+}: {
+  onClose: () => void;
+  /** Esc, a click outside or the close button roll the browse back before the dialog animates out. */
+  cancelRef: { current: (() => void) | null };
+}) {
   const lesson = useLesson();
   const history = useHistory();
   const historyRef = useRef(history);
@@ -64,6 +76,29 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   lessonRef.current = lesson;
   // The lesson as the picker found it: every preview starts from here, so browsing never stacks.
   const [opening] = useState(lesson);
+  /**
+   * What every preview re-themes: `opening`, plus whatever the generating job wrote since (P1 26
+   * Oct: a slide written while the picker was open vanished from the strip, 5 -> 4 -> 5, because
+   * each preview started from the lesson as the picker found it). A slide the job changed since
+   * the last look is taken from the lesson, put back into the opening theme's colours.
+   */
+  /**
+   * The slides the last preview drew, by id (written only by the preview reducer). A slide the
+   * lesson holds that is not one of these as drawn is the job's write since (or new), and the
+   * next preview keeps it rather than re-theming the opening copy (`withJobWrites`).
+   */
+  const drawn = useRef<ReadonlyMap<string, Slide>>(new Map(lesson.slides.map((s) => [s.id, s])));
+  /** One preview step: the opening lesson plus the job's writes, re-themed and fitted. */
+  const themed = (current: Lesson, themeId: string, measure: ReturnType<typeof createMeasurer>) => {
+    const out = rethemeFromReducer(
+      current,
+      withJobWrites(opening, current, drawn.current),
+      themeId,
+      measure,
+    );
+    drawn.current = new Map(out.lesson.slides.map((s) => [s.id, s]));
+    return out;
+  };
   const tx = useRef<number | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -88,7 +123,7 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     // Done is waiting for the chosen theme's faces: the choice is made.
     if (tx.current === null || applying) return;
     const theme = getTheme(themeId);
-    historyRef.current.dispatch(rethemeFromReducer, opening, themeId, createMeasurer(theme));
+    historyRef.current.dispatch(themed, themeId, createMeasurer(theme));
   };
 
   const commit = () => {
@@ -108,8 +143,8 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
       // The faces are loaded now: measure again, from the opening lesson, with the real type.
       const theme = getTheme(themeId);
       clearMeasureCache();
-      warmMeasurer(rethemeMeasureInputs(opening), theme);
-      historyRef.current.dispatch(rethemeFromReducer, opening, themeId, createMeasurer(theme));
+      warmMeasurer(rethemeMeasureInputs(lessonRef.current), theme);
+      historyRef.current.dispatch(themed, themeId, createMeasurer(theme));
     }
     historyRef.current.endTransaction(tx.current);
     tx.current = null;
@@ -132,6 +167,7 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     tx.current = null;
     onClose();
   };
+  cancelRef.current = cancel;
 
   return (
     <ThemeChoices
@@ -278,13 +314,17 @@ export function ThemeCallout({
 
 /** The picker in a modal, editing the open lesson as one undo step (the editor's top bar). */
 export function ThemeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const cancelRef = useRef<(() => void) | null>(null);
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && (cancelRef.current ?? onClose)()}>
       <DialogContent size="full" className="max-w-[1040px]" data-theme-dialog>
         <DialogHeader>
           <DialogTitle>Theme</DialogTitle>
         </DialogHeader>
-        {open ? <ThemePanel onClose={onClose} /> : null}
+        {/* Mounted for as long as the content is (Radix keeps it through the exit animation), so
+            Done closes the whole dialog rather than a strip of its header (P1 26 Oct). The panel
+            mounts afresh on every open: the content unmounts once it has animated out. */}
+        <ThemePanel onClose={onClose} cancelRef={cancelRef} />
       </DialogContent>
     </Dialog>
   );
@@ -308,9 +348,15 @@ export function GeneratingThemeDialog({
   onChange: (themeId: string) => void;
   onClose: () => void;
 }) {
+  // Kept through the close animation (the choices stay drawn while the dialog fades), taken
+  // afresh on the next open.
   const [opening, setOpening] = useState<Lesson | null>(null);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setOpening(lesson);
+  }
   if (open && !opening) setOpening(lesson);
-  if (!open && opening) setOpening(null);
   const cancel = () => {
     if (opening && lesson.themeId !== opening.themeId) onChange(opening.themeId);
     onClose();
@@ -321,7 +367,7 @@ export function GeneratingThemeDialog({
         <DialogHeader>
           <DialogTitle>Theme</DialogTitle>
         </DialogHeader>
-        {open && opening ? (
+        {opening ? (
           <ThemeChoices
             opening={opening}
             selectedId={lesson.themeId}
@@ -333,6 +379,33 @@ export function GeneratingThemeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * What a preview re-themes (P1 26 Oct, jank audit #6: a slide written while the picker was open
+ * dropped out of the strip, 5 -> 4 -> 5): the opening lesson, with every slide the lesson holds now
+ * in its place. A slide still as the last preview drew it (`drawn`, by id) is taken from `opening`;
+ * any other (the job wrote or added it since, whenever that landed) comes from `current`, in the
+ * opening theme's palette. A slide gone from `current` is gone. Pure, so a job write and a pick in
+ * the same tick cannot lose either.
+ */
+export function withJobWrites(
+  opening: Lesson,
+  current: Lesson,
+  drawn: ReadonlyMap<string, Slide>,
+): Lesson {
+  const kept = new Map(opening.slides.map((s) => [s.id, s]));
+  const slides = current.slides.map((slide) => {
+    const prior = kept.get(slide.id);
+    const last = drawn.get(slide.id);
+    if (prior && last && (last === slide || sameJson(last, slide))) return prior;
+    return inLessonTheme(slide, opening);
+  });
+  return {
+    ...opening,
+    slides,
+    ...(current.generation ? { generation: current.generation } : {}),
+  };
 }
 
 /**
