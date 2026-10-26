@@ -90,6 +90,8 @@ function markTag(mark: Mark): [open: string, close: string] {
       // extension order (`run-style.ts`, TEACH-205 part c), as data attributes only.
       const color = safeCssColor(attrs.color);
       const parts = color ? [`style="color: ${escapeAttr(color)};"`] : [];
+      // A live slide's laid-out words not typed yet (transparent) are not read out either.
+      if (color === "transparent") parts.push('aria-hidden="true"');
       const font = safeRunFont(attrs.font);
       if (font) parts.push(`data-font="${font}"`);
       const slot = safeHighlightSlot(attrs.highlight);

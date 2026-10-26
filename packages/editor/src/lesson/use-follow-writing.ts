@@ -14,7 +14,11 @@ export const FOLLOW_PACE = {
   minMs: 2000,
   /** The writer this many slides ahead: the follow reads faster (`catchUp*`) to catch up. */
   behind: 3,
-  catchUpReadMs: 500,
+  /**
+   * Never less than about 800 ms after a slide visibly finishes, however far behind (Greg 26 Oct:
+   * one slide was left 0.1 s after its last word, others 0.7 s). The typing speeds up instead.
+   */
+  catchUpReadMs: 800,
   catchUpMinMs: 1000,
   /** This far behind (or on "Follow writing"), the follow goes straight to the slide being written. */
   jump: 5,
@@ -24,8 +28,36 @@ export const FOLLOW_PACE = {
    */
   maxAfterTextMs: 6000,
   maxOpenMs: 8000,
+  /**
+   * A slide that reported its words typed and is typing again is left at the latest this long after
+   * the writer moved past it, even if it never reports them typed again (the follow never stalls).
+   */
+  stallMs: 6000,
 };
 export type FollowPace = typeof FOLLOW_PACE;
+
+/**
+ * What the view shows while the writer plans (before the first content slide has words).
+ * - `"outline"` (UX ruling 278, Greg 20 Oct, amending part f): the title and objectives type out,
+ *   then the view opens the next planned slide as its outline.
+ * - `"stay"` (proposed 26 Oct, pending Greg): the view stays on the last finished slide.
+ * Switch here; nothing else depends on the choice.
+ */
+export const PLANNING_VIEW: "outline" | "stay" = "outline";
+
+/** The slide to hold on while the writer plans, or undefined to use the usual target. */
+export function planningView(
+  slides: readonly { id: Id; elements?: readonly unknown[] }[],
+  writingSlideIds: ReadonlySet<Id>,
+  revealing: Id | undefined,
+  view: "outline" | "stay" = PLANNING_VIEW,
+): Id | undefined {
+  if (revealing !== undefined && writingSlideIds.has(revealing)) return revealing;
+  if (view === "stay") return undefined;
+  return slides.find(
+    (s, i) => i >= 2 && writingSlideIds.has(s.id) && s.elements !== undefined && isPlannedBlank(s),
+  )?.id;
+}
 
 /**
  * Live writing P1 (TEACH-202 part e): while a job writes the lesson, the open slide follows the
@@ -83,6 +115,8 @@ export function useFollowWriting({
   /** The teacher opened a slide by a route the events cannot see (a link in a side pane). */
   stop: () => void;
   mark: { current: Id | null };
+  /** Slides between the open slide and the one being written (0 when level or not following). */
+  behind: number;
 } {
   const [following, setFollowing] = useState(startFollowing);
   const target = useMemo(() => {
@@ -99,12 +133,8 @@ export function useFollowWriting({
     // must hold on the written slide, not jump to the next outline.
     const planning = slides.slice(2).every((s) => s.elements === undefined || isPlannedBlank(s));
     if (at(lead) < 2 && planning) {
-      if (revealing !== undefined && writingSlideIds.has(revealing)) return revealing;
-      const outline = slides.find(
-        (s, i) =>
-          i >= 2 && writingSlideIds.has(s.id) && s.elements !== undefined && isPlannedBlank(s),
-      );
-      if (outline) return outline.id;
+      const held = planningView(slides, writingSlideIds, revealing);
+      if (held !== undefined) return held;
     }
     let last = -1;
     for (const [i, s] of slides.entries()) if (writingSlideIds.has(s.id)) last = i;
@@ -130,6 +160,8 @@ export function useFollowWriting({
    */
   const opened = useRef<{ id: Id | null; at: number }>({ id: null, at: 0 });
   const typed = useRef<{ id?: Id; at: number }>({ at: 0 });
+  /** Slides that have reported their words typed out at least once: this view can tell. */
+  const tells = useRef(new Set<Id>());
   const passed = useRef<{ id: Id | null; at: number } | null>(null);
   /** "Follow writing" was pressed: the next move goes straight to the slide being written. */
   const jump = useRef(false);
@@ -142,6 +174,7 @@ export function useFollowWriting({
   // biome-ignore lint/correctness/useExhaustiveDependencies: stamps the time the typing caught up; `now` is a clock.
   useEffect(() => {
     typed.current = { id: typedId, at: now() };
+    if (typedId !== undefined) tells.current.add(typedId);
   }, [typedId]);
 
   useEffect(() => {
@@ -169,28 +202,29 @@ export function useFollowWriting({
     if (activeSlideId !== null && to < from) return;
     const behind = to - from;
     let next = target;
-    if (from >= 0 && !jump.current && behind < pace.jump) {
-      // One slide at a time, each read before the next: its words all shown, then a pause.
+    if (from >= 0 && !jump.current) {
+      // One slide at a time, each read before the next: its words all shown, then a pause. A
+      // slide that reports its typing is never left before its words are out and have stood the
+      // read time (the give-up is only for a view that cannot tell); far behind, the follow jumps,
+      // but still only once the open slide has been read.
       const fast = behind >= pace.behind;
       if (passed.current?.id !== activeSlideId) passed.current = { id: activeSlideId, at: now() };
+      const tells_ = activeSlideId !== null && tells.current.has(activeSlideId);
       const read =
         typed.current.id === activeSlideId
           ? typed.current.at + (fast ? pace.catchUpReadMs : pace.readMs)
-          : Number.POSITIVE_INFINITY;
-      const giveUp = Math.min(
-        opened.current.at + pace.maxOpenMs,
-        passed.current.at + pace.maxAfterTextMs,
-      );
-      const due = Math.max(
-        opened.current.at + (fast ? pace.catchUpMinMs : pace.minMs),
-        Math.min(read, giveUp),
-      );
+          : tells_
+            ? // Typing again: the report wakes the follow (a re-render); the cap is a safety net.
+              passed.current.at + pace.stallMs
+            : Math.min(opened.current.at + pace.maxOpenMs, passed.current.at + pace.maxAfterTextMs);
+      const due = Math.max(opened.current.at + (fast ? pace.catchUpMinMs : pace.minMs), read);
       const wait = due - now();
-      if (wait > 0) {
+      // Never an unbounded wait: a browser runs `setTimeout(fn, Infinity)` at once, a render loop.
+      if (wait > 0 && Number.isFinite(wait)) {
         const cancel = timer(() => wake((n) => n + 1), wait);
         return cancel;
       }
-      next = list[from + 1]?.id ?? target;
+      next = behind >= pace.jump ? target : (list[from + 1]?.id ?? target);
     }
     jump.current = false;
     mark.current = next;
@@ -222,7 +256,13 @@ export function useFollowWriting({
     setFollowing(true);
   }, []);
   const stop = useCallback(() => setFollowing(false), []);
-  return { following, target, resume, stop, mark };
+  const behind = useMemo(() => {
+    if (!following || !slides || !target) return 0;
+    const to = slides.findIndex((s) => s.id === target);
+    const from = slides.findIndex((s) => s.id === activeSlideId);
+    return from < 0 || to < 0 ? 0 : Math.max(0, to - from);
+  }, [following, slides, target, activeSlideId]);
+  return { following, target, resume, stop, mark, behind };
 }
 
 const perfNow = () => performance.now();
