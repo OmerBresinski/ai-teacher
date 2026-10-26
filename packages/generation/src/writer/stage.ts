@@ -15,6 +15,7 @@ import {
   PICTURE_FALLBACK,
 } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
+import { wantsMap } from "../stages/illustrate";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
 import {
   ACTIVITIES_DEFAULT,
@@ -2033,18 +2034,35 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     void Promise.allSettled([call]);
     return call;
   };
+  /** The kind of picture a photo ask expects: a map when it asks for one, else the lesson's style. */
+  const askedKind = (a: PhotoAsk) =>
+    wantsMap({ request: a.shows })
+      ? "map"
+      : plan.design?.picture_style === "illustration"
+        ? "painting"
+        : "photo";
+  /** The kind on the slide for a photo ask (a pending one is still the asked kind); none if lost. */
+  const landedKind = (v: VisualState | undefined, a: PhotoAsk) => {
+    if (!v || v.status === "pending") return askedKind(a);
+    if (v.status === "diagram") return "drawing";
+    if (v.status !== "photo") return undefined;
+    if (v.photo.whole) return "map";
+    return v.photo.source?.provider === "generated" ? "painting" : "photo";
+  };
   /**
    * What a slide's note depends on: its words as shown and each visual still on it, by what was
-   * asked for. A pending picture and the same picture landed give the same key, so pictures that
-   * land after the stream-end call cost no redo; a changed word or a lost visual does.
+   * asked for and the kind that landed. A pending picture and the same picture landed as the asked
+   * kind give the same key, so pictures that land after the stream-end call cost no redo; a changed
+   * word, a lost visual or a different kind (a locator map, a painting or a drawing where a photo
+   * was asked, or the reverse) does.
    */
   const notesKey = (i: number) =>
     renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, [
-      ...(asks.get(i) ?? []).flatMap((a) =>
-        a.type === "photo" && visualState(i)(a.key)?.status !== "failed"
-          ? [`Picture ask: ${a.shows}`]
-          : [],
-      ),
+      ...(asks.get(i) ?? []).flatMap((a) => {
+        if (a.type !== "photo") return [];
+        const kind = landedKind(visualState(i)(a.key), a);
+        return kind ? [`Picture ask (${kind}): ${a.shows}`] : [];
+      }),
       ...placedLines(i).filter((l) => !l.startsWith("Picture: ")),
     ]);
   /** Each slide as the deck-wide notes call saw it. */

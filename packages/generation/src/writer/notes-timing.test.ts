@@ -147,4 +147,89 @@ describe("speaker notes start at stream end, beside the pictures", () => {
     expect(redo?.start ?? -1).toBeGreaterThanOrEqual(t.marks.picturesDone ?? Infinity);
     expect(out.slides.find((s) => s.id === `s${vi + 1}`)?.notes).toContain(`REDONE ${vi + 1}`);
   });
+
+  /**
+   * A content slide with a placed picture that the plain run never redoes, and a run where that
+   * slide's photo asks land as `swap` makes them once the pictures settle.
+   */
+  async function swapRun(swap: (v: VisualState) => VisualState) {
+    const rec = recordedVisuals(FIXTURE);
+    const first = timed(10, 10);
+    const base = await first.go();
+    const plain = new Set(redoneIn(first.calls));
+    const victim = base.slides.find((s) => {
+      const k = Number(s.id.match(/^s(\d+)$/)?.[1]);
+      return (
+        k > 2 &&
+        !plain.has(k) &&
+        (s.elements as { type?: string; src?: string }[]).some(
+          (e) => e.type === "image" && e.src && !String(e.src).startsWith("data:"),
+        )
+      );
+    });
+    const vi = Number(victim?.id.match(/^s(\d+)$/)?.[1]) - 1;
+    expect(vi).toBeGreaterThanOrEqual(2);
+    const visual = Object.assign(
+      (i: number, key: string, a: VisualAsk): VisualState => {
+        const v = rec(i, key, a);
+        return i === vi && a.type === "photo" && v.status === "photo" ? swap(v) : v;
+      },
+      { placeMore: rec.placeMore },
+    );
+    const t = timed(30, 10, visual);
+    const out = await t.go();
+    const redo = t.calls.find((c) => only(c)?.[1] === String(vi + 1));
+    return { t, out, vi, redo };
+  }
+  const asPhoto = (v: VisualState): VisualState =>
+    v.status === "photo"
+      ? {
+          status: "photo",
+          photo: {
+            ...v.photo,
+            whole: false,
+            source: {
+              provider: "pexels",
+              id: "1",
+              pageUrl: "https://www.pexels.com/photo/1",
+              photographer: "A",
+              photographerUrl: "https://www.pexels.com/@a",
+            },
+          },
+        }
+      : v;
+
+  test("a photo that lands as the asked kind costs no redo", async () => {
+    const r = await swapRun(asPhoto);
+    expect(r.redo).toBeUndefined();
+    expect(r.out.slides.find((s) => s.id === `s${r.vi + 1}`)?.notes).toContain(`DECK ${r.vi + 1}`);
+  });
+
+  test("a locator map placed where a photo was asked gets that slide's note written again", async () => {
+    const r = await swapRun((v) => {
+      const p = asPhoto(v);
+      return p.status === "photo" ? { status: "photo", photo: { ...p.photo, whole: true } } : p;
+    });
+    expect(r.redo).toBeDefined();
+    expect(r.redo?.start ?? -1).toBeGreaterThanOrEqual(r.t.marks.picturesDone ?? Infinity);
+    expect(r.out.slides.find((s) => s.id === `s${r.vi + 1}`)?.notes).toContain(
+      `REDONE ${r.vi + 1}`,
+    );
+  });
+
+  test("a painting landing for a photo ask gets that slide's note written again", async () => {
+    const r = await swapRun((v) => {
+      const p = asPhoto(v);
+      return p.status === "photo" && p.photo.source
+        ? {
+            status: "photo",
+            photo: { ...p.photo, source: { ...p.photo.source, provider: "generated" } },
+          }
+        : p;
+    });
+    expect(r.redo).toBeDefined();
+    expect(r.out.slides.find((s) => s.id === `s${r.vi + 1}`)?.notes).toContain(
+      `REDONE ${r.vi + 1}`,
+    );
+  });
 });
