@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
+import { writerBrief } from "../stages/write";
+import { sampleBriefLesson } from "../testing";
+import { writerSystem } from "./ai-services";
 import { withClose } from "./close";
 import fixture from "./fixtures/pilot-v411-y2-greatfire.json" with { type: "json" };
 import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
+import { type WriterReq, type WriterServices, writerMaxTokens } from "./services";
+import { runWriter } from "./stage";
 
 /*
  * Pilot pack v4.11 (TEACH-110 part as): v4.10 with whole questions and 3-option hinges for the
@@ -52,7 +57,11 @@ describe("pilot pack v4.11", () => {
         "A hinge has exactly the number of options its flow entry's size counts.",
       );
       expect(line.includes("A hinge has 3 options, each a short phrase")).toBe(ks === "KS1");
-      expect(line.includes("In Years 3 and 4, a hinge has 3 options.")).toBe(ks === "KS2");
+      expect(
+        line.includes(
+          "In Years 3 and 4, a hinge has 3 options; it takes the 2-option fit only when",
+        ),
+      ).toBe(ks === "KS2");
     });
 
     for (const [tier, range] of Object.entries(SLIDE_TIER_RANGES)) {
@@ -91,5 +100,49 @@ describe("pilot pack v4.11", () => {
     for (const h of hinges) expect(h.options).toHaveLength(3);
     expect(fixture.close.template).toBe("exit-ticket");
     expect(3 + fixture.slides.length).toBe(13);
+  });
+
+  test("two lessons at one key stage share the cached first system message", async () => {
+    const head = async (yearGroup: string, subject: string, objectives: string[]) => {
+      let got: WriterReq | undefined;
+      const services = {
+        log: () => {},
+        chat: async () => {
+          throw new Error("no chat in this test");
+        },
+        writer: async (r: WriterReq) => {
+          got = r;
+          throw new Error("stop after the request");
+        },
+      } as unknown as WriterServices;
+      const l = sampleBriefLesson({ yearGroup, ageBand: "ks1", subject } as never);
+      await runWriter({
+        brief: writerBrief(l),
+        objectives,
+        services,
+        pilotPack: "v4.11",
+        drawDiagrams: { callDrawer: async () => ({ out: undefined, usd: 0, ms: 0 }) },
+        library: true,
+        libraryMenuFilter: true,
+        libraryMenuRank: true,
+        libraryModelBody: true,
+        libraryPanelsOff: true,
+        checks: "log",
+      } as never).catch(() => {});
+      if (!got) throw new Error("no writer request");
+      return { system: got.system, head: writerSystem(got.system)[0]?.content as string };
+    };
+    const a = await head("Year 2", "History", ["Say where and when the Great Fire began."]);
+    const b = await head("Year 1", "Science", ["Name the parts of a plant.", "Say what roots do."]);
+    expect(a.system).not.toBe(b.system);
+    expect(b.head).toBe(a.head);
+    expect(a.head).toContain("A question never ends on a second, clipped command");
+  });
+
+  test("a Detailed lesson's output cap keeps at least 40% headroom at v4.11's measured need", () => {
+    // Paid checks, 26 Oct: v4.11 wrote 13 slides in 2,212 / 2,236 / 2,239 output tokens
+    // (reasoning included; Y2 Great Fire x2, Y1 plants), at most 173 a slide, so about 2,756 at 16.
+    const need16 = Math.ceil((2239 / 13) * 16);
+    expect(writerMaxTokens(16)).toBeGreaterThanOrEqual(Math.ceil(need16 / 0.6));
   });
 });
