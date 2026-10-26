@@ -32,6 +32,29 @@ export const FOLLOW_PACE = {
 export type FollowPace = typeof FOLLOW_PACE;
 
 /**
+ * What the view shows while the writer plans (before the first content slide has words).
+ * - `"outline"` (UX ruling 278, Greg 20 Oct, amending part f): the title and objectives type out,
+ *   then the view opens the next planned slide as its outline.
+ * - `"stay"` (proposed 26 Oct, pending Greg): the view stays on the last finished slide.
+ * Switch here; nothing else depends on the choice.
+ */
+export const PLANNING_VIEW: "outline" | "stay" = "outline";
+
+/** The slide to hold on while the writer plans, or undefined to use the usual target. */
+export function planningView(
+  slides: readonly { id: Id; elements?: readonly unknown[] }[],
+  writingSlideIds: ReadonlySet<Id>,
+  revealing: Id | undefined,
+  view: "outline" | "stay" = PLANNING_VIEW,
+): Id | undefined {
+  if (revealing !== undefined && writingSlideIds.has(revealing)) return revealing;
+  if (view === "stay") return undefined;
+  return slides.find(
+    (s, i) => i >= 2 && writingSlideIds.has(s.id) && s.elements !== undefined && isPlannedBlank(s),
+  )?.id;
+}
+
+/**
  * Live writing P1 (TEACH-202 part e): while a job writes the lesson, the open slide follows the
  * slide being written (the last `writing` slide in deck order: the writer goes in order, and the
  * objectives slide stays `writing` until the job ends). The shell's pick arrives as
@@ -103,11 +126,11 @@ export function useFollowWriting({
     // objectives for the writer's planning time. Real words from slide 3 on always lead, saved or
     // streaming: once a later slide has words, `lead` may be undefined between drafts and the view
     // must hold on the written slide, not jump to the next outline.
-    // Greg 26 Oct (amending 20 Oct): while the writer plans, the view stays on the last finished
-    // slide (the objectives, or the title while it types), never on an empty outline of the next.
     const planning = slides.slice(2).every((s) => s.elements === undefined || isPlannedBlank(s));
-    if (at(lead) < 2 && planning && revealing !== undefined && writingSlideIds.has(revealing))
-      return revealing;
+    if (at(lead) < 2 && planning) {
+      const held = planningView(slides, writingSlideIds, revealing);
+      if (held !== undefined) return held;
+    }
     let last = -1;
     for (const [i, s] of slides.entries()) if (writingSlideIds.has(s.id)) last = i;
     let shown: Id | undefined;

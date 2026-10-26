@@ -6,6 +6,8 @@ import {
   FOLLOW_PACE,
   type FollowTimer,
   isTeacherNavigation,
+  PLANNING_VIEW,
+  planningView,
   useFollowWriting,
 } from "./use-follow-writing";
 
@@ -254,5 +256,26 @@ describe("isTeacherNavigation", () => {
     strip.el.append(toggle);
     expect(on(toggle, down())).toBe(false);
     for (const z of [bar, dialog, strip]) z.el.remove();
+  });
+});
+
+describe("planningView (ruling 278, and the pending alternative)", () => {
+  const deck = [
+    { id: id(1), elements: [{ id: "t", name: "Text" }] },
+    { id: id(2), elements: [{ id: "o", name: "Text" }] },
+    { id: id(3), elements: [{ id: "p", name: "Planned" }] },
+    { id: id(4), elements: [{ id: "q", name: "Planned" }] },
+  ];
+  const writing = new Set([id(2), id(3), id(4)]);
+  test("ruling 278 is the default: the next planned slide's outline", () => {
+    expect(PLANNING_VIEW).toBe("outline");
+    expect(planningView(deck, writing, undefined)).toBe(id(3));
+  });
+  test("a slide typing out (title, objectives) holds first, in either view", () => {
+    expect(planningView(deck, writing, id(2))).toBe(id(2));
+    expect(planningView(deck, writing, id(2), "stay")).toBe(id(2));
+  });
+  test("the alternative stays on the last finished slide (the usual target)", () => {
+    expect(planningView(deck, writing, undefined, "stay")).toBeUndefined();
   });
 });

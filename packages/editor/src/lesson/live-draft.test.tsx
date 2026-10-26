@@ -129,6 +129,56 @@ describe("the editor shows a writing slide's drafts and hands over to the saved 
     expect(saves.every((l) => !JSON.stringify(l).includes('"The heart pumps blood"'))).toBe(true);
   });
 
+  test("a planned slide whose layout arrives before any word keeps its outline (ruling 278)", async () => {
+    const lesson = seededLesson();
+    // Planning: slide 3 is the next planned slide, so the follow opens its outline (ruling 278).
+    lesson.slides = lesson.slides.slice(0, 3);
+    const id = lesson.slides[2]?.id as Id;
+    // Planned: only its muted "Planned" line, as the job adds it.
+    (lesson.slides[2] as Slide).elements = [
+      { ...textEl("p0", "Name four parts"), name: "Planned" } as never,
+    ];
+    const { store, tree } = setup(lesson);
+    const layout: Slide = {
+      id,
+      kind: "content",
+      elements: [
+        { ...textEl("h", ""), name: "Heading" } as never,
+        { id: "pic", type: "image", src: "x", x: 500, y: 120, w: 400, h: 300 } as never,
+      ],
+    };
+    store.set([{ index: 2, slideId: id, slide: layout }]);
+    const r = render(tree(new Set([id])));
+    await act(() => settle());
+    // The breathing outline, not the empty layout and not a blank slide.
+    expect(
+      r.container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]'),
+    ).not.toBeNull();
+    expect(r.container.querySelector('[data-slide-clip] [data-element-id="pic"]')).toBeNull();
+    // Its first word arrives: the region rules take over (title first, picture with it).
+    act(() =>
+      store.set([
+        {
+          index: 2,
+          slideId: id,
+          slide: {
+            ...layout,
+            elements: [
+              { ...textEl("h", "Roots"), name: "Heading" } as never,
+              layout.elements[1] as never,
+            ],
+          },
+        },
+      ]),
+    );
+    await act(() => settle());
+    expect(
+      r.container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]'),
+    ).toBeNull();
+    expect(r.container.querySelector('[data-slide-clip] [data-element-id="pic"]')).not.toBeNull();
+    expect(canvasText(r.container)).toContain("Roots");
+  });
+
   test("a slide turning done before its saved words arrive keeps its draft until they do", async () => {
     const lesson = seededLesson();
     const id = lesson.slides[1]?.id as Id;

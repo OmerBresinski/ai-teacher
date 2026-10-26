@@ -8,6 +8,9 @@ import { describe, expect, test } from "bun:test";
 import type { Slide } from "@tj/domain/documents";
 import { CATCH_UP_STEPS, catchUpStep, revealSlide, wordCount } from "./live-draft";
 
+// A draft whose layout came before any word keeps the ruled outline in `LiveSlide` (ruling 278);
+// `revealSlide` itself never draws an empty layout.
+
 const doc = (text: string) => ({
   type: "doc",
   content: [{ type: "paragraph", content: [{ type: "text", text }] }],

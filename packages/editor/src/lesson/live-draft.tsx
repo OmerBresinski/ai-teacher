@@ -701,7 +701,11 @@ export function LiveSlide({
           : { slide }
     : reduced
       ? { slide: draft.slide }
-      : revealSlide(draft.slide, words);
+      : words <= 0 && slide !== undefined && isPlannedBlank(slide)
+        ? // Its layout arrived but no word yet: the ruled outline stays (ruling 278), never an
+          // empty layout or a blank slide.
+          { slide: skeletonSlide(slide) }
+        : revealSlide(draft.slide, words);
   const at =
     (draft || paced !== undefined || catchUp) && !reduced && "at" in shown ? shown.at : undefined;
   // A card or picture box that joins a slide already on screen fades in; a slide's first draft
