@@ -77,9 +77,9 @@ describe("planPicture", () => {
     expect(p.request.route).toBe("real");
     expect(p.brief.queries).toEqual(["hyperinflation 1923", "Weimar inflation children"]);
     expect(p.brief.period).toBe("Germany, 1923");
-    // Ruling 163 strict: a past event has no generated fallback at all.
-    expect(p.request.realFallback).toBe("none");
-    expect(p.request.style).toBeUndefined();
+    // Rulings 163 and 210: a past event with no real picture is the painted illustration.
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
   });
 
   // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:
@@ -95,6 +95,7 @@ describe("planPicture", () => {
         });
         expect(p.request.route).toBe("real");
         expect(p.request.period).toBe("Germany, 1923");
+        // The director gave no kind: real-only, never painted (it could be a portrait or a place).
         expect(p.request.realFallback).toBe("none");
         expect(p.request.depicts).toBe(true);
         expect(p.request.style).toBeUndefined();
@@ -270,7 +271,7 @@ describe("planPicture", () => {
     expect(historyPolicy(undefined)).toBe("strict");
     expect(historyPolicy("labelled")).toBe("labelled");
     expect(REAL_FALLBACK.strict).toEqual({
-      event: "none",
+      event: "illustration",
       person: "none",
       work: "none",
       place: "none",
@@ -479,14 +480,14 @@ describe("lesson look (dd-pics, 6 Oct)", () => {
     expect(p.request.style).toBeUndefined();
     expect(p.request.palette).toBeUndefined();
   });
-  test("ruling 163 strict: a historical event is real only, not the lesson's illustration look", () => {
+  test("rulings 163, 210: a historical event is real first, then painted, not the lesson's look", () => {
     const p = photoPlan(dir({ route: "pexels", period: "Germany, 1923", named: "event" }), {
       ...ask,
       look,
     } as never);
     expect(p.request.route).toBe("real");
-    expect(p.request.realFallback).toBe("none");
-    expect(p.request.style).toBeUndefined();
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
     expect(p.request.palette).toBeUndefined();
   });
   test("a photo lesson is unchanged", () => {
@@ -515,8 +516,8 @@ describe("generic: generate (house photo look)", () => {
       ...ask,
       look: house,
     } as never);
-    expect(hist.request.style).toBeUndefined();
-    expect(hist.request.realFallback).toBe("none");
+    expect(hist.request.style).toBe("illustration");
+    expect(hist.request.realFallback).toBe("illustration");
   });
 });
 
@@ -540,8 +541,8 @@ describe("ruling 163 ships in code", () => {
         text: "The Roman landing in Kent",
         named: null,
       });
-      expect(event.request.realFallback).toBe("none");
-      expect(event.request.style).toBeUndefined();
+      expect(event.request.realFallback).toBe("illustration");
+      expect(event.request.style).toBe("illustration");
     } finally {
       if (prev === undefined) delete process.env.HISTORY_POLICY;
       else process.env.HISTORY_POLICY = prev;
@@ -720,8 +721,26 @@ describe("ruling 296: which real things may fall back to a generated picture", (
     expect(p.request.realFallback).toBe("none");
     expect(p.request.style).toBeUndefined();
   });
-  test("an event keeps ruling 163's table", () => {
-    expect(hist("event", "The Great Fire of London", null).request.realFallback).toBe("none");
+  test("a past ask the director did not classify is real-only, never painted", () => {
+    for (const text of ["The Great Fire spreading across London", "A portrait of Charles II"]) {
+      const p = hist(null, text, null);
+      expect(p.request.realFallback).toBe("none");
+      expect(p.request.style).toBeUndefined();
+    }
+  });
+  test("an explicit event the writer named is painted (rulings 163, 210)", () => {
+    const p = hist("event", "The Great Fire spreading across London", "The Great Fire of London");
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
+  });
+  test("a past person stays real-only", () => {
+    expect(hist("person", "Charles II", null).request.realFallback).toBe("none");
+  });
+  test("a past event, named or not, falls back to the painted illustration (rulings 163, 210)", () => {
+    for (const named of ["The Great Fire of London", null])
+      expect(
+        hist("event", "The Great Fire spreading across London", named).request.realFallback,
+      ).toBe("illustration");
   });
 });
 
@@ -731,7 +750,10 @@ describe("realFallbackFor: ruling 296's full table", () => {
     for (const kind of kinds)
       for (const named of [true, false])
         test(`${policy}, ${kind ?? "no kind"}, writer ${named ? "named" : "generic"}`, () => {
-          const want = kind === "object" && !named ? "illustration" : "none";
+          const want =
+            (kind === "object" && !named) || (kind === "event" && policy === "strict")
+              ? "illustration"
+              : "none";
           expect(realFallbackFor(kind, policy, named)).toBe(want);
         });
 });

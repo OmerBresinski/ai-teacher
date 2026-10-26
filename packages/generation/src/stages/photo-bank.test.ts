@@ -630,16 +630,25 @@ describe("ruling 163: no generated picture for a historical request", () => {
 
   // BAKEOFF round 6 (r5 y4 s3, an AI "illustration" of the Roman landing): no generated picture
   // of any style for a past event or person; real artefacts and artworks only.
-  test("library: no generated row of any style is placed for a historical request", async () => {
-    for (const style of ["photo", undefined, "illustration"] as const) {
+  test("library: no generated photo is placed for a historical request", async () => {
+    for (const style of ["photo", undefined] as const) {
       const a = await run(history, made(style, `/files/b/${style}.png`), undefined);
       expect(a.out.photo).toBeUndefined();
     }
+    // Rulings 163 and 210: a past event's painted illustration may be reused.
+    const painted = await run(history, made("illustration", "/files/b/p.png"), undefined);
+    expect(painted.out.via).toBe("library");
+    // Not for a request with no painted fallback (a person).
+    const person = { ...history, realFallback: "none" as const, style: undefined };
+    const none = await run(person, made("illustration", "/files/b/q.png"), undefined);
+    expect(none.out.photo).toBeUndefined();
   });
 
-  test("fresh: nothing is generated for a historical request, whatever the fallback", async () => {
+  test("fresh: a past event's painted fallback is generated; nothing else is", async () => {
+    const painted = await run(history, undefined, made("illustration", "/files/b/gen.png"));
+    expect(painted.out.via).toBe("generated");
     for (const req of [
-      history,
+      { ...history, realFallback: "none" as const, style: undefined },
       { ...history, route: "generic" as const, realFallback: undefined, stockFirst: true },
       { ...history, realFallback: "faithful" as const, style: undefined },
     ]) {
