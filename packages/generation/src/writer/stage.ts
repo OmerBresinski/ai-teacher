@@ -15,6 +15,7 @@ import {
   PICTURE_FALLBACK,
 } from "../library/catalogue";
 import { libraryDiagram } from "../library/fill";
+import { wantsMap } from "../stages/illustrate";
 import { pointOf, type SlideForPicture } from "../stages/picture-director";
 import {
   ACTIVITIES_DEFAULT,
@@ -1141,11 +1142,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           },
         ).then(async (r) => {
           if (cancelled()) return;
-          // TEACH-247 part ad: a living body is never drawn from shapes. A full slide takes the
-          // lesson's library model for a body when its fill draws; otherwise the figure fails and
-          // the fallback ladder places a picture of the same thing.
+          // TEACH-247 parts ad, ay: a living body or a science process is never drawn from shapes.
+          // A full slide takes the first library model the ban names (a process's own model, then
+          // the body models) whose fill draws; otherwise the figure fails and the fallback ladder
+          // places a picture of the same thing.
           if (r.body) {
-            for (const model of slot === "full" ? BODY_MODELS : []) {
+            for (const model of slot === "full" ? (r.models ?? BODY_MODELS) : []) {
               if (!models.some((m) => m.id === model)) continue;
               const drew = await libDraw({ model, intent: a2.shows }, true);
               if (drew === undefined) return;
@@ -2016,30 +2018,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       earlyLost.set(i, job);
       void Promise.allSettled([job]);
     }
-  streamOver = true;
-  if (run.beforeEditable) {
-    await run.beforeEditable();
-    await retryTitle();
-    // The settled pictures (or their absence) replace the open slots.
-    // A slide still showing an open slot that nothing fills is laid again without it; each slide
-    // at most once.
-    for (let i = 0; i < n; i++)
-      if ((asks.get(i) ?? []).some((x) => x.type === "photo") || holdsPlaceholder(i)) relay(i);
-  } else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
-  // Editable never waits for an early retry: one still running is waited for in its slide's tail.
-  editable = true;
-  // `unheld`: the same deck with every held frame laid without its failed photo, for a job that
-  // stops before its final deck (the caller saves it then, so no held frame is left behind).
-  await run.onEditable?.(deck(true), deck());
-
-  // ── notes off the tail: one call on the deck as shown now, beside the repairs ──
-  // The notes need each slide's final words and placed visuals, not the repairs. So the one call
-  // starts here, and a slide whose words or visuals change afterwards gets its note written again
-  // once that slide settles (below). Nothing waits for the notes until the very end.
+  // ── notes at stream end: one call on the written words, beside the pictures and repairs ──
+  // The notes need each slide's final words and its visuals, not the pictures' arrival. So the one
+  // call starts as soon as the words are in (every slide parsed, diagrams drawn), while pictures
+  // still load: a picture still coming is shown by what was asked for. A slide whose words change
+  // afterwards, or that loses a visual, gets its note written again once it settles (below); a
+  // picture that lands as asked changes nothing. Nothing waits for the notes until the very end,
+  // so they no longer add their ~20 s after the last picture (gen-health audit, 26 Oct).
   const placedLines = (i: number) =>
     (asks.get(i) ?? []).flatMap((a) => {
       const v = visualState(i)(a.key);
       if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
+      // Still loading (the stream-end call): the picture as asked for.
+      if (v?.status === "pending" && a.type === "photo") return [`Picture: ${a.shows}`];
       // A drawing the layout could not place is not on the slide (unless it ships with warnings).
       if (
         v?.status === "diagram" &&
@@ -2075,8 +2066,39 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     void Promise.allSettled([call]);
     return call;
   };
+  /** The kind of picture a photo ask expects: a map when it asks for one, else the lesson's style. */
+  const askedKind = (a: PhotoAsk) =>
+    wantsMap({ request: a.shows })
+      ? "map"
+      : plan.design?.picture_style === "illustration"
+        ? "painting"
+        : "photo";
+  /** The kind on the slide for a photo ask (a pending one is still the asked kind); none if lost. */
+  const landedKind = (v: VisualState | undefined, a: PhotoAsk) => {
+    if (!v || v.status === "pending") return askedKind(a);
+    if (v.status === "diagram") return "drawing";
+    if (v.status !== "photo") return undefined;
+    if (v.photo.whole) return "map";
+    return v.photo.source?.provider === "generated" ? "painting" : "photo";
+  };
+  /**
+   * What a slide's note depends on: its words as shown and each visual still on it, by what was
+   * asked for and the kind that landed. A pending picture and the same picture landed as the asked
+   * kind give the same key, so pictures that land after the stream-end call cost no redo; a changed
+   * word, a lost visual or a different kind (a locator map, a painting or a drawing where a photo
+   * was asked, or the reverse) does.
+   */
+  const notesKey = (i: number) =>
+    renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, [
+      ...(asks.get(i) ?? []).flatMap((a) => {
+        if (a.type !== "photo") return [];
+        const kind = landedKind(visualState(i)(a.key), a);
+        return kind ? [`Picture ask (${kind}): ${a.shows}`] : [];
+      }),
+      ...placedLines(i).filter((l) => !l.startsWith("Picture: ")),
+    ]);
   /** Each slide as the deck-wide notes call saw it. */
-  const seenByNotes = new Map(Array.from({ length: n }, (_, i) => [i, asShown(i)] as const));
+  const seenByNotes = new Map(Array.from({ length: n }, (_, i) => [i, notesKey(i)] as const));
   const deckNotes = notesCall();
   /** Notes written again for a slide that changed after the deck-wide call saw it. */
   const notesRedone = new Map<number, Promise<Map<number, SlideNotes>>>();
@@ -2086,12 +2108,28 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * seen is skipped, never paid twice; a later change replaces a redo that saw an older slide.
    */
   const redoNotes = (i: number, why?: string) => {
-    const shown = asShown(i);
+    const shown = notesKey(i);
     if (i < 2 || shown === seenByNotes.get(i)) return;
     seenByNotes.set(i, shown);
     log({ ev: "notes-redo", slide: i + 1, ...(why ? { why } : {}) });
     notesRedone.set(i, notesCall(i + 1));
   };
+
+  streamOver = true;
+  if (run.beforeEditable) {
+    await run.beforeEditable();
+    await retryTitle();
+    // The settled pictures (or their absence) replace the open slots.
+    // A slide still showing an open slot that nothing fills is laid again without it; each slide
+    // at most once.
+    for (let i = 0; i < n; i++)
+      if ((asks.get(i) ?? []).some((x) => x.type === "photo") || holdsPlaceholder(i)) relay(i);
+  } else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
+  // Editable never waits for an early retry: one still running is waited for in its slide's tail.
+  editable = true;
+  // `unheld`: the same deck with every held frame laid without its failed photo, for a job that
+  // stops before its final deck (the caller saves it then, so no held frame is left behind).
+  await run.onEditable?.(deck(true), deck());
 
   // ── code checks ──
   const baseCheck = () =>

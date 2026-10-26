@@ -35,6 +35,7 @@ const grid = Array.from({ length: 9 }, (_, k) => [
 ]).flat();
 const crowded = {
   kind: "labelled-diagram",
+  subject: "object_or_machine",
   alt: "A small square on a grid with six labels",
   canvas: "square",
   shapes: [{ type: "rect", x: 45, y: 45, w: 10, h: 10, fill: "accent" }, ...grid],
@@ -49,13 +50,28 @@ const crowded = {
 };
 const clean = {
   kind: "labelled-diagram",
+  subject: "object_or_machine",
   alt: "A green square",
   canvas: "square",
   shapes: [{ type: "rect", x: 30, y: 30, w: 40, h: 40, fill: "accent" }],
   labels: [{ text: "Square", at: [50, 15] }],
 };
 
-const go = async (spec: unknown) => {
+/**
+ * TEACH-247 part ay: a drawing of an animal is never drawn from shapes, so the layout tests ask
+ * slide 6 for things (garden tools) and a third test holds the animals to the picture route.
+ */
+const NOT_LIVING: [string, string][] = [
+  [
+    "Six separate animal photographs: cow, sheep and dog across the top; puppy, calf and lamb across the bottom",
+    "Six separate garden tools: hammer, saw and spade across the top; trowel, rake and fork across the bottom",
+  ],
+  ["adult cow", "hammer"],
+  ["adult sheep", "saw"],
+  ["adult dog", "spade"],
+  ["small puppy below cow position", "trowel below hammer position"],
+];
+const go = async (spec: unknown, living = false) => {
   const rec = recordedVisuals(B);
   const placed = new Set<string>();
   const placeCalls: string[] = [];
@@ -77,7 +93,10 @@ const go = async (spec: unknown) => {
       ...replayServices(B),
       log: (e: Record<string, unknown>) => events.push(e),
       writer: async () => ({
-        text: (read("main.json") as { text: string }).text,
+        text: NOT_LIVING.reduce(
+          (t, [from, to]) => (living ? t : t.replaceAll(from, to)),
+          (read("main.json") as { text: string }).text,
+        ),
         finishReason: "stop",
         usd: 0,
         ms: 0,
@@ -114,5 +133,11 @@ describe("lostPic: a director's drawing the slide cannot show falls back to the 
     expect(r.events.some((e) => e.ev === "lost-library-undrawn")).toBe(false);
     expect(r.placeCalls).toEqual([]);
     expect(r.path).toBe("picture-library");
+  });
+  test("a drawing of the animals is withheld and the picture route places it", async () => {
+    const r = await go(clean, true);
+    expect(r.events.some((e) => e.ev === "body-figure" && e.slide === 6)).toBe(true);
+    expect(r.placeCalls).toEqual(["5:picture"]);
+    expect(r.deck).toContain(r.src("5:picture"));
   });
 });

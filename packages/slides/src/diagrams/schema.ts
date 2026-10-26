@@ -368,7 +368,7 @@ export const LabelledDiagramSchema = z
     subject: z
       .enum(LABELLED_SUBJECTS)
       .describe(
-        "What the drawing is of. living_body: a person, an animal or a whole plant drawn as it looks, or part of a person's or animal's body drawn as it looks (an organ, a limb, a face). object_or_machine: an object, apparatus or mechanism, natural or made. place_or_map: a scene, landscape or map. abstract_or_process: a chart, graph, tree, cycle, flow or model of an idea, even where its boxes, icons or arrows stand for people, animals, organs, senses or cells.",
+        "What the drawing is of; always give it. living_body: a person, animal or plant, or any part of one (an organ, limb, face, leaf, root, flower or cell), drawn in any style, however simplified: an outline, a stick figure, shapes or icons. object_or_machine: an object, apparatus or mechanism that is not alive, natural or made. place_or_map: a scene, landscape or map. abstract_or_process: a chart, graph or model of an idea that draws no living thing. Whenever the drawing shows a living thing or part of one, the answer is living_body.",
       )
       .optional(),
     canvas: z.enum(["square", "wide"]).default("square"),

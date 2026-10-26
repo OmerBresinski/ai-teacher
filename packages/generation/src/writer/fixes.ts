@@ -460,6 +460,8 @@ const FIGURE_FIELD: Record<string, string> = {
   "exit-ticket": "figure",
   discussion: "picture",
   title: "picture",
+  // TEACH-247 part ba: the question picture at the foot of the reasons panel.
+  reasons: "picture",
 };
 /**
  * A slide the flow's `look` says shows a picture, but which asks for none, gets that picture from
@@ -481,6 +483,8 @@ export function withLook(
   if (tpl === "explain")
     return { slide: { ...s, template: "visual-text", figure: pic }, how: "explain-to-visual-text" };
   const field = FIGURE_FIELD[tpl];
+  // A reasons slide takes a picture only where its schema offered one (pack `reasonsPicture`).
+  if (tpl === "reasons" && !("picture" in s)) return { slide: s };
   return field ? { slide: { ...s, [field]: pic }, how: `${field}-from-look` } : { slide: s };
 }
 

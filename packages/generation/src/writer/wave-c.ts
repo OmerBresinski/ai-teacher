@@ -13,6 +13,9 @@ import PICTURE_TEXT_CAPACITY from "@tj/slides/templates/picture-text-capacity.js
   type: "json",
 };
 import REASONS_CAPACITY from "@tj/slides/templates/reasons-capacity.json" with { type: "json" };
+import REASONS_PICTURE_CAPACITY from "@tj/slides/templates/reasons-picture-capacity.json" with {
+  type: "json",
+};
 import STAGES_CAPACITY from "@tj/slides/templates/stages-capacity.json" with { type: "json" };
 import STEPS_MODEL_CAPACITY from "@tj/slides/templates/steps-model-capacity.json" with {
   type: "json",
@@ -59,11 +62,11 @@ const stageCells = (s: WriterStage): StageCell[] =>
       wordsWithin(c.name.cap, s) >= 1,
   );
 /** Reasons cells the age takes: a measured cap of 0 is not offered (KS1 has no fourth reason). */
-const reasonsCells = (s: WriterStage): Record<string, J> =>
+const reasonsCells = (s: WriterStage, picture = false): Record<string, J> =>
   Object.fromEntries(
-    Object.entries((REASONS_CAPACITY as J)[AGE[s]] as Record<string, J>).filter(
-      ([, c]) => c.line.cap > 0,
-    ),
+    Object.entries(
+      ((picture ? REASONS_PICTURE_CAPACITY : REASONS_CAPACITY) as J)[AGE[s]] as Record<string, J>,
+    ).filter(([, c]) => c.line.cap > 0),
   );
 const countOf = (k: string) => Number(k.split("-")[1]);
 
@@ -81,7 +84,7 @@ export const WAVE_C_FLOW_SHAPES: string[] = (L47.flowShapes as string[]).flatMap
  * photo only and step-model is not offered (pe-wavec2: both pointed at diagram-side, which holds no
  * model, so neither could carry one).
  */
-export function waveCDefs(s: WriterStage, hasModels = false): J {
+export function waveCDefs(s: WriterStage, hasModels = false, reasonsPicture = false): J {
   const age = AGE[s];
   const w = (WORKED_CAPACITY as J)[age];
   const ns = stageCells(s).map((c) => c.n);
@@ -131,6 +134,10 @@ export function waveCDefs(s: WriterStage, hasModels = false): J {
         Math.min(...rn, ...cn),
         Math.max(...rn, ...cn),
       ),
+      // TEACH-247 part ba: one optional photo of the thing, place or event the question asks about,
+      // at the foot of the question panel (the myth proof's picture plumbing). Only a pack whose
+      // menu offers it (`reasonsPicture`): live v4.16's menu says reasons carry no picture.
+      ...(reasonsPicture ? { picture: picOrNull } : {}),
     }),
     "figure-slide": obj({
       template: lit("figure"),
@@ -209,6 +216,22 @@ export function waveCDefs(s: WriterStage, hasModels = false): J {
  * The wave C word budgets at a stage, as the brief and the run's metrics read them. Tables in
  * characters go to words by `wordsWithin`; tables in words are as measured.
  */
+/** The reasons cells in words (`waveCWords`), with or without a question picture. */
+function reasonsWords(s: WriterStage, picture: boolean): J {
+  const ww = (c: number) => wordsWithin(c, s);
+  return Object.fromEntries(
+    Object.entries(reasonsCells(s, picture)).map(([k, c]) => [
+      k,
+      {
+        question: ww(c.question.cap),
+        lead: ww(c.lead.cap),
+        head: ww(c.head.cap),
+        line: ww(c.line.cap),
+      },
+    ]),
+  );
+}
+
 export function waveCWords(s: WriterStage): J {
   const age = AGE[s];
   const ww = (c: number) => wordsWithin(c, s);
@@ -225,17 +248,9 @@ export function waveCWords(s: WriterStage): J {
     stages: Object.fromEntries(
       stageCells(s).map((c) => [`${c.n}-${c.vis}`, { name: ww(c.name.cap), line: ww(c.line.cap) }]),
     ),
-    reasons: Object.fromEntries(
-      Object.entries(reasonsCells(s)).map(([k, c]) => [
-        k,
-        {
-          question: ww(c.question.cap),
-          lead: ww(c.lead.cap),
-          head: ww(c.head.cap),
-          line: ww(c.line.cap),
-        },
-      ]),
-    ),
+    reasons: reasonsWords(s, false),
+    // The same cells with a question picture (TEACH-247 part ba): the question has less room.
+    reasonsPicture: reasonsWords(s, true),
     figure: { caption: ww((FIGURE_CAPACITY as J)[age]) },
     myth: Object.fromEntries(Object.entries(m).map(([k, c]) => [k, (c as J).cap])),
     pictureText: { leadAndPoints: pt.comfortable },
@@ -361,7 +376,9 @@ export function waveCCountCaps(
     }
   } else if (layout === "reasons") {
     const kind = raw.kind === "chain" ? "chain" : "reasons";
-    const cell = W.reasons[`${kind}-${items.length}`] as J | undefined;
+    // A question picture leaves the question less room (reasons-picture-capacity.json).
+    const cells = raw.picture && typeof raw.picture === "object" ? W.reasonsPicture : W.reasons;
+    const cell = cells[`${kind}-${items.length}`] as J | undefined;
     if (!cell) cuts.push("items");
     else {
       caps.heading = cell.question;

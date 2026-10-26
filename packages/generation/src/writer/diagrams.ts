@@ -39,6 +39,7 @@ import {
 } from "@tj/slides/diagrams";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage } from "@tj/slides/themes";
+import { freehandBan } from "./body-figure";
 import { nonFatal, nonFatalSync } from "./services";
 
 type J = Record<string, unknown>;
@@ -59,6 +60,11 @@ export const R2_KINDS = [
   "carroll",
   "equal-groups",
   "fraction-shapes",
+  // TEACH-247 part bb: the code-drawn templates the writer filled itself in the early-Oct lab runs
+  // (R3, DIAGRAM-AUDIT). A pack offers their defs with `writerTemplates` (`withWriterTemplates`);
+  // a freeform `{kind, shows, labels}` figure of either kind still goes to the drawer.
+  "river",
+  "hydrograph",
 ] as const;
 export type R2Kind = (typeof R2_KINDS)[number];
 const isR2 = (k: unknown): k is R2Kind => (R2_KINDS as readonly unknown[]).includes(k);
@@ -195,6 +201,51 @@ export function r2Def(kind: R2Kind, stage: StageGroup, slot: DiagramSlot): J | u
   return out;
 }
 
+/** The templates a pack's `writerTemplates` lets the writer spec itself (R2_KINDS' last two). */
+export const WRITER_TEMPLATES = ["river", "hydrograph"] as const satisfies readonly R2Kind[];
+
+/**
+ * The writer's schema with the templates' own defs (`r2Def`) offered in each diagram slot, before
+ * the freeform branch, and the freeform branch no longer naming them. A kind whose side and full
+ * defs are equal (a hydrograph has no list to cap) is one shared `dg-<kind>` def, which keeps the
+ * request small. A schema with no diagram slots is returned as it is. Returns a new schema.
+ */
+export function withWriterTemplates(schema: J, stage: StageGroup): J {
+  const out = structuredClone(schema);
+  const defs = out.$defs as Record<string, J> | undefined;
+  if (!defs) return out;
+  const FREE = "#/$defs/diagram-freeform";
+  const slots = (["side", "full"] as const).filter((s) =>
+    Array.isArray(defs[`diagram-${s}`]?.anyOf),
+  );
+  for (const k of WRITER_TEMPLATES) {
+    const by = Object.fromEntries(slots.map((s) => [s, r2Def(k, stage, s)])) as Record<
+      string,
+      J | undefined
+    >;
+    const shared =
+      slots.length === 2 &&
+      by.side !== undefined &&
+      JSON.stringify(by.side) === JSON.stringify(by.full);
+    if (shared) defs[`dg-${k}`] = by.side as J;
+    for (const s of slots) {
+      const d = by[s];
+      if (!d) continue;
+      const name = shared ? `dg-${k}` : `dg-${k}-${s}`;
+      if (!shared) defs[name] = d;
+      const refs = defs[`diagram-${s}`]?.anyOf as J[];
+      const at = refs.findIndex((r) => r.$ref === FREE);
+      refs.splice(at < 0 ? refs.length : at, 0, { $ref: `#/$defs/${name}` });
+    }
+  }
+  const kind = ((defs["diagram-freeform"]?.properties as J | undefined)?.kind ?? {}) as J;
+  if (Array.isArray(kind.enum))
+    kind.enum = (kind.enum as string[]).filter(
+      (k) => !(WRITER_TEMPLATES as readonly string[]).includes(k),
+    );
+  return out;
+}
+
 /** The writer's spec on a diagram figure, or undefined for a freeform `{kind, shows, labels}` figure. */
 export function writerSpecOf(f: J): J | undefined {
   if (!isR2(f.kind)) return undefined;
@@ -207,14 +258,24 @@ export function writerSpecOf(f: J): J | undefined {
   return spec;
 }
 
+/** A template's fields that name a part of its own drawing (an enum), never words on the slide. */
+const TEMPLATE_KEYS: Record<string, string[]> = {
+  river: ["view", "part"],
+  hydrograph: ["shape", "marks"],
+};
+
 /** A spec's words, as the labels a drawer fallback, the checks and the slide's words read. */
 export function labelsOf(spec: unknown): string[] {
   const out: string[] = [];
+  const own = TEMPLATE_KEYS[String((spec as J | undefined)?.kind)] ?? [];
   const walk = (v: unknown, key = "") => {
     // Numbers are words too (a bar-model whole, a number line's marks); link indices are not.
     if (typeof v === "number" && !["from", "to", "in"].includes(key)) out.push(String(v));
     else if (typeof v === "string") {
-      if (!["kind", "alt", "shows", "style", "unknown", "show_count"].includes(key) && v.trim())
+      if (
+        ![...own, "kind", "alt", "shows", "style", "unknown", "show_count"].includes(key) &&
+        v.trim()
+      )
         out.push(v.trim());
     } else if (Array.isArray(v)) for (const x of v) walk(x, key);
     else if (v && typeof v === "object")
@@ -409,7 +470,11 @@ export function noHeadingTitle<T>(spec: T, words: string): T {
   return rest as T;
 }
 
-/** The structured call the drawer makes (P1's call on gpt-6-luna, low; not strict). */
+/**
+ * The structured call the drawer makes (P1's call on gpt-6-luna, low). Strict only for a
+ * labelled drawing (TEACH-247 part ay): its `subject` tag decides whether it is drawn at all, so
+ * decoding must always give one. Other kinds stay non-strict, as measured.
+ */
 export type DrawerCall = (req: {
   model: "gpt-6-luna";
   effort: "low";
@@ -417,7 +482,7 @@ export type DrawerCall = (req: {
   user: string;
   schema: J;
   name: "diagram";
-  strict: false;
+  strict: boolean;
   timeoutMs: number;
 }) => Promise<{ out?: unknown }>;
 
@@ -446,6 +511,8 @@ export type DrawnWriterDiagram = {
    * stage shows the lesson's library model on a full slide, else a picture of the same thing.
    */
   body?: true;
+  /** TEACH-247 part ay: the library models to try for a banned drawing, in order, before a picture. */
+  models?: string[];
 };
 
 /**
@@ -460,11 +527,6 @@ export function withRequiredSubject(schema: J, kind: string): J {
   return out;
 }
 
-/** True for a drawer spec that names its subject a living body (never drawn from primitives). */
-export const isLivingBodySpec = (spec: unknown): boolean =>
-  (spec as { kind?: unknown; subject?: unknown } | undefined)?.kind === "labelled-diagram" &&
-  (spec as { subject?: unknown }).subject === "living_body";
-
 /**
  * base4's drawer fallback (`services.ts` specCallsRound5): the wire schema, the request with the
  * writer's spec and why it did not draw, one retry told the parse fault. Never throws.
@@ -475,7 +537,15 @@ async function drawerCall(
 ): Promise<{ spec?: unknown; fault: string }> {
   if (!(DIAGRAM_KINDS as readonly string[]).includes(ask.kind))
     return { fault: `no drawer for the kind ${ask.kind}` };
-  const schema = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  // A labelled drawing goes strict (part ay): a missing or invalid `subject` is banned as a living
+  // body, so an honest object drawing must never lose the tag. strictForm makes its optional
+  // fields nullable and closes every object; dropNulls below takes the nulls out before the parse.
+  // Probed 26 Oct: the strict form has no OpenAI schema faults, and 3 of 3 asks on gpt-6-luna low
+  // tagged, parsed and routed as the non-strict call did.
+  const strict = ask.kind === "labelled-diagram";
+  const wire = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  const { $schema: _s, ...open } = wire;
+  const schema = strict ? (strictForm(open) as J) : wire;
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -493,7 +563,7 @@ async function drawerCall(
               : user,
             schema,
             name: "diagram",
-            strict: false,
+            strict,
             timeoutMs: DRAWER_TIMEOUT_MS,
           })
         ).out,
@@ -586,10 +656,18 @@ export async function drawWriterDiagram(
         };
       }
       const r = await drawerCall(ask, deps);
-      // TEACH-247 part ad: one drawer call names the subject; a living body is never rendered.
-      if (r.spec && isLivingBodySpec(r.spec)) {
-        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind });
-        return { via: "none", fault: "a living body is not drawn from shapes", body: true };
+      // TEACH-247 parts ad, ay: a freehand drawing of a living body or a science process is never
+      // rendered: the drawer's tag `living_body`, a missing tag, or a living word or process in
+      // the ask or the spec (`freehandBan`).
+      const ban = r.spec ? freehandBan(ask, r.spec) : undefined;
+      if (ban) {
+        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind, ...ban });
+        return {
+          via: "none",
+          fault: "a living body or a process is not drawn from shapes",
+          body: true,
+          models: ban.models,
+        };
       }
       if (r.spec) {
         // On an asking slide the drawer's spec (a retry or a library fallback included) is held to

@@ -135,7 +135,9 @@ describe("R2: spec round trip per kind (writer spec -> code draws, no call)", ()
           const f = { ...sample, shows: `A ${k}` };
           const spec = writerSpecOf(f);
           expect(spec).toBeDefined();
-          if (k !== "equal-groups") expect(labelsOf(spec).length).toBeGreaterThan(0);
+          // A hydrograph with no numbers and no title has no words: its marks name its own parts.
+          if (k !== "equal-groups" && k !== "hydrograph")
+            expect(labelsOf(spec).length).toBeGreaterThan(0);
           const r = await drawWriterDiagram(ask(k, slot, "ks3", spec), {
             callDrawer: noCall,
             drawerSystem: "",
@@ -195,7 +197,7 @@ describe("the drawer fallback (base4's round 5 drawer call)", () => {
     const call: DrawerCall = async (req) => {
       users.push(req.user);
       expect(req.model).toBe("gpt-6-luna");
-      expect(req.strict).toBe(false);
+      expect(req.strict).toBe(false); // only a labelled drawing goes strict (part ay)
       expect(req.timeoutMs).toBeGreaterThan(0);
       n += 1;
       return { out: n === 1 ? { kind: "cycle", steps: 3 } : good };
@@ -209,6 +211,23 @@ describe("the drawer fallback (base4's round 5 drawer call)", () => {
     expect(n).toBe(2);
     expect(users[0]).toContain("The writer's spec, which did not draw");
     expect(users[1]).toContain("Your last spec did not draw:");
+  });
+  test("a labelled drawing's drawer call is strict, with subject required and no open object (part ay)", async () => {
+    let sent: J | undefined;
+    let strict: boolean | undefined;
+    const call: DrawerCall = async (req) => {
+      sent = req.schema;
+      strict = req.strict;
+      return { out: undefined };
+    };
+    await drawWriterDiagram(
+      ask("labelled-diagram", "full", "ks3", { kind: "labelled-diagram", alt: "x", shapes: [] }),
+      { callDrawer: call, drawerSystem: "SYSTEM", theme: studio },
+    );
+    expect(strict).toBe(true);
+    expect(sent?.$schema).toBeUndefined();
+    expect(sent?.required).toContain("subject");
+    expect(openaiSchemaFaults(sent, true)).toEqual([]);
   });
   test("a drawer that fails twice, or throws, gives no spec (the stage restages); never throws", async () => {
     const bad: DrawerCall = async () => ({ out: { kind: "cycle" } });
