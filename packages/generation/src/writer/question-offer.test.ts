@@ -243,7 +243,8 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
             : (old.find((o) => o.slice(0, 24) === l.slice(0, 24)) ?? l);
         const lines = r.system
           .split("\n")
-          .filter((l) => !waveLines.has(l))
+          // v4.17's river and hydrograph lines are diagram kinds, not question layouts: left out.
+          .filter((l) => !waveLines.has(l) && !/^- (river|hydrograph): /.test(l))
           .map(was);
         const kept = lines.filter((l) =>
           id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),

@@ -150,11 +150,6 @@ export type PilotPack = {
    * frontier calls never read it.
    */
   writer?: { model: string; effort: "low" | "medium" | "high" };
-  /**
-   * `title` streams straight after `design`, before `flow`, so slide 1 fills while the plan is
-   * still being written (v4.17). It needs only the lesson context, never the plan.
-   */
-  titleFirst?: boolean;
 };
 
 /** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
@@ -476,7 +471,6 @@ export const PILOT_PACKS = {
     writerTemplates: true,
     noLabelledDiagram: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
-    titleFirst: true,
   },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
@@ -616,19 +610,6 @@ export function pilotRequest(
     fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
   }
   if (pack.writerTemplates) Object.assign(schema, withWriterTemplates(schema, writerStageOf(ks)));
-  if (pack.titleFirst) {
-    // Strict output streams keys in schema order: title before the flow, the rest as they were.
-    const { title, ...props } = schema.properties as J;
-    if (!title) throw new Error(`pilot pack ${id}: no title to move first`);
-    const [head, ...rest] = Object.entries(props);
-    if (head?.[0] !== "design") throw new Error(`pilot pack ${id}: design is not first`);
-    schema.properties = Object.fromEntries([head, ["title", title], ...rest]);
-    schema.required = [
-      "design",
-      "title",
-      ...(schema.required as string[]).filter((k) => k !== "design" && k !== "title"),
-    ];
-  }
   if (pack.noLabelledDiagram) {
     const kind = schema.$defs?.["diagram-freeform"]?.properties?.kind;
     if (!Array.isArray(kind?.enum) || !kind.enum.includes("labelled-diagram"))

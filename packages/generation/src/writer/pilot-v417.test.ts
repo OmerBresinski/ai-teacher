@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
+import { RIVER_PARTS } from "@tj/slides/diagrams";
 import { WRITER_VERSION, writerRoute } from "./ai-services";
 import { withClose } from "./close";
 import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
@@ -55,7 +56,7 @@ describe("pilot pack v4.17", () => {
       expect(text).toContain("a freehand sketch (particles, cubes)");
       expect(text).toContain("river and hydrograph among them");
       expect(text).not.toContain("a river's course with");
-      expect(text).toContain("a V-shaped valley in cross-section, a meander in cross-section");
+      expect(text).toContain("v-valley, a V-shaped valley in cross-section (");
     });
 
     for (const [tier, range] of Object.entries(SLIDE_TIER_RANGES)) {
@@ -82,20 +83,24 @@ describe("pilot pack v4.17", () => {
     }
   }
 
-  test("title streams straight after design, before the flow; v4.16 keeps its order", () => {
+  test("the stream contract: design and flow before the title and slides (the stage opens nothing before the flow)", () => {
     for (const stage of STAGES) {
       const prod = writerSchema(stage, Object.values(SLIDE_TIER_RANGES)[0] as never);
-      const keys = (v: "v4.16" | "v4.17"): [string[], unknown] => {
-        const sc = pilotRequest(v, stage, prod, (x) => x).schema as J;
-        return [Object.keys(sc.properties as J), sc.required];
-      };
-      const [props, req] = keys("v4.17");
-      expect(props.slice(0, 3)).toEqual(["design", "title", "flow"]);
-      expect(req).toEqual(props);
-      expect(keys("v4.16")[0].slice(0, 3)).toEqual(["design", "flow", "title"]);
+      const order = (v: "v4.16" | "v4.17") =>
+        Object.keys((pilotRequest(v, stage, prod, (x) => x).schema as J).properties as J);
+      expect(order("v4.17")).toEqual(["design", "flow", "title", "slides"]);
+      expect(order("v4.17")).toEqual(order("v4.16"));
     }
+  });
+
+  test("river labels: each view's parts are on the menu", () => {
     for (const ks of ["KS1", "KS2", "KS3"] as const)
-      expect(V417.system[ks]).toContain("The one exception is title, slide 1");
+      for (const [view, parts] of Object.entries(RIVER_PARTS)) {
+        const at = V417.system[ks].indexOf(`${view}, `);
+        expect(at).toBeGreaterThan(-1);
+        const clause = V417.system[ks].slice(at, V417.system[ks].indexOf(")", at));
+        for (const p of parts) expect(clause).toContain(p);
+      }
   });
 
   test("the writer runs Terra at low; v4.16 sets no writer model", () => {
