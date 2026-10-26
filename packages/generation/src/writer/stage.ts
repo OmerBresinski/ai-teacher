@@ -105,6 +105,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
+import { LAYOUT_FAULT, layoutGate } from "./layout-gate";
 import { localise } from "./locale";
 import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -2810,6 +2811,37 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!repairable(plan.slides[i] as S, i)) continue;
     const ok = continueSlide(i, visualState(i));
     log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
+  }
+  // TEACH-247 part af: the layout gate. A slide still carrying an overlap, an overflow or clipped
+  // text falls back in code (no model call, in log mode too): its visuals dropped, then a split.
+  for (let i = 0; i < n; i++) {
+    if (continued.has(i) || !repairable(plan.slides[i] as S, i)) continue;
+    const keys = (asks.get(i) ?? []).map((a) => a.key);
+    const kept = keys.map((k) => [k, override.get(`${i}:${k}`)] as const);
+    const gate = layoutGate({
+      faults: () => (check()[i]?.faults ?? []).filter((f) => LAYOUT_FAULT.test(f)),
+      dropVisuals: () => {
+        if (!keys.length) return false;
+        for (const k of keys) override.set(`${i}:${k}`, { status: "failed" });
+        relay(i);
+        return true;
+      },
+      undoDrop: () => {
+        for (const [k, v] of kept)
+          if (v) override.set(`${i}:${k}`, v);
+          else override.delete(`${i}:${k}`);
+        relay(i);
+      },
+      split: () => continueSlide(i, visualState(i)),
+    });
+    if (gate.outcome !== "clean")
+      log({
+        ev: "layout-gate",
+        ...(gate.outcome === "left" ? { level: "warn" } : {}),
+        slide: i + 1,
+        outcome: gate.outcome,
+        faults: gate.faults.slice(0, 4),
+      });
   }
   for (const [i, p] of path) {
     const warnings = laid.get(i)?.diagramWarnings;

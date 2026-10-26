@@ -90,9 +90,12 @@ export function checkSlide(a: {
   for (const o of a.over) faults.push(`overflow: ${o}`);
   if (a.diagram?.length)
     faults.push(`diagram: figure could not be drawn: ${a.diagram.slice(0, 3).join("; ")}`);
-  // Clipping: anything past the slide's edge.
+  // Clipping: anything past the slide's edge. Pictures and full-bleed `surface:` grounds are drawn
+  // to or past the edge by design (as `offSlide`; TEACH-247 part af: the question set's answer
+  // column runs to the foot).
   for (const e of s.elements)
-    if (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1)
+    if (e.type === "image" || (e.name ?? "").startsWith("surface:")) continue;
+    else if (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1)
       faults.push(`clipped: ${label(e)} runs off the slide`);
   // Overlap: text over text, text over a picture or diagram (markers and panels under text are by design).
   const texts = s.elements.filter((e) => e.type === "text");
