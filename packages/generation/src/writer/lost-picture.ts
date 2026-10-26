@@ -7,6 +7,8 @@
 //   3. Only then the old path: the reroute or stand-alone rewrite, then pointGuard's code strip.
 // Shapes are never split into photos: step 2's pattern is checked before step 1 splits.
 
+import { normalise } from "./materialise";
+
 /** The diagram kind that draws what a lost picture asked for, if the library has one. */
 export function libraryKind(shows: string): string | undefined {
   const t = shows.toLowerCase();
@@ -176,13 +178,17 @@ export async function lostPictureFallback(
   /** The director chose to draw it (Greg, 10 Oct): drawn as its kind first, whatever the words. */
   drawing?: DirectorDrawing,
 ): Promise<"split" | "library" | undefined> {
-  if (otherVisual(s, key)) return undefined;
+  // The asks are keyed on the catalogue slide (a menu `visual-text` figure is the `picture`), so
+  // the fallback reads that slide too: its own figure is the lost picture, never another visual
+  // (verify9 y8 photosynthesis, 26 Oct: the director's drawings were skipped and painted instead).
+  const c = normalise(s);
+  if (otherVisual(c, key)) return undefined;
   const r: LostRoute = drawing ? { how: "library", kind: drawing.kind } : routeLostPicture(shows);
   if (
     r.how === "library" &&
-    (await attempt(librarySlide(s, key, r.kind, shows, drawing?.labels), "library"))
+    (await attempt(librarySlide(c, key, r.kind, shows, drawing?.labels), "library"))
   )
     return "library";
-  if (r.how === "split" && (await attempt(splitSlide(s, key, r.subjects), "split"))) return "split";
+  if (r.how === "split" && (await attempt(splitSlide(c, key, r.subjects), "split"))) return "split";
   return undefined;
 }

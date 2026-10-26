@@ -125,6 +125,60 @@ describe("lostPic (D45 y1 and y2 lost pictures), stubbed picture and drawer path
   });
 });
 
+describe("lostPic: a menu slide's own figure is the lost picture (verify9 y8 photosynthesis)", () => {
+  // The writer's visual-text slide holds its picture as `figure`; its ask is keyed `picture` (the
+  // catalogue slot). The director chose to draw it, so the drawing must be tried, not skipped as if
+  // the slide already had another visual (it was painted instead, 26 Oct).
+  const leaf = {
+    template: "visual-text",
+    heading: "Plants make glucose by photosynthesis",
+    points: ["The word equation is: carbon dioxide + water -> glucose + oxygen."],
+    figure: {
+      shows: "A scientific illustration of a green leaf exchanging gases",
+      must_see: ["single green leaf", "gas entering leaf"],
+      subject: "generic",
+    },
+  };
+  test("the director's drawing is attempted, as the slide's one figure", async () => {
+    const tried: Record<string, unknown>[] = [];
+    const how = await lostPictureFallback(
+      leaf,
+      "picture",
+      leaf.figure.shows,
+      async (next) => {
+        tried.push(next);
+        return true;
+      },
+      { kind: "labelled-diagram", labels: leaf.figure.must_see },
+    );
+    expect(how).toBe("library");
+    expect(tried).toHaveLength(1);
+    const next = tried[0] as Record<string, unknown>;
+    expect(next.picture).toBeUndefined();
+    expect(next.template).toBe("visual-text");
+    expect((next.figure as { kind: string; labels: string[] }).kind).toBe("labelled-diagram");
+    expect((next.figure as { labels: string[] }).labels).toEqual(leaf.figure.must_see);
+  });
+  test("a split of a menu slide's figure replaces it, never sits beside it", async () => {
+    const pets = { template: "visual-text", heading: "Pets", figure: { shows: D45.families } };
+    let seen: Record<string, unknown> | undefined;
+    await lostPictureFallback(pets, "picture", D45.families, async (next) => {
+      seen = next;
+      return true;
+    });
+    expect(seen?.figure).toBeUndefined();
+    expect((seen?.picture as { shows?: string } | undefined)?.shows).toBe("cow");
+  });
+  test("a real second visual still stops the fallback", async () => {
+    const two = { ...leaf, table: { rows: [["a", "b"]] } };
+    const how = await lostPictureFallback(two, "picture", leaf.figure.shows, async () => true, {
+      kind: "labelled-diagram",
+      labels: [],
+    });
+    expect(how).toBeUndefined();
+  });
+});
+
 describe("lostPic after D48 live", () => {
   test("grid and row positions and an 'adults' prefix are not part of a subject", () => {
     expect(
