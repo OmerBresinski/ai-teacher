@@ -651,6 +651,69 @@ describe("panel-list row pictures", () => {
     }
   });
 
+  test("pictures on only some rows go to the panel: no saved picture is left undrawn (TEACH-247 part aj)", () => {
+    // Great Fire Y2 s8 (genlab verify3, 26 Oct), as saved: the fire hook's picture on the second
+    // of two rows, the first explicitly none. It was dropped and the dark panel stood empty.
+    const saved: TemplateInput = {
+      template: "panel-list",
+      heading: "Fighting fire",
+      panel: null,
+      rows: [
+        { icon: null, name: "Buckets", text: "People threw water onto flames.", picture: null },
+        {
+          icon: null,
+          name: "Fire hooks",
+          text: "People pulled burning wood down.",
+          picture: {
+            alt: "A seventeenth-century fire hook with a long wooden pole and a curved metal hook.",
+            photo: "/files/w/images/fire-hook.png",
+            aspect: 1.5,
+          },
+        },
+      ],
+    } as TemplateInput;
+    const faults: string[] = [];
+    for (const theme of THEMES)
+      for (const stage of ["ks1", "ks2"] as Stage[])
+        for (const inp of [
+          saved,
+          {
+            ...pictured(3),
+            rows: (pictured(3).rows ?? []).map((r, i) => (i === 1 ? r : { ...r, picture: null })),
+          },
+        ]) {
+          const r = layoutTemplate(inp, theme, stage);
+          const els = r.slide.elements;
+          const pics = named(els, PANEL_NAMES.photo) as ImageElement[];
+          const want = (inp.rows ?? []).find((x) => x.picture)?.picture as { photo: string };
+          const where = `${theme.id} ${stage} ${inp.heading}`;
+          if (tiles(els).length) faults.push(`${where}: tiles drawn`);
+          if (pics.length !== 1 || pics[0]?.src !== want.photo)
+            faults.push(`${where}: no panel picture`);
+          const pic = pics[0];
+          if (pic && (pic.x + pic.w > PANEL_W + 0.5 || pic.y + pic.h > 540.5))
+            faults.push(`${where}: picture outside the panel`);
+          const title = named(els, PANEL_NAMES.title)[0] as TextElement | undefined;
+          if (pic && title && pic.y < title.y + title.h)
+            faults.push(`${where}: picture over the title`);
+          if (r.over.length) faults.push(`${where}: over ${r.over.join(",")}`);
+        }
+    expect(faults).toEqual([]);
+  });
+
+  test("the panel's own picture or pie wins over a lone row picture", () => {
+    const inp = pictured(3);
+    const rows = (inp.rows ?? []).map((r, i) => (i === 0 ? r : { ...r, picture: null }));
+    const own = { photo: "https://x.test/own.jpg", aspect: 1.5, alt: "own" };
+    const a = layoutTemplate({ ...inp, rows, panel: { picture: own } }, T0, "ks2");
+    expect(
+      (named(a.slide.elements, PANEL_NAMES.photo) as ImageElement[]).map((e) => e.src),
+    ).toEqual([own.photo]);
+    const b = layoutTemplate({ ...inp, rows, panel: { shares: [1, 2, 3] } }, T0, "ks2");
+    expect(named(b.slide.elements, PANEL_NAMES.photo)).toHaveLength(0);
+    expect(named(b.slide.elements, PANEL_NAMES.wedge).length).toBeGreaterThan(0);
+  });
+
   test("a picture still being made keeps an empty slot of the same size: nothing moves when it lands", () => {
     for (const pending of [PLACEHOLDER_IMAGE, ""]) {
       const inp = pictured(4);
