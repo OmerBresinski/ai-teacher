@@ -480,7 +480,14 @@ export function planPicture(
   // Only the director's own kind counts. An unclassified ask stays null, which is real-only, even
   // a depicting past scene: it could be a portrait, a place or a monument (rulings 163, 296). Only
   // an explicit `event` is painted, whether or not the writer named it (rulings 163, 210).
-  const kind = d.named ?? null;
+  // TEACH-251 part r (ruling 210): people doing something at a real place in its own time (Roman
+  // soldiers patrolling Hadrian's Wall, a traveller at its gateway) is a past scene, not the place:
+  // when the search misses it is painted, as an event is. The director files these under `place`
+  // (romans verify3 s6 and s8 went bare as real-only). The place itself, a reconstruction of it
+  // included, stays real-only (ruling 296).
+  const pastScene =
+    !!period && d.named === "place" && PAST_SCENE.test(`${ask.text} ${first.shows}`);
+  const kind = pastScene ? "event" : (d.named ?? null);
   // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
   // ruling 209 never puts a generated panel beside real ones.
   const ruledFallback = !ruled
@@ -813,6 +820,10 @@ export async function findDirected(args: {
 /** Round 7: words that make a historical picture show people or an event (not wheat or ore). */
 const DEPICTS =
   /\b(people|person|man|men|woman|women|child|children|crowd|soldiers?|army|armies|legion(ary|aries)?|troops|king|queen|emperor|ruler|leader|workers?|shoppers?|families|family|villagers|battle|landing|invasion|invad\w*|march\w*|riot|protest|meeting|ceremony|siege|fight\w*|attack\w*|parade|queue)\b/i;
+
+/** People doing something in a picture of a past place: a scene there (ruling 210). */
+export const PAST_SCENE =
+  /\b(soldiers?|guards?|people|travell?ers?|traders?|merchants?|workers?|builders?|villagers|famil(y|ies)|crowds?|troops|legionar(y|ies)|patrol\w*)\b/i;
 
 /** Round 7: the artefact request for a past event or person whose scene has no real picture. */
 export function artefactRequest(shows: string, period?: string): string {
