@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { fixedFallback, linkSteps } from "./fixes";
 import {
   compoundSubjects,
+  keepLanded,
   libraryKind,
   lostPictureFallback,
   otherVisual,
@@ -156,6 +157,7 @@ describe("lostPic: a menu slide's own figure is the lost picture (verify9 y8 pho
     const next = tried[0] as Record<string, unknown>;
     expect(next.picture).toBeUndefined();
     expect(next.template).toBe("visual-text");
+    expect(Object.keys(next).filter((k) => k === "figure")).toHaveLength(1);
     expect((next.figure as { kind: string; labels: string[] }).kind).toBe("labelled-diagram");
     expect((next.figure as { labels: string[] }).labels).toEqual(leaf.figure.must_see);
   });
@@ -166,8 +168,16 @@ describe("lostPic: a menu slide's own figure is the lost picture (verify9 y8 pho
       seen = next;
       return true;
     });
-    expect(seen?.figure).toBeUndefined();
-    expect((seen?.picture as { shows?: string } | undefined)?.shows).toBe("cow");
+    // The split stays a menu slide (the layout gate, repairs and notes key on its template).
+    expect(seen?.template).toBe("visual-text");
+    expect(seen?.picture).toBeUndefined();
+    expect((seen?.figure as { shows?: string } | undefined)?.shows).toBe("cow");
+    expect((seen?.tiles as unknown[] | undefined)?.length).toBe(7);
+    // splitOk keeps only what landed, in the same menu slot.
+    const kept = keepLanded(seen ?? {}, "picture", (x) => x === "cow" || x === "sheep");
+    expect(kept.template).toBe("visual-text");
+    expect((kept.figure as { shows: string }).shows).toBe("cow");
+    expect(kept.tiles).toEqual([{ shows: "sheep", must_see: ["sheep"], subject: "generic" }]);
   });
   test("a real second visual still stops the fallback", async () => {
     const two = { ...leaf, table: { rows: [["a", "b"]] } };

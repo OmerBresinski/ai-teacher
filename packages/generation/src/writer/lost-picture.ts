@@ -7,8 +7,6 @@
 //   3. Only then the old path: the reroute or stand-alone rewrite, then pointGuard's code strip.
 // Shapes are never split into photos: step 2's pattern is checked before step 1 splits.
 
-import { normalise } from "./materialise";
-
 /** The diagram kind that draws what a lost picture asked for, if the library has one. */
 export function libraryKind(shows: string): string | undefined {
   const t = shows.toLowerCase();
@@ -79,6 +77,17 @@ type Slide = Record<string, unknown>;
  * Whether the slide holds another visual besides its lost picture (a figure, tiles, a table or a
  * second picture field): the code fallbacks never replace one (#423 review).
  */
+/**
+ * The field that holds the lost picture. Asks are keyed on the catalogue slot (`picture`,
+ * `diagram`), but a menu slide (`visual-text`, `big-visual`) holds it as `figure`. The swapped
+ * slide keeps the menu template, so later steps (layout gate, repairs, notes) see the names they
+ * expect (verify9 y8 photosynthesis, 26 Oct).
+ */
+export function slotOf(s: Slide, key: string): string {
+  const menu = s.template === "visual-text" || s.template === "big-visual";
+  return menu && (key === "picture" || key === "diagram") && s[key] == null ? "figure" : key;
+}
+
 export function otherVisual(s: Slide, key: string): boolean {
   const set = (v: unknown) => (Array.isArray(v) ? v.length > 0 : v != null && v !== false);
   return ["figure", "diagram", "picture", "tiles", "table"].some((f) => f !== key && set(s[f]));
@@ -110,7 +119,8 @@ export function sharedSubject(shows: string, subjects: string[]): string | undef
 }
 
 /** The slide with its lost picture asked again as one picture per subject (the rest as tiles). */
-export function splitSlide(s: Slide, key: string, subjects: string[]): Slide {
+export function splitSlide(s: Slide, ask: string, subjects: string[]): Slide {
+  const key = slotOf(s, ask);
   const shows = String((s[key] as { shows?: unknown } | undefined)?.shows ?? "");
   const one = sharedSubject(shows, subjects);
   const pic = (x: string) =>
@@ -129,7 +139,8 @@ export function splitSlide(s: Slide, key: string, subjects: string[]): Slide {
  * splitOk (D48b): the split slide with only the single pictures that landed, the first in the
  * picture's own field and the rest as tiles (`landed` holds their requests).
  */
-export function keepLanded(s: Slide, key: string, landed: (shows: string) => boolean): Slide {
+export function keepLanded(s: Slide, ask: string, landed: (shows: string) => boolean): Slide {
+  const key = slotOf(s, ask);
   const pics = [s[key], ...((s.tiles as unknown[]) ?? [])].filter(
     (p): p is { shows: string } =>
       !!p && typeof p === "object" && landed(String((p as { shows?: unknown }).shows ?? "")),
@@ -178,17 +189,16 @@ export async function lostPictureFallback(
   /** The director chose to draw it (Greg, 10 Oct): drawn as its kind first, whatever the words. */
   drawing?: DirectorDrawing,
 ): Promise<"split" | "library" | undefined> {
-  // The asks are keyed on the catalogue slide (a menu `visual-text` figure is the `picture`), so
-  // the fallback reads that slide too: its own figure is the lost picture, never another visual
-  // (verify9 y8 photosynthesis, 26 Oct: the director's drawings were skipped and painted instead).
-  const c = normalise(s);
-  if (otherVisual(c, key)) return undefined;
+  // A menu slide's own figure is the lost picture, never another visual (verify9 y8
+  // photosynthesis, 26 Oct: the director's drawings were skipped and painted instead).
+  const slot = slotOf(s, key);
+  if (otherVisual(s, slot)) return undefined;
   const r: LostRoute = drawing ? { how: "library", kind: drawing.kind } : routeLostPicture(shows);
   if (
     r.how === "library" &&
-    (await attempt(librarySlide(c, key, r.kind, shows, drawing?.labels), "library"))
+    (await attempt(librarySlide(s, slot, r.kind, shows, drawing?.labels), "library"))
   )
     return "library";
-  if (r.how === "split" && (await attempt(splitSlide(c, key, r.subjects), "split"))) return "split";
+  if (r.how === "split" && (await attempt(splitSlide(s, key, r.subjects), "split"))) return "split";
   return undefined;
 }
