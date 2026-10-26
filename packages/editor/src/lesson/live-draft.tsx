@@ -272,6 +272,19 @@ const holds = (outer: Box, inner: Box) => {
   const cy = inner.y + inner.h / 2;
   return cx >= outer.x && cx <= outer.x + outer.w && cy >= outer.y && cy <= outer.y + outer.h;
 };
+/** A card's muted outline in its own place (`skeleton-` like the planned slide's bars; never saved). */
+const cardOutline = (e: El): El => {
+  const b = boxOf(e);
+  const r = (e as { radius?: number }).radius;
+  return {
+    id: `skeleton-${e.id}`,
+    type: "shape",
+    shape: "rounded",
+    ...b,
+    radius: typeof r === "number" ? r : Math.min(16, b.h / 2),
+    fill: "rgba(128, 128, 128, 0.14)",
+  } as El;
+};
 /** The slide's title: its heading box (types first, whatever its place in the element list). */
 const isTitle = (e: El) =>
   e.type === "text" && /^(heading|title)$/i.test(((e as { name?: string }).name ?? "").trim());
@@ -429,10 +442,24 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
       const kids = (e as { children?: El[] }).children;
       if (kids) {
         const shown = walk(kids);
+        // A group's waiting cards are outlined one by one, inside it.
         return shown.length || shows(e) ? [{ ...e, children: shown } as El] : [];
       }
-      return shows(e) ? [e] : [];
+      if (shows(e)) return [e];
+      return waitsAsCard(e) ? [cardOutline(e)] : [];
     });
+  /**
+   * A card still waiting for its words, once the slide has started typing (genux review J5, TEACH-247
+   * part at): an option, order, sort or myth/fact card stands as its muted outline in its own place,
+   * like a planned slide's outline (ruling 278), so the cards do not pop in one per frame under a
+   * title typed onto an empty slide. It becomes the card with its first word.
+   */
+  const waitsAsCard = (e: El): boolean => {
+    if (all || !started) return false;
+    const item = itemOf.get(e);
+    if (e.type !== "shape" || !item || item.box.w <= 0 || item.box.h <= 0) return false;
+    return texts.some((t) => t.texts > 0 && inside(item, t));
+  };
   const elements = walk(slide.elements);
   return { slide: { ...slide, elements }, ...(at && words < total ? { at } : {}) };
 }

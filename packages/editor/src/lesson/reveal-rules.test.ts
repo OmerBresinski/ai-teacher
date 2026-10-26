@@ -82,9 +82,12 @@ describe("revealSlide", () => {
   test("the answer area waits for its own first word, not the question's", () => {
     const titleWords = 6;
     const stemWords = 6;
-    // While the title and the question type, the empty answer area is not drawn.
-    for (let n = 1; n <= titleWords + stemWords; n++)
+    // While the title and the question type, the empty answer area is not drawn: only its muted
+    // outline stands in its place (TEACH-247 part at).
+    for (let n = 1; n <= titleWords + stemWords; n++) {
       expect(ids(revealSlide(quiz, n).slide)).not.toContain("area");
+      expect(ids(revealSlide(quiz, n).slide)).toContain("skeleton-area");
+    }
     // The first option word arrives: the area comes with it.
     expect(ids(revealSlide(quiz, titleWords + stemWords + 1).slide)).toEqual([
       "area",
@@ -112,13 +115,16 @@ describe("revealSlide", () => {
         ],
       },
     ]);
-    expect(ids(revealSlide(s, 2).slide)).toEqual(["title"]);
-    const first = revealSlide(s, 3).slide;
-    const group = first.elements[1] as unknown as { children: { id: string }[] };
-    expect(group.children.map((c) => c.id)).toEqual(["card1", "c1"]);
-    // The second card stays off until its own first word.
-    const second = revealSlide(s, 5).slide.elements[1] as unknown as { children: { id: string }[] };
-    expect(second.children.map((c) => c.id)).toEqual(["card1", "c1"]);
+    // The title typed: both cards stand as outlines in their places (TEACH-247 part at).
+    const kids = (n: number) =>
+      (
+        revealSlide(s, n).slide.elements[1] as unknown as { children: { id: string }[] }
+      ).children.map((c) => c.id);
+    expect(ids(revealSlide(s, 2).slide)).toEqual(["title", "cards"]);
+    expect(kids(2)).toEqual(["skeleton-card1", "skeleton-card2"]);
+    expect(kids(3)).toEqual(["card1", "c1", "skeleton-card2"]);
+    // The second card stays an outline until its own first word.
+    expect(kids(5)).toEqual(["card1", "c1", "skeleton-card2"]);
     const third = revealSlide(s, 6).slide.elements[1] as unknown as { children: { id: string }[] };
     expect(third.children.map((c) => c.id)).toEqual(["card1", "c1", "card2", "c2"]);
   });
@@ -198,5 +204,46 @@ describe("catch-up typing", () => {
       expect(steps).toBeLessThanOrEqual(CATCH_UP_STEPS);
       expect(catchUpStep(total)).toBeGreaterThanOrEqual(1);
     }
+  });
+});
+
+describe("card outlines before their words (genux review J5, TEACH-247 part at)", () => {
+  // GF slide 10: four order cards (a card shape with its text on top) under a typed title.
+  const order = slideOf([
+    text("title", "Heading", "Put the fire in order", 60, 40, 840, 60),
+    ...[0, 1, 2, 3].flatMap((i) => [
+      shape(`card${i}`, "Card", 60 + i * 215, 200, 200, 160),
+      text(`t${i}`, "Card text", `Step ${i + 1} happens`, 70 + i * 215, 220, 180, 40),
+    ]),
+  ]);
+  test("before the first word nothing shows, not even an outline", () => {
+    expect(ids(revealSlide(order, 0).slide)).toEqual([]);
+  });
+  test("from the title's first word every waiting card stands as an outline, same box", () => {
+    const shown = revealSlide(order, 1).slide.elements;
+    expect(shown.map((e) => e.id)).toEqual([
+      "title",
+      "skeleton-card0",
+      "skeleton-card1",
+      "skeleton-card2",
+      "skeleton-card3",
+    ]);
+    const card = order.elements[1] as unknown as { x: number; y: number; w: number; h: number };
+    const outline = shown[1] as unknown as { x: number; y: number; w: number; h: number };
+    expect([outline.x, outline.y, outline.w, outline.h]).toEqual([card.x, card.y, card.w, card.h]);
+  });
+  test("each card replaces its outline with its first word; all typed, no outline left", () => {
+    // Title 5 words, then card 0's first word.
+    expect(ids(revealSlide(order, 6).slide)).toEqual([
+      "title",
+      "card0",
+      "t0",
+      "skeleton-card1",
+      "skeleton-card2",
+      "skeleton-card3",
+    ]);
+    expect(
+      ids(revealSlide(order, wordCount(order)).slide).some((i) => i.startsWith("skeleton-")),
+    ).toBe(false);
   });
 });
