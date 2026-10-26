@@ -293,6 +293,13 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
       const f = sideFigure((d as S)?.picture);
       if (f) out.push({ key: `side.${n}`, f });
     });
+  // Myth and fact (TEACH-247 part ae): the proof's one picture. It was never asked for, so it stayed
+  // an open slot for good (Great Fire Y2 s9).
+  if (s.template === "myth") {
+    const m = (s.myth && typeof s.myth === "object" ? s.myth : s) as S;
+    const p = (m.proof && typeof m.proof === "object" ? (m.proof as S).picture : null) as unknown;
+    if (isPic(p)) out.push({ key: "proof", f: p });
+  }
   // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
   (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {
     const p = (c as S)?.picture;
@@ -1079,7 +1086,11 @@ export function visualsOf(
       : key.startsWith("card.") && shows("card.").length >= 2
         ? "cards"
         : undefined;
-  return figs.map(
+  // A myth's proof picture the template gave way (the fact needs its room, TEACH-247 part ae) has
+  // no slot: it is never asked for, so no picture is searched for or lands without a place.
+  const laid =
+    str(s.template) === "myth" ? figs.filter(({ key, f }) => isDia(f) || slots[key]) : figs;
+  return laid.map(
     ({ key, f }): VisualAsk =>
       isDia(f)
         ? diagramVisualAsk(key, f as unknown as S)
