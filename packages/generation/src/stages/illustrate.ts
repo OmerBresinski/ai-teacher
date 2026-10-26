@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
   isBlockedQuery,
@@ -968,18 +967,17 @@ const COPY_WORDS = /\b(?:google art project|cropped|crop|restored|retouched)\b/g
  * Every key a photo is known by in a lesson's `taken` set (picq, greatfire 26 Oct: slides 4 and 5
  * placed one painting from two Commons files, "…Old St. Paul's.JPG" and "…Old St. Paul's - Google
  * Art Project.jpg"). Its page, its file title without extension, copy words and punctuation (a
- * Commons file only), and the bytes of its inlined thumbnail. Two files of one image share a key.
+ * Commons file only). Two files of one image share a key. (A thumbnail hash was left out: test
+ * fixtures and some searches share one thumbnail across different photos.)
  */
-export function imageKeys(photo: Pick<PhotoResult, "pageUrl" | "src">): string[] {
+export function imageKeys(photo: Pick<PhotoResult, "pageUrl">): string[] {
   const keys = [photo.pageUrl];
   const file = /\/wiki\/File:([^?#]+)$/.exec(photo.pageUrl)?.[1];
   if (file) {
-    let name = file;
-    try {
-      name = decodeURIComponent(file);
-    } catch {
-      // a malformed escape keeps the raw name
-    }
+    // Percent escapes decoded byte by byte: a key, never shown, so no malformed-escape throw.
+    const name = file.replace(/%([0-9a-f]{2})/gi, (_, h: string) =>
+      String.fromCharCode(Number.parseInt(h, 16)),
+    );
     const title = name
       .replace(/\.[a-z0-9]{2,5}$/i, "")
       .replace(/_/g, " ")
@@ -989,9 +987,6 @@ export function imageKeys(photo: Pick<PhotoResult, "pageUrl" | "src">): string[]
       .replace(/[^\p{L}\p{N}]+/gu, "");
     if (title.length >= 8) keys.push(`title:${title}`);
   }
-  const tiny = photo.src?.tiny;
-  if (typeof tiny === "string" && tiny.startsWith("data:"))
-    keys.push(`thumb:${createHash("sha1").update(tiny).digest("hex")}`);
   return keys;
 }
 

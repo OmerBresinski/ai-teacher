@@ -32,21 +32,9 @@ describe("one picture from two Commons files is one picture (picq, greatfire 26 
       ),
     ).toEqual([]);
   });
-  test("the same inlined thumbnail under two pages is one picture", () => {
-    const tiny = "data:image/jpeg;base64,/9j/AAAA";
-    expect(
-      shared(
-        imageKeys(commons("A_painting.jpg", tiny)),
-        imageKeys(commons("Other_title.jpg", tiny)),
-      ).length,
-    ).toBe(1);
-  });
   test("a Pexels photo is known by its page only", () => {
-    expect(
-      imageKeys({
-        pageUrl: "https://www.pexels.com/photo/9/",
-        src: { large: "", medium: "", tiny: "https://x/9" },
-      }),
-    ).toEqual(["https://www.pexels.com/photo/9/"]);
+    expect(imageKeys({ pageUrl: "https://www.pexels.com/photo/9/" })).toEqual([
+      "https://www.pexels.com/photo/9/",
+    ]);
   });
 });
