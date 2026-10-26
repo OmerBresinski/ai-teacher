@@ -454,6 +454,15 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
  * A continuation slide's speaker notes (Greg 70 B): the slide's own notes stay on its first part,
  * and the parts after it say where they come from.
  */
+/**
+ * The diagram slot a written slide gives its drawing. The figure slide is a whole-slide library
+ * slide (TEACH-239 part b, ADR 0035), so its model is drawn full, never sent to the drawer as a
+ * side-slot ask (TEACH-251 part z, romans verify5 s4: a hist_map on a figure slide went to the
+ * drawer, failed its schema twice and the slide shipped an icon).
+ */
+export const writerSlot = (template: string): ReturnType<typeof slotOf> =>
+  template === "figure" ? "full" : slotOf(template);
+
 /** An objective or heading about where something is (TEACH-251 part v). */
 export const LOCATE = /\b(locate|locating|where)\b/i;
 
@@ -834,7 +843,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     roleAsk ? slideHidesAnswer(s) : QUESTION_TEMPLATES.has(String(s.template ?? ""));
   /** A diagram ask as the drawer reads it, sized to the slide's slot. */
   const diagramAsk = (a: Extract<VisualAsk, { type: "diagram" }>, s: S) => {
-    const slot = slotOf(String(s.template ?? ""));
+    const slot = writerSlot(String(s.template ?? ""));
     const box = slotBox(base.stage, slot);
     return {
       key: a.key,
@@ -906,7 +915,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     for (const a of asks.get(i) ?? []) {
       const s = plan.slides[i];
       if (a.type !== "diagram" || !s) continue;
-      const slot = slotOf(String(s.template ?? ""));
+      const slot = writerSlot(String(s.template ?? ""));
       const box = slotBox(base.stage, slot);
       const question = asksPupils(s);
       const stop = new AbortController();

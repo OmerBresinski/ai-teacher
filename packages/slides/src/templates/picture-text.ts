@@ -263,7 +263,48 @@ function onSandPanel(src: string, t: Ctx["t"]): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(out)}`;
 }
 
+/** A key card as one plain point: its term (or number and unit), then its meaning. */
+function cardAsPoint(k: KeyCard): string | null {
+  const head = (k.term?.trim() || [k.num?.trim(), k.unit?.trim()].filter(Boolean).join(" ")).trim();
+  const meaning = k.meaning?.trim() ?? "";
+  if (k.examples?.length || !meaning) return null;
+  // The meaning keeps its case as written: a proper noun or an acronym ("Roman", "DNA") stays.
+  return head ? `${head}: ${meaning}` : meaning;
+}
+
+/**
+ * The plain look of a slide written with key cards and points beside a picture (TEACH-247 part
+ * ao): the cards after the points, each folded into one point. `null` when there is nothing to
+ * fold (no picture, no cards or no points) or a card cannot be said as one line (examples).
+ */
+export function withPicture(
+  input: TemplateInput,
+  pt: PictureText,
+): { input: TemplateInput; pt: PictureText } | null {
+  const cards = pt.cards ?? [];
+  if (!cards.length || !input.points?.length || !input.figure) return null;
+  const extra = cards.map(cardAsPoint);
+  if (extra.some((x) => x === null)) return null;
+  const { cards: _cards, ...plain } = pt;
+  return {
+    input: { ...input, points: [...input.points, ...(extra as string[])], pictureText: plain },
+    pt: plain,
+  };
+}
+
 export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText, stage: Stage) {
+  // A key card never sits beside points, so a slide written with both used to lay nothing and be
+  // flagged, and the generator dropped its placed picture for a text-only slide (TEACH-247 part
+  // ao: Romans Y4 verify5 s5, a real photo of the gateway lost). The picture is worth more than
+  // the card's look: before giving the slide up, its cards fold into the plain look as further
+  // points ("Frontier: The edge of land an empire controls."), every word kept, beside the
+  // picture. Used only when that fits with nothing over; otherwise the slide stays flagged.
+  const folded = withPicture(input, pt);
+  if (folded) {
+    const dry: Ctx = { ...c, els: [], over: [] };
+    layoutPictureText(dry, folded.input, folded.pt, stage);
+    if (!dry.over.length) return layoutPictureText(c, folded.input, folded.pt, stage);
+  }
   c.bodyFromHeading = true;
   const key = !!pt.cards?.length;
   const fig = input.figure;
