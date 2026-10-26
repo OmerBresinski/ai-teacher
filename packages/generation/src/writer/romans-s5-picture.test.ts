@@ -65,3 +65,50 @@ describe("Romans s5: a placed photo is kept over the key card's look (TEACH-247 
       }
     });
 });
+
+/*
+ * The same lesson's s3: a lead, two points the s11 question asks about (Wallsend to
+ * Bowness-on-Solway) and a date card beside a photo. The points were dropped for the card; now
+ * every point is on the slide beside the photo.
+ */
+const S3 = {
+  template: "visual-text",
+  heading: "A wall across northern Britain",
+  icon: "roman shield",
+  lead: "Emperor Hadrian ordered the building of Hadrian\u2019s Wall from AD 122.",
+  points: [
+    "It ran across northern Britain, from Wallsend in the east to Bowness-on-Solway in the west.",
+    "Roman soldiers built and guarded the wall.",
+  ],
+  cards: [
+    {
+      kind: "word",
+      label: "Date",
+      term: "AD 122",
+      meaning: "This was nearly 2,000 years ago, during Roman rule.",
+      examples: null,
+      num: null,
+      unit: null,
+    },
+  ],
+  figure: {
+    shows: "The surviving stone wall at Housesteads on Hadrian\u2019s Wall",
+    must_see: ["Stone wall remains", "Wall following ridge"],
+    subject: "named",
+  },
+};
+describe("Romans s3: the points a later question asks about are never dropped for a card", () => {
+  for (const theme of ["treehouse", "crayon", "splash", "paper"])
+    test(`${theme}: both points, the card's words and the photo, nothing over`, () => {
+      const m = materialise(S3, ctx(theme, 4 / 3));
+      expect(m.over).toEqual([]);
+      const json = JSON.stringify(m.slide.elements);
+      for (const w of [
+        "/files/gateway.jpg",
+        "from Wallsend in the east to Bowness-on-Solway in the west",
+        "Roman soldiers built and guarded the wall.",
+        "AD 122: this was nearly 2,000 years ago, during Roman rule.",
+      ])
+        expect(json).toContain(w);
+    });
+});
