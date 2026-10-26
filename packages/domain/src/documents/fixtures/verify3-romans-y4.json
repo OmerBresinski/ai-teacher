@@ -1,0 +1,4731 @@
+{
+  "id": "01a176df-cf3e-77a3-8efd-f93143101389",
+  "title": "Why the Romans built Hadrian’s Wall",
+  "facts": {
+    "outline": [],
+    "questions": [],
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Locate Hadrian’s Wall in northern Britain and identify AD 122 as when building began."
+      },
+      {
+        "id": "o2",
+        "text": "Explain how Hadrian’s Wall helped Romans defend their frontier and control movement and trade."
+      },
+      {
+        "id": "o3",
+        "text": "Describe how Roman soldiers used forts, milecastles and watchtowers to guard Hadrian’s Wall."
+      }
+    ],
+    "vocabulary": [],
+    "durationMin": 60,
+    "misconceptions": [],
+    "workedExamples": []
+  },
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "Hadrian's Wall - geograph.org.uk - 1344548: Hadrian's Wall A section of Hadrian's Wall between Walltown and Walltown Crag. Much of the wall, which ran for 73 miles (117 km) between Bowness-on-Solway n",
+          "fit": "cover",
+          "src": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e0-c229-76b4-9f28-ccab0043ae90.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "commons-14076077",
+            "author": "Simon Johnston",
+            "licence": "CC BY-SA 2.0",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_-_geograph.org.uk_-_1344548.jpg",
+            "evidence": {
+              "alt": "Hadrian's Wall - geograph.org.uk - 1344548: Hadrian's Wall A section of Hadrian's Wall between Walltown and Walltown Crag. Much of the wall, which ran for 73 miles (117 km) between Bowness-on-Solway n",
+              "count": "one",
+              "visible": ["long stone wall", "rolling green hills", "wall following ridges"],
+              "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…(trimmed)",
+              "promptVersion": "pick-or-requery-photo.v17"
+            },
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_-_geograph.org.uk_-_1344548.jpg",
+            "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+            "photographer": "Simon Johnston",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_-_geograph.org.uk_-_1344548.jpg"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 167,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#245F28",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 171,
+          "w": 402.67,
+          "x": 58,
+          "y": 203,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why the Romans built Hadrian’s Wall",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#245F28",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 53.33333333333333,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 600,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 467,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 467,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Locate Hadrian’s Wall in northern Britain and say building began in AD 122.",
+                "Explain how Hadrian’s Wall helped Romans guard their frontier and control movement and trade.",
+                "Describe how Roman soldiers used forts, milecastles and watchtowers to guard Hadrian’s Wall."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 54,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 48,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 106,
+              "w": 832,
+              "x": 8,
+              "y": 123,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#245F28",
+              "strokeWidth": 2
+            },
+            {
+              "h": 44,
+              "w": 44,
+              "x": 18,
+              "y": 154,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#245F28",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 82,
+              "w": 751,
+              "x": 79,
+              "y": 135,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Locate Hadrian’s Wall in northern Britain and say building began in AD 122.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#1D291D",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 106,
+              "w": 832,
+              "x": 8,
+              "y": 238,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#245F28",
+              "strokeWidth": 2
+            },
+            {
+              "h": 44,
+              "w": 44,
+              "x": 18,
+              "y": 269,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#245F28",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 82,
+              "w": 751,
+              "x": 79,
+              "y": 250,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Explain how Hadrian’s Wall helped Romans guard their frontier and control movement and trade.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#1D291D",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 106,
+              "w": 832,
+              "x": 8,
+              "y": 353,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#245F28",
+              "strokeWidth": 2
+            },
+            {
+              "h": 44,
+              "w": 44,
+              "x": 18,
+              "y": 384,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#245F28",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 82,
+              "w": 751,
+              "x": 79,
+              "y": 365,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Describe how Roman soldiers used forts, milecastles and watchtowers to guard Hadrian’s Wall.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#1D291D",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "kind": "content",
+      "notes": "Running\nSpend about 4 minutes locating northern Britain on a map or by pointing to it on the class map. Pupils say the location and date together.\n\nMisconceptions\nPupils may place the wall in southern Britain or think it was built after the Roman period. Locate it in northern Britain and explain that building began in AD 122.\n\nBackground\nAD means Anno Domini and is used for dates after the traditionally reckoned birth of Jesus. Hadrian was a Roman emperor; the wall was named after him.",
+      "elements": [
+        {
+          "h": 108,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s3-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where and when was Hadrian’s Wall built?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 79,
+          "w": 680,
+          "x": 64,
+          "y": 262,
+          "id": "d-s3-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Building Hadrian’s Wall in northern Britain began in AD 122.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "content",
+      "notes": "",
+      "elements": [
+        {
+          "h": 521,
+          "w": 904,
+          "x": 0,
+          "y": 0,
+          "id": "d-s4-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 904,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "chain": false,
+              "heading": "Why did the Romans build it?",
+              "reasons": [
+                {
+                  "head": "Defence",
+                  "line": "It helped soldiers defend the frontier, their border."
+                },
+                {
+                  "head": "Movement",
+                  "line": "Guarded gates helped soldiers check who crossed it."
+                },
+                {
+                  "head": "Trade",
+                  "line": "Soldiers could check goods and collect taxes."
+                }
+              ],
+              "template": "reasons"
+            },
+            "template": "reasons"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 360,
+              "x": 0,
+              "y": 0,
+              "id": "d-s4-layout:~Question_panel-0",
+              "fill": "#E0EBF0",
+              "name": "Question panel",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 150,
+              "w": 264,
+              "x": 64,
+              "y": 195,
+              "id": "d-s4-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Why did the Romans build it?",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Question",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "title",
+                "padding": 0,
+                "fontSize": 48,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.04
+              }
+            },
+            {
+              "h": 187.2,
+              "w": 64,
+              "x": 360,
+              "y": 82.68,
+              "id": "d-s4-layout:~Reason_line__to_come_-0",
+              "name": "Reason line (to come)",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 1
+                },
+                {
+                  "x": 0.06,
+                  "y": 0.9949
+                },
+                {
+                  "x": 0.1152,
+                  "y": 0.9803
+                },
+                {
+                  "x": 0.166,
+                  "y": 0.957
+                },
+                {
+                  "x": 0.213,
+                  "y": 0.9259
+                },
+                {
+                  "x": 0.2564,
+                  "y": 0.8879
+                },
+                {
+                  "x": 0.2969,
+                  "y": 0.8438
+                },
+                {
+                  "x": 0.3347,
+                  "y": 0.7944
+                },
+                {
+                  "x": 0.3704,
+                  "y": 0.7407
+                },
+                {
+                  "x": 0.4043,
+                  "y": 0.6836
+                },
+                {
+                  "x": 0.4369,
+                  "y": 0.6238
+                },
+                {
+                  "x": 0.4687,
+                  "y": 0.5624
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5313,
+                  "y": 0.4376
+                },
+                {
+                  "x": 0.5631,
+                  "y": 0.3762
+                },
+                {
+                  "x": 0.5957,
+                  "y": 0.3164
+                },
+                {
+                  "x": 0.6296,
+                  "y": 0.2593
+                },
+                {
+                  "x": 0.6653,
+                  "y": 0.2056
+                },
+                {
+                  "x": 0.7031,
+                  "y": 0.1563
+                },
+                {
+                  "x": 0.7436,
+                  "y": 0.1121
+                },
+                {
+                  "x": 0.787,
+                  "y": 0.0741
+                },
+                {
+                  "x": 0.834,
+                  "y": 0.043
+                },
+                {
+                  "x": 0.8848,
+                  "y": 0.0197
+                },
+                {
+                  "x": 0.94,
+                  "y": 0.0051
+                },
+                {
+                  "x": 1,
+                  "y": 0
+                }
+              ],
+              "stroke": "#CBD7DD",
+              "strokeWidth": 1.87
+            },
+            {
+              "h": 10.15,
+              "w": 10.15,
+              "x": 418.93,
+              "y": 77.61,
+              "id": "d-s4-layout:~Reason_dot__to_come_-0",
+              "fill": "#CBD7DD",
+              "name": "Reason dot (to come)",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 187.2,
+              "w": 64,
+              "x": 360,
+              "y": 82.68,
+              "id": "d-s4-layout:~Reason_line-0",
+              "name": "Reason line",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 1
+                },
+                {
+                  "x": 0.06,
+                  "y": 0.9949
+                },
+                {
+                  "x": 0.1152,
+                  "y": 0.9803
+                },
+                {
+                  "x": 0.166,
+                  "y": 0.957
+                },
+                {
+                  "x": 0.213,
+                  "y": 0.9259
+                },
+                {
+                  "x": 0.2564,
+                  "y": 0.8879
+                },
+                {
+                  "x": 0.2969,
+                  "y": 0.8438
+                },
+                {
+                  "x": 0.3347,
+                  "y": 0.7944
+                },
+                {
+                  "x": 0.3704,
+                  "y": 0.7407
+                },
+                {
+                  "x": 0.4043,
+                  "y": 0.6836
+                },
+                {
+                  "x": 0.4369,
+                  "y": 0.6238
+                },
+                {
+                  "x": 0.4687,
+                  "y": 0.5624
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5313,
+                  "y": 0.4376
+                },
+                {
+                  "x": 0.5631,
+                  "y": 0.3762
+                },
+                {
+                  "x": 0.5957,
+                  "y": 0.3164
+                },
+                {
+                  "x": 0.6296,
+                  "y": 0.2593
+                },
+                {
+                  "x": 0.6653,
+                  "y": 0.2056
+                },
+                {
+                  "x": 0.7031,
+                  "y": 0.1563
+                },
+                {
+                  "x": 0.7436,
+                  "y": 0.1121
+                },
+                {
+                  "x": 0.787,
+                  "y": 0.0741
+                },
+                {
+                  "x": 0.834,
+                  "y": 0.043
+                },
+                {
+                  "x": 0.8848,
+                  "y": 0.0197
+                },
+                {
+                  "x": 0.94,
+                  "y": 0.0051
+                },
+                {
+                  "x": 1,
+                  "y": 0
+                }
+              ],
+              "stroke": "#245F28",
+              "revealStep": 1,
+              "strokeWidth": 2.67
+            },
+            {
+              "h": 10.15,
+              "w": 10.15,
+              "x": 418.93,
+              "y": 77.61,
+              "id": "d-s4-layout:~Reason_dot-0",
+              "fill": "#245F28",
+              "name": "Reason dot",
+              "type": "shape",
+              "shape": "ellipse",
+              "revealStep": 1
+            },
+            {
+              "h": 32,
+              "w": 448,
+              "x": 448,
+              "y": 67,
+              "id": "d-s4-layout:reasons.0.head",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Defence",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason head",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "heading",
+                "valign": "bottom",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": false,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              },
+              "revealStep": 1
+            },
+            {
+              "h": 65,
+              "w": 448,
+              "x": 448,
+              "y": 103,
+              "id": "d-s4-layout:reasons.0.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "It helped soldiers defend the frontier, their border.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason text",
+              "type": "text",
+              "style": {
+                "color": "#4E5E4B",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              },
+              "revealStep": 1
+            },
+            {
+              "h": 34.88,
+              "w": 64,
+              "x": 360,
+              "y": 235,
+              "id": "d-s4-layout:~Reason_line__to_come_-1",
+              "name": "Reason line (to come)",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 1
+                },
+                {
+                  "x": 0.06,
+                  "y": 0.9949
+                },
+                {
+                  "x": 0.1152,
+                  "y": 0.9803
+                },
+                {
+                  "x": 0.166,
+                  "y": 0.957
+                },
+                {
+                  "x": 0.213,
+                  "y": 0.9259
+                },
+                {
+                  "x": 0.2564,
+                  "y": 0.8879
+                },
+                {
+                  "x": 0.2969,
+                  "y": 0.8438
+                },
+                {
+                  "x": 0.3347,
+                  "y": 0.7944
+                },
+                {
+                  "x": 0.3704,
+                  "y": 0.7407
+                },
+                {
+                  "x": 0.4043,
+                  "y": 0.6836
+                },
+                {
+                  "x": 0.4369,
+                  "y": 0.6238
+                },
+                {
+                  "x": 0.4687,
+                  "y": 0.5624
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5313,
+                  "y": 0.4376
+                },
+                {
+                  "x": 0.5631,
+                  "y": 0.3762
+                },
+                {
+                  "x": 0.5957,
+                  "y": 0.3164
+                },
+                {
+                  "x": 0.6296,
+                  "y": 0.2593
+                },
+                {
+                  "x": 0.6653,
+                  "y": 0.2056
+                },
+                {
+                  "x": 0.7031,
+                  "y": 0.1562
+                },
+                {
+                  "x": 0.7436,
+                  "y": 0.1121
+                },
+                {
+                  "x": 0.787,
+                  "y": 0.0741
+                },
+                {
+                  "x": 0.834,
+                  "y": 0.043
+                },
+                {
+                  "x": 0.8848,
+                  "y": 0.0197
+                },
+                {
+                  "x": 0.94,
+                  "y": 0.0051
+                },
+                {
+                  "x": 1,
+                  "y": 0
+                }
+              ],
+              "stroke": "#CBD7DD",
+              "strokeWidth": 1.87
+            },
+            {
+              "h": 10.15,
+              "w": 10.15,
+              "x": 418.93,
+              "y": 229.93,
+              "id": "d-s4-layout:~Reason_dot__to_come_-1",
+              "fill": "#CBD7DD",
+              "name": "Reason dot (to come)",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 34.88,
+              "w": 64,
+              "x": 360,
+              "y": 235,
+              "id": "d-s4-layout:~Reason_line-1",
+              "name": "Reason line",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 1
+                },
+                {
+                  "x": 0.06,
+                  "y": 0.9949
+                },
+                {
+                  "x": 0.1152,
+                  "y": 0.9803
+                },
+                {
+                  "x": 0.166,
+                  "y": 0.957
+                },
+                {
+                  "x": 0.213,
+                  "y": 0.9259
+                },
+                {
+                  "x": 0.2564,
+                  "y": 0.8879
+                },
+                {
+                  "x": 0.2969,
+                  "y": 0.8438
+                },
+                {
+                  "x": 0.3347,
+                  "y": 0.7944
+                },
+                {
+                  "x": 0.3704,
+                  "y": 0.7407
+                },
+                {
+                  "x": 0.4043,
+                  "y": 0.6836
+                },
+                {
+                  "x": 0.4369,
+                  "y": 0.6238
+                },
+                {
+                  "x": 0.4687,
+                  "y": 0.5624
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5313,
+                  "y": 0.4376
+                },
+                {
+                  "x": 0.5631,
+                  "y": 0.3762
+                },
+                {
+                  "x": 0.5957,
+                  "y": 0.3164
+                },
+                {
+                  "x": 0.6296,
+                  "y": 0.2593
+                },
+                {
+                  "x": 0.6653,
+                  "y": 0.2056
+                },
+                {
+                  "x": 0.7031,
+                  "y": 0.1562
+                },
+                {
+                  "x": 0.7436,
+                  "y": 0.1121
+                },
+                {
+                  "x": 0.787,
+                  "y": 0.0741
+                },
+                {
+                  "x": 0.834,
+                  "y": 0.043
+                },
+                {
+                  "x": 0.8848,
+                  "y": 0.0197
+                },
+                {
+                  "x": 0.94,
+                  "y": 0.0051
+                },
+                {
+                  "x": 1,
+                  "y": 0
+                }
+              ],
+              "stroke": "#245F28",
+              "revealStep": 2,
+              "strokeWidth": 2.67
+            },
+            {
+              "h": 10.15,
+              "w": 10.15,
+              "x": 418.93,
+              "y": 229.93,
+              "id": "d-s4-layout:~Reason_dot-1",
+              "fill": "#245F28",
+              "name": "Reason dot",
+              "type": "shape",
+              "shape": "ellipse",
+              "revealStep": 2
+            },
+            {
+              "h": 32,
+              "w": 448,
+              "x": 448,
+              "y": 219,
+              "id": "d-s4-layout:reasons.1.head",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Movement",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason head",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "heading",
+                "valign": "bottom",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": false,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              },
+              "revealStep": 2
+            },
+            {
+              "h": 65,
+              "w": 448,
+              "x": 448,
+              "y": 256,
+              "id": "d-s4-layout:reasons.1.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Guarded gates helped soldiers check who crossed it.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason text",
+              "type": "text",
+              "style": {
+                "color": "#4E5E4B",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              },
+              "revealStep": 2
+            },
+            {
+              "h": 117.44,
+              "w": 64,
+              "x": 360,
+              "y": 269.88,
+              "id": "d-s4-layout:~Reason_line__to_come_-2",
+              "name": "Reason line (to come)",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 0.06,
+                  "y": 0.0051
+                },
+                {
+                  "x": 0.1152,
+                  "y": 0.0197
+                },
+                {
+                  "x": 0.166,
+                  "y": 0.043
+                },
+                {
+                  "x": 0.213,
+                  "y": 0.0741
+                },
+                {
+                  "x": 0.2564,
+                  "y": 0.1121
+                },
+                {
+                  "x": 0.2969,
+                  "y": 0.1563
+                },
+                {
+                  "x": 0.3347,
+                  "y": 0.2056
+                },
+                {
+                  "x": 0.3704,
+                  "y": 0.2593
+                },
+                {
+                  "x": 0.4043,
+                  "y": 0.3164
+                },
+                {
+                  "x": 0.4369,
+                  "y": 0.3762
+                },
+                {
+                  "x": 0.4687,
+                  "y": 0.4376
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5313,
+                  "y": 0.5624
+                },
+                {
+                  "x": 0.5631,
+                  "y": 0.6238
+                },
+                {
+                  "x": 0.5957,
+                  "y": 0.6836
+                },
+                {
+                  "x": 0.6296,
+                  "y": 0.7407
+                },
+                {
+                  "x": 0.6653,
+                  "y": 0.7944
+                },
+                {
+                  "x": 0.7031,
+                  "y": 0.8437
+                },
+                {
+                  "x": 0.7436,
+                  "y": 0.8879
+                },
+                {
+                  "x": 0.787,
+                  "y": 0.9259
+                },
+                {
+                  "x": 0.834,
+                  "y": 0.957
+                },
+                {
+                  "x": 0.8848,
+                  "y": 0.9803
+                },
+                {
+                  "x": 0.94,
+                  "y": 0.9949
+                },
+                {
+                  "x": 1,
+                  "y": 1
+                }
+              ],
+              "stroke": "#CBD7DD",
+              "strokeWidth": 1.87
+            },
+            {
+              "h": 10.15,
+              "w": 10.15,
+              "x": 418.93,
+              "y": 382.25,
+              "id": "d-s4-layout:~Reason_dot__to_come_-2",
+              "fill": "#CBD7DD",
+              "name": "Reason dot (to come)",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 117.44,
+              "w": 64,
+              "x": 360,
+              "y": 269.88,
+              "id": "d-s4-layout:~Reason_line-2",
+              "name": "Reason line",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 0.06,
+                  "y": 0.0051
+                },
+                {
+                  "x": 0.1152,
+                  "y": 0.0197
+                },
+                {
+                  "x": 0.166,
+                  "y": 0.043
+                },
+                {
+                  "x": 0.213,
+                  "y": 0.0741
+                },
+                {
+                  "x": 0.2564,
+                  "y": 0.1121
+                },
+                {
+                  "x": 0.2969,
+                  "y": 0.1563
+                },
+                {
+                  "x": 0.3347,
+                  "y": 0.2056
+                },
+                {
+                  "x": 0.3704,
+                  "y": 0.2593
+                },
+                {
+                  "x": 0.4043,
+                  "y": 0.3164
+                },
+                {
+                  "x": 0.4369,
+                  "y": 0.3762
+                },
+                {
+                  "x": 0.4687,
+                  "y": 0.4376
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5313,
+                  "y": 0.5624
+                },
+                {
+                  "x": 0.5631,
+                  "y": 0.6238
+                },
+                {
+                  "x": 0.5957,
+                  "y": 0.6836
+                },
+                {
+                  "x": 0.6296,
+                  "y": 0.7407
+                },
+                {
+                  "x": 0.6653,
+                  "y": 0.7944
+                },
+                {
+                  "x": 0.7031,
+                  "y": 0.8437
+                },
+                {
+                  "x": 0.7436,
+                  "y": 0.8879
+                },
+                {
+                  "x": 0.787,
+                  "y": 0.9259
+                },
+                {
+                  "x": 0.834,
+                  "y": 0.957
+                },
+                {
+                  "x": 0.8848,
+                  "y": 0.9803
+                },
+                {
+                  "x": 0.94,
+                  "y": 0.9949
+                },
+                {
+                  "x": 1,
+                  "y": 1
+                }
+              ],
+              "stroke": "#245F28",
+              "revealStep": 3,
+              "strokeWidth": 2.67
+            },
+            {
+              "h": 10.15,
+              "w": 10.15,
+              "x": 418.93,
+              "y": 382.25,
+              "id": "d-s4-layout:~Reason_dot-2",
+              "fill": "#245F28",
+              "name": "Reason dot",
+              "type": "shape",
+              "shape": "ellipse",
+              "revealStep": 3
+            },
+            {
+              "h": 32,
+              "w": 448,
+              "x": 448,
+              "y": 372,
+              "id": "d-s4-layout:reasons.2.head",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Trade",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason head",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "heading",
+                "valign": "bottom",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": false,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              },
+              "revealStep": 3
+            },
+            {
+              "h": 65,
+              "w": 448,
+              "x": 448,
+              "y": 408,
+              "id": "d-s4-layout:reasons.2.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Soldiers could check goods and collect taxes.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason text",
+              "type": "text",
+              "style": {
+                "color": "#4E5E4B",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              },
+              "revealStep": 3
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "kind": "content",
+      "notes": "Running\nSpend about 4 minutes looking cl…(trimmed)",
+      "elements": [
+        {
+          "h": 521,
+          "w": 960,
+          "x": 0,
+          "y": 0,
+          "id": "d-s5-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 960,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "rows": [
+                {
+                  "icon": null,
+                  "name": "Forts",
+                  "text": "Many soldiers lived in these bases.",
+                  "picture": {
+                    "alt": "Chesters Roman fort barracks: Ruins of soldiers' barracks at Chesters Roman Fort, along Hadrian's Wall. There is a gutter visible, which was in the courtyard between the barracks.",
+                    "photo": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e0-dac2-75e7-848d-a6142da16e4a.jpg",
+                    "aspect": 1.5041128084606346,
+                    "request": "Reconstruction of a Roman fort beside Hadrian’s Wall. Large enclosed base. Rows of barracks. Stone outer defences",
+                    "subjects": [
+                      {
+                        "h": 0.4,
+                        "w": 0.8500000000000001,
+                        "x": 0.06,
+                        "y": 0.36,
+                        "name": "rows of barracks"
+                      },
+                      {
+                        "h": 0.2699999999999999,
+                        "w": 0.86,
+                        "x": 0.05,
+                        "y": 0.56,
+                        "name": "stone outer defences"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "icon": null,
+                  "name": "Milecastles",
+                  "text": "These small posts guarded gateways through.",
+                  "picture": {
+                    "alt": "Reconstruction of Hadrian's wall - geograph.org.uk - 407926: Reconstruction of Hadrian's wall The south west of the stone fort a Vindolanda are replicas of sections of Hadrian's wall. This is a recons",
+                    "photo": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e0-ff96-714d-9123-1cb151d026ec.jpg",
+                    "aspect": 1.5023474178403755,
+                    "request": "Reconstruction of a milecastle built against Hadrian’s Wall. Small walled enclosure. Gateway through wall. Soldiers beside gateway",
+                    "subjects": [
+                      {
+                        "h": 0.6900000000000001,
+                        "w": 0.67,
+                        "x": 0,
+                        "y": 0.08,
+                        "name": "small walled enclosure"
+                      },
+                      {
+                        "h": 0.21999999999999997,
+                        "w": 0.14,
+                        "x": 0.47,
+                        "y": 0.53,
+                        "name": "gateway through wall"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "icon": null,
+                  "name": "Watchtowers",
+                  "text": "Soldiers watched the frontier from above.",
+                  "picture": {
+                    "alt": "Reconstruction Turret at Vindolanda I: Closeup of the Reconstruction Turret at Vindolanda (from 'Hadrian's Wall North')",
+                    "photo": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e1-0c98-7470-a9f8-dd3bd285b9dd.jpg",
+                    "aspect": 0.7498535442296427,
+                    "request": "Reconstruction of a Roman watchtower on Hadrian’s Wall. Tall stone tower. Raised viewing position. Soldier watching countryside",
+                    "subjects": [
+                      {
+                        "h": 0.86,
+                        "w": 0.62,
+                        "x": 0.1,
+                        "y": 0.08,
+                        "name": "tall stone tower"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "panel": null,
+              "heading": "Guarding posts",
+              "template": "panel-list"
+            },
+            "template": "panel-list"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 960,
+              "x": 0,
+              "y": 0,
+              "id": "d-s5-layout:~Background-0",
+              "fill": "#F1F7EA",
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 540,
+              "w": 313,
+              "x": 0,
+              "y": 0,
+              "id": "d-s5-layout:~Title_panel-0",
+              "fill": "#1D291D",
+              "name": "Title panel",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 96,
+              "w": 233,
+              "x": 40,
+              "y": 64,
+              "id": "d-s5-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Guarding posts",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#F1F7EA",
+                "preset": "title",
+                "padding": 0,
+                "fontSize": 48,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1
+              }
+            },
+            {
+              "h": 116,
+              "w": 155,
+              "x": 360,
+              "y": 59,
+              "id": "d-s5-layout:~Row_picture-0",
+              "alt": "Chesters Roman fort barracks: Ruins of soldiers' barracks at Chesters Roman Fort, along Hadrian's Wall. There is a gutter visible, which was in the courtyard between the barracks.",
+              "fit": "cover",
+              "src": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e0-dac2-75e7-848d-a6142da16e4a.jpg",
+              "crop": {
+                "h": 1,
+                "w": 0.8884354365370507,
+                "x": 0.03578228173147472,
+                "y": 0
+              },
+              "name": "Row picture",
+              "type": "image",
+              "radius": 13.3,
+              "source": {
+                "id": "commons-2988160",
+                "author": "Steven Fruitsmaak",
+                "licence": "Public domain",
+                "pageUrl": "https://commons.wikimedia.org/wiki/File:Chesters_Roman_fort_barracks.jpg",
+                "evidence": {
+                  "alt": "Chesters Roman fort barracks: Ruins of soldiers' barracks at Chesters Roman Fort, along Hadrian's Wall. There is a gutter visible, which was in the courtyard between the barracks.",
+                  "count": "several",
+                  "visible": ["rows of barracks", "stone outer defences"],
+                  "thumbnail": "data:image/jpeg;base64,/9j/2wBDAAQDAwQDA…(trimmed)",
+                  "promptVersion": "pick-or-requery-photo.v17"
+                },
+                "provider": "commons",
+                "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chesters_Roman_fort_barracks.jpg",
+                "photographer": "Steven Fruitsmaak",
+                "photographerUrl": "https://commons.wikimedia.org/wiki/File:Chesters_Roman_fort_barracks.jpg"
+              }
+            },
+            {
+              "h": 32,
+              "w": 358,
+              "x": 538,
+              "y": 62,
+              "id": "d-s5-layout:rows.0.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Forts",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 76,
+              "w": 358,
+              "x": 538,
+              "y": 96,
+              "id": "d-s5-layout:rows.0.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Many soldiers lived in these bases.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4E5E4B",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 116,
+              "w": 155,
+              "x": 360,
+              "y": 212,
+              "id": "d-s5-layout:~Row_picture-1",
+              "alt": "Reconstruction of Hadrian's wall - geograph.org.uk - 407926: Reconstruction of Hadrian's wall The south west of the stone fort a Vindolanda are replicas of sections of Hadrian's wall. This is a recons",
+              "fit": "cover",
+              "src": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e0-ff96-714d-9123-1cb151d026ec.jpg",
+              "crop": {
+                "h": 1,
+                "w": 0.8896184397814408,
+                "x": 0,
+                "y": 0
+              },
+              "name": "Row picture",
+              "type": "image",
+              "radius": 13.3,
+              "source": {
+                "id": "commons-12923478",
+                "author": "Phil Champion",
+                "licence": "CC BY-SA 2.0",
+                "pageUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_of_Hadrian%27s_wall_-_geograph.org.uk_-_407926.jpg",
+                "evidence": {
+                  "alt": "Reconstruction of Hadrian's wall - geograph.org.uk - 407926: Reconstruction of Hadrian's wall The south west of the stone fort a Vindolanda are replicas of sections of Hadrian's wall. This is a recons",
+                  "count": "one",
+                  "visible": ["small walled enclosure", "gateway through wall"],
+                  "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…(trimmed)",
+                  "promptVersion": "pick-or-requery-photo.v17"
+                },
+                "provider": "commons",
+                "sourceUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_of_Hadrian%27s_wall_-_geograph.org.uk_-_407926.jpg",
+                "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+                "photographer": "Phil Champion",
+                "photographerUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_of_Hadrian%27s_wall_-_geograph.org.uk_-_407926.jpg"
+              }
+            },
+            {
+              "h": 32,
+              "w": 358,
+              "x": 538,
+              "y": 215,
+              "id": "d-s5-layout:rows.1.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Milecastles",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 76,
+              "w": 358,
+              "x": 538,
+              "y": 249,
+              "id": "d-s5-layout:rows.1.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "These small posts guarded gateways through.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4E5E4B",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 358,
+              "x": 538,
+              "y": 194,
+              "id": "d-s5-layout:~Divider-0",
+              "fill": "#CBE0BA",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            },
+            {
+              "h": 116,
+              "w": 155,
+              "x": 360,
+              "y": 365,
+              "id": "d-s5-layout:~Row_picture-2",
+              "alt": "Reconstruction Turret at Vindolanda I: Closeup of the Reconstruction Turret at Vindolanda (from 'Hadrian's Wall North')",
+              "fit": "cover",
+              "src": "/files/01a176df-ca41-73d4-8f68-4312fb4bbd84/images/01a176e1-0c98-7470-a9f8-dd3bd285b9dd.jpg",
+              "crop": {
+                "h": 0.5612903225806452,
+                "w": 1,
+                "x": 0,
+                "y": 0.22935483870967743
+              },
+              "name": "Row picture",
+              "type": "image",
+              "radius": 13.3,
+              "source": {
+                "id": "commons-20562017",
+                "author": "Sam.roebuck",
+                "licence": "CC BY-SA 3.0",
+                "pageUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_Turret_at_Vindolanda_I.jpg",
+                "evidence": {
+                  "alt": "Reconstruction Turret at Vindolanda I: Closeup of the Reconstruction Turret at Vindolanda (from 'Hadrian's Wall North')",
+                  "count": "one",
+                  "visible": ["tall stone tower"],
+                  "thumbnail": "data:image/jpeg;base64,/9j/2wBDAAQDAwQDA…(trimmed)",
+                  "promptVersion": "pick-or-requery-photo.v17"
+                },
+                "provider": "commons",
+                "sourceUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_Turret_at_Vindolanda_I.jpg",
+                "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+                "photographer": "Sam.roebuck",
+                "photographerUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_Turret_at_Vindolanda_I.jpg"
+              }
+            },
+            {
+              "h": 32,
+              "w": 358,
+              "x": 538,
+              "y": 368,
+              "id": "d-s5-layout:rows.2.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Watchtowers",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#245F28",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 76,
+              "w": 358,
+              "x": 538,
+              "y": 402,
+              "id": "d-s5-layout:rows.2.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Soldiers watched the frontier from above.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4E5E4B",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 358,
+              "x": 538,
+              "y": 347,
+              "id": "d-s5-layout:~Divider-1",
+              "fill": "#CBE0BA",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "kind": "content",
+      "notes": "Running\nAllow about 3 minutes for pupils…(trimmed)",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Could anyone cross?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 349.3,
+          "w": 832,
+          "x": 64,
+          "y": 142.7,
+          "id": "d-s6-Claim_card-0",
+          "fill": "#DDF0F8",
+          "name": "Claim card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": false,
+          "radius": 26,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 114,
+          "w": 736,
+          "x": 112,
+          "y": 219.4,
+          "id": "d-s6-Claim_open-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Romans built the wall so nobody could cross.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Claim open",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+            "fontWeight": 600,
+            "lineHeight": 1.18
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 25,
+          "w": 162,
+          "x": 112,
+          "y": 377.5,
+          "id": "d-s6-True_or_false-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "True or false?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "True or false",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 50.7,
+          "w": 128,
+          "x": 300.7,
+          "y": 364.6,
+          "id": "d-s6-Choice_chip-0",
+          "fill": "#FFFFFF",
+          "name": "Choice chip",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 13,
+          "stroke": "#1D291D",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 20,
+          "w": 20,
+          "x": 322,
+          "y": 380,
+          "id": "d-s6-Choice_glyph-0",
+          "fill": "#1D291D",
+          "name": "Choice glyph",
+          "type": "path",
+          "closed": true,
+          "points": [
+            {
+              "x": 0.1808,
+              "y": 0.5313
+            },
+            {
+              "x": 0.4181,
+              "y": 0.7686
+            },
+            {
+              "x": 0.8192,
+              "y": 0.3203
+            },
+            {
+              "x": 0.7199,
+              "y": 0.2314
+            },
+            {
+              "x": 0.4127,
+              "y": 0.5747
+            },
+            {
+              "x": 0.275,
+              "y": 0.437
+            }
+          ],
+          "stroke": "#1D291D",
+          "authoredBy": "ai",
+          "strokeWidth": 0
+        },
+        {
+          "h": 25,
+          "w": 56,
+          "x": 351.3,
+          "y": 377.5,
+          "id": "d-s6-Choice_label-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "True",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Choice label",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 50.7,
+          "w": 136,
+          "x": 444.7,
+          "y": 364.6,
+          "id": "d-s6-Choice_chip-1",
+          "fill": "#FFFFFF",
+          "name": "Choice chip",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 13,
+          "stroke": "#1D291D",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 20,
+          "w": 20,
+          "x": 466,
+          "y": 380,
+          "id": "d-s6-Choice_glyph-1",
+          "fill": "#1D291D",
+          "name": "Choice glyph",
+          "type": "path",
+          "closed": true,
+          "points": [
+            {
+              "x": 0.7555,
+              "y": 0.6612
+            },
+            {
+              "x": 0.6612,
+              "y": 0.7555
+            },
+            {
+              "x": 0.5,
+              "y": 0.5943
+            },
+            {
+              "x": 0.3388,
+              "y": 0.7555
+            },
+            {
+              "x": 0.2445,
+              "y": 0.6612
+            },
+            {
+              "x": 0.4057,
+              "y": 0.5
+            },
+            {
+              "x": 0.2445,
+              "y": 0.3388
+            },
+            {
+              "x": 0.3388,
+              "y": 0.2445
+            },
+            {
+              "x": 0.5,
+              "y": 0.4057
+            },
+            {
+              "x": 0.6612,
+              "y": 0.2445
+            },
+            {
+              "x": 0.7555,
+              "y": 0.3388
+            },
+            {
+              "x": 0.5943,
+              "y": 0.5
+            }
+          ],
+          "stroke": "#1D291D",
+          "authoredBy": "ai",
+          "strokeWidth": 0
+        },
+        {
+          "h": 25,
+          "w": 64,
+          "x": 495.3,
+          "y": 377.5,
+          "id": "d-s6-Choice_label-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "False",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Choice label",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 397.3,
+          "w": 586.7,
+          "x": 373.3,
+          "y": 142.7,
+          "id": "d-s6-Verdict_ground-0",
+          "fill": "#F1F7EA",
+          "name": "Verdict ground",
+          "type": "shape",
+          "shape": "rect",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 397.3,
+          "w": 373.3,
+          "x": 0,
+          "y": 142.7,
+          "id": "d-s6-Claim_panel-0",
+          "fill": "#DDF0F8",
+          "name": "Claim panel",
+          "type": "shape",
+          "shape": "rect",
+          "locked": false,
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 28,
+          "w": 28,
+          "x": 64,
+          "y": 199.3,
+          "id": "d-s6-Verdict_disc-0",
+          "fill": "rgb(179, 38, 30)",
+          "name": "Verdict disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 16.8,
+          "w": 16.8,
+          "x": 69.6,
+          "y": 204.9,
+          "id": "d-s6-Verdict_glyph-0",
+          "fill": "#F1F7EA",
+          "name": "Verdict glyph",
+          "type": "path",
+          "closed": true,
+          "points": [
+            {
+              "x": 0.7555,
+              "y": 0.6612
+            },
+            {
+              "x": 0.6612,
+              "y": 0.7555
+            },
+            {
+              "x": 0.5,
+              "y": 0.5943
+            },
+            {
+              "x": 0.3388,
+              "y": 0.7555
+            },
+            {
+              "x": 0.2445,
+              "y": 0.6612
+            },
+            {
+              "x": 0.4057,
+              "y": 0.5
+            },
+            {
+              "x": 0.2445,
+              "y": 0.3388
+            },
+            {
+              "x": 0.3388,
+              "y": 0.2445
+            },
+            {
+              "x": 0.5,
+              "y": 0.4057
+            },
+            {
+              "x": 0.6612,
+              "y": 0.2445
+            },
+            {
+              "x": 0.7555,
+              "y": 0.3388
+            },
+            {
+              "x": 0.5943,
+              "y": 0.5
+            }
+          ],
+          "reveal": "fade",
+          "stroke": "#F1F7EA",
+          "authoredBy": "ai",
+          "revealStep": 1,
+          "strokeWidth": 0
+        },
+        {
+          "h": 25,
+          "w": 85,
+          "x": 101.3,
+          "y": 200.8,
+          "id": "d-s6-Verdict-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "MYTH",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Verdict",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 180,
+          "w": 266.7,
+          "x": 64,
+          "y": 249.3,
+          "id": "d-s6-Claim-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Romans built the wall so nobody could cross.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "strikeStep": 1
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Claim",
+          "type": "text",
+          "style": {
+            "color": "#4E5E4B",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 38.7,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+            "fontWeight": 600,
+            "lineHeight": 1.16
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 397.3,
+          "w": 581.3,
+          "x": 378.7,
+          "y": 142.7,
+          "id": "d-s6-Fact_panel-0",
+          "fill": "#DCEBF5",
+          "name": "Fact panel",
+          "type": "shape",
+          "shape": "rect",
+          "locked": false,
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 66.7,
+          "w": 66.7,
+          "x": 342.7,
+          "y": 194.7,
+          "id": "d-s6-Seam_halo-0",
+          "fill": "#F1F7EA",
+          "name": "Seam halo",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 348,
+          "y": 200,
+          "id": "d-s6-Seam_disc-0",
+          "fill": "#245F28",
+          "name": "Seam disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 17.2,
+          "w": 24.6,
+          "x": 363.7,
+          "y": 219.4,
+          "id": "d-s6-Seam_arrow-0",
+          "fill": "#FFFFFF",
+          "name": "Seam arrow",
+          "type": "path",
+          "closed": true,
+          "points": [
+            {
+              "x": 0,
+              "y": 0.3429
+            },
+            {
+              "x": 0.55,
+              "y": 0.3429
+            },
+            {
+              "x": 0.55,
+              "y": 0
+            },
+            {
+              "x": 1,
+              "y": 0.5
+            },
+            {
+              "x": 0.55,
+              "y": 1
+            },
+            {
+              "x": 0.55,
+              "y": 0.6571
+            },
+            {
+              "x": 0,
+              "y": 0.6571
+            }
+          ],
+          "reveal": "fade",
+          "stroke": "#FFFFFF",
+          "authoredBy": "ai",
+          "revealStep": 2,
+          "strokeWidth": 0
+        },
+        {
+          "h": 25,
+          "w": 77,
+          "x": 445.3,
+          "y": 196.2,
+          "id": "d-s6-Fact_label-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "FACT",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Fact label",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 130,
+          "w": 440,
+          "x": 445.3,
+          "y": 234.7,
+          "id": "d-s6-Fact-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "People could cross ",
+                    "type": "text"
+                  },
+                  {
+                    "text": "through gates",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#245F28"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": " that Roman soldiers guarded.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Fact",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 38.7,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 65,
+          "w": 400,
+          "x": 445.3,
+          "y": 419,
+          "id": "d-s6-Proof_line-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A guarded gateway allowed soldiers to check passing people.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#4E5E4B"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Proof line",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "small",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "kind": "multiple-choice",
+      "notes": "Running\nGive pupils about 3 minutes to c…(trimmed)",
+      "elements": [
+        {
+          "h": 365,
+          "w": 960,
+          "x": 0,
+          "y": 175,
+          "id": "d-s7-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 108,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s7-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why would Roman soldiers guard a wall gateway?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 89,
+          "w": 832,
+          "x": 64,
+          "y": 203,
+          "id": "d-s7-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#CBE0BA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 83,
+          "y": 229,
+          "id": "d-s7-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 19.76,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 67,
+          "w": 694,
+          "x": 140,
+          "y": 214,
+          "id": "d-s7-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "To check passing people and goods while allowing some to cross.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 26.666666666666668,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 89,
+          "w": 832,
+          "x": 64,
+          "y": 305,
+          "id": "d-s7-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#CBE0BA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 83,
+          "y": 331,
+          "id": "d-s7-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#7E5600",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 19.76,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 67,
+          "w": 694,
+          "x": 140,
+          "y": 316,
+          "id": "d-s7-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "To watch passing people and goods without deciding who could cross.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 26.666666666666668,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 89,
+          "w": 832,
+          "x": 64,
+          "y": 407,
+          "id": "d-s7-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#CBE0BA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 83,
+          "y": 433,
+          "id": "d-s7-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#8A4B12",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 19.76,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 67,
+          "w": 694,
+          "x": 140,
+          "y": 418,
+          "id": "d-s7-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "To stop every person and every load of goods from crossing.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 26.666666666666668,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s7-Option-0",
+            "correct": true
+          },
+          {
+            "id": "d-s7-Option-1",
+            "correct": false
+          },
+          {
+            "id": "d-s7-Option-2",
+            "correct": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "s8",
+      "kind": "content",
+      "notes": "Running\nSpend about 3 minutes. Ask pupil…(trimmed)",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s8-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why were patrols needed too?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 680,
+          "x": 64,
+          "y": 232,
+          "id": "d-s8-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A wall alone could not guard the whole frontier.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 10,
+          "w": 10,
+          "x": 66,
+          "y": 309,
+          "id": "d-s8-Bullet-0",
+          "fill": "#245F28",
+          "name": "Bullet",
+          "type": "shape",
+          "shape": "ellipse",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 82,
+          "w": 651,
+          "x": 93,
+          "y": 294,
+          "id": "d-s8-Point-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Soldiers walked between posts to look for signs of danger.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "kind": "open-response",
+      "notes": "Running\nAllow about 6 minutes. Pupils an…(trimmed)",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s9-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "You are guarding the frontier",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 143,
+          "id": "d-s9-surface_rule-0",
+          "fill": "#CBE0BA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 64,
+          "y": 165,
+          "id": "d-s9-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 189,
+          "w": 392,
+          "x": 64,
+          "y": 217,
+          "id": "d-s9-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine traders arrive with carts of goods. Why would soldiers direct them towards a guarded gateway rather than elsewhere?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 143,
+          "id": "d-s9-surface_rule-1",
+          "fill": "#CBE0BA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 504,
+          "y": 165,
+          "id": "d-s9-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 151,
+          "w": 392,
+          "x": 504,
+          "y": 217,
+          "id": "d-s9-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine people approach far from a gateway. How could a watchtower and a patrol help soldiers guard this area?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. At the gateway, soldiers could check the traders and their goods and collect taxes.\n2. Watchtower guards could spot the people from above, while a patrol could go to check what was happening."
+      }
+    },
+    {
+      "id": "s10",
+      "kind": "exit-ticket",
+      "notes": "Running\nAllow about 8 minutes for pupils…(trimmed)",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s10-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Show what you have learned",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 258,
+          "w": 960,
+          "x": 0,
+          "y": 282,
+          "id": "d-s10-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 356.5,
+          "w": 746,
+          "x": 107,
+          "y": 139,
+          "id": "d-s10-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 26,
+          "stroke": "#CBE0BA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 25,
+          "w": 660,
+          "x": 150,
+          "y": 163,
+          "id": "d-s10-Kicker-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "EXIT TICKET",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#245F28",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 204,
+          "id": "d-s10-surface_rule-0",
+          "fill": "#CBE0BA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 150,
+          "y": 219,
+          "id": "d-s10-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 608,
+          "x": 202,
+          "y": 219,
+          "id": "d-s10-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where in Britain was Hadrian’s Wall built, and in which year?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 297,
+          "id": "d-s10-surface_rule-1",
+          "fill": "#CBE0BA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 150,
+          "y": 311,
+          "id": "d-s10-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 608,
+          "x": 202,
+          "y": 311,
+          "id": "d-s10-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How could a guarded gateway help both defence and trade?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 389,
+          "id": "d-s10-surface_rule-2",
+          "fill": "#CBE0BA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 150,
+          "y": 404,
+          "id": "d-s10-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 608,
+          "x": 202,
+          "y": 404,
+          "id": "d-s10-Task-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How did forts, milecastles and watchtowers each help Roman soldiers?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Northern Britain, AD 122.\n2. Soldiers could check for danger while letting traders cross and collecting taxes on goods.\n3. Forts housed soldiers, milecastles guarded gateways, and watchtowers gave soldiers high places to watch the frontier."
+      }
+    },
+    {
+      "id": "73zxmo_RMK",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "c_84EIGZFt",
+          "fill": "#DDF0F8",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "DCJvZ6Z9q8",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#245F28",
+          "strokeWidth": 6
+        },
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "WnYHNtlvwT",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 33,
+          "w": 832,
+          "x": 64,
+          "y": 371,
+          "id": "wk4LAfSBun",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#4E5E4B",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard"
+    },
+    {
+      "id": "XW3Q0Fhroe",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "8zQm_GNyTk",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 46,
+          "w": 255,
+          "x": 641,
+          "y": 50,
+          "id": "DJUwf_pmom",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 28,
+          "w": 28,
+          "x": 664,
+          "y": 59,
+          "id": "rMBbgfRSaL",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#4E5E4B",
+          "strokeWidth": 2
+        },
+        {
+          "h": 30,
+          "w": 255,
+          "x": 700,
+          "y": 58,
+          "id": "CU38wZPU9h",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#4E5E4B",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 23,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "lP_98mgAac",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#245F28",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 19,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 90,
+          "w": 190,
+          "x": 64,
+          "y": 175,
+          "id": "eVeaHnNavn",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "You are guarding the frontier",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 147,
+          "id": "LRBrAHSCHq",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 147,
+          "id": "IIw7ACSkA2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4E5E4B",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 146,
+          "id": "BqjalCI_M9",
+          "fill": "#F1F7EA",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 114,
+          "w": 543,
+          "x": 353,
+          "y": 146,
+          "id": "z1bC9fBV9n",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "At the gateway, soldiers could check the traders and their goods and collect taxes.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 304,
+          "id": "bQ_oZGUa9C",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 304,
+          "id": "M-XAAejkSR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4E5E4B",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 303,
+          "id": "qDr3nelPki",
+          "fill": "#F1F7EA",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 114,
+          "w": 543,
+          "x": 353,
+          "y": 303,
+          "id": "pTOQ5vwZ9m",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Watchtower guards could spot the people from above, while a patrol could go to check what was happening.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers"
+    },
+    {
+      "id": "BtH3qJG3wS",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "Fqr8w356Z0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 46,
+          "w": 255,
+          "x": 641,
+          "y": 50,
+          "id": "PHu14Sq7G4",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 28,
+          "w": 28,
+          "x": 664,
+          "y": 59,
+          "id": "5iAU_mLNc_",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#4E5E4B",
+          "strokeWidth": 2
+        },
+        {
+          "h": 30,
+          "w": 255,
+          "x": 700,
+          "y": 58,
+          "id": "V-xXZWNGTZ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#4E5E4B",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 23,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "40uegoskhV",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "EXIT TICKET",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#245F28",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 19,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 60,
+          "w": 190,
+          "x": 64,
+          "y": 175,
+          "id": "h6Z-SUtPno",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Show what you have learned",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 147,
+          "id": "zwjphp_ePp",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 147,
+          "id": "A-5RNq2Ojc",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4E5E4B",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 146,
+          "id": "ILLUIlFB9H",
+          "fill": "#F1F7EA",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 38,
+          "w": 543,
+          "x": 353,
+          "y": 146,
+          "id": "HUkT4bfcz_",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Northern Britain, AD 122.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 201,
+          "id": "imzxVPuHqd",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 201,
+          "id": "HjJal4QStb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4E5E4B",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 200,
+          "id": "L01FiqnqnQ",
+          "fill": "#F1F7EA",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 114,
+          "w": 543,
+          "x": 353,
+          "y": 200,
+          "id": "uqHjIA4-Tf",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Soldiers could check for danger while letting traders cross and collecting taxes on goods.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 331,
+          "id": "2JvIVGiIaA",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#245F28",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 331,
+          "id": "7ZN13MJsP_",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4E5E4B",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 330,
+          "id": "k8I6b3n1tR",
+          "fill": "#F1F7EA",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 151,
+          "w": 543,
+          "x": 353,
+          "y": 330,
+          "id": "KZ-L_PZHSG",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Forts housed soldiers, milecastles guarded gateways, and watchtowers gave soldiers high places to watch the frontier.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#1D291D",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers"
+    }
+  ]
+}
