@@ -1028,10 +1028,12 @@ function WritingPill({ text, visible, phase }: { text: string; visible: boolean;
 function inTeachersTheme(merged: Lesson, theirs: Lesson): Lesson {
   const job = new Map(theirs.slides.map((s) => [s.id, s]));
   let changed = false;
+  let measure: ReturnType<typeof createMeasurer> | undefined;
   const slides = merged.slides.map((s) => {
     const copy = job.get(s.id);
     if (copy === undefined || (copy !== s && !sameJson(copy, s))) return s;
-    const next = inLessonTheme(s, merged);
+    measure ??= createMeasurer(renderTheme(merged));
+    const next = inLessonTheme(s, merged, measure);
     if (next !== s) changed = true;
     return next;
   });

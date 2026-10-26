@@ -10,6 +10,7 @@ import {
 } from "@tj/domain/documents";
 import {
   BODY_Y,
+  growCards,
   HEADING_GAP,
   isGeneratedSlide,
   KIND_TAG_NAME,
@@ -713,7 +714,11 @@ function fitAndSplit(
       }
     }
 
-    slides.push({ ...current, elements: result.elements });
+    // A card grows with the text laid on it, as generation's fit does (TEACH-247 part ag).
+    // Text at its floor that still outgrows its card takes the card down to just past the safe
+    // area's foot (above the look's foot band) rather than running through its border.
+    const cardFoot = split ? undefined : SAFE.y + SAFE.h + SPACE[2];
+    slides.push({ ...current, elements: growCards(current.elements, result.elements, cardFoot) });
     results.push(result);
     if (!next) break;
     current = next;
