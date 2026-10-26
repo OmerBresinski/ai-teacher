@@ -156,8 +156,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.12", () => {
-    expect(PILOT_PACK_ID).toBe("v4.12");
+  test("production runs v4.13", () => {
+    expect(PILOT_PACK_ID).toBe("v4.13");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
@@ -265,6 +265,13 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
       const grow = PILOT_PACKS["v4.12"].system[ks].length - PILOT_PACKS["v4.11"].system[ks].length;
       expect(grow).toBeGreaterThan(0);
       expect(grow).toBeLessThanOrEqual(2300);
+    }
+  });
+  test("v4.13's wording grows v4.12's by at most 800 characters at each key stage", () => {
+    for (const ks of ["KS1", "KS2", "KS3"] as const) {
+      const grow = PILOT_PACKS["v4.13"].system[ks].length - PILOT_PACKS["v4.12"].system[ks].length;
+      expect(grow).toBeGreaterThan(0);
+      expect(grow).toBeLessThanOrEqual(800);
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {

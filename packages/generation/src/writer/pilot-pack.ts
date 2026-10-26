@@ -39,6 +39,9 @@ import t113 from "./bundles/pilot-v4.11-menu/system-KS3.template.txt" with { typ
 import t121 from "./bundles/pilot-v4.12-menu/system-KS1.template.txt" with { type: "text" };
 import t122 from "./bundles/pilot-v4.12-menu/system-KS2.template.txt" with { type: "text" };
 import t123 from "./bundles/pilot-v4.12-menu/system-KS3.template.txt" with { type: "text" };
+import t131 from "./bundles/pilot-v4.13-menu/system-KS1.template.txt" with { type: "text" };
+import t132 from "./bundles/pilot-v4.13-menu/system-KS2.template.txt" with { type: "text" };
+import t133 from "./bundles/pilot-v4.13-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -298,10 +301,33 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.13 (TEACH-110 part au): v4.12 with no repeat slides, named people and clear questions. A
+  // picture is new only when it shows a case, place or stage no earlier slide showed, and two
+  // teaching slides never teach the same point; a reason involving people names who they were;
+  // a question asks one clear thing. Schema and code as v4.12; templates differ in 2 lines.
+  "v4.13": {
+    id: "v4.13",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t131, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t132, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t133, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.12";
+export const PILOT_PACK_ID: PilotPackId = "v4.13";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
