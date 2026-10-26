@@ -48,6 +48,9 @@ import t143 from "./bundles/pilot-v4.14-menu/system-KS3.template.txt" with { typ
 import t151 from "./bundles/pilot-v4.15-menu/system-KS1.template.txt" with { type: "text" };
 import t152 from "./bundles/pilot-v4.15-menu/system-KS2.template.txt" with { type: "text" };
 import t153 from "./bundles/pilot-v4.15-menu/system-KS3.template.txt" with { type: "text" };
+import t161 from "./bundles/pilot-v4.16-menu/system-KS1.template.txt" with { type: "text" };
+import t162 from "./bundles/pilot-v4.16-menu/system-KS2.template.txt" with { type: "text" };
+import t163 from "./bundles/pilot-v4.16-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -377,10 +380,35 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.16 (TEACH-251 part aq): v4.15 with sharper shape reading in the flow step. The reasons
+  // that answer one why or how question are one slide, never a slide a reason; two cases set side
+  // by side are a contrast with a picture per side, never one picture of both; a point about where
+  // something is or was looks at a map (a library map model, else a picture of a map); a check
+  // asks for an answer no earlier check asked for. No quotas or caps (rulings of 10 Oct). Schema
+  // and code as v4.15; templates differ in 2 lines.
+  "v4.16": {
+    id: "v4.16",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t161, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t162, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t163, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.15";
+export const PILOT_PACK_ID: PilotPackId = "v4.16";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)

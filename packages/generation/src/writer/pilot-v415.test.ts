@@ -29,7 +29,8 @@ const NEW_GENERIC =
   "even one set in a real town or event, which its shows calls a reconstruction. A monument, building or site that survives, whole or as remains, is never reconstructed, nor are its parts: a picture of it or of what happened there is named and shows its remains today, by the site's name and the part.";
 
 describe("pilot pack v4.15", () => {
-  test("production runs v4.15", () => expect(PILOT_PACK_ID).toBe("v4.15"));
+  test("v4.15 was production until v4.16 (TEACH-251 part aq)", () =>
+    expect(PILOT_PACK_ID).toBe("v4.16"));
 
   for (const stage of STAGES) {
     const ks = KS[stage];
