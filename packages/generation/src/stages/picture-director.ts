@@ -463,10 +463,10 @@ export function planPicture(
     (d.named === "event" ||
       d.named === "person" ||
       (!d.named && DEPICTS.test(`${ask.text} ${d.pictures[0]?.shows ?? ""}`)));
-  const real = opts.real === true || d.route === "commons" || depicts;
+  const ruled = opts.real === true || d.route === "commons" || depicts;
   // The request's year-plus-event anchor leads a Commons search ("hyperinflation 1923" ranks the
   // real 1923 Weimar photo first; the director's own wording did not).
-  const dated = real ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
+  const dated = ruled ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
   const pictures: DirectedPicture[] = d.pictures
     .map((p) => ({
       shows: clip(p.shows, 400),
@@ -477,11 +477,24 @@ export function planPicture(
     .filter((p) => p.shows && p.imagePrompt);
   const first = pictures[0];
   if (!first) return keep();
-  // A historical scene with no named kind is read as an event (an illustration under `strict`).
-  const kind = d.named ?? (depicts ? "event" : "object");
-  const fallback = real
-    ? realFallbackFor(kind, period ? historyPolicy() : "present", !!ask.named)
+  // A historical scene with no named kind is read as an event; any other missing kind stays null,
+  // which is real-only (ruling 296 never generates a real thing it cannot classify).
+  const kind = d.named ?? (depicts ? "event" : null);
+  const ruledFallback = ruled
+    ? realFallbackFor(
+        kind,
+        period ? historyPolicy() : "present",
+        // A forced-real slot (a named set's panel, a named history card) is real-only: ruling 209
+        // never puts a generated panel beside real ones.
+        !!ask.named || opts.real === true,
+      )
     : undefined;
+  // Ruling 296: a present-day generic object the director sent to Commons is searched like a real
+  // thing (Commons, then stock), then made as any generic picture is: the generic route, the
+  // lesson's look. A past one stays on the real route with the painted illustration (ruling 163).
+  const genericObject = ruledFallback === "illustration" && !period && kind === "object";
+  const real = ruled && !genericObject;
+  const fallback = real ? ruledFallback : undefined;
   const mustShow = countedPhoto
     ? uniq([
         `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
@@ -512,7 +525,7 @@ export function planPicture(
       imagePrompt,
       draw: null,
       stockFirst:
-        stockFirstRoute(d.route, `${ask.text} ${first.shows}`) &&
+        (genericObject || stockFirstRoute(d.route, `${ask.text} ${first.shows}`)) &&
         !countedPhoto &&
         !looked &&
         !housed,
@@ -527,7 +540,7 @@ export function planPicture(
       request: first.shows,
       mustShow,
       queries: first.queries,
-      specific: real,
+      specific: ruled,
       ...(period ? { period } : {}),
     },
     pictures,

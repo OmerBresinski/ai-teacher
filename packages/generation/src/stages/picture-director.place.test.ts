@@ -542,6 +542,7 @@ describe("ruling 296 (placement)", () => {
     shows: string,
     writerNamed: boolean,
     period: string | null = "London, 1666",
+    realOnly = false,
   ) => {
     const { images, calls } = placer({ commons: async () => [], pexels: async () => [] });
     const { bank, made } = spyBank();
@@ -560,6 +561,7 @@ describe("ruling 296 (placement)", () => {
           pictures: [{ shows, mustShow: [], queries: [shows], imagePrompt: `${shows}.` }],
         }),
       onOutcome: (o) => outcomes.push(o),
+      ...(realOnly ? { realOnly: true } : {}),
     });
     return { run, made, outcomes, calls };
   };
@@ -587,5 +589,26 @@ describe("ruling 296 (placement)", () => {
     expect(await run).toBeUndefined();
     expect(made).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
+  test("a present-day generic object is searched (Commons first), then generated on the generic route", async () => {
+    const { run, made, calls } = fire("object", "A fire extinguisher", false, null);
+    await run;
+    expect(calls[0]?.startsWith("commons:")).toBe(true);
+    expect(made).toHaveLength(1);
+    expect(made[0]?.route).toBe("generic");
+    expect(made[0]?.realFallback).toBeUndefined();
+  });
+  test("fails closed: a real thing the director did not classify is never generated", async () => {
+    for (const period of ["London, 1666", null]) {
+      const { run, made, outcomes } = fire(null, "A thing in the lesson", false, period);
+      expect(await run).toBeUndefined();
+      expect(made).toHaveLength(0);
+      expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+    }
+  });
+  test("a forced-real slot never generates a generic object", async () => {
+    const { run, made } = fire("object", "A leather fire bucket", false, "London, 1666", true);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
   });
 });

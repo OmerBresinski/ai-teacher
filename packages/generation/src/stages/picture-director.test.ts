@@ -10,6 +10,7 @@ import {
   type MadePicture,
   type PictureBank,
   REAL_FALLBACK,
+  realFallbackFor,
 } from "./photo-bank";
 import {
   countImagePrompt,
@@ -653,14 +654,36 @@ describe("ruling 296: which real things may fall back to a generated picture", (
       expect(p.request.imagePrompt).toContain("London, 1666");
     }
   });
-  test("a present-day generic object the director sent to Commons is generated as any picture", () => {
+  test("a present-day generic object the director sent to Commons takes the generic route", () => {
     const p = photoPlan(dir({ route: "commons", named: "object" }), {
       text: "A fire extinguisher",
       named: null,
     });
-    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.route).toBe("generic");
+    expect(p.request.realFallback).toBeUndefined();
+    expect(p.request.stockFirst).toBe(true);
+    expect(p.brief.specific).toBe(true);
     expect(p.request.style).toBeUndefined();
     expect(p.request.imagePrompt).toBe(pic().imagePrompt);
+  });
+  test("fails closed: a real thing with no kind is real-only, past or present", () => {
+    for (const period of ["London, 1666", null]) {
+      const p = photoPlan(dir({ route: "commons", named: null, period }), {
+        text: "A thing in the lesson",
+        named: null,
+      });
+      expect(p.request.route).toBe("real");
+      expect(p.request.realFallback ?? "none").toBe("none");
+    }
+  });
+  test("a forced-real slot (a named set's panel) never generates a generic object", () => {
+    const p = planPicture(
+      dir({ route: "commons", named: "object", period: "London, 1666" }),
+      { text: "A leather fire bucket", named: null },
+      { real: true },
+    );
+    if (p.kind !== "photo") throw new Error("photo expected");
+    expect(p.request.realFallback).toBe("none");
   });
   test("a real place (the Pudding Lane bakery) stays real-only, named or not", () => {
     for (const writerNamed of ["Pudding Lane bakery", null])
@@ -700,4 +723,15 @@ describe("ruling 296: which real things may fall back to a generated picture", (
   test("an event keeps ruling 163's table", () => {
     expect(hist("event", "The Great Fire of London", null).request.realFallback).toBe("none");
   });
+});
+
+describe("realFallbackFor: ruling 296's full table", () => {
+  const kinds = [undefined, null, "person", "place", "work", "event", "object"] as const;
+  for (const policy of ["strict", "present"] as const)
+    for (const kind of kinds)
+      for (const named of [true, false])
+        test(`${policy}, ${kind ?? "no kind"}, writer ${named ? "named" : "generic"}`, () => {
+          const want = kind === "object" && !named ? "illustration" : "none";
+          expect(realFallbackFor(kind, policy, named)).toBe(want);
+        });
 });

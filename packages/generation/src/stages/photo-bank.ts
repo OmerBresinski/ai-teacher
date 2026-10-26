@@ -66,13 +66,16 @@ export const REAL_FALLBACK: Record<HistoryPolicy | "present", Record<NamedKind, 
  * be generated: the director's `object` that the writer did not mark `named`, since the writer
  * marks a subject named only when it must show one particular real thing. A unique, identifiable
  * artefact or document (the Rosetta Stone) is named, so it stays real-only. A past object is drawn
- * as the painted illustration (`illustration`), never photo style (ruling 163).
+ * as the painted illustration (`illustration`), never photo style (ruling 163). A missing kind
+ * is real-only.
  */
 export function realFallbackFor(
-  kind: NamedKind,
+  kind: NamedKind | null | undefined,
   policy: HistoryPolicy | "present",
   writerNamed: boolean,
 ): RealFallback {
+  // Fails closed: a real thing the director did not classify is never generated.
+  if (!kind) return "none";
   if (kind === "object" && !writerNamed) return "illustration";
   return REAL_FALLBACK[policy][kind];
 }
