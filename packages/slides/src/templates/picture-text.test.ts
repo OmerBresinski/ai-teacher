@@ -3,7 +3,7 @@ import type { Theme } from "@tj/domain/documents";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { PT_CAPS, PT_NAMES } from "./picture-text";
+import { type KeyCard, PT_CAPS, PT_NAMES } from "./picture-text";
 import { measurePictureTextCaps } from "./picture-text-capacity";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
 import { PT_CASES, photo, SVG } from "./picture-text-fixtures";
@@ -204,10 +204,11 @@ describe("picture and text: the key card look", () => {
     expect(named(r, PT_NAMES.num)[0]?.style?.color).toBe(paper.colors.accent);
     expect(named(r, PT_NAMES.unit)).toHaveLength(1);
   });
-  test("a key card beside points is flagged; no element builds", () => {
+  test("a key card beside points with no picture is flagged; no element builds", () => {
     const r = layoutTemplate(
       {
         ...(PT_CASES["key-ks2-photosynthesis"]?.input as TemplateInput),
+        figure: undefined,
         points: ["A point."],
       },
       paper,
@@ -215,6 +216,57 @@ describe("picture and text: the key card look", () => {
     );
     expect(r.over).toContain("picture-text key card beside points");
     expect(r.slide.elements.some((e) => "revealStep" in e && e.revealStep)).toBe(false);
+  });
+
+  // TEACH-247 part ao: Romans Y4 verify5 s5. A placed picture outranks the card's look.
+  const romans = (cards?: KeyCard[]): TemplateInput => ({
+    template: "picture-text",
+    heading: "Why build a guarded wall?",
+    lead: "The Romans wanted to defend their frontier and control movement.",
+    points: [
+      "The wall made raids into Roman Britain harder for groups living north of it.",
+      "Gates let Roman soldiers check travellers and goods crossing the frontier.",
+    ],
+    figure: { photo: "/files/gateway.jpg", aspect: 4 / 3, alt: "A gateway" },
+    pictureText: {
+      icon: "roman shield",
+      cards: cards ?? [
+        {
+          kind: "word",
+          label: "Meaning",
+          term: "Frontier",
+          meaning: "The edge of land an empire controls.",
+        },
+      ],
+    },
+  });
+  test("cards beside points and a picture fold into points beside it, in every theme at KS2", () => {
+    const faults: string[] = [];
+    for (const theme of THEMES) {
+      const r = layoutTemplate(romans(), theme, "ks2");
+      const els = r.slide.elements;
+      const where = theme.id;
+      if (r.over.length) faults.push(`${where}: over ${r.over.join(",")}`);
+      if (
+        !els.some((e) => e.type === "image" && (e as { src?: string }).src === "/files/gateway.jpg")
+      )
+        faults.push(`${where}: no picture`);
+      if (named(r, PT_NAMES.card).length) faults.push(`${where}: a card drawn`);
+      if (!JSON.stringify(els).includes("Frontier: the edge of land an empire controls."))
+        faults.push(`${where}: the card's words lost`);
+    }
+    expect(faults).toEqual([]);
+  });
+  test("a fold that does not fit, or a card that is not one line, leaves the slide flagged", () => {
+    // KS1 holds two points and fewer words: the fold is over, so the slide stays as it was.
+    const ks1 = layoutTemplate(romans(), paper, "ks1");
+    expect(ks1.over).toContain("picture-text key card beside points");
+    const ex = layoutTemplate(
+      romans([{ kind: "examples", label: "Examples", examples: [["fort", "soldiers"]] }]),
+      paper,
+      "ks2",
+    );
+    expect(ex.over).toContain("picture-text key card beside points");
   });
 });
 
