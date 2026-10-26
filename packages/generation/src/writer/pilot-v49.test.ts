@@ -4,6 +4,7 @@ import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
 import { withClose } from "./close";
 import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
+import { writerMaxTokens } from "./services";
 
 /*
  * Pilot pack v4.9 (TEACH-110 part aq): v4.8 with the slides its plan lists and a named vs generic
@@ -64,5 +65,14 @@ describe("pilot pack v4.9", () => {
     const prod = writerSchema("KS1", SLIDE_TIER_RANGES.detailed);
     const s = withClose(pilotRequest("v4.8", "KS1", prod, (sc) => sc).schema, true).properties as J;
     expect([s.slides.minItems, s.slides.maxItems]).toEqual([6, 9]);
+  });
+
+  test("a Detailed lesson's output cap holds the measured need with room to spare", () => {
+    // Paid check, 26 Oct: 2,090 / 2,443 / 2,172 output tokens (reasoning included) at 13 slides,
+    // at most 188 a slide, so about 3,010 at 16. The cap must keep at least 40% headroom over it.
+    const need16 = Math.ceil((2443 / 13) * 16);
+    expect(writerMaxTokens(SLIDE_TIER_RANGES.detailed.max)).toBeGreaterThanOrEqual(
+      Math.ceil(need16 / 0.6),
+    );
   });
 });

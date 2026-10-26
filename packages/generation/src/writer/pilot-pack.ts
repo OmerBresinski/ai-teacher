@@ -97,7 +97,8 @@ export type PilotPack = {
   flowLayout?: boolean;
   /**
    * `slides` takes the production schema's bounds, as `flow` does (v4.9, TEACH-110 part aq). The
-   * pack bases fix slides at 7..10 (Standard), so with `close` every tier wrote 9 to 12 slides: a
+   * pack bases fix `slides` at 7..10 for every tier (6..9 once `close` takes one), so every lesson
+   * was 9 to 12 slides long: a
    * Detailed plan of 13 had to close early and its flow entries stopped matching its slides.
    */
   tierSlides?: boolean;
