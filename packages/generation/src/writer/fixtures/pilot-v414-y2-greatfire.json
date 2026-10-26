@@ -1,0 +1,336 @@
+{
+  "design": {
+    "picture_style": "illustration"
+  },
+  "flow": [
+    {
+      "slide": 1,
+      "does": "Recall what happens when wood burns",
+      "shape": "recall",
+      "look_at": {
+        "kind": "picture",
+        "shows": "London buildings burning"
+      },
+      "layout": "title",
+      "size": "Subtitle 8/8 words",
+      "teaches": []
+    },
+    {
+      "slide": 2,
+      "does": "Share the lesson objectives",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "objectives",
+      "size": "Filled from approved objectives",
+      "teaches": []
+    },
+    {
+      "slide": 3,
+      "does": "Teach where and when the fire started",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Pudding Lane bakery fire"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 19/24 words",
+      "teaches": [1]
+    },
+    {
+      "slide": 4,
+      "does": "Explain why wooden houses burned",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Burning wooden house frame"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 17/24 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 5,
+      "does": "Explain spread across narrow streets",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Flames crossing a narrow street"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 18/24 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 6,
+      "does": "Check understanding of narrow streets",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "hinge",
+      "size": "Stem 9/11 words; 3 options 4,4,4/5 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 7,
+      "does": "Teach how water buckets helped",
+      "shape": "one big idea",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Water thrown from leather buckets"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 15/24 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 8,
+      "does": "Explain how gaps stopped flames",
+      "shape": "reasons or causes",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Pulled-down houses leaving a gap"
+      },
+      "layout": "visual-text points-0-fig",
+      "size": "Lead 19/24 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 9,
+      "does": "Recall key facts from the teaching",
+      "shape": "recall",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "question-set",
+      "size": "3 questions 7,7,9/11 words; answers 2,1,1/2 words",
+      "teaches": [1, 2, 3]
+    },
+    {
+      "slide": 10,
+      "does": "Apply learning to two firefighting problems",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "practice",
+      "size": "2 tasks 13,14/14 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 11,
+      "does": "Apply spread knowledge to new streets",
+      "shape": "check",
+      "look_at": {
+        "kind": "picture",
+        "shows": "Wide street and wooden cottage"
+      },
+      "layout": "practice",
+      "size": "2 tasks 14,12/14 words",
+      "teaches": [2]
+    },
+    {
+      "slide": 12,
+      "does": "Apply both firefighting methods together",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "discussion bare",
+      "size": "Question 17/18 words",
+      "teaches": [3]
+    },
+    {
+      "slide": 13,
+      "does": "Check all three objectives independently",
+      "shape": "check",
+      "look_at": {
+        "kind": "none",
+        "shows": null
+      },
+      "layout": "exit-ticket",
+      "size": "2 questions 8,9/9 words",
+      "teaches": [1, 2, 3]
+    }
+  ],
+  "title": {
+    "template": "title",
+    "fit": "fig",
+    "heading": "The Great Fire of London",
+    "lead": "What can you see when wood burns?",
+    "picture": {
+      "shows": "A colour reconstruction of the Great Fire of London, with wooden houses burning beside a London street",
+      "must_see": ["burning wooden houses", "bright orange flames", "smoke above roofs"],
+      "subject": "generic"
+    }
+  },
+  "slides": [
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "The fire begins",
+      "lead": "The Great Fire started on 2 September 1666. It began in Thomas Farriner’s bakery in Pudding Lane, London.",
+      "points": [],
+      "figure": {
+        "shows": "A reconstruction of the outside of Thomas Farriner’s bakery in Pudding Lane as fire begins inside at night",
+        "must_see": ["small bakery doorway", "flames inside bakery", "dark street outside"],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Wood feeds the fire",
+      "lead": "Many London houses had wooden frames. Wood burns, so these frames gave the fire more fuel.",
+      "points": [],
+      "figure": {
+        "shows": "A reconstruction of a London house in 1666 with its wooden frame visibly burning",
+        "must_see": ["thick wooden beams", "flames along beams", "burning upper floor"],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Across the street",
+      "lead": "London’s streets were narrow, with houses close together. Flames could reach from one wooden house to the next.",
+      "points": [],
+      "figure": {
+        "shows": "A reconstruction showing flames reaching between the upper floors of wooden houses across a narrow London street in 1666",
+        "must_see": ["very narrow street", "close upper floors", "flames reaching across"],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "hinge",
+      "heading": "Why did narrow streets help the Great Fire spread?",
+      "options": [
+        {
+          "text": "Flames reached nearby houses.",
+          "icon": null,
+          "why": null
+        },
+        {
+          "text": "Streets gave flames fuel.",
+          "icon": null,
+          "why": "Confuses the fuel supplied by wooden house frames with the narrow streets that placed houses close together."
+        },
+        {
+          "text": "Houses stopped flames crossing.",
+          "icon": null,
+          "why": "Thinks closely packed houses formed a barrier rather than allowing flames to reach the next house."
+        }
+      ]
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Buckets of water",
+      "lead": "Londoners threw water onto flames using leather buckets. Water cooled the flames and helped put them out.",
+      "points": [],
+      "figure": {
+        "shows": "A reconstruction of Londoners throwing water from leather buckets onto a small burning doorway during the Great Fire",
+        "must_see": ["leather water buckets", "water reaching flames", "small burning doorway"],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "visual-text",
+      "fit": "points-0-fig",
+      "heading": "Make a gap",
+      "lead": "Londoners pulled down houses to make gaps. With no wooden houses in a gap, flames had less fuel.",
+      "points": [],
+      "figure": {
+        "shows": "A reconstruction of Londoners pulling down an unburnt wooden house with ropes and long hooks, leaving a cleared gap between burning and unburnt houses",
+        "must_see": ["ropes and hooks", "house being pulled", "cleared gap between houses"],
+        "subject": "generic"
+      }
+    },
+    {
+      "template": "question-set",
+      "heading": "What can you remember?",
+      "items": [
+        {
+          "question": "Which London street did the fire start in?",
+          "answer": "Pudding Lane"
+        },
+        {
+          "question": "What material made many house frames burn?",
+          "answer": "Wood"
+        },
+        {
+          "question": "What did Londoners throw onto flames from their buckets?",
+          "answer": "Water"
+        }
+      ]
+    },
+    {
+      "template": "practice",
+      "heading": "Solve these problems",
+      "picture": null,
+      "items": [
+        {
+          "question": "A Londoner throws an empty bucket at flames. Why will this not help?",
+          "answer": "The bucket has no water to cool the flames.",
+          "working": null
+        },
+        {
+          "question": "A house is pulled down, but wood fills the gap. Why could fire continue?",
+          "answer": "The wood in the gap can still burn and give the fire fuel.",
+          "working": null
+        }
+      ]
+    },
+    {
+      "template": "practice",
+      "heading": "A different street",
+      "picture": {
+        "shows": "Two separate imagined scenes: wooden houses on opposite sides of a very wide street, and a single wooden cottage burning",
+        "must_see": ["wide clear street", "widely separated houses", "burning wooden cottage"],
+        "subject": "generic"
+      },
+      "items": [
+        {
+          "question": "Two wooden houses face across a wide street. Why might flames not reach across?",
+          "answer": "The houses are farther apart, so flames may not reach the next house.",
+          "working": null
+        },
+        {
+          "question": "A wooden cottage stands alone. Why can it burn without any nearby houses?",
+          "answer": "Its wooden frame can burn and give the fire fuel.",
+          "working": null
+        }
+      ]
+    },
+    {
+      "template": "discussion",
+      "fit": "bare",
+      "heading": "Use both methods",
+      "lead": "How could Londoners use water buckets and a gap together to protect houses from an approaching fire?",
+      "picture": null
+    }
+  ],
+  "close": {
+    "template": "exit-ticket",
+    "heading": "Show what you know",
+    "items": [
+      {
+        "question": "How did the 1666 fire start and spread?",
+        "answer": "It started in a Pudding Lane bakery and spread between wooden houses close together across narrow streets.",
+        "working": null
+      },
+      {
+        "question": "How did buckets and pulling down houses stop fire?",
+        "answer": "Water from buckets cooled flames, while pulling down houses made gaps with less wood to burn.",
+        "working": null
+      }
+    ]
+  }
+}
