@@ -1,13 +1,14 @@
 import { DEFAULT_SLIDE_TIER, SLIDE_COUNTS, type SlideTier } from "./brief";
 
 /*
- * Ruling 164's tier ranges (Detailed 13–16 since the ruling that amends it, 11 Oct 2026) and the helpers built on them. Kept out of `brief.ts` so the brief
+ * Ruling 164's tier ranges (Detailed 13–16 since ruling 204, 11 Oct 2026; Quick 7–8 and Standard
+ * 10–12 since ruling 295, 26 Oct 2026) and the helpers built on them. Kept out of `brief.ts` so the brief
  * schema's chunk (shared with the print pages) carries only the tier names (bundle budget).
  */
 
 export const SLIDE_TIER_RANGES: Record<SlideTier, { min: number; max: number }> = {
-  quick: { min: 6, max: 8 },
-  standard: { min: 9, max: 12 },
+  quick: { min: 7, max: 8 },
+  standard: { min: 10, max: 12 },
   detailed: { min: 13, max: 16 },
 };
 /**

@@ -46,3 +46,13 @@ The ruling that amends ruling 164 (Greg, 11 Oct: "detailed should be 13-16") nar
 13–16 in `SLIDE_TIER_RANGES`. Quick 6–8 and Standard 9–12 (the default) are unchanged, and the
 Detailed planner count stays 16, now the top of the range. `slideTierOf` still reads any count above
 Standard as Detailed, so a lesson stored with 17–20 slides opens as Detailed.
+
+## Amendment (2026-10-26, ruling 295, TEACH-110 part ap)
+
+Ruling 295 (Greg: "Quick starts at 7 slides and Standard at 10") raises the two lower tiers'
+minimums in `SLIDE_TIER_RANGES`: Quick 7–8, Standard 10–12 (the default), Detailed 13–16
+unchanged. The planner counts (Quick 8, Standard 10, Detailed 16) are all still inside their
+ranges. The writer still plans near a range's low end (ruling 261); Quick now leaves one slide of
+room for a split, Standard and Detailed two. An older lesson with an exact count and no tier is
+held to 7–16 (ADR 0036 §1), so a stored 6-slide lesson is written at 7. `slideTierOf` is unchanged:
+any count up to 8 still reads as Quick.

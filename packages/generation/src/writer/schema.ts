@@ -13,8 +13,8 @@ import { ITEMS_ROW_MAX, rowCaps } from "./items-row-fits";
  * (`diagram-defs.gen.json`) until part d builds them from the drawer's own schema.
  *
  * K1: `flow` numbers every slide from 1 (title and objectives included), so its bounds are the
- * whole lesson, `min..max`; `slides` holds slide 3 onward, `min-2..max-2`. For Standard (9–12)
- * the output is the pinned schema byte for byte (`schemaText`); Quick and Detailed get the same
+ * whole lesson, `min..max`; `slides` holds slide 3 onward, `min-2..max-2`. At 9–12 (Standard's range
+ * before ruling 295) the output is the pinned schema byte for byte (`schemaText`); Quick and Detailed get the same
  * shape with their own bounds.
  */
 

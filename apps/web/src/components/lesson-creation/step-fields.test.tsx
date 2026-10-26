@@ -16,15 +16,15 @@ describe("ObjectivesStep slide tier", () => {
       />,
     );
     expect(screen.getByRole("combobox", { name: "Slides" }).textContent).toBe(
-      "Standard, 9–12 slides",
+      "Standard, 10–12 slides",
     );
   });
 
   it("offers Quick, Standard and Detailed with their ranges", async () => {
     const { SLIDE_TIER_OPTIONS } = await import("./step-fields");
     expect(SLIDE_TIER_OPTIONS.map((o) => o.label)).toEqual([
-      "Quick, 6–8 slides",
-      "Standard, 9–12 slides",
+      "Quick, 7–8 slides",
+      "Standard, 10–12 slides",
       "Detailed, 13–16 slides",
     ]);
   });

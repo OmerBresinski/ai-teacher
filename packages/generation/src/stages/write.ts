@@ -42,7 +42,7 @@ import { createProgressiveDeck, type ProgressiveDeck } from "./progressive";
 /**
  * The slides the writer may write, title and objectives included. A tier (ruling 164) gives its
  * range and the writer picks the count inside it; the schema holds it there. A lesson made before
- * tiers keeps its exact count (ADR 0036), held to Quick's minimum and Detailed's maximum (6–16). Neither keeps the Standard range.
+ * tiers keeps its exact count (ADR 0036), held to Quick's minimum and Detailed's maximum (7–16). Neither keeps the Standard range.
  */
 export function slideRange(
   brief: { slideTier?: SlideTier | undefined; slideCount?: number | undefined } | undefined,
