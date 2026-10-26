@@ -5,6 +5,7 @@ import { atKeyStage, THEMES } from "../themes";
 import {
   FIGURE_CAPTION_FITS,
   FIGURE_CAPTION_GAP,
+  FIGURE_FLOOR,
   FIGURE_FOOT,
   FIGURE_GAP,
   FIGURE_NAMES,
@@ -86,7 +87,7 @@ describe("figure slide: the open stage", () => {
     expect(lay({ lead: undefined }).fields ?? []).toEqual([]);
   });
 
-  test("an over-cap caption is flagged for repair, never shrunk or cut", () => {
+  test("an over-cap caption is flagged, never shrunk or cut (TEACH-247 part aq)", () => {
     const long =
       "The same water goes round and round for ever: it is never made, never used up and never lost.";
     const r = lay({ lead: long });
@@ -98,13 +99,31 @@ describe("figure slide: the open stage", () => {
       (lay().slide.elements.find((e) => e.name === "Caption") as TextElement | undefined)?.style
         .fontSize,
     );
-    // Meanwhile it shows as one line, cut at a word with an ellipsis: never two lines.
+    // Meanwhile it shows whole on the lines it takes, never cut with an ellipsis (part aq), and
+    // the figure gives up the room: the caption stays above the foot and clear of the figure.
     const text = JSON.stringify(cap?.doc);
-    expect(text).toContain("…");
-    expect(text).not.toContain("never lost.");
+    expect(text).not.toContain("…");
+    expect(text).toContain("never lost.");
     const lineH = (cap?.style.fontSize ?? 0) * (cap?.style.lineHeight ?? 0);
-    expect(Math.round((cap?.h ?? 0) / lineH)).toBe(1);
+    expect(Math.round((cap?.h ?? 0) / lineH)).toBeGreaterThan(1);
+    const art = r.slide.elements.find((e) => e.type === "image" || e.name === "Plate");
+    if (art) expect(art.y + art.h).toBeLessThanOrEqual((cap?.y ?? 0) + 0.5);
+    expect((cap?.y ?? 0) + (cap?.h ?? 0)).toBeLessThanOrEqual(540);
     expect(f?.chars).toBe(long.length);
+  });
+
+  test("under a very long caption the figure keeps its floor and the slide is over (part aq)", () => {
+    const short = lay();
+    const shortArt = short.slide.elements.find((e) => e.type === "image" || e.name === "Plate");
+    const huge = Array.from({ length: 12 }, () => "The water cycle never stops moving water.").join(
+      " ",
+    );
+    const r = lay({ lead: huge });
+    expect(r.over).toContain("figure caption over one line");
+    const art = r.slide.elements.find((e) => e.type === "image" || e.name === "Plate");
+    const [cap] = named(r.slide.elements, FIGURE_NAMES.caption) as TextElement[];
+    expect(JSON.stringify(cap?.doc)).not.toContain("…");
+    if (art && shortArt) expect(art.h).toBeGreaterThanOrEqual(shortArt.h * FIGURE_FLOOR - 1);
   });
 
   test("the caption cap is the writer's cap under the measured one-line fit, per age", () => {
