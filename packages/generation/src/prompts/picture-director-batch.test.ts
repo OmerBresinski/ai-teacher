@@ -9,26 +9,27 @@ import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "./picture-director-batch";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /**
- * The pins: the director (v12), its batched prompt (v2) and the photo judge (v19) as the writer planner
+ * The pins: the director (v13), its batched prompt (v3) and the photo judge (v20) as the writer planner
  * ships them. A wording change bumps the version and this hash in the same commit.
  */
 describe("picture prompt pins", () => {
   test("the batched director prompt is the pinned file, byte for byte", () => {
     expect(sha(PICTURE_DIRECTOR_BATCH_SYSTEM)).toBe(
-      "30be0019783de5af1db4a1a64cb9c7ae0bd38649338f0e6bb7d703b4070bc527",
+      "a4e0db2c52bcc59d761e6708ab6ec6596a3566e16066d0353610b1e76b2eb110",
     );
   });
 
-  test("the director is v12 and its system prompt is pinned", () => {
-    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v12");
+  test("the director is v13 and its system prompt is pinned", () => {
+    expect(PICTURE_DIRECTOR_VERSION).toBe("picture-director.v13");
     const { system } = pictureDirectorPrompt({ aspect: 1, mustShow: [] } as never);
     expect(sha(system)).toBe(DIRECTOR_SYSTEM_SHA);
   });
 
   // v18 added the painted-picture rules in the user turn (TEACH-251 part x); v19 adds the
-  // lesson-language rule for writing in the picture to `fits` (TEACH-251 part al).
-  test("the photo judge is v19 and its system prompt is pinned", () => {
-    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v19");
+  // lesson-language rule for writing in the picture to `fits` (TEACH-251 part al); v20 refuses
+  // `fits` only for what a pupil would notice at slide size or what changes the teaching point.
+  test("the photo judge is v20 and its system prompt is pinned", () => {
+    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v20");
     expect(sha(pickOrRequeryPrompt.system)).toBe(JUDGE_SYSTEM_SHA);
   });
 });
@@ -51,10 +52,20 @@ const DIRECTOR_EDITS: [string, string][] = [
     "the few the slide needs, filling the frame on a plain",
     "the few the slide needs, large on a plain",
   ],
+  // v13 (verify11 RM s10, a palisade for a stone wall): a slide set at a particular structure or
+  // site names it in the imagePrompt with its material, shape and features.
+  [
+    "never show a place through landmarks, flags or national symbols.",
+    "never add landmarks, flags or national symbols just to say where it is. When the slide happens at a particular structure or site, named in the slide or in the lesson's title, the imagePrompt names it and says what makes it look like itself at that time: what it is built of, its shape, and the features the slide's words rely on. A general word for the setting (a building, a street, a harbour) lets the image model draw a different kind of place.",
+  ],
+  [
+    "rather than a busy scene;",
+    "rather than a busy scene, and when the slide happens at a particular place, that place, kept simple, is the background;",
+  ],
 ];
 
-const DIRECTOR_SYSTEM_SHA = "e6006c679ac6f6f881bdc4bf5fe7280c626f46d502509a51e1e6192c0e1f70c3";
-const JUDGE_SYSTEM_SHA = "7dc9bfe4dc6a4e0e3b8ecae821f7c7b7897529bc2eca990a792337a6006ffca2";
+const DIRECTOR_SYSTEM_SHA = "872c377c9ebed7228b19f7bad2276267129d36082b31c27f7a997434328387d9";
+const JUDGE_SYSTEM_SHA = "9b5074673e269106f8043f8379d33224d92aac146ff7fe235eb93c79fae6c40e";
 
 /**
  * Independent of the modules above: the lab's own files at base4 (lab/ab 92f1b36d), checked
@@ -73,7 +84,7 @@ describe("base4 lab pins (not circular)", () => {
       expect(sha(read(file))).toBe(manifest.labPins[pin] as string);
   });
 
-  test("the director v12 and batch v2 are the lab's texts plus only the listed edits; judge v17 plus v19's sentences", () => {
+  test("the director v13 and batch v3 are the lab's texts plus only the listed edits; judge v17 plus v19's and v20's sentences", () => {
     const edited = (t: string) => {
       for (const [from, to] of DIRECTOR_EDITS) {
         expect(t.split(from).length).toBe(2);
@@ -84,7 +95,11 @@ describe("base4 lab pins (not circular)", () => {
     const { system } = pictureDirectorPrompt({ aspect: 1, mustShow: [] } as never);
     expect(system).toBe(edited(read("picture-director.v11.system.txt")));
     // v19 (TEACH-251 part al) inserts the lesson-language rule into `fits` and changes nothing else.
-    const v19 = pickOrRequeryPrompt.system;
+    // v20 (TEACH-251) widens only the "refuse only for a clear miss" sentence.
+    const v19 = pickOrRequeryPrompt.system.replace(
+      "a clear miss you can name that a pupil of this year group would notice on the slide or that changes what it teaches, not for a doubt or a detail too fine to make out at slide size.",
+      "a clear miss you can name, not for a doubt.",
+    );
     const from = v19.indexOf(" Writing meant to be read in the picture");
     const to = v19.indexOf(" A pick with `fits` false is never used.", from);
     expect(from).toBeGreaterThan(0);
