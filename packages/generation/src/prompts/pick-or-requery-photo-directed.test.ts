@@ -45,7 +45,9 @@ describe("pick-or-requery v18: painted pictures (TEACH-251 part x)", () => {
   test("the painted rules refuse only wrong subject or period, unsuitable content, text or untruth", () => {
     expect(MADE_PICTURE_RULES).toContain("writing, letters or numbers");
     expect(MADE_PICTURE_RULES).toContain("belongs to another time or place");
-    expect(MADE_PICTURE_RULES).toContain("unsuitable for this year group");
+    expect(MADE_PICTURE_RULES).toContain("people burning, injured or dead");
+    expect(MADE_PICTURE_RULES).toContain("frightening for pupils of this age");
+    expect(MADE_PICTURE_RULES).toContain("clearly not the age the slide asks for");
     expect(MADE_PICTURE_RULES).toContain("something untrue about the subject");
     expect(MADE_PICTURE_RULES).toContain("composition and style never count");
   });
