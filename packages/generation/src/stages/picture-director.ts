@@ -1235,12 +1235,18 @@ export function createWriterPictures(opts: {
     done: Promise<void>;
     /** Cancels this slot's own placement (`forget`: its slide was opened again). */
     stop: AbortController;
+    /**
+     * An early re-ask (the stage's lost picture, asked again before the round settles): it runs
+     * on the job's own signal, not the round's, so `settle` neither waits for it nor stops it.
+     * The slide's tail (`settleSlide`) waits for it after editable, as for any later round.
+     */
+    own?: boolean;
   };
   /** The round's deps with the slot's own stop on the signal. */
-  const slotDeps = (slot: Slot): PipelineDeps => ({
-    ...deps,
-    signal: AbortSignal.any([deps.signal, slot.stop.signal]),
-  });
+  const slotDeps = (slot: Slot): PipelineDeps => {
+    const base = slot.own ? opts.deps : deps;
+    return { ...base, signal: AbortSignal.any([base.signal, slot.stop.signal]) };
+  };
   type Box = { item: string; left: number; top: number; right: number; bottom: number };
   // The placements' own signal: the job's cancel, or the settle deadline, stops their spending.
   // A second round (lostPic's single pictures after editable) gets a fresh stopper and batcher.
@@ -1249,6 +1255,7 @@ export function createWriterPictures(opts: {
     ...opts.deps,
     signal: AbortSignal.any([opts.deps.signal, stopper.signal]),
   };
+  const roundDeps = () => deps;
   const makeDirect = () =>
     opts.direct ?? (opts.batchSystem ? createDirectorBatcher(deps, opts.batchSystem) : undefined);
   const bank = opts.bank ?? opts.maker?.bank;
@@ -1305,7 +1312,7 @@ export function createWriterPictures(opts: {
   // A rejection is a stop (placeWriterPicture's nonFatal and makePictureSet rethrow only those) or
   // the deadline's own abort: it is kept, and settle rethrows a stop.
   const onError =
-    (slot: Slot, roundStop = stopper) =>
+    (slot: Slot, roundStop = slot.own ? slot.stop : stopper) =>
     (error: unknown) => {
       if (slot.state.status !== "pending") return;
       slot.state = { status: "failed" };
@@ -1372,7 +1379,7 @@ export function createWriterPictures(opts: {
       images: opts.images,
       deps: slotDeps(slot),
       taken,
-      ...(direct ? { direct } : {}),
+      ...(slot.own ? (opts.direct ? { direct: opts.direct } : {}) : direct ? { direct } : {}),
       ...(bank ? { bank } : {}),
       ...(opts.look ? { look: opts.look } : {}),
       onOutcome: (o) => {
@@ -1559,6 +1566,8 @@ export function createWriterPictures(opts: {
     subjects: string[],
     asks: SetAsk[],
   ): Promise<void> => {
+    // An early re-ask runs on the job's signal (Slot.own), not the round's.
+    const sdeps = () => (slot.own ? opts.deps : roundDeps());
     const k = id(index, ask.key);
     const bytes = new Map<string, Uint8Array>();
     /**
@@ -1575,7 +1584,7 @@ export function createWriterPictures(opts: {
       );
     };
     const run = async (): Promise<void> => {
-      deps.logger.info(
+      sdeps().logger.info(
         { stage: "generate", picture: k, panels: asks.length },
         "picture split at ask",
       );
@@ -1588,12 +1597,12 @@ export function createWriterPictures(opts: {
             bytes.set(saved.src, png);
             return saved;
           },
-          ...directedSetJudges(opts.lesson, deps),
+          ...directedSetJudges(opts.lesson, sdeps()),
           ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
           ...(maker.allow ? { allow: maker.allow } : {}),
           ...(maker.spent ? { spent: maker.spent } : {}),
-          signal: AbortSignal.any([deps.signal, slot.stop.signal]),
-          log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+          signal: AbortSignal.any([sdeps().signal, slot.stop.signal]),
+          log: (event) => sdeps().logger.info({ stage: "generate", ...event }, "picture set"),
         },
         setLook,
       );
@@ -1651,6 +1660,7 @@ export function createWriterPictures(opts: {
         !((settled || over.has(prev)) && prev.state.status === "failed" && !reasked.has(k))
       )
         return;
+      const early = !!prev && !settled;
       if (prev) {
         reasked.add(k);
         heldPhotos.delete(k);
@@ -1673,6 +1683,7 @@ export function createWriterPictures(opts: {
         state: { status: "pending" },
         done: Promise.resolve(),
         stop: new AbortController(),
+        ...(early ? { own: true } : {}),
       };
       if (ask.set) {
         if (!opts.maker) {
@@ -1745,17 +1756,11 @@ export function createWriterPictures(opts: {
         onAbort = () => resolve();
         opts.deps.signal.addEventListener("abort", onAbort, { once: true });
       });
-      // An early retry can start a placement while the round settles: wait for those too, so the
-      // stopper below never cuts one off that began after the wait.
-      let ended = false;
-      void deadline.then(() => {
-        ended = true;
-      });
-      for (;;) {
-        const waiting = [...slots.values()].map((s) => s.done);
-        await Promise.race([Promise.all(waiting), deadline]);
-        if (ended || [...slots.values()].every((s) => waiting.includes(s.done))) break;
-      }
+      // An early re-ask (Slot.own) is not the round's: editable never waits for it.
+      await Promise.race([
+        Promise.all([...slots.values()].filter((s) => !s.own).map((s) => s.done)),
+        deadline,
+      ]);
       if (timer) clearTimeout(timer);
       if (onAbort) opts.deps.signal.removeEventListener("abort", onAbort);
       // Placements still running stop spending (the deadline or the cancel).
@@ -1773,7 +1778,7 @@ export function createWriterPictures(opts: {
       settled = true;
       reasked.clear();
       for (const slot of slots.values())
-        if (slot.state.status === "pending") {
+        if (slot.state.status === "pending" && !slot.own) {
           slot.state = { status: "failed" };
           slot.miss = "deadline";
         }

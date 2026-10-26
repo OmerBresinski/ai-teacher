@@ -1775,25 +1775,46 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // then the picture route) now, beside the other slides' pictures, instead of after every
   // picture, the checks and the repairs (genlab Y1 plants, 26 Oct: slide 5's photo was lost 7 s
   // before the stream ended and its retry started 39 s after it). The tail skips the retry for
-  // these slides. Only the slide's own slot changes; its words change only through the same
-  // swap the tail would make, and before editable, so no teacher edit is overwritten.
+  // these slides and waits for the early one in its place. Editable never waits for it: a retry
+  // still running at editable goes on exactly as the tail's would (the same swap and placement,
+  // merged under the same per-slide ownership, ADR 0037/0039).
   const earlyLost = new Map<number, Promise<void>>();
   if (run.slideDone)
     for (let i = 2; i < n; i++) {
-      if (!(asks.get(i) ?? []).some((a) => a.type === "photo")) continue;
+      const a0 = asks.get(i) ?? [];
+      if (!a0.some((a) => a.type === "photo")) continue;
+      // Only where the tail's earlier steps (cardRetry, fallback) have nothing to do, so running
+      // the retry first changes nothing but its start: no diagram, no diagram tiles, no cards.
+      const s0 = plan.slides[i] as S | undefined;
+      if (
+        !s0 ||
+        a0.some((a) => a.type === "diagram") ||
+        tileDiagramKeys(s0).length ||
+        s0.template === "pair" ||
+        s0.template === "cards-grid"
+      )
+        continue;
       const slideDone = run.slideDone;
-      // A non-fatal throw is logged and the slide keeps what it has (the tail's rule); a stop
-      // (cancel, budget) is rethrown at editable.
+      // A non-fatal throw keeps the slide as it was before the retry (the tail's rule); a stop
+      // (cancel, budget) is rethrown where the tail waits for it.
+      let kept: { s: S; n: ReturnType<typeof notes.get>; a: VisualAsk[]; p?: string } | undefined;
       const job = nonFatal(
         async () => {
           await slideDone(i);
           if (run.signal?.aborted || path.has(i) || !lostAsks(i).length) return;
+          const now = plan.slides[i] as S;
+          kept = { s: now, n: notes.get(i), a: asks.get(i) ?? [], p: path.get(i) };
           log({ ev: "lost-early", slide: i + 1 });
           await retryLost(i);
         },
         (e) => {
           if (run.signal?.aborted) throw e;
-          log({ ev: "lost-early-failed", slide: i + 1, err: String(e).slice(0, 200) });
+          log({ ev: "lost-early-failed", slide: i + 1, where: safeErrorWhere(e) });
+          if (kept) {
+            restore(i, kept.s, kept.n, kept.a);
+            if (kept.p) path.set(i, kept.p);
+            else path.delete(i);
+          }
         },
       );
       earlyLost.set(i, job);
@@ -1805,8 +1826,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
   }
-  // Rethrows a stop (cancel, budget) from an early retry, as the tail would.
-  await Promise.all(earlyLost.values());
+  // Editable never waits for an early retry: one still running is waited for in its slide's tail.
   editable = true;
   await run.onEditable?.(deck());
 
@@ -2704,9 +2724,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     relay(i);
   };
   const settleSlide = async (i: number) => {
+    // An early retry (only on slides where cardRetry and fallback do nothing) is waited for here,
+    // in retryLost's place; a stop it saw is rethrown.
+    const early = earlyLost.get(i);
+    if (early) await early;
     await cardRetry(i);
     await fallback(i);
-    if (!earlyLost.has(i)) await retryLost(i);
+    if (!early) await retryLost(i);
     const beforeLost = plan.slides[i] as S | undefined;
     const asksBeforeLost = asks.get(i) ?? [];
     await pictureLost(i);

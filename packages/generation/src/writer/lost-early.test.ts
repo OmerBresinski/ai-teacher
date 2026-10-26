@@ -16,7 +16,16 @@ const B = "y1-science-animals-young";
 const DIR = join(import.meta.dir, "fixtures/replay", B);
 const read = (f: string) => JSON.parse(readFileSync(join(DIR, f), "utf8"));
 
-async function run(early: boolean) {
+type Opts = {
+  /** Slides whose first-round picture is lost. */
+  lost?: number[];
+  /** placeMore's behaviour: wait for this before placing, or throw. */
+  gate?: Promise<void>;
+  throws?: boolean;
+  atEditable?: () => void;
+};
+async function run(early: boolean, o: Opts = {}) {
+  const lostSlides = new Set(o.lost ?? [4]);
   const rec = recordedVisuals(B);
   const placed = new Set<string>();
   const order: string[] = [];
@@ -25,10 +34,11 @@ async function run(early: boolean) {
     const k = `${i}:${key}`;
     if (placed.has(k))
       return { status: "photo", photo: { src: src(k), alt: key, aspect: 1.5, request: key } };
-    if (k === "4:picture") return { status: "failed" };
+    if (lostSlides.has(i) && a.type === "photo") return { status: "failed" };
     return rec(i, key, a);
   };
   const events: { ev?: string; slide?: number }[] = [];
+  const diagramSlides = new Set<number>();
   const out = await runWriter({
     brief: read("brief.json") as Brief,
     objectives: (read("objectives.json") as { objectives: { teacher: string }[] }).objectives.map(
@@ -46,20 +56,27 @@ async function run(early: boolean) {
     },
     visual,
     held: recordedHeld(B),
-    retryable: (i, key) => i === 4 && key === "picture",
+    retryable: (i) => lostSlides.has(i),
     ...(early ? { slideDone: async () => {} } : {}),
     beforeEditable: async () => {
       order.push("pictures settled");
     },
     placeMore: async (i, more) => {
       order.push(`retry ${more.map((a) => `${i}:${a.key}`).join(",")}`);
+      if (o.gate) await o.gate;
+      if (o.throws) throw new Error("placer bug");
       for (const a of more) placed.add(`${i}:${a.key}`);
+      order.push(`placed ${i}`);
+    },
+    onAsks: (i, a) => {
+      if (a.some((x) => x.type === "diagram")) diagramSlides.add(i);
     },
     onEditable: () => {
       order.push("editable");
+      o.atEditable?.();
     },
   });
-  return { out, order, events, src: src("4:picture") };
+  return { out, order, events, src: src("4:picture"), diagramSlides };
 }
 
 describe("a lost picture is retried before editable, once (slideDone)", () => {
@@ -77,5 +94,46 @@ describe("a lost picture is retried before editable, once (slideDone)", () => {
     expect(order.indexOf("retry 4:picture")).toBeGreaterThan(order.indexOf("editable"));
     expect(events.some((e) => e.ev === "lost-early")).toBe(false);
     expect(JSON.stringify(out.slides)).toContain(src);
+  });
+});
+
+describe("an early retry never holds editable back", () => {
+  test("a slow retry: editable comes first, and the picture still lands before the job ends", async () => {
+    let open: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      open = r;
+    });
+    // The placement waits until the deck is editable: if editable waited for it, this would hang.
+    const p = run(true, { gate, atEditable: () => open() });
+    const { out, order, src } = await p;
+    expect(order.indexOf("retry 4:picture")).toBeLessThan(order.indexOf("editable"));
+    expect(order.indexOf("editable")).toBeLessThan(order.indexOf("placed 4"));
+    // Asked once: the tail waited for the early retry instead of asking again.
+    expect(order.filter((x) => x.startsWith("retry"))).toEqual(["retry 4:picture"]);
+    expect(JSON.stringify(out.slides)).toContain(src);
+  });
+
+  test("a throw in an early retry: logged, the slide kept as it was, the lesson finishes, no second ask", async () => {
+    const { out, order, events, src } = await run(true, { throws: true });
+    expect(events).toContainEqual(expect.objectContaining({ ev: "lost-early-failed", slide: 5 }));
+    expect(order.filter((x) => x.startsWith("retry"))).toEqual(["retry 4:picture"]);
+    expect(out.slides.length).toBeGreaterThan(5);
+    expect(JSON.stringify(out.slides)).not.toContain(src);
+  });
+
+  test("the slide's tail waits for its early retry, then runs its own steps on the result", async () => {
+    let open: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      open = r;
+    });
+    const { events, order, out, src } = await run(true, { gate, atEditable: () => open() });
+    const at = (ev: string) => events.findIndex((e) => e.ev === ev && e.slide === 5);
+    expect(order.indexOf("editable")).toBeLessThan(order.indexOf("placed 4"));
+    // The retry's outcome is logged once, and the deck the job ends with carries its picture.
+    expect(events.filter((e) => e.ev === "lost-picture" && e.slide === 5)).toHaveLength(1);
+    expect(at("lost-picture")).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(out.slides)).toContain(src);
+    // cardRetry and fallback had nothing to do on this slide (the only slides retried early).
+    expect(events.some((e) => e.ev === "card-retry" && e.slide === 5)).toBe(false);
   });
 });

@@ -131,7 +131,7 @@ describe("whenSlideDone and the early re-ask (the lost picture retried before ed
     expect(calls).toBe(2);
   });
 
-  test("settle waits for a placement started while it waits (never stops it half way)", async () => {
+  test("settle neither waits for nor stops an early re-ask; the slide's own settle waits for it", async () => {
     let release: (d: PictureDirection) => void = () => {};
     const slow = new Promise<PictureDirection>((r) => {
       release = r;
@@ -140,17 +140,14 @@ describe("whenSlideDone and the early re-ask (the lost picture retried before ed
     const pictures = make(async () => (calls++ === 0 ? noPhoto : slow));
     pictures.start(3, ask, slide);
     await pictures.whenSlideDone(3, 5_000);
-    const settled = pictures.settle(5_000);
-    // The early re-ask starts after settle took its first list of placements.
+    // The early re-ask (before the round settles) runs on the job's signal, not the round's.
     pictures.start(3, ask, slide);
-    let done = false;
-    void settled.then(() => {
-      done = true;
-    });
-    await new Promise((r) => setTimeout(r, 20));
-    expect(done).toBe(false);
+    await pictures.settle(5_000);
+    // Editable is not held for it, and it is still running, not failed by the round's end.
+    expect(pictures.state(3, "picture").status).toBe("pending");
     release(noPhoto);
-    await settled;
+    await pictures.settleSlide(3, 5_000);
+    expect(calls).toBe(2);
     expect(pictures.vetoed(3, "picture")).toContain("No real photograph");
   });
 });
