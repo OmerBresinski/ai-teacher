@@ -559,6 +559,11 @@ export interface SlideForPicture {
   heading: string;
   text?: string;
   point?: string;
+  /**
+   * TEACH-251 part v: the slide teaches where a real place is (a "locate" or "where" objective):
+   * a locator map from Commons is tried before a photograph of the place.
+   */
+  locate?: boolean;
 }
 
 /**
@@ -693,16 +698,38 @@ export async function findDirected(args: {
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
       : b;
-  let out = await findPicture(
-    req,
-    args.bank,
-    (signal) => args.stock(brief, signal),
-    deps.signal,
-    (made, reuse, onWhy) => args.judgeMade(brief, made, reuse, onWhy),
-    Date.now,
-    sharedVerdictCache,
-    args.raceMs,
-  );
+  // TEACH-251 part v: a "where" slide about a real place shows a map of where it is. A Commons
+  // locator map is searched and judged first; with none, the place's own ladder runs as before.
+  const place = args.slide.locate && direction?.named === "place" ? placeNameOf(req.text) : null;
+  const t0Map = Date.now();
+  const map = place
+    ? await args.stock(locatorBrief(brief, place)).catch(
+        whenNonFatal(() => {
+          if (deps.signal.aborted) throw deps.signal.reason;
+          return undefined;
+        }),
+      )
+    : undefined;
+  if (place) log({ map: map ? "placed" : "missed", place });
+  let out = map
+    ? {
+        photo: map,
+        via: "fetched" as const,
+        route: req.route,
+        ms: Date.now() - t0Map,
+        attempts: 0,
+        trace: { attempts: [] },
+      }
+    : await findPicture(
+        req,
+        args.bank,
+        (signal) => args.stock(brief, signal),
+        deps.signal,
+        (made, reuse, onWhy) => args.judgeMade(brief, made, reuse, onWhy),
+        Date.now,
+        sharedVerdictCache,
+        args.raceMs,
+      );
   // a lesson trial, ruling 163: a past event or person that the scene search missed is shown by a
   // real artefact, coin, map, site or museum object (a Claudius bust), before nothing.
   if (!out.photo && req.depicts && plan.kind === "photo") {
@@ -821,6 +848,49 @@ export async function findDirected(args: {
 /** Round 7: words that make a historical picture show people or an event (not wheat or ore). */
 const DEPICTS =
   /\b(people|person|man|men|woman|women|child|children|crowd|soldiers?|army|armies|legion(ary|aries)?|troops|king|queen|emperor|ruler|leader|workers?|shoppers?|families|family|villagers|battle|landing|invasion|invad\w*|march\w*|riot|protest|meeting|ceremony|siege|fight\w*|attack\w*|parade|queue)\b/i;
+
+/**
+ * The real place a picture shows, from the director's `shows`: its first proper name ("Hadrian's
+ * Wall" in "A surviving stretch of Hadrian's Wall beside Housesteads"), or null with none.
+ */
+export function placeNameOf(shows: string): string | null {
+  const words = shows
+    .replace(/[.,;:()]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const proper = (w: string) => /^[A-Z][\p{L}'’-]*$/u.test(w);
+  const small = new Set(["of", "the", "upon", "on", "de", "la", "le"]);
+  let best: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    if (
+      !proper(words[i] as string) ||
+      /^(A|An|The|This|That|These|Those)$/.test(words[i] as string)
+    )
+      continue;
+    const run = [words[i] as string];
+    for (let j = i + 1; j < words.length; j++) {
+      const w = words[j] as string;
+      if (proper(w)) run.push(w);
+      else if (small.has(w.toLowerCase()) && proper(words[j + 1] ?? "")) run.push(w);
+      else break;
+    }
+    best = run;
+    break;
+  }
+  const name = best.join(" ").replace(/’/g, "'");
+  return name.length >= 3 ? name : null;
+}
+
+/** The brief for a Commons locator map of `place` (TEACH-251 part v). */
+export function locatorBrief(brief: ImageBrief, place: string): ImageBrief {
+  return {
+    ...brief,
+    request: `A locator map showing where ${place} is`,
+    mustShow: [`${place} marked on a map`],
+    queries: [`${place} locator map`, `${place} location map`],
+    specific: true,
+  };
+}
 
 /** People in a past scene (who), for `isPastScene`. */
 const SCENE_PEOPLE =

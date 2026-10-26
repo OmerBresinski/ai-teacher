@@ -411,7 +411,7 @@ export type WriterRun = {
   onAsks?: (
     index: number,
     asks: VisualAsk[],
-    slide: { heading: string; text: string; point: string },
+    slide: { heading: string; text: string; point: string; locate?: boolean },
   ) => void;
   /**
    * Awaited before the editable deck is laid out (TEACH-251: the pictures settle). Every slide is
@@ -454,6 +454,9 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
  * A continuation slide's speaker notes (Greg 70 B): the slide's own notes stay on its first part,
  * and the parts after it say where they come from.
  */
+/** An objective or heading about where something is (TEACH-251 part v). */
+export const LOCATE = /\b(locate|locating|where)\b/i;
+
 export const CONTINUED_NOTE = "Continued from the previous slide: the same content, split to fit.";
 
 /** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
@@ -1167,6 +1170,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Each written slide's flow entry (fixes.ts `flowMatcher`), matched once, in order. */
   const flowOf = flowMatcher(() => plan.flow);
+  /**
+   * TEACH-251 part v: the slide teaches where a place is: its flow entry teaches an objective
+   * that asks pupils to locate or say where, or its heading asks where. Its picture of a real place
+   * tries a locator map first.
+   */
+  const teachesWhere = (idx: number, heading: string): boolean => {
+    if (LOCATE.test(heading)) return true;
+    const entry = plan.flow?.find((x) => x.slide === idx + 1);
+    return (entry?.teaches ?? []).some((k) => LOCATE.test(run.objectives[k - 1] ?? ""));
+  };
   const openSlide = (idx: number, arrived: S) => {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
@@ -1257,6 +1270,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       heading: String(s.heading ?? ""),
       text: wordsOf(s as S),
       point: pointOf(s as S),
+      ...(teachesWhere(idx, String(s.heading ?? "")) ? { locate: true } : {}),
     });
     relay(idx);
     // Keyed by the slide as the writer wrote it, which the final parse compares: under slot-fill
