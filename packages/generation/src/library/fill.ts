@@ -198,7 +198,8 @@ export async function checkParams(
 /** Whether a filled model marks anything on its ground, for models that can be blank. */
 const nonEmpty = (v: unknown) => Array.isArray(v) && v.length > 0;
 export const MARKS: Record<string, (p: Record<string, unknown>) => boolean> = {
-  hist_map: (p) => nonEmpty(p.routes) || nonEmpty(p.events) || nonEmpty(p.territories),
+  hist_map: (p) =>
+    nonEmpty(p.routes) || nonEmpty(p.events) || nonEmpty(p.territories) || nonEmpty(p.frontiers),
 };
 
 export function capabilityRefusals(id: string, intent: string): LibRefusal[] {
@@ -487,8 +488,8 @@ export async function libraryDiagram(
         .join("; ")}`,
     );
   // TEACH-251 part ac (romans verify6 s4): a model must mark what the slide is about. A history map
-  // filled with only a region and a north arrow (no route, place or area: hist_map has no line for
-  // Hadrian's Wall) teaches nothing, so it is not drawn, whatever the checks do.
+  // filled with only a region and a north arrow (no route, place, area or wall) teaches nothing, so
+  // it is not drawn, whatever the checks do.
   const blank = MARKS[ask.model]?.(params as Record<string, unknown>) === false;
   if (blank) return fallback("it marks nothing the slide is about (no route, place or area)");
   const cannot = capabilityRefusals(ask.model, ask.intent);
