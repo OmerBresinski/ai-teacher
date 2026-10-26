@@ -533,3 +533,82 @@ describe("picture tracing never touches the picture", () => {
       expect(line).not.toHaveProperty(key);
   });
 });
+
+// Ruling 296 (amends 210): a generic period object with no Commons or stock hit is generated; a real
+// place with none keeps its placeholder.
+describe("ruling 296 (placement)", () => {
+  const fire = (
+    named: PictureDirection["named"],
+    shows: string,
+    writerNamed: boolean,
+    period: string | null = "London, 1666",
+    realOnly = false,
+  ) => {
+    const { images, calls } = placer({ commons: async () => [], pexels: async () => [] });
+    const { bank, made } = spyBank();
+    const outcomes: PictureOutcome[] = [];
+    const run = placeWriterPicture({
+      ask: ask({ shows, mustSee: [], named: writerNamed }),
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      bank,
+      direct: async () =>
+        direction({
+          named,
+          period,
+          pictures: [{ shows, mustShow: [], queries: [shows], imagePrompt: `${shows}.` }],
+        }),
+      onOutcome: (o) => outcomes.push(o),
+      ...(realOnly ? { realOnly: true } : {}),
+    });
+    return { run, made, outcomes, calls };
+  };
+  test("a leather fire bucket missed by Commons and stock is generated, as an illustration", async () => {
+    const { run, made, outcomes, calls } = fire(
+      "object",
+      "A 17th-century leather fire bucket",
+      false,
+    );
+    await run;
+    expect(calls.some((c) => c.startsWith("commons:"))).toBe(true);
+    expect(made).toHaveLength(1);
+    expect(made[0]?.route).toBe("real");
+    expect(made[0]?.style).toBe("illustration");
+    expect(outcomes[0]?.reason).not.toBe("real-miss-no-fallback");
+  });
+  test("the Pudding Lane bakery (a real place) missed by Commons and stock stays empty", async () => {
+    const { run, made, outcomes } = fire("place", "The Pudding Lane bakery", true);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
+  test("a present-day real place missed by Commons and stock stays empty", async () => {
+    const { run, made, outcomes } = fire("place", "Buckingham Palace", true, null);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
+  test("a present-day generic object is searched (Commons first), then generated on the generic route", async () => {
+    const { run, made, calls } = fire("object", "A fire extinguisher", false, null);
+    await run;
+    expect(calls[0]?.startsWith("commons:")).toBe(true);
+    expect(made).toHaveLength(1);
+    expect(made[0]?.route).toBe("generic");
+    expect(made[0]?.realFallback).toBeUndefined();
+  });
+  test("fails closed: a real thing the director did not classify is never generated", async () => {
+    for (const period of ["London, 1666", null]) {
+      const { run, made, outcomes } = fire(null, "A thing in the lesson", false, period);
+      expect(await run).toBeUndefined();
+      expect(made).toHaveLength(0);
+      expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+    }
+  });
+  test("a forced-real slot never generates a generic object", async () => {
+    const { run, made } = fire("object", "A leather fire bucket", false, "London, 1666", true);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
+  });
+});
