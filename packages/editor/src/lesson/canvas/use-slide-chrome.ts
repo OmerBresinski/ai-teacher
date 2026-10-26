@@ -146,11 +146,22 @@ export function useSlideChrome({
     const children =
       typeof MutationObserver === "undefined"
         ? null
-        : new MutationObserver(() => {
-            hook();
+        : new MutationObserver((records) => {
+            if (records.some((r) => r.type === "childList")) hook();
             schedule();
           });
-    for (const wrapper of wrappers) children?.observe(wrapper, { childList: true });
+    // A bar that moves without changing size (the toolbar re-placing itself after the slide is
+    // re-fitted) is caught by its style: each bar places itself with an inline left/top. Without
+    // this the pill measured the toolbar where it stood before the re-fit, and only a later render
+    // of the canvas happened to correct it (CI 1280x720: the pill kept its full width and dropped
+    // onto the slide once the canvas sized itself in the same render as the fit).
+    for (const wrapper of wrappers)
+      children?.observe(wrapper, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style"],
+      });
     return () => {
       sizes.disconnect();
       children?.disconnect();
