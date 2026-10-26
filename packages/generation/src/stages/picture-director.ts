@@ -37,6 +37,7 @@ import {
 } from "../writer/services";
 import {
   type DirectedPlacer,
+  drawnAsk,
   failedChecks,
   judgeMadeDirected,
   type PlacedPhoto,
@@ -1390,6 +1391,10 @@ export type WriterPictureState =
         request?: string;
         subjects?: { name: string; x: number; y: number; w: number; h: number }[];
         about?: string;
+        /** Where it came from and what the picker saw (the credits). */
+        source?: PhotoSource;
+        /** A map or diagram: laid out whole, never cropped (verify8 S2). */
+        whole?: boolean;
       };
     };
 
@@ -1667,7 +1672,7 @@ export function createWriterPictures(opts: {
 
   /** A placed picture as the stage reads it: its OWN aspect (the ranged slots shape round it). */
   const photoState = (
-    p: { src: string; alt: string; about?: string; boxes?: Box[] },
+    p: { src: string; alt: string; about?: string; boxes?: Box[]; source?: PhotoSource },
     aspect: number,
     request: string,
   ): WriterPictureState => {
@@ -1681,6 +1686,8 @@ export function createWriterPictures(opts: {
         aspect,
         request,
         ...(p.about ? { about: p.about } : {}),
+        ...(p.source ? { source: p.source } : {}),
+        ...(drawnAsk(request, p.source?.evidence?.visible) ? { whole: true } : {}),
         ...(boxes?.length
           ? {
               subjects: boxes.map((b) => ({

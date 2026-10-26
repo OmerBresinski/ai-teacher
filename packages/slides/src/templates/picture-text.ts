@@ -42,7 +42,16 @@ import { lineWidth } from "../text-measure";
 import { keyStageOf, typeScale } from "../themes";
 import { paintSurface, surfacesOf } from "../themes/surfaces";
 import { FIGURE_WIDE_ASPECT } from "./figure-rules";
-import { type Ctx, type Figure, G, kit, type Role, type Stage, type TemplateInput } from "./index";
+import {
+  type Ctx,
+  drawnPicture,
+  type Figure,
+  G,
+  kit,
+  type Role,
+  type Stage,
+  type TemplateInput,
+} from "./index";
 import { iconSrc, matchIcon } from "./panel-list-deps";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
 import { restyleModelSvg } from "./steps-model";
@@ -323,6 +332,8 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
   const icon = pt.icon ? matchIcon(pt.icon) : null;
   const model = isModel(fig) ? fig : undefined;
   const photo = fig && "photo" in fig ? fig : undefined;
+  // A drawn picture (a map, a diagram) is shown whole inside the slide, framed like a library model.
+  const whole = !!photo && drawnPicture(photo);
   const other = fig && !model && !photo ? fig : undefined;
   let fw = 0;
   if (model) {
@@ -332,7 +343,11 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
   else if (other) fw = fieldWidth(1.2);
   else if (icon) fw = ICON_FIELD;
   const wide = fw === 0;
-  const colW = wide ? (key ? G.width : 667) : 960 - fw - COL_GAP - G.margin - (model ? COL_GAP : 0);
+  const colW = wide
+    ? key
+      ? G.width
+      : 667
+    : 960 - fw - COL_GAP - G.margin - (model || whole ? COL_GAP : 0);
   const colTop = fieldTop + (wide ? 5 : 4);
 
   // Band: the title zone's declared height reaches the field, so a band joins it.
@@ -350,15 +365,35 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
   // Field.
   if (!wide) {
     const r = Math.round(Math.min(24, c.t.radius * 1.4 || 16));
-    const fieldBox = model
-      ? { x: 960 - 48 - fw, y: fieldTop, w: fw, h: 540 - 35 - fieldTop }
-      : { x: 960 - fw, y: fieldTop, w: fw, h: 540 - fieldTop };
+    const fieldBox =
+      model || whole
+        ? { x: 960 - 48 - fw, y: fieldTop, w: fw, h: 540 - 35 - fieldTop }
+        : { x: 960 - fw, y: fieldTop, w: fw, h: 540 - fieldTop };
     // A photo is the field itself (no ground or line under it); the sand field holds a fallback.
     if (!model && !photo) {
       const s = paintSurface({ id: uid(), role: "field-b", box: fieldBox, own: [r, 0, 0, 0] }, c.t);
       if (s) c.els.push({ ...s, name: PT_NAMES.field } as ShapeElement);
     }
-    if (photo) {
+    if (photo && whole) {
+      // Inside the slide's margins at its own shape, every corner rounded: nothing is cut off.
+      const a = photo.aspect || fieldBox.w / fieldBox.h;
+      const w = Math.min(fieldBox.w, Math.round(fieldBox.h * a));
+      const h = Math.min(fieldBox.h, Math.round(w / a));
+      c.els.push({
+        id: uid(),
+        type: "image",
+        name: PT_NAMES.photo,
+        x: Math.round(fieldBox.x + (fieldBox.w - w) / 2),
+        y: fieldBox.y,
+        w,
+        h,
+        radius: r,
+        src: photo.photo,
+        alt: photo.alt ?? "",
+        ...(photo.request ? { request: photo.request } : {}),
+        fit: "contain",
+      } as ImageElement);
+    } else if (photo) {
       // One rounded corner (top-left): the picture runs r past the right and bottom edges, where the
       // slide's edge cuts its other three corners off, so it bleeds square there as in the gold.
       c.els.push({

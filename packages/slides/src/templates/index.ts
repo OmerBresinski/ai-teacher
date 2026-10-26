@@ -183,6 +183,8 @@ export type Figure =
       caption?: string;
       /** Where the photo came from (Pexels, Commons, generated), for the credits page. */
       source?: PhotoSource;
+      /** A drawn picture (a map, a diagram): laid out whole, never cropped (`drawnPicture`). */
+      whole?: boolean;
     }
   | { diagram: unknown }
   /** A diagram already drawn (an SVG `src` at its own `aspect`): offline re-layouts reuse it. */
@@ -829,6 +831,18 @@ export function rangeBox(
  * shape inside the box. An open slot (placeholder src, no aspect yet) takes the whole box. With a
  * `range`, the box first takes the picture's shape within the range (`rangeBox`).
  */
+/**
+ * A picture whose content is drawn (a map, diagram or chart: words, an inset, a north arrow) is
+ * shown whole, never cropped to fill its frame (verify8 S2: an inset map and a north arrow were cut
+ * off). Read from what the picture carries: a vector file on Commons (`File:*.svg`), or `whole`,
+ * set where it was placed when the ask was for a map or the picker saw a drawn thing as its subject.
+ */
+export function drawnPicture(f: { source?: PhotoSource; whole?: boolean } | undefined): boolean {
+  if (f?.whole) return true;
+  const src = f?.source;
+  return !!src && [src.pageUrl, src.sourceUrl].some((u) => /\.svg(?:$|[?#])/i.test(u ?? ""));
+}
+
 function photoBox(
   c: Ctx,
   f: {
@@ -845,6 +859,7 @@ function photoBox(
   align: "center" | "bottom" = "center",
 ) {
   const rect = range && f.photo && f.aspect ? rangeBox(box0, f.aspect, range, align) : box0;
+  if (drawnPicture(f)) cover = false;
   let r = rect;
   let crop: { x: number; y: number; w: number; h: number } | undefined;
   const contain = (inner: typeof rect) => {
@@ -878,7 +893,7 @@ function photoBox(
     ...(f.subjects ? { subjects: f.subjects } : {}),
     ...(f.source ? { source: f.source } : {}),
     ...(crop ? { crop } : {}),
-    fit: "cover",
+    fit: drawnPicture(f) ? "contain" : "cover",
     radius: c.t.radius,
   } as ImageElement);
 }
@@ -1042,7 +1057,7 @@ function figurePanel(
       src: f.photo,
       alt: f.alt ?? "",
       ...(f.request ? { request: f.request } : {}),
-      fit: "cover",
+      fit: drawnPicture(f) ? "contain" : "cover",
       radius: c.t.radius,
     } as ImageElement);
     return true;
