@@ -45,6 +45,9 @@ import t133 from "./bundles/pilot-v4.13-menu/system-KS3.template.txt" with { typ
 import t141 from "./bundles/pilot-v4.14-menu/system-KS1.template.txt" with { type: "text" };
 import t142 from "./bundles/pilot-v4.14-menu/system-KS2.template.txt" with { type: "text" };
 import t143 from "./bundles/pilot-v4.14-menu/system-KS3.template.txt" with { type: "text" };
+import t151 from "./bundles/pilot-v4.15-menu/system-KS1.template.txt" with { type: "text" };
+import t152 from "./bundles/pilot-v4.15-menu/system-KS2.template.txt" with { type: "text" };
+import t153 from "./bundles/pilot-v4.15-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -350,10 +353,34 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.15 (TEACH-251 part aj): v4.14 with picture asks that can be placed. Parts that are each a
+  // real building, structure or site take panel-list with a named picture per item (items-row has
+  // no pictures); a surviving monument or any part of it is never reconstructed, only its remains
+  // by name (ruling 296); a library map's intent gives a span of years, never one year as both
+  // ends. Schema and code as v4.14; templates differ in 3 lines.
+  "v4.15": {
+    id: "v4.15",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t151, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t152, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t153, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.14";
+export const PILOT_PACK_ID: PilotPackId = "v4.15";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
