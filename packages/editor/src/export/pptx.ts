@@ -30,6 +30,7 @@
  * TeachDeck never drew (TD item 4 leftover). Without it the cards are at rest and there is no
  * Answers slide.
  */
+
 import type {
   GapTextElement,
   IconElement,
@@ -97,6 +98,7 @@ import {
   resolveFontSize,
   resolveTextStyle,
 } from "../slide/elements/kit";
+import { isJobPictureSlot } from "../slide/elements/SlotPlaceholder";
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
 import { hingeRevealShapes, oneStepReveal } from "./hinge-reveal";
@@ -1450,6 +1452,9 @@ async function drawImage(
   ctx: Pick<DrawContext, "imageOrigin" | "rasteriseSvg" | "warn"> &
     Partial<Pick<DrawContext, "slide" | "step">>,
 ): Promise<void> {
+  // TEACH-251 part av: a picture still on its way (the job's open slot, exported while the lesson
+  // fills) is left out: no placeholder art and no "diagram could not be drawn" warning.
+  if (isJobPictureSlot(element)) return;
   // A drawn diagram (an SVG data URL) goes in as a PNG, never as SVG: PowerPoint, Keynote and
   // Slides import SVG differently, a bitmap at twice the box reads the same everywhere (TEACH-247).
   // One that cannot be drawn is a visible gap and a warning, never an embedded SVG.

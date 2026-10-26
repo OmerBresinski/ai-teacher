@@ -432,6 +432,19 @@ export type WriterRun = {
    * laid out again afterwards, so no slot is left an open placeholder.
    */
   beforeEditable?: () => Promise<void>;
+  /**
+   * TEACH-251 part av (UX ruling 37, Greg 26 Oct: "editable when the words finish"): the editable
+   * deck is handed over as soon as every slide's words are laid (diagrams drawn, the stream's
+   * restage done), with each picture still coming as its open slot. `beforeEditable` (the pictures
+   * settling) then runs after `onEditable`; each picture that lands meanwhile re-lays its slide and
+   * the whole deck goes to `onLatePicture`; the settled deck goes to `onPicturesSettled`. Absent:
+   * editable waits for the pictures (rule (a)), as before.
+   */
+  editableAtWords?: boolean;
+  /** `editableAtWords`: the deck again after a picture landed in it (held frames kept open). */
+  onLatePicture?: (slides: WriterSlide[]) => void;
+  /** `editableAtWords`: the deck once the pictures settled, before the checks and the tail. */
+  onPicturesSettled?: (slides: WriterSlide[], unheld: WriterSlide[]) => Promise<void> | void;
   /** The checker's flags (`checker-flags.ts`) over `CHECKER_DEFAULTS`; `false` turns one off. */
   checker?: CheckerFlags;
 };
@@ -1174,8 +1187,23 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const opened = new Map<number, string>();
   /** The layout gate, once it has run: a slide a late picture re-lays is judged again. */
   let gateAfterLanding: ((i: number) => void) | undefined;
+  /** `editableAtWords`: true while the pictures settle after the editable hand-over. */
+  let settlingLate = false;
   run.bindPictureLanded?.((i) => {
-    if (editable || !opened.has(i)) return;
+    if (!opened.has(i)) return;
+    if (editable) {
+      // Part av: a picture landing between the early editable deck and its settle is laid into
+      // its slide at once and the deck handed on; the job's save merges it under ADR 0037, so it
+      // fills only a slot the teacher left as it was.
+      if (!settlingLate || !run.onLatePicture) return;
+      relay(i);
+      gateAfterLanding?.(i);
+      nonFatalSync(
+        () => run.onLatePicture?.(deck(true)),
+        (e) => log({ ev: "late-picture-hook-failed", err: String(e).slice(0, 200) }),
+      );
+      return;
+    }
     relay(i);
     gateAfterLanding?.(i);
     shown(i);
@@ -2085,7 +2113,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
 
   streamOver = true;
-  if (run.beforeEditable) {
+  const settlePictures = async () => {
+    if (!run.beforeEditable) return;
     await run.beforeEditable();
     await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
@@ -2093,12 +2122,30 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // at most once.
     for (let i = 0; i < n; i++)
       if ((asks.get(i) ?? []).some((x) => x.type === "photo") || holdsPlaceholder(i)) relay(i);
-  } else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
+  };
+  // Part av: editable at the words. Every slide is laid with each picture still coming as its open
+  // slot (the editor's pending sheen); the pictures settle after the hand-over.
+  const early = !!run.editableAtWords && !!run.beforeEditable;
+  if (!early) {
+    if (run.beforeEditable) await settlePictures();
+    else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
+  }
   // Editable never waits for an early retry: one still running is waited for in its slide's tail.
   editable = true;
+  log({ ev: "editable", atWords: early });
   // `unheld`: the same deck with every held frame laid without its failed photo, for a job that
   // stops before its final deck (the caller saves it then, so no held frame is left behind).
   await run.onEditable?.(deck(true), deck());
+  if (early) {
+    settlingLate = true;
+    try {
+      await settlePictures();
+    } finally {
+      settlingLate = false;
+    }
+    log({ ev: "pictures-settled" });
+    await run.onPicturesSettled?.(deck(true), deck());
+  }
 
   // ── code checks ──
   const baseCheck = () =>

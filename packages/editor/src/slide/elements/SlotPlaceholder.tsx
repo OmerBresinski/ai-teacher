@@ -49,7 +49,7 @@ export function SlotPlaceholder({
         textAlign: "center",
       }}
     >
-      {kind === "photo" ? <PendingSheen radius={radius} /> : null}
+      {kind === "photo" ? <PendingSheen radius={radius} theme={theme} /> : null}
       <Icon
         aria-hidden
         size={22}
@@ -95,7 +95,15 @@ export function isJobPictureSlot(el: { src: string; alt?: string | undefined }):
  * named for the effect's usual word: it contains
  * "immer", which the thumb test bans.)
  */
-export function PendingSheen({ radius }: { radius?: number | undefined }) {
+export function PendingSheen({
+  radius,
+  theme,
+}: {
+  radius?: number | undefined;
+  /** The light and the still state are drawn in the lesson theme's own tokens (part av). */
+  theme: Theme;
+}) {
+  const light = `color-mix(in srgb, ${theme.colors.surface} 60%, transparent)`;
   const { writingSlideIds } = useProposals();
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -118,15 +126,18 @@ export function PendingSheen({ radius }: { radius?: number | undefined }) {
       <div
         data-slot-sheen="still"
         className="pointer-events-none absolute inset-0 flex items-end justify-start"
-        style={{ borderRadius: radius || undefined, background: "rgba(255,255,255,0.3)" }}
+        style={{
+          borderRadius: radius || undefined,
+          background: `color-mix(in srgb, ${theme.colors.surface} 30%, transparent)`,
+        }}
       >
         <span
           style={{
             margin: 12,
             padding: "4px 12px",
             borderRadius: 999,
-            background: "rgba(255,255,255,0.85)",
-            color: "rgba(0,0,0,0.6)",
+            background: theme.colors.surface,
+            color: theme.colors.muted,
             fontSize: 18,
             lineHeight: 1.3,
           }}
@@ -148,8 +159,7 @@ export function PendingSheen({ radius }: { radius?: number | undefined }) {
           position: "absolute",
           inset: 0,
           transform: "translateX(-100%)",
-          background:
-            "linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.55) 50%, transparent 80%)",
+          background: `linear-gradient(100deg, transparent 20%, ${light} 50%, transparent 80%)`,
         }}
       />
     </div>

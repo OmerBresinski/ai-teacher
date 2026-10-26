@@ -362,8 +362,9 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   // j). An earlier attempt that saved the editable deck is finished from it: no second writer
   // call, no slide back to `writing`, every word and placed picture as the teacher saw them.
   if (hasEditableDeck(lesson)) {
-    // What the writer does after editable, minus anything that changes a slide: its pictures were
-    // settled before editable (rule (a)), so no slot is open; the speaker notes are written here.
+    // What the writer does after editable, minus anything that changes a slide; the speaker notes
+    // are written here. Since part av the pictures settle after editable, so a job that stopped in
+    // that window resumes with the slots it held (known limit: they are not searched again).
     const slides = await notesForSavedSlides({
       slides: lesson.slides as unknown as { id: string; notes?: string; elements: unknown[] }[],
       brief: writerBrief(lesson),
@@ -508,6 +509,32 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     | undefined;
   /** When the editable deck was saved: a save in its place keeps it (resume reads it). */
   let editableAt: string | undefined;
+  /** Part av: the saves of pictures landing after editable, one at a time, the newest deck wins. */
+  let lateSaves: Promise<void> = Promise.resolve();
+  let lateNext:
+    | Parameters<NonNullable<Parameters<typeof runWriter>[0]["onLatePicture"]>>[0]
+    | undefined;
+  const saveLate = (slides: NonNullable<typeof lateNext>) => {
+    lateNext = slides;
+    lateSaves = lateSaves
+      .then(async () => {
+        const next = lateNext;
+        lateNext = undefined;
+        if (!next || !editableSaved || deps.signal.aborted) return;
+        const deck = kept(credited(next));
+        const { updatedAt } = await deps.persist(
+          toLesson(deck, "planned", allIn(deck, "done"), editableAt),
+        );
+        // The editor folds each save the job reports (FillingFollower).
+        await deps.onProgress(70, "Slides written", "generate", updatedAt);
+      })
+      .catch((err: unknown) =>
+        deps.logger.warn(
+          { stage: "generate", err: String(err).slice(0, 200) },
+          "late picture save failed",
+        ),
+      );
+  };
   try {
     const services = aiWriterServices(deps);
     out = await runWriter({
@@ -640,6 +667,16 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         await pictures?.settle();
         noPicturesSettled = true;
       },
+      // TEACH-251 part av (UX ruling 37): editable when the words finish; pictures keep arriving
+      // after, each saved as it lands under the per-slide merge (ADR 0037), so a late picture
+      // fills only a slot the teacher left as it was and never a slide they deleted.
+      editableAtWords: true,
+      onLatePicture: (slides) => saveLate(slides),
+      onPicturesSettled: async (slides, unheld) => {
+        saveLate(slides);
+        await lateSaves;
+        heldBack = JSON.stringify(unheld) === JSON.stringify(slides) ? undefined : unheld;
+      },
       // lostPic: single pictures for a lost compound picture, placed and settled after editable.
       // Only this slide's pictures are waited for: the slides' tails run in parallel.
       ...(pictures
@@ -685,6 +722,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       "write stage failed",
     );
     failed.abort();
+    // Part av: a late picture's save still in flight lands before the failure's own save.
+    await lateSaves;
     await progressive.close();
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
     // Stopped after the editable deck: the frames it held for pictures are laid out without them

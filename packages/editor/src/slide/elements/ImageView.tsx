@@ -57,7 +57,7 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <Picture {...props} />
-        <PendingSheen radius={props.element.radius} />
+        <PendingSheen radius={props.element.radius} theme={props.theme} />
       </div>
     );
   return <Picture {...props} />;

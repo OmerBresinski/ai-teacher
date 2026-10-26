@@ -59,16 +59,29 @@ describe("a picture on its way", () => {
     withReducedMotion(true, () => {
       const { container } = render(
         <ProposalsContext.Provider value={coming}>
-          <PendingSheen />
+          <PendingSheen theme={getTheme("splash")} />
         </ProposalsContext.Provider>,
       );
       const cue = container.querySelector("[data-slot-sheen=still]");
       expect(cue?.textContent).toBe("Adding picture…");
     }));
 
+  test("the moving light is drawn in the lesson theme's tokens, never a fixed white (part av)", () =>
+    withReducedMotion(false, () => {
+      const theme = getTheme("splash");
+      const { container } = render(
+        <ProposalsContext.Provider value={coming}>
+          <PendingSheen theme={theme} />
+        </ProposalsContext.Provider>,
+      );
+      const band = container.querySelector("[data-slot-sheen] > div") as HTMLElement;
+      expect(band.getAttribute("style")).toContain(theme.colors.surface);
+      expect(band.getAttribute("style")).not.toContain("255,255,255");
+    }));
+
   test("once the job has ended there is no cue", () =>
     withReducedMotion(true, () => {
-      const { container } = render(<PendingSheen />);
+      const { container } = render(<PendingSheen theme={getTheme("splash")} />);
       expect(container.querySelector("[data-slot-sheen]")).toBeNull();
     }));
 });

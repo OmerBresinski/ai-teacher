@@ -555,3 +555,57 @@ describe("TEACH-247 part av: a held frame the job never filled", () => {
     expect(merged.elements.map((e) => e.id)).toEqual(["h1-t", "h1-pic"]);
   });
 });
+
+describe("TEACH-251 part av: a picture that lands after the deck turned editable", () => {
+  // The editable deck at the words (UX ruling 37): every slide done, the picture still coming as
+  // the job's open frame. The job's later save fills that frame.
+  const FRAME = "data:image/svg+xml;utf8,%3Csvg%3E%3C/svg%3E";
+  const PHOTO = "/files/late.jpg";
+  const deck = (pic: string, words = "Fire spread fast."): Lesson => {
+    const l = filling();
+    const one = {
+      id: "p1",
+      kind: "content",
+      elements: [textElement("p1-t", words), imageElement("p1-pic", { src: pic })],
+      notes: "n",
+    } as Slide;
+    const two = { id: "p2", kind: "content", elements: [textElement("p2-t", "Next.")] } as Slide;
+    return {
+      ...l,
+      slides: [one, two],
+      generation: {
+        ...l.generation,
+        slideStates: { p1: "done", p2: "done" },
+      } as Lesson["generation"],
+    };
+  };
+  const base = deck(FRAME);
+  const theirs = deck(PHOTO);
+  const pic = (l: Lesson) => el(slide(l, "p1"), "p1-pic")?.src;
+
+  test("an untouched slot takes the late picture", () => {
+    expect(pic(mergeJobLesson(base, base, theirs))).toBe(PHOTO);
+  });
+
+  test("a slide whose words the teacher changed keeps them and still takes the picture", () => {
+    const mine = { ...deck(FRAME, "Mine."), slides: deck(FRAME, "Mine.").slides } as Lesson;
+    mine.slides[0] = { ...(mine.slides[0] as Slide), teacherEdited: true };
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(pic(merged)).toBe(PHOTO);
+    expect(el(slide(merged, "p1"), "p1-t")).toEqual(el(slide(mine, "p1"), "p1-t"));
+  });
+
+  test("a slot whose picture the teacher changed keeps the teacher's: the late picture is dropped", () => {
+    const mine = deck("/files/teachers-own.png");
+    mine.slides[0] = { ...(mine.slides[0] as Slide), teacherEdited: true };
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(pic(merged)).toBe("/files/teachers-own.png");
+    expect(slide(merged, "p1").elements.filter((e) => e.type === "image")).toHaveLength(1);
+  });
+
+  test("a slide the teacher deleted stays deleted: the late picture never brings it back", () => {
+    const mine = { ...base, slides: base.slides.filter((s) => s.id !== "p1") };
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(merged.slides.map((s) => s.id)).toEqual(["p2"]);
+  });
+});
