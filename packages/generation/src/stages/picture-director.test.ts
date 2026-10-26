@@ -275,7 +275,7 @@ describe("planPicture", () => {
       place: "none",
       object: "none",
     });
-    expect(REAL_FALLBACK.present.place).toBe("faithful");
+    expect(REAL_FALLBACK.present.place).toBe("none");
     const person = photoPlan(dir({ route: "commons", named: "person", period: "England, 1540s" }));
     expect(person.request.realFallback).toBe("none");
   });
@@ -667,6 +667,15 @@ describe("ruling 296: which real things may fall back to a generated picture", (
       expect(
         hist("place", "A reconstruction of the Pudding Lane bakery", writerNamed).request
           .realFallback,
+      ).toBe("none");
+  });
+  test("a present-day real place stays real-only", () => {
+    for (const writerNamed of ["Buckingham Palace", null])
+      expect(
+        photoPlan(dir({ route: "commons", named: "place" }), {
+          text: "Buckingham Palace",
+          named: writerNamed,
+        } as never).request.realFallback,
       ).toBe("none");
   });
   test("a named person stays real-only", () => {

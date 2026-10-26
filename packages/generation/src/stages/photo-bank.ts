@@ -55,7 +55,8 @@ export const REAL_FALLBACK: Record<HistoryPolicy | "present", Record<NamedKind, 
     object: "none",
   },
   labelled: { event: "faithful", person: "faithful", work: "none", place: "none", object: "none" },
-  present: { event: "none", person: "none", work: "none", place: "faithful", object: "none" },
+  // Ruling 296 / 210: a real place is real-only, present-day too.
+  present: { event: "none", person: "none", work: "none", place: "none", object: "none" },
 };
 
 /**

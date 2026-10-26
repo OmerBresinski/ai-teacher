@@ -537,7 +537,12 @@ describe("picture tracing never touches the picture", () => {
 // Ruling 296 (amends 210): a generic period object with no Commons or stock hit is generated; a real
 // place with none keeps its placeholder.
 describe("ruling 296 (placement)", () => {
-  const fire = (named: PictureDirection["named"], shows: string, writerNamed: boolean) => {
+  const fire = (
+    named: PictureDirection["named"],
+    shows: string,
+    writerNamed: boolean,
+    period: string | null = "London, 1666",
+  ) => {
     const { images, calls } = placer({ commons: async () => [], pexels: async () => [] });
     const { bank, made } = spyBank();
     const outcomes: PictureOutcome[] = [];
@@ -551,7 +556,7 @@ describe("ruling 296 (placement)", () => {
       direct: async () =>
         direction({
           named,
-          period: "London, 1666",
+          period,
           pictures: [{ shows, mustShow: [], queries: [shows], imagePrompt: `${shows}.` }],
         }),
       onOutcome: (o) => outcomes.push(o),
@@ -573,6 +578,12 @@ describe("ruling 296 (placement)", () => {
   });
   test("the Pudding Lane bakery (a real place) missed by Commons and stock stays empty", async () => {
     const { run, made, outcomes } = fire("place", "The Pudding Lane bakery", true);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
+  test("a present-day real place missed by Commons and stock stays empty", async () => {
+    const { run, made, outcomes } = fire("place", "Buckingham Palace", true, null);
     expect(await run).toBeUndefined();
     expect(made).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
