@@ -208,7 +208,7 @@ describe("real lesson intake", () => {
     expect(screen.getByRole("heading", { name: "Planning your lesson" })).toBeTruthy();
   });
   /** A skipped plan as the api creates it: confirmed, locked to its job, no slides yet. */
-  function openSkipped() {
+  function openSkipped(extra: Partial<Lesson> = {}, locked = true) {
     const { artefacts: _artefacts, ...lesson } = generatedLesson();
     const jobId = crypto.randomUUID();
     const row = fakeApi.insertLesson(
@@ -219,8 +219,9 @@ describe("real lesson intake", () => {
         brief: { topic: "The water cycle", durationMin: 60, slideCount: 8 },
         generation: undefined,
         plan: { revision: 1, state: "confirmed", jobId, confirmedAt: new Date().toISOString() },
+        ...extra,
       } as Lesson,
-      jobId,
+      locked ? jobId : undefined,
     );
     installFakeEventSource();
     search = { lesson: row.id };
@@ -228,7 +229,12 @@ describe("real lesson intake", () => {
     return { row, jobId, slides: lesson.slides };
   }
   it("a skipped plan whose job fails with no slides shows the failure on the intake, not an empty editor", async () => {
-    const { row, jobId } = openSkipped();
+    const source = { id: crypto.randomUUID(), kind: "paste" as const, name: "Class notes" };
+    fakeApi.sources.set(source.id, source);
+    const { row, jobId } = openSkipped({
+      brief: { topic: "The water cycle", durationMin: 60, level: "harder", slideTier: "detailed" },
+      sources: [source],
+    });
     await screen.findByRole("heading", { name: "Planning your lesson" });
     await waitFor(() => expect(FakeEventSource.instances.length).toBeGreaterThan(0));
     row.generatingJobId = null;
@@ -249,11 +255,30 @@ describe("real lesson intake", () => {
     await wait(50);
     expect(navigate).not.toHaveBeenCalledWith(expect.objectContaining({ to: "/l/$lessonId" }));
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(navigate).toHaveBeenCalledWith({
-      to: "/lessons/new",
-      search: { topic: "The water cycle" },
-      replace: true,
+    expect(navigate).toHaveBeenCalledWith({ to: "/lessons/new", search: {}, replace: true });
+    // The fresh intake carries the whole brief: topic, year group, level, length and materials.
+    cleanup();
+    search = {};
+    show();
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("The water cycle");
+    expect(screen.getByRole("combobox", { name: "Year group" })).toHaveTextContent("Year 5");
+    fireEvent.click(screen.getByRole("button", { name: "Skip planning" }));
+    await waitFor(() => expect(post()).toBeDefined());
+    expect(post()).toMatchObject({
+      brief: { topic: "The water cycle", level: "harder", slideTier: "detailed" },
+      yearGroup: "Year 5",
+      sourceIds: [source.id],
     });
+    // Taken once: the next new lesson starts blank.
+    cleanup();
+    show();
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("");
+  });
+  it("a reload of a skipped plan that already failed with no slides shows the failure, not an empty editor", async () => {
+    openSkipped({}, false);
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeVisible();
+    await wait(50);
+    expect(navigate).not.toHaveBeenCalledWith(expect.objectContaining({ to: "/l/$lessonId" }));
   });
   it("a skipped plan whose terminal event is missed: the re-read finds the lock gone and shows the failure", async () => {
     const { row } = openSkipped();

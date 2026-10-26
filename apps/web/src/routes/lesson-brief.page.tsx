@@ -60,6 +60,13 @@ const JOB_POLL_MS = 3000;
  * shorten it.
  */
 export const skipPlanningWait = { ms: 60_000 };
+
+/**
+ * A skipped plan that failed with no slides cannot be planned again; Try again starts a fresh
+ * intake carrying the whole brief (topic, year group, level, length, materials). Set just before
+ * that navigation and taken once by the fresh intake's first render.
+ */
+let retryBrief: { brief: IntakeBrief; sources: SourceRef[]; slideTier: SlideTier } | null = null;
 // The sign-in sheet (TEACH-245) loads only when a signed-out visitor hits a limit.
 const SignInSheet = lazy(() =>
   import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
@@ -122,19 +129,29 @@ function LessonIntake({
   const turnstile = useTurnstileToken();
   const [signInPrompt, setSignInPrompt] = useState("");
   const [last] = useState(readLastClass);
-  const [brief, setBrief] = useState<IntakeBrief>({
-    topic: topic ?? "",
-    yearGroup: last?.yearGroup || "Year 4",
-    level: "standard",
-    files: [],
+  const [retried] = useState(() => {
+    const taken = lessonId ? null : retryBrief;
+    retryBrief = null;
+    return taken;
   });
-  const [sources, setSources] = useState<SourceRef[]>([]);
+  const [brief, setBrief] = useState<IntakeBrief>(
+    () =>
+      retried?.brief ?? {
+        topic: topic ?? "",
+        yearGroup: last?.yearGroup || "Year 4",
+        level: "standard",
+        files: [],
+      },
+  );
+  const [sources, setSources] = useState<SourceRef[]>(() => retried?.sources ?? []);
   const [sourcesBusy, setSourcesBusy] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(focusSources);
   const [blank, setBlank] = useState(false);
   const [step, setStep] = useState<"brief" | "objectives" | "worksheet">("brief");
   const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
-  const [slideTier, setSlideTier] = useState<SlideTier>(DEFAULT_SLIDE_TIER);
+  const [slideTier, setSlideTier] = useState<SlideTier>(
+    () => retried?.slideTier ?? DEFAULT_SLIDE_TIER,
+  );
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "initial", recipe: "knowledge-check", minutes: "10" },
   ]);
@@ -203,7 +220,7 @@ function LessonIntake({
       // editor takes over with them, the character flying across as it does after Continue.
       // It never waits past `skipPlanningWait`, and a job that ended with no slides stays here
       // with the failed state (`skipFailed`) rather than opening an empty editor.
-      if (!leaving && lesson.slides.length === 0 && (jobId ? !waitedOut : watched.current)) return;
+      if (!leaving && lesson.slides.length === 0 && (!jobId || !waitedOut)) return;
       preloadLessonEditor();
       if (!leaving)
         rememberGenerationOrigin(client, lesson.id, character.current?.capture() ?? null);
@@ -396,11 +413,7 @@ function LessonIntake({
   // A skipped plan whose job ended (its terminal event, or the lock gone on a re-read) with no
   // slides: the planning stage says so, as for a failed plan, instead of opening an empty editor.
   const skipFailed =
-    lesson?.plan?.state === "confirmed" &&
-    watched.current &&
-    !jobId &&
-    meta.isSuccess &&
-    lesson.slides.length === 0;
+    lesson?.plan?.state === "confirmed" && !jobId && meta.isSuccess && lesson.slides.length === 0;
   const failed = terminal?.type === "failed" || terminal?.type === "cancelled" || skipFailed;
   const loadingError = document.isError || meta.isError;
   const title = planning
@@ -455,12 +468,18 @@ function LessonIntake({
             <Button
               onClick={() => {
                 if (lesson?.plan?.state === "confirmed") {
-                  // A confirmed plan cannot be planned again: a fresh brief with the same topic.
-                  void navigate({
-                    to: "/lessons/new",
-                    search: { topic: lesson.brief?.topic ?? lesson.title },
-                    replace: true,
-                  });
+                  // A confirmed plan cannot be planned again: a fresh intake with the whole brief.
+                  retryBrief = {
+                    brief: {
+                      topic: lesson.brief?.topic ?? lesson.title,
+                      yearGroup: lesson.yearGroup ?? "Year 4",
+                      level: lesson.brief?.level ?? "standard",
+                      files: [],
+                    },
+                    sources: lesson.sources ?? [],
+                    slideTier: slideTierOf(lesson.brief),
+                  };
+                  void navigate({ to: "/lessons/new", search: {}, replace: true });
                 } else if (lesson) {
                   initialized.current = true;
                   setBrief({
