@@ -2902,6 +2902,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         relay(i);
       },
     });
+    // TEACH-251 part t: the note was written for the slide with its visual. A gate that drops it
+    // before the notes are in writes that slide's note again, so no note sends pupils to a map
+    // or picture that is not there (romans verify3 s3: "locate it on a map", the map dropped).
+    if (gate.outcome === "dropped-visual" && mayAddSlides && i >= 2) {
+      log({ ev: "notes-redo", slide: i + 1, why: "layout-gate" });
+      notesRedone.set(i, notesCall(i + 1));
+    }
     if (gate.outcome !== "clean")
       log({
         ev: "layout-gate",
