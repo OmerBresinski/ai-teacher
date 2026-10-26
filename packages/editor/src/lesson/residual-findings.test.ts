@@ -87,7 +87,11 @@ describe("residualFindings", () => {
     const lesson = generatedLesson();
     expect(residualFindings(lesson).some((f) => f.check === "objective-coverage")).toBe(false);
     const ws = generatedWorksheet();
-    ws.blocks = ws.blocks.map((b) => ({ ...b, generatedFrom: undefined }));
+    // Blocks that reference no objective's facts. (Blocks with no provenance at all are matched
+    // by wording instead, TEACH-247 part ak.)
+    ws.blocks = ws.blocks.map((b) =>
+      b.generatedFrom ? { ...b, generatedFrom: { ...b.generatedFrom, factRefs: ["x-none"] } } : b,
+    );
     expect(
       residualFindings(lesson, ws).filter((f) => f.check === "objective-coverage"),
     ).toHaveLength(2);

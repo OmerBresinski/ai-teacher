@@ -276,8 +276,11 @@ function checkDegenerateQuestions(lesson: Lesson, worksheet?: Worksheet): Findin
       slide.kind === "open-response"
         ? (listItems(slide) ?? [stemOf(slide)])
         : slide.kind === "exit-ticket"
-          ? lines(textsByPreset(slide, "body"))
+          ? (listItems(slide) ?? lines(textsByPreset(slide, "body", LABEL_NAMES)))
           : [];
+    if (slide.kind === "exit-ticket" && stems.length === 0) {
+      degenerate(target, `Slide "${slide.kind}" sets no task: it has no questions.`, false);
+    }
     for (const stem of stems) {
       const verdict = questionless(stem);
       if (verdict === "no-question") {
@@ -605,32 +608,57 @@ export function questionless(stem: string): "ok" | "no-question" | "no-referent"
   return "ok";
 }
 
-/** The plain text of every `text` element with the given preset, in slide order. */
-function textsByPreset(slide: Slide, preset: TextPreset): string[] {
+/**
+ * The plain text of every `text` element with the given preset, in slide order, leaving out
+ * elements with one of the `skip` names.
+ */
+function textsByPreset(
+  slide: Slide,
+  preset: TextPreset,
+  skip: ReadonlySet<string> = new Set(),
+): string[] {
   const out: string[] = [];
   walkElements(slide.elements, (element) => {
     if (element.type !== "text" || element.style.preset !== preset) return;
+    if (element.name !== undefined && skip.has(element.name)) return;
     const text = richDocToPlainText(element.doc).trim();
     if (text) out.push(text);
   });
   return out;
 }
 
-/** The stem of a question slide: the recipes set it in the `heading` preset; else the first text. */
 /**
- * A question list's own lines (template question sets and practice: `Item` elements under a
- * heading that names the task, "Quick check"), or undefined when the slide has none. Each line is
- * the question, so it is the stem the "asks nothing" check reads, not the heading.
+ * The names `@tj/slides` gives a question list's own lines: `Item` (the older recipes), `Question`
+ * (question-set.ts `QUICK_NAMES.question`) and `Task` (practice.ts `WA_NAMES.task`, which lays out
+ * practice and the exit ticket). Literal here because `@tj/domain` imports nothing internal; `@tj/slides`'
+ * check-names.test.ts pins them to the template constants.
+ */
+export const ITEM_NAMES: ReadonlySet<string> = new Set(["Item", "Question", "Task"]);
+/**
+ * Labels that sit in the `body` preset but are no task: the exit ticket's "EXIT TICKET" eyebrow
+ * (practice.ts `WA_NAMES.kicker`), which the check once read as an item that asks nothing.
+ */
+export const LABEL_NAMES: ReadonlySet<string> = new Set(["Kicker"]);
+
+/**
+ * A question list's own lines (template question sets, practice and exit tickets: `Item`,
+ * `Question` or `Task` elements under a heading that names the task, "Quick check", "You are
+ * guarding the frontier"), or undefined when the slide has none. Each line is the question, so it
+ * is the stem the "asks nothing" check reads, not the heading (TEACH-247 part ak: the practice
+ * template's `Task` lines were missed, so its scene-setting heading was read as the task).
  */
 function listItems(slide: Slide): string[] | undefined {
   const items: string[] = [];
   walkElements(slide.elements, (element) => {
-    if (element.type === "text" && element.name === "Item")
-      items.push(richDocToPlainText(element.doc).trim());
+    if (element.type !== "text" || element.name === undefined || !ITEM_NAMES.has(element.name))
+      return;
+    const text = richDocToPlainText(element.doc).trim();
+    if (text) items.push(text);
   });
   return items.length ? items : undefined;
 }
 
+/** The stem of a question slide: the recipes set it in the `heading` preset; else the first text. */
 function stemOf(slide: Slide): string {
   const heading = textsByPreset(slide, "heading")[0];
   if (heading) return heading;

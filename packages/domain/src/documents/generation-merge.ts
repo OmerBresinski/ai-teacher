@@ -254,6 +254,8 @@ export function mergeJobLesson(base: Lesson | undefined, mine: Lesson, theirs: L
   // Slides the job still owned at `base` are the job's whatever the teacher's copy holds (the
   // editor may have re-fitted them on open; they were read-only).
   const owned = writingSlideIds(base);
+  /** Done slides kept as the teacher's (edited while the job ran). */
+  const teachers = new Set<string>();
   for (const own of mine.slides) {
     const was = baseOf.get(own.id);
     const next = theirsOf.get(own.id);
@@ -269,12 +271,23 @@ export function mergeJobLesson(base: Lesson | undefined, mine: Lesson, theirs: L
       // keeps its own repaint and fit out of what it merges and saves (`withoutEditorCopies`).
       if (next !== undefined) slides.push(next);
     } else {
+      teachers.add(own.id);
       slides.push(next === undefined ? own : mergeEditedSlide(was, own, next));
     }
   }
+  const isNew = (s: Slide | undefined) => !!s && !mineIds.has(s.id) && !baseOf.has(s.id);
+  const writing = writingSlideIds(theirs);
   // Slides new from the job (not in `base`, not in `mine`), each after the slide it follows.
   theirs.slides.forEach((slide, i) => {
-    if (mineIds.has(slide.id) || baseOf.has(slide.id)) return;
+    if (!isNew(slide)) return;
+    // TEACH-251 part s (ADR 0037/0039): a done slide the job added after editable (a continuation
+    // of a slide it split or re-laid) never lands beside a slide the teacher edited: the teacher's
+    // slide is kept whole, so the job's parts of it would repeat its words. A slide still being
+    // written (a stream or a retry) lands as ever.
+    let parent = i - 1;
+    while (parent >= 0 && isNew(theirs.slides[parent])) parent--;
+    const from = theirs.slides[parent]?.id;
+    if (from !== undefined && teachers.has(from) && !writing.has(slide.id)) return;
     let at = 0;
     for (let j = i - 1; j >= 0; j--) {
       const before = theirs.slides[j]?.id;

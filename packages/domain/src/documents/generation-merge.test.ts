@@ -76,6 +76,45 @@ describe("mergeJobLesson (ADR 0037, ruling 189)", () => {
     expect([...writingSlideIds(merged)]).toEqual(["w3"]);
   });
 
+  // TEACH-251 part s (ADR 0037/0039): the writer's layout gate runs after editable; a split of a
+  // slide the teacher edited never adds the job's continuation beside the teacher's whole slide.
+  test("a split of a slide the teacher edited adds no continuation; an untouched one's lands", () => {
+    const base = filling();
+    const done = (l: Lesson, extra: Record<string, "done" | "writing">): Lesson => ({
+      ...l,
+      generation: {
+        ...(l.generation as NonNullable<Lesson["generation"]>),
+        slideStates: { w1: "done", w2: "done", ...extra },
+      },
+    });
+    const part = (id: string) =>
+      ({ id, kind: "content", elements: [textElement(`${id}-t`, "rest")] }) as unknown as Slide;
+    const edited = typed(base, "Water evaporates in the sun.");
+    const theirs = done(
+      { ...base, slides: [slide(base, "w1"), part("w1-c2"), part("w1-c3"), slide(base, "w2")] },
+      { "w1-c2": "done", "w1-c3": "done" },
+    );
+    const merged = mergeJobLesson(base, edited, theirs);
+    expect(merged.slides.map((s) => s.id)).toEqual(["w1", "w2"]);
+    // Untouched: the job's parts land after the slide they continue.
+    expect(mergeJobLesson(base, base, theirs).slides.map((s) => s.id)).toEqual([
+      "w1",
+      "w1-c2",
+      "w1-c3",
+      "w2",
+    ]);
+    // A slide still being written after an edited one lands as ever.
+    const streaming = done(
+      { ...base, slides: [slide(base, "w1"), part("w9"), slide(base, "w2")] },
+      { w9: "writing" },
+    );
+    expect(mergeJobLesson(base, edited, streaming).slides.map((s) => s.id)).toEqual([
+      "w1",
+      "w9",
+      "w2",
+    ]);
+  });
+
   test("a slide the teacher typed into keeps the words; the job's rewording is dropped", () => {
     const base = filling();
     const mine = typed(base, "Water evaporates in the sun.");
