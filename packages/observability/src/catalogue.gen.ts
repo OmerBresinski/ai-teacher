@@ -54,6 +54,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_lib_side_slot: ["kind", "model", "slide"],
   gen_lib_type: ["key", "minPt", "model", "scale"],
   gen_look_added: ["how", "slide"],
+  gen_look_other_slide: ["planned", "slide", "written"],
   gen_look_unmet: ["kind", "slide"],
   gen_lost_picture: ["asked", "landed", "ok", "slide", "try"],
   gen_main_incomplete: ["chars", "why"],
