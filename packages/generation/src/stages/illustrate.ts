@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
   isBlockedQuery,
@@ -769,7 +770,8 @@ export async function pickDirectedPhoto(args: {
   const brief = { ...args.brief, subject: plainSubject(args.brief.subject) };
   const { images, deps, index, lesson } = args;
   const taken = args.taken ?? new Set<string>();
-  const fresh = (photos: PhotoResult[]) => photos.filter((photo) => !taken.has(photo.pageUrl));
+  const fresh = (photos: PhotoResult[]) =>
+    photos.filter((photo) => !imageKeys(photo).some((k) => taken.has(k)));
   const candidates: PhotoResult[] = [];
   const tried: string[] = [];
   const topHits: PhotoResult[] = [];
@@ -893,7 +895,7 @@ export async function pickDirectedPhoto(args: {
         promptVersion: directedJudgePrompt.version,
         thumbnail: picked.src.tiny,
       };
-      taken.add(picked.pageUrl);
+      for (const k of imageKeys(picked)) taken.add(k);
       const placed = await store(images, picked, brief, evidence);
       const withAbout: DirectedPlacedPhoto = {
         ...placed,
@@ -957,6 +959,40 @@ export async function pickDirectedPhoto(args: {
     pool = unseen.slice(0, MAX_CANDIDATES);
   }
   return { outcome: "empty", judged: "none" };
+}
+
+/** File-name words that mark a copy of the same picture, not another picture. */
+const COPY_WORDS = /\b(?:google art project|cropped|crop|restored|retouched)\b/g;
+
+/**
+ * Every key a photo is known by in a lesson's `taken` set (picq, greatfire 26 Oct: slides 4 and 5
+ * placed one painting from two Commons files, "…Old St. Paul's.JPG" and "…Old St. Paul's - Google
+ * Art Project.jpg"). Its page, its file title without extension, copy words and punctuation (a
+ * Commons file only), and the bytes of its inlined thumbnail. Two files of one image share a key.
+ */
+export function imageKeys(photo: Pick<PhotoResult, "pageUrl" | "src">): string[] {
+  const keys = [photo.pageUrl];
+  const file = /\/wiki\/File:([^?#]+)$/.exec(photo.pageUrl)?.[1];
+  if (file) {
+    let name = file;
+    try {
+      name = decodeURIComponent(file);
+    } catch {
+      // a malformed escape keeps the raw name
+    }
+    const title = name
+      .replace(/\.[a-z0-9]{2,5}$/i, "")
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(COPY_WORDS, " ")
+      .replace(/\(\s*\)/g, " ")
+      .replace(/[^\p{L}\p{N}]+/gu, "");
+    if (title.length >= 8) keys.push(`title:${title}`);
+  }
+  const tiny = photo.src?.tiny;
+  if (typeof tiny === "string" && tiny.startsWith("data:"))
+    keys.push(`thumb:${createHash("sha1").update(tiny).digest("hex")}`);
+  return keys;
 }
 
 function rethrowStop(error: unknown): void {
