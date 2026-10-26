@@ -267,11 +267,11 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
       expect(grow).toBeLessThanOrEqual(2300);
     }
   });
-  test("v4.13's wording grows v4.12's by at most 800 characters at each key stage", () => {
+  test("v4.13's wording grows v4.12's by at most 1,300 characters at each key stage", () => {
     for (const ks of ["KS1", "KS2", "KS3"] as const) {
       const grow = PILOT_PACKS["v4.13"].system[ks].length - PILOT_PACKS["v4.12"].system[ks].length;
       expect(grow).toBeGreaterThan(0);
-      expect(grow).toBeLessThanOrEqual(800);
+      expect(grow).toBeLessThanOrEqual(1300);
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {

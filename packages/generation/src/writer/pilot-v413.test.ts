@@ -16,14 +16,18 @@ import { runWriter } from "./stage";
  * questions. Real lessons under v4.12 (verify4) taught the firebreak twice in a row (a teaching
  * slide, then a big picture of the same gap: v4.12 counted "a new picture" as adding something),
  * called the wall's enemies only "attackers", and asked a muddled fire-hook question. Schema and
- * code are v4.12's, so only two template lines differ.
+ * code are v4.12's, so only three template lines differ.
  */
 type J = Record<string, unknown>;
 const STAGES: readonly WriterStage[] = ["KS1", "KS2", "KS3-5"];
 const KS = { KS1: "KS1", KS2: "KS2", "KS3-5": "KS3" } as const;
 const dir = (v: string) => new URL(`./bundles/pilot-${v}-menu/`, import.meta.url);
 const read = (v: string, name: string) => readFileSync(new URL(name, dir(v)), "utf8");
-const STARTS = ["1. Flow. ", "Every line is written for the pupils who read it"];
+const STARTS = [
+  "1. Flow. ",
+  "The questions and tasks climb in demand",
+  "Every line is written for the pupils who read it",
+];
 
 describe("pilot pack v4.13", () => {
   test("production runs v4.13", () => expect(PILOT_PACK_ID).toBe("v4.13"));
@@ -35,7 +39,7 @@ describe("pilot pack v4.13", () => {
       expect(PILOT_PACKS["v4.13"].system[ks]).toBe(read("v4.13", `system-${ks}.snapshot.txt`));
     });
 
-    test(`${ks}: the template is v4.12's with two lines changed`, () => {
+    test(`${ks}: the template is v4.12's with three lines changed`, () => {
       const old = read("v4.12", `system-${ks}.template.txt`).split("\n");
       const now = read("v4.13", `system-${ks}.template.txt`).split("\n");
       expect(now).toHaveLength(old.length);
@@ -51,7 +55,17 @@ describe("pilot pack v4.13", () => {
         "A picture is new only when it shows a case, place or stage no earlier slide showed.",
       );
       expect(text).toContain("Two teaching slides never teach the same point");
-      expect(text).toContain("When it involves people, it names who they were");
+      expect(text).toContain(
+        "When it involves people, it names who they were by the name pupils of this age are taught for them",
+      );
+      expect(text).toContain(
+        "Only when no such name exists does it say where they came from instead",
+      );
+      expect(text).toContain("The exit ticket asks one question per objective");
+      expect(text).toContain(
+        "Choose the everyday word a child of this age knows over a harder one",
+      );
+      expect(text).toContain("Decide each wrong belief before writing its option");
       expect(text).toContain("A question asks one clear thing");
       // Every v4.12 sentence of the two lines is kept, apart from the picture clause.
       for (const [i, l] of now.entries()) {
@@ -77,12 +91,13 @@ describe("pilot pack v4.13", () => {
     }
   }
 
-  test("the paid check's Romans deck teaches each point once and names where raiders came from", () => {
+  test("the paid check's Romans deck teaches each point once and names the raiders and asks one exit question per objective", () => {
     // gpt-6.1-sol, effort low, 26 Oct 2026, Y4 Hadrian's Wall Standard under this pack (10 slides).
     const slides = fixture.slides as { template: string; heading: string }[];
     const teach = slides.filter((s) => s.template === "visual-text");
     expect(new Set(teach.map((s) => s.heading)).size).toBe(teach.length);
-    expect(JSON.stringify(fixture.slides)).toMatch(/from northern Britain/);
+    expect(JSON.stringify(fixture.slides)).toMatch(/Britons living north of the wall/);
+    expect(fixture.close.items).toHaveLength(3);
     expect(JSON.stringify(fixture.slides)).not.toMatch(/\battackers\b/);
     expect(3 + fixture.slides.length).toBeGreaterThanOrEqual(SLIDE_TIER_RANGES.standard.min);
     expect(3 + fixture.slides.length).toBeLessThanOrEqual(SLIDE_TIER_RANGES.standard.max);
@@ -127,8 +142,9 @@ describe("pilot pack v4.13", () => {
 
   test("a Detailed lesson's output cap keeps at least 40% headroom at v4.13's measured need", () => {
     // Paid checks, 26 Oct: v4.13 wrote 13 / 13 / 10 / 10 slides in 2,231 / 2,226 / 2,108 / 2,278
-    // output tokens (reasoning included), at most 228 a slide (Romans, 10 slides), about 3,645 at 16.
-    const need16 = Math.ceil((2278 / 10) * 16);
+    // (and 2,469 / 2,583 at 10 after the naming and exit-ticket lines)
+    // output tokens (reasoning included), at most 259 a slide (Romans, 10 slides), about 4,133 at 16.
+    const need16 = Math.ceil((2583 / 10) * 16);
     expect(writerMaxTokens(16)).toBeGreaterThanOrEqual(Math.ceil(need16 / 0.6));
   });
 });
