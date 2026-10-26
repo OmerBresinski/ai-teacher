@@ -28,6 +28,11 @@ export const FOLLOW_PACE = {
    */
   maxAfterTextMs: 6000,
   maxOpenMs: 8000,
+  /**
+   * A slide that reported its words typed and is typing again is left at the latest this long after
+   * the writer moved past it, even if it never reports them typed again (the follow never stalls).
+   */
+  stallMs: 6000,
 };
 export type FollowPace = typeof FOLLOW_PACE;
 
@@ -209,11 +214,13 @@ export function useFollowWriting({
         typed.current.id === activeSlideId
           ? typed.current.at + (fast ? pace.catchUpReadMs : pace.readMs)
           : tells_
-            ? Number.POSITIVE_INFINITY
+            ? // Typing again: the report wakes the follow (a re-render); the cap is a safety net.
+              passed.current.at + pace.stallMs
             : Math.min(opened.current.at + pace.maxOpenMs, passed.current.at + pace.maxAfterTextMs);
       const due = Math.max(opened.current.at + (fast ? pace.catchUpMinMs : pace.minMs), read);
       const wait = due - now();
-      if (wait > 0) {
+      // Never an unbounded wait: a browser runs `setTimeout(fn, Infinity)` at once, a render loop.
+      if (wait > 0 && Number.isFinite(wait)) {
         const cancel = timer(() => wake((n) => n + 1), wait);
         return cancel;
       }

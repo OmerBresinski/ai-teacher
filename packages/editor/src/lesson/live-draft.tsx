@@ -166,7 +166,7 @@ const PLANNED_VISUAL = "Planned visual";
  * A slide waiting for its words (live writing): a soft heading bar and three text lines, so the
  * canvas shows where the slide will be rather than an empty page. Never saved.
  */
-export function skeletonSlide(slide: Slide): Slide {
+export function skeletonSlide(slide: Slide, { line = true }: { line?: boolean } = {}): Slide {
   // A slide that will show a picture or a diagram keeps its text to the left of that column, as its
   // layout will: the skeleton has the slide's shape, so the words arrive into it without a jump.
   const visual = slide.elements.find((e) => (e as { name?: string }).name === PLANNED_VISUAL);
@@ -186,7 +186,9 @@ export function skeletonSlide(slide: Slide): Slide {
   return {
     ...slide,
     elements: [
-      ...slide.elements.filter((e) => isPlannedBlank({ elements: [e] })),
+      // On the canvas, the planned visual column only: the muted "Planned" line sat where the
+      // slide's own words or footer go and vanished at the swap (judge 638). The strip keeps it.
+      ...slide.elements.filter((e) => line || (e as { name?: string }).name === PLANNED_VISUAL),
       bar("h", 56, 520, 44),
       bar("l1", 160, Math.min(760, room), 18),
       bar("l2", 200, Math.min(700, room - 30), 18),
@@ -295,7 +297,9 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
   }
   const shownOf = (e: El) =>
     Math.max(0, Math.min(words - (startOf.get(e) ?? 0), wordCount({ elements: [e] })));
-  const all = total > 0 && words >= total;
+  // A slide with no text box at all (a picture, a diagram, shapes) has no words to wait for: every
+  // region shows at once.
+  const all = (total > 0 && words >= total) || texts.length === 0;
   const inside = (outer: Item, inner: Item) => inner !== outer && holds(outer.box, inner.box);
   // Words before each element's next text in reading order (pre-order), for a shape with none in it.
   const reach = new Map<El, number>();
@@ -306,16 +310,56 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
     reach.set(item.e, next);
   }
   const started = words > 0;
+  /**
+   * The text a picture or a badge belongs to: its caption or label, the nearest text just below it
+   * (sharing its column) or just beside it (sharing its row). Judge 638: picture boxes and badges
+   * stood empty, then the labels popped in as a group.
+   */
+  const own = new Map<El, Item | undefined>();
+  const ownText = (item: Item): Item | undefined => {
+    if (own.has(item.e)) return own.get(item.e);
+    const b = item.box;
+    let best: Item | undefined;
+    let gap = Number.POSITIVE_INFINITY;
+    for (const t of texts) {
+      if (t.texts === 0 || isTitle(t.e) || t === item) continue;
+      const tb = t.box;
+      const xOver = Math.min(b.x + b.w, tb.x + tb.w) - Math.max(b.x, tb.x);
+      const yOver = Math.min(b.y + b.h, tb.y + tb.h) - Math.max(b.y, tb.y);
+      const below =
+        tb.y >= b.y + b.h / 2 && xOver >= Math.min(b.w, tb.w) / 2 ? tb.y - (b.y + b.h) : Number.NaN;
+      const beside =
+        tb.x >= b.x + b.w / 2 && yOver >= Math.min(b.h, tb.h) / 2 ? tb.x - (b.x + b.w) : Number.NaN;
+      for (const g of [below, beside])
+        if (!Number.isNaN(g) && g <= OWN_GAP && Math.max(0, g) < gap) {
+          gap = Math.max(0, g);
+          best = t;
+        }
+    }
+    own.set(item.e, best);
+    return best;
+  };
+  /** A picture or a text-less box: with its own text, else the next text in reading order, else the title. */
+  const withOwn = (item: Item): boolean => {
+    const mine = ownText(item);
+    if (mine) return shownOf(mine.e) > 0;
+    const at = reach.get(item.e) ?? Number.POSITIVE_INFINITY;
+    return Number.isFinite(at) ? words > at : true;
+  };
   const showsItem = (item: Item): boolean => {
     const e = item.e;
     if (all) return true;
     if (!started) return false;
     if (e.type === "text") return shownOf(e) > 0;
-    if (e.type === "image") return true;
+    if (e.type === "image") return withOwn(item);
     if (e.type === "shape") {
       const held = texts.filter((t) => t.texts > 0 && inside(item, t));
       if (held.length) return held.some((t) => shownOf(t.e) > 0);
-      return words > (reach.get(e) ?? Number.POSITIVE_INFINITY);
+      // A card round a picture comes with that picture.
+      const pic = order.find((p) => p.e.type === "image" && inside(item, p));
+      if (pic) return withOwn(pic);
+      // A badge, rule or accent: with its own label, else the next text, else the title.
+      return withOwn(item);
     }
     // Anything else (a table, a diagram, a chart) is a visual: it comes with the title.
     if (!(e as { children?: El[] }).children) return true;
@@ -372,6 +416,8 @@ export function catchUpStep(total: number): number {
   return Math.max(1, Math.ceil(total / CATCH_UP_STEPS));
 }
 export const CATCH_UP_STEPS = 18;
+/** How far (slide px) a caption or label may sit from its picture or badge and still be its own. */
+const OWN_GAP = 120;
 export const CATCH_UP_STEP_MS = 35;
 
 function useReducedMotion(): boolean {
@@ -393,7 +439,7 @@ function useReducedMotion(): boolean {
 /** Fewest milliseconds between two shown steps: a step is a word or two, at most three. */
 const STEP_MS = 70;
 /** A step while a done slide's typing catches up before its saved copy shows. */
-const RUSH_MS = 30;
+const RUSH_MS = 45;
 /** A step while the view is two or more slides behind the writer: the typing speeds up to catch up. */
 const HURRY_MS = 40;
 
@@ -404,7 +450,7 @@ export type TypePace = "type" | "hurry" | "catch-up";
  * Types a draft's new words out at a steady pace (`STEP_MS` a step), a word a step, never more than
  * three; with reduced motion it shows each draft's words at once. Returns the words to show.
  */
-function useTypewriter(
+export function useTypewriter(
   target: number,
   key: string,
   reduced: boolean,
@@ -442,7 +488,19 @@ function useTypewriter(
     // whatever its length, so it types in well under a second.
     const backlog = target - s.shown;
     const catchUp = !rush && pace === "catch-up";
-    const per = catchUp ? catchUpStep(target) : rush || backlog > 40 ? 3 : backlog > 20 ? 2 : 1;
+    // Rushing (a done slide's last words before its saved copy) still types a word or two a step,
+    // never a block of labels in one frame (judge 638).
+    const per = catchUp
+      ? catchUpStep(target)
+      : rush
+        ? backlog > 30
+          ? 2
+          : 1
+        : backlog > 40
+          ? 3
+          : backlog > 20
+            ? 2
+            : 1;
     const step = rush
       ? RUSH_MS
       : catchUp
@@ -469,6 +527,17 @@ function useTypewriter(
   if (ref.current.key !== key)
     return reduced ? target : Math.min(typed.current.get(key) ?? 1, target);
   return Math.min(shown, target);
+}
+
+/**
+ * A draft still waiting for its first words: it has a text box, and its layout is not final (a
+ * slide with no text, or a final draft with none, shows its regions rather than the outline).
+ */
+export function waitsForWords(draft: LiveDraft): boolean {
+  if (draft.final) return false;
+  const has = (els: readonly El[]): boolean =>
+    els.some((e) => e.type === "text" || has(((e as { children?: El[] }).children ?? []) as El[]));
+  return has(draft.slide.elements);
 }
 
 /** How long a slide that stopped writing keeps its last draft while its saved copy catches up. */
@@ -693,18 +762,18 @@ export function LiveSlide({
   const waiting = writing && !draft && slide !== undefined && isPlannedBlank(slide);
   const shown = !draft
     ? waiting && slide
-      ? { slide: skeletonSlide(slide) }
+      ? { slide: skeletonSlide(slide, { line: false }) }
       : paced !== undefined && slide
         ? revealSlide(slide, paced)
         : catchUp && slide
           ? revealSlide(slide, words)
           : { slide }
-    : reduced
+    : reduced || (!waitsForWords(draft) && wordCount(draft.slide) === 0)
       ? { slide: draft.slide }
-      : words <= 0 && slide !== undefined && isPlannedBlank(slide)
+      : words <= 0 && slide !== undefined && isPlannedBlank(slide) && waitsForWords(draft)
         ? // Its layout arrived but no word yet: the ruled outline stays (ruling 278), never an
           // empty layout or a blank slide.
-          { slide: skeletonSlide(slide) }
+          { slide: skeletonSlide(slide, { line: false }) }
         : revealSlide(draft.slide, words);
   const at =
     (draft || paced !== undefined || catchUp) && !reduced && "at" in shown ? shown.at : undefined;
@@ -726,6 +795,7 @@ export function LiveSlide({
       seen.at = new Map();
     }
     const first = seen.ids.size === 0;
+    const fresh: HTMLElement[] = [];
     for (const el of root.querySelectorAll<HTMLElement>('[data-element-id^="d-"]')) {
       const id = el.dataset.elementId ?? "";
       const was = seen.at.get(id);
@@ -738,12 +808,24 @@ export function LiveSlide({
         );
       if (seen.ids.has(id)) continue;
       seen.ids.add(id);
-      // A text box types in (its words are the reveal): fading it too drew its first word as a faint
-      // ghost under a solid caret (Greg 26 Oct). A card, answer area or picture box fades in, in
-      // place, as its first words arrive.
-      if (!first && !reduced && el.dataset.elementType !== "text")
-        el.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
+      if (!first && !reduced) fresh.push(el);
     }
+    // A card, chip, badge or picture box that joins fades in, and the words inside it fade with it,
+    // so a chip's word never shows on a bare slide before its chip (judge 638: "Stem" unstyled for a
+    // frame). A text box on its own types in unfaded (a faint first word under a solid caret read
+    // as a ghost, Greg 26 Oct).
+    const rects = fresh
+      .filter((el) => el.dataset.elementType !== "text")
+      .map((el) => el.getBoundingClientRect());
+    const within = (r: DOMRect) =>
+      rects.some((c) => {
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        return x >= c.left && x <= c.right && y >= c.top && y <= c.bottom;
+      });
+    for (const el of fresh)
+      if (el.dataset.elementType !== "text" || within(el.getBoundingClientRect()))
+        el.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
   });
   const caretWord = draft || catchUp ? words : (paced ?? 0);
   // One tree whatever is shown, so the canvas never remounts when the saved slide takes over.

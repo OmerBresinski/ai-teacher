@@ -521,11 +521,17 @@ export function LessonEditor({
       },
     };
   }, [session]);
+  // While a job writes the lesson the tidy is the job's own layout settling, not the teacher's
+  // change: no "slides tidied" toast over the filmstrip as the title types (judge 638).
+  const jobWriting = useRef(writingSlideIds !== undefined);
+  jobWriting.current = writingSlideIds !== undefined;
   useFitMigration({
     lessonId: lesson?.id,
     stale: lesson !== undefined && isFitStale(lesson),
     getDeps: getFitDeps,
-    notify: (m) => toast(m),
+    notify: (m) => {
+      if (!jobWriting.current) toast(m);
+    },
   });
 
   // The app's seam for proposal jobs (ADR 0025 §19). Reads history and session through refs so the
@@ -859,7 +865,13 @@ export function LessonEditor({
                                               readOnly={
                                                 live || (writingSlideIds?.has(slide.id) ?? false)
                                               }
-                                              controls={!quietControls}
+                                              // While the view follows the writer, no slide's floating
+                                              // toolbar opens: it swapped on every slide change (judge
+                                              // 638). A click stops the follow and brings them back.
+                                              controls={
+                                                !quietControls &&
+                                                !(writingSlideIds !== undefined && follow.following)
+                                              }
                                               slide={
                                                 // A draft wears the job's palette until it is the
                                                 // lesson's own (a theme picked mid-fill).
@@ -993,6 +1005,35 @@ function WritingBlocker() {
 
 /** How long the pill's old text stays to fade out under the new one (the fade's `--duration-fast`). */
 const PILL_CROSSFADE_MS = 200;
+/** The old text fades out over this long; the new one starts fading in this far into it. */
+const PILL_ROLL_MS = 180;
+/**
+ * The pill's old text rolls up and out as the new one rolls in from below, a full line apart: the
+ * two never sit on top of each other (judge 638: "Planning" and "Writing" garbled for a frame), and
+ * one of them is always mostly there (no dot-only frame). Reduced motion: a plain swap.
+ */
+function roll(el: HTMLElement | null, way: "in" | "out") {
+  if (!el || el.dataset.rolled) return;
+  el.dataset.rolled = "1";
+  if (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    if (way === "out") el.style.visibility = "hidden";
+    return;
+  }
+  const frames =
+    way === "in"
+      ? [
+          { transform: "translateY(100%)", opacity: 0.4 },
+          { transform: "translateY(0)", opacity: 1 },
+        ]
+      : [
+          { transform: "translateY(0)", opacity: 1 },
+          { transform: "translateY(-100%)", opacity: 0.4 },
+        ];
+  el.animate?.(frames, { duration: PILL_ROLL_MS, easing: "ease-in-out", fill: "both" });
+}
 
 /**
  * The writing pill (jank audit #7): one element from the first slide to the hand-over, at the
@@ -1031,12 +1072,13 @@ function WritingPill({ text, visible, phase }: { text: string; visible: boolean;
           aria-hidden
           className="block size-2 shrink-0 rounded-full bg-primary motion-safe:animate-pulse"
         />
-        <span className="grid justify-items-center">
+        <span className="grid justify-items-center overflow-hidden">
           {leaving ? (
             <span
               key={`out-${leaving.n}`}
               aria-hidden
-              className="[grid-area:1/1] motion-safe:animate-fade-out"
+              className="[grid-area:1/1]"
+              ref={(el) => roll(el, "out")}
             >
               {leaving.text}
             </span>
@@ -1045,7 +1087,8 @@ function WritingPill({ text, visible, phase }: { text: string; visible: boolean;
             key={`in-${n}`}
             data-pill-text
             // The first text comes with the pill itself (no dot-only frame as it mounts).
-            className={n === 0 ? "[grid-area:1/1]" : "[grid-area:1/1] motion-safe:animate-fade-in"}
+            className="[grid-area:1/1]"
+            ref={n === 0 ? undefined : (el) => roll(el, "in")}
           >
             {text}
           </span>

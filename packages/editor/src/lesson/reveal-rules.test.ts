@@ -143,6 +143,38 @@ describe("revealSlide", () => {
     expect(ids(revealSlide(s, 2).slide)).toEqual(["title", "rule", "lead"]);
   });
 
+  test("a slide with no text box (a picture, shapes) shows every region at once", () => {
+    const s = slideOf([image("pic", 100, 60, 760, 420), shape("frame", "Frame", 90, 50, 780, 440)]);
+    expect(ids(revealSlide(s, 0).slide)).toEqual(["pic", "frame"]);
+  });
+
+  test("a shape with no text after it comes with the title, not only at the end", () => {
+    const s = slideOf([
+      text("title", "Heading", "Stems", 60, 40),
+      text("lead", "Lead", "Stems hold the plant up.", 60, 120),
+      shape("foot", "Accent", 0, 520, 960, 20),
+    ]);
+    expect(ids(revealSlide(s, 1).slide)).toEqual(["title", "foot"]);
+  });
+
+  test("each picture and badge in a row comes with its own label, one by one (judge 638)", () => {
+    // Match the parts: four pictures, a badge under each, a label under each badge.
+    const els: unknown[] = [text("title", "Heading", "Match the parts", 60, 30, 840, 50)];
+    const names = ["leaves", "roots", "flowers", "stem"];
+    names.forEach((n, i) => {
+      const x = 70 + i * 210;
+      els.push(image(`p${i}`, x, 190, 184, 138));
+      els.push(shape(`b${i}`, "Badge", x + 80, 340, 24, 24));
+      els.push(text(`l${i}`, "Label", `${i + 1} ${n}`, x, 380, 184, 30));
+    });
+    const s = slideOf(els);
+    // Title out (3 words): no picture box stands empty before its label.
+    expect(ids(revealSlide(s, 3).slide)).toEqual(["title"]);
+    // The first label's first word: its picture and badge with it, the others still to come.
+    expect(ids(revealSlide(s, 4).slide)).toEqual(["title", "p0", "b0", "l0"]);
+    expect(ids(revealSlide(s, 6).slide)).toEqual(["title", "p0", "b0", "l0", "p1", "b1", "l1"]);
+  });
+
   test("every word out: the whole slide, no caret", () => {
     const all = revealSlide(quiz, wordCount(quiz));
     expect(ids(all.slide)).toEqual(ids(quiz));

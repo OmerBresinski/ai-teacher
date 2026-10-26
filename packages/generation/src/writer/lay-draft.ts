@@ -127,7 +127,9 @@ export function layDraft(
       // figure slide a lesson may have) lays the draft as it will lay the closed slide, so the
       // picture box does not change size or place at the hand-over (Greg 26 Oct: "Four plant
       // parts" was drafted as a big picture with a centred caption, then closed as the figure).
-      const slides = [...ctx.plan.slides];
+      // Padded with explicit undefineds, never holes, when the plan has fewer slides than the index.
+      const slides: (S | undefined)[] = [...ctx.plan.slides];
+      while (slides.length < ctx.index) slides.push(undefined);
       slides[ctx.index] = s;
       const plan = { ...ctx.plan, slides };
       const lay = (x: S) =>

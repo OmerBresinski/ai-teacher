@@ -51,7 +51,9 @@ function manualClock() {
   let at = 0;
   let seq = 0;
   const due = new Map<number, { at: number; fn: () => void }>();
+  const delays: number[] = [];
   const timer: FollowTimer = (fn, ms) => {
+    delays.push(ms);
     const id = seq++;
     due.set(id, { at: at + ms, fn });
     return () => due.delete(id);
@@ -69,7 +71,7 @@ function manualClock() {
     }
     at = end;
   };
-  return { now: () => at, timer, advance };
+  return { now: () => at, timer, advance, delays };
 }
 let clock = manualClock();
 const tick = (ms: number) => act(() => clock.advance(ms));
@@ -137,9 +139,13 @@ describe("the follow paces itself", () => {
     const r = setup(3, null);
     r.rerender({ lead: 3, typed: id(3) });
     tick(10);
-    // Still typing (more words came): it no longer reports its words out.
+    // Still typing (more words came): it no longer reports its words out. Open well past the old
+    // give-up (8 s) while the writer is still on it.
+    r.rerender({ lead: 3, typed: null });
+    tick(FOLLOW_PACE.maxOpenMs);
+    // The writer moves on; the stall cap (6 s) counts from here.
     r.rerender({ lead: 4, typed: null });
-    tick(FOLLOW_PACE.maxOpenMs + FOLLOW_PACE.maxAfterTextMs);
+    tick(FOLLOW_PACE.stallMs - 100);
     expect(r.result.current.active).toBe(id(3));
     // Its last word is out: it stands the read time, then the follow moves on.
     r.rerender({ lead: 4, typed: id(3) });
@@ -158,6 +164,28 @@ describe("the follow paces itself", () => {
     tick(FOLLOW_PACE.catchUpMinMs - 1);
     expect(r.result.current.active).toBe(id(4));
     expect(FOLLOW_PACE.catchUpReadMs).toBeGreaterThanOrEqual(800);
+  });
+
+  test("every wait the follow asks for is finite (no setTimeout(fn, Infinity) render loop)", () => {
+    const r = setup(3, null);
+    r.rerender({ lead: 3, typed: id(3) });
+    tick(10);
+    // Typing again after it reported its words out, while the writer is on the next slide.
+    r.rerender({ lead: 4, typed: null });
+    for (let i = 0; i < 20; i++) tick(100);
+    expect(clock.delays.length).toBeGreaterThan(0);
+    expect(clock.delays.every((d) => Number.isFinite(d) && d > 0)).toBe(true);
+  });
+
+  test("a slide that never reports its words typed again is left at the stall cap", () => {
+    const r = setup(3, null);
+    r.rerender({ lead: 3, typed: id(3) });
+    tick(10);
+    r.rerender({ lead: 4, typed: null });
+    tick(FOLLOW_PACE.stallMs - 1);
+    expect(r.result.current.active).toBe(id(3));
+    tick(1);
+    expect(r.result.current.active).toBe(id(4));
   });
 
   test("Follow writing with nothing to move to is spent, not kept for the next slide", () => {
