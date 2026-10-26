@@ -12,6 +12,7 @@ import {
 } from "@tj/domain/documents";
 import { Button, Spinner } from "@tj/ui";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lastDocumentUpdatedAt } from "@/components/generating-lesson/job-sync";
 import type { CharacterCapture } from "@/components/lesson-creation/character-origin";
 import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import { leaveStage } from "@/components/lesson-creation/planning-stage";
@@ -32,6 +33,7 @@ import { AnonymousSignInError, ensureAnonymousSession } from "@/lib/anonymous-se
 import { api } from "@/lib/api";
 import { readLastClass, writeLastClass } from "@/lib/brief-memory";
 import { startingTheme } from "@/lib/default-theme";
+import { preloadLessonEditor } from "@/lib/lesson-editor-preload";
 import {
   confirmLesson,
   objectiveEdits,
@@ -52,6 +54,19 @@ const NewDocumentDialog = lazy(() =>
 
 /** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
 const JOB_POLL_MS = 3000;
+/**
+ * The longest a skipped plan waits on the planning stage for its first slides (jank audit F1);
+ * after it the editor opens anyway and shows the lesson being made. An object so a test can
+ * shorten it.
+ */
+export const skipPlanningWait = { ms: 60_000 };
+
+/**
+ * A skipped plan that failed with no slides cannot be planned again; Try again starts a fresh
+ * intake carrying the whole brief (topic, year group, level, length, materials). Set just before
+ * that navigation and taken once by the fresh intake's first render.
+ */
+let retryBrief: { brief: IntakeBrief; sources: SourceRef[]; slideTier: SlideTier } | null = null;
 // The sign-in sheet (TEACH-245) loads only when a signed-out visitor hits a limit.
 const SignInSheet = lazy(() =>
   import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
@@ -67,9 +82,24 @@ const PROMPT_CODES: Record<string, string> = {
 /** Shared production intake. The URL and stored plan own resume; local state owns unsaved edits. */
 export function LessonBriefPage() {
   const search = useSearch({ from: lessonBriefRoute.id });
+  // The intake that has just created a lesson stays mounted when the URL gains `?lesson=` (jank
+  // audit F4): the page, its character and its heading carry on into the planning stage rather
+  // than being rebuilt for a frame. Any other change of lesson starts a fresh intake.
+  const created = useRef<string | null>(null);
+  const shown = useRef({ lesson: search.lesson, key: search.lesson ?? "new" });
+  if (shown.current.lesson !== search.lesson) {
+    const kept = search.lesson !== undefined && search.lesson === created.current;
+    shown.current = {
+      lesson: search.lesson,
+      key: kept ? shown.current.key : (search.lesson ?? `new-${Date.now()}`),
+    };
+  }
   return (
     <LessonIntake
-      key={search.lesson ?? "new"}
+      key={shown.current.key}
+      onCreated={(id) => {
+        created.current = id;
+      }}
       lessonId={search.lesson}
       topic={search.topic}
       focusSources={search.source === "1"}
@@ -78,6 +108,7 @@ export function LessonBriefPage() {
 }
 
 function LessonIntake({
+  onCreated,
   lessonId,
   topic,
   focusSources,
@@ -85,6 +116,8 @@ function LessonIntake({
   lessonId?: string;
   topic?: string;
   focusSources: boolean;
+  /** The lesson this intake created, just before the URL gains its `?lesson=`. */
+  onCreated?: (lessonId: string) => void;
 }) {
   const client = useQueryClient();
   const navigate = useNavigate();
@@ -96,19 +129,29 @@ function LessonIntake({
   const turnstile = useTurnstileToken();
   const [signInPrompt, setSignInPrompt] = useState("");
   const [last] = useState(readLastClass);
-  const [brief, setBrief] = useState<IntakeBrief>({
-    topic: topic ?? "",
-    yearGroup: last?.yearGroup || "Year 4",
-    level: "standard",
-    files: [],
+  const [retried] = useState(() => {
+    const taken = lessonId ? null : retryBrief;
+    retryBrief = null;
+    return taken;
   });
-  const [sources, setSources] = useState<SourceRef[]>([]);
+  const [brief, setBrief] = useState<IntakeBrief>(
+    () =>
+      retried?.brief ?? {
+        topic: topic ?? "",
+        yearGroup: last?.yearGroup || "Year 4",
+        level: "standard",
+        files: [],
+      },
+  );
+  const [sources, setSources] = useState<SourceRef[]>(() => retried?.sources ?? []);
   const [sourcesBusy, setSourcesBusy] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(focusSources);
   const [blank, setBlank] = useState(false);
   const [step, setStep] = useState<"brief" | "objectives" | "worksheet">("brief");
   const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
-  const [slideTier, setSlideTier] = useState<SlideTier>(DEFAULT_SLIDE_TIER);
+  const [slideTier, setSlideTier] = useState<SlideTier>(
+    () => retried?.slideTier ?? DEFAULT_SLIDE_TIER,
+  );
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
     { id: "initial", recipe: "knowledge-check", minutes: "10" },
   ]);
@@ -117,6 +160,8 @@ function LessonIntake({
   // The objectives are confirmed and the lesson job is starting: the page goes to the lesson, so
   // the generate job's lock must not bring the planning stage back for a moment (UX audit J10).
   const [leaving, setLeaving] = useState(false);
+  // The lesson is created and the planning stage is up, before the URL has its `?lesson=`.
+  const [entering, setEntering] = useState(false);
   const request = useRef<{ id: string; input: ReturnType<typeof CreateLessonSchema.parse> } | null>(
     null,
   );
@@ -138,6 +183,8 @@ function LessonIntake({
   // transition rather than landing on the objectives directly).
   const watched = useRef(false);
   if (jobId) watched.current = true;
+  // The wait for a skipped plan's first slides is bounded (`skipPlanningWait`).
+  const [waitedOut, setWaitedOut] = useState(false);
   const refresh = async () => {
     await document.refetch();
     await meta.refetch();
@@ -155,8 +202,11 @@ function LessonIntake({
   const running = !!lessonId && !!jobId && !terminal;
   useEffect(() => {
     if (!running) return;
-    const recheck = () =>
+    // The meta too: a missed terminal event is seen as the lock gone from the row state.
+    const recheck = () => {
       void client.invalidateQueries({ queryKey: ["library", "document", lessonId] });
+      void client.invalidateQueries({ queryKey: ["library", "document-meta", lessonId] });
+    };
     if (stream.status === "open") recheck();
     const timer = setInterval(recheck, JOB_POLL_MS);
     return () => clearInterval(timer);
@@ -165,7 +215,16 @@ function LessonIntake({
   useEffect(() => {
     if (!lesson) return;
     if (lesson.plan?.state === "confirmed") {
-      void navigate({ to: "/l/$lessonId", params: { lessonId: lesson.id } });
+      // Skip planning (jank audit F1): the plan is confirmed up front but the job still has to plan
+      // it. Plan reads the brief here until the job has put slides on the lesson (or ended), then the
+      // editor takes over with them, the character flying across as it does after Continue.
+      // It never waits past `skipPlanningWait`, and a job that ended with no slides stays here
+      // with the failed state (`skipFailed`) rather than opening an empty editor.
+      if (!leaving && lesson.slides.length === 0 && (!jobId || !waitedOut)) return;
+      preloadLessonEditor();
+      if (!leaving)
+        rememberGenerationOrigin(client, lesson.id, character.current?.capture() ?? null);
+      void navigate({ to: "/l/$lessonId", params: { lessonId: lesson.id }, replace: !leaving });
       return;
     }
     if (initialized.current || jobId || !meta.isSuccess || lesson.generation?.stage !== "planned")
@@ -176,7 +235,21 @@ function LessonIntake({
     // greets the objectives step with a nod there.
     if (watched.current) leaveStage(() => land(lesson));
     else land(lesson);
-  }, [lesson, jobId, meta.isSuccess, navigate]);
+  }, [lesson, jobId, meta.isSuccess, navigate, waitedOut]);
+  // While a skip-planning job plans, re-read the lesson whenever the job says it changed, so the
+  // editor opens as soon as the first slides are stored (the poll above is only a backup).
+  const confirmedRunning = lesson?.plan?.state === "confirmed" && !!jobId;
+  const waitingForSlides = confirmedRunning && lesson?.slides.length === 0;
+  useEffect(() => {
+    if (!waitingForSlides) return;
+    const timer = setTimeout(() => setWaitedOut(true), skipPlanningWait.ms);
+    return () => clearTimeout(timer);
+  }, [waitingForSlides]);
+  const changedAt = confirmedRunning ? lastDocumentUpdatedAt(stream.events) : undefined;
+  useEffect(() => {
+    if (!changedAt || !lessonId) return;
+    void client.invalidateQueries({ queryKey: ["library", "document", lessonId] });
+  }, [changedAt, lessonId, client]);
 
   function land(lesson: Lesson) {
     setBrief({
@@ -225,6 +298,8 @@ function LessonIntake({
   }
   async function plan(skip: boolean) {
     if (busy || sourcesBusy || findNamePatterns(brief.topic).length > 0) return;
+    // The planning stage's character and, after it, the editor: loaded while the teacher waits.
+    preloadLessonEditor();
     setBusy(true);
     setError("");
     setSignInPrompt("");
@@ -278,10 +353,11 @@ function LessonIntake({
           yearGroup: brief.yearGroup,
           themeId: last?.themeId ?? "",
         });
-        if (request.current.input.skipPlanning)
-          await navigate({ to: "/l/$lessonId", params: { lessonId: ids.lessonId } });
-        else
-          await navigate({ to: "/lessons/new", search: { lesson: ids.lessonId }, replace: true });
+        // Both go to the planning stage; a skipped plan moves on to the editor by itself.
+        onCreated?.(ids.lessonId);
+        // Plan moves to centre stage in place (the same view transition that brings it back).
+        leaveStage(() => setEntering(true));
+        await navigate({ to: "/lessons/new", search: { lesson: ids.lessonId }, replace: true });
       }
     } catch (cause) {
       if (cause instanceof ApiError && cause.status < 500) request.current = null;
@@ -294,6 +370,7 @@ function LessonIntake({
   async function generate(includeWorksheet: boolean) {
     if (!lesson || busy) return;
     const origin = character.current?.capture() ?? null;
+    preloadLessonEditor();
     setBusy(true);
     setError("");
     setSignInPrompt("");
@@ -330,8 +407,14 @@ function LessonIntake({
       setBusy(false);
     }
   }
-  const planning = !leaving && !!lessonId && (!!jobId || !initialized.current);
-  const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
+  const planning =
+    !leaving &&
+    ((entering && !initialized.current) || (!!lessonId && (!!jobId || !initialized.current)));
+  // A skipped plan whose job ended (its terminal event, or the lock gone on a re-read) with no
+  // slides: the planning stage says so, as for a failed plan, instead of opening an empty editor.
+  const skipFailed =
+    lesson?.plan?.state === "confirmed" && !jobId && meta.isSuccess && lesson.slides.length === 0;
+  const failed = terminal?.type === "failed" || terminal?.type === "cancelled" || skipFailed;
   const loadingError = document.isError || meta.isError;
   const title = planning
     ? "Planning your lesson"
@@ -384,7 +467,20 @@ function LessonIntake({
           {failed || loadingError || (!jobId && document.isSuccess && !lesson?.facts) ? (
             <Button
               onClick={() => {
-                if (lesson) {
+                if (lesson?.plan?.state === "confirmed") {
+                  // A confirmed plan cannot be planned again: a fresh intake with the whole brief.
+                  retryBrief = {
+                    brief: {
+                      topic: lesson.brief?.topic ?? lesson.title,
+                      yearGroup: lesson.yearGroup ?? "Year 4",
+                      level: lesson.brief?.level ?? "standard",
+                      files: [],
+                    },
+                    sources: lesson.sources ?? [],
+                    slideTier: slideTierOf(lesson.brief),
+                  };
+                  void navigate({ to: "/lessons/new", search: {}, replace: true });
+                } else if (lesson) {
                   initialized.current = true;
                   setBrief({
                     topic: lesson.brief?.topic ?? lesson.title,
@@ -398,7 +494,7 @@ function LessonIntake({
               }}
             >
               {" "}
-              {lesson ? "Review the brief" : "Try again"}{" "}
+              {lesson && lesson.plan?.state !== "confirmed" ? "Review the brief" : "Try again"}{" "}
             </Button>
           ) : null}
           {jobId && !failed ? (

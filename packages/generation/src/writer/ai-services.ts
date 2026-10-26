@@ -3,6 +3,7 @@ import { costUsd, type TokenUsage, withGenerationBudget } from "@tj/ai";
 import { generateText, jsonSchema, Output, streamText } from "ai";
 import { imageMediaType, providerOptionsFor } from "../call";
 import { fullError, recordDebug } from "../debug";
+import { WRITER_WORDS, type WriterWords } from "../library/catalogue";
 import type { PipelineDeps } from "../types";
 import {
   type CallTokens,
@@ -120,24 +121,48 @@ export function chatUserTurn(r: Pick<ChatReq, "user" | "images">) {
 }
 
 /**
- * The writer's prompt cache (TEACH-202 part k). The system text and the schema are the same for
- * every lesson and come first; only the user turn is the lesson's. GPT-5.6 and later (the
- * writer's gpt-6.1-sol included) cache at
- * breakpoints, and the implicit one sits on the latest message, the lesson's own, so every call
- * wrote ~13.7k tokens at the write rate and the next lesson, differing in its last message, never
- * read them. An explicit breakpoint on the system message caches the shared prefix (schema and
- * system text) instead; the cache key keeps writer calls on the same cache, and the 30-minute
- * floor outlives a quiet spell. `30m` is the only TTL and the default, with no surcharge; a write
- * costs 1.25x uncached input, the `cacheWriteInputPerMTok` row (OpenAI prompt-caching guide, read
- * 12 Oct 2026). The text the model reads is unchanged: the system message goes as one text part
- * carrying the breakpoint instead of a bare string.
+ * The writer's prompt cache (TEACH-202 part k). GPT-5.6 and later (the writer's gpt-6.1-sol
+ * included) cache at breakpoints, and the implicit one sits on the latest message, the lesson's
+ * own, so a call wrote its whole prompt and the next lesson never read it. An explicit breakpoint
+ * marks the end of the shared prefix instead; the cache key keeps writer calls on the same cache,
+ * and the 30-minute floor outlives a quiet spell. `30m` is the only TTL and the default, with no
+ * surcharge; a write costs 1.25x uncached input, the `cacheWriteInputPerMTok` row (OpenAI
+ * prompt-caching guide, read 12 Oct 2026).
+ *
+ * The provider puts the schema first, then the system text, and a breakpoint only hits on a
+ * byte-identical prefix. The breakpoint used to sit on the whole system message, which carries
+ * this lesson's model menu (filtered by year and subject, ranked by its objectives), and the
+ * schema carried the lesson's menu ids and objectives count: every lesson wrote ~20k tokens at
+ * the write rate and none read them (genlab records 1 and 2, 26 Oct). Now the schema carries
+ * nothing of the lesson (stage.ts) and the system text goes as two system messages: the head up
+ * to the Models list, marked as the end of the cached prefix, then the menu and what follows it.
+ * The model reads the same text in the same order. With no menu, it is one marked message.
  */
 export const WRITER_CACHE_KEY = WRITER_VERSION;
 const WRITER_CACHE_BREAKPOINT = { openai: { promptCacheBreakpoint: { mode: "explicit" } } };
 
-/** The writer's system text as a system message marked as the end of the cached prefix. */
+/** Where the lesson's own part of the writer's system text starts: its Models list, if any. */
+export function lessonPartAt(system: string, w: Pick<WriterWords, "header"> = WRITER_WORDS) {
+  const at = system.indexOf(`\n${w.header}\n`);
+  return at < 0 ? -1 : at + 1;
+}
+
+/**
+ * The writer's system text as system messages, the first marked as the end of the cached prefix:
+ * the shared head, then (when there is one) the lesson's model menu and the text after it.
+ */
 export function writerSystem(system: string) {
-  return { role: "system" as const, content: system, providerOptions: WRITER_CACHE_BREAKPOINT };
+  const at = lessonPartAt(system);
+  if (at <= 0)
+    return [{ role: "system" as const, content: system, providerOptions: WRITER_CACHE_BREAKPOINT }];
+  return [
+    {
+      role: "system" as const,
+      content: system.slice(0, at),
+      providerOptions: WRITER_CACHE_BREAKPOINT,
+    },
+    { role: "system" as const, content: system.slice(at) },
+  ];
 }
 
 /**
@@ -247,7 +272,7 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
           streamError ??= error;
         },
         model,
-        // The same text, marked as the end of the cached prefix.
+        // The same text: its shared head marked as the end of the cached prefix.
         system: writerSystem(r.system),
         prompt: r.user,
         output: Output.object({ schema: jsonSchema(r.schema as never), name: r.name }),

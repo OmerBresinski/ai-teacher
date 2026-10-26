@@ -522,23 +522,25 @@ describe("the writer stage on a fake model", () => {
    */
   // Schema repinned for TEACH-75 part u: the items row is live (no off switch).
   // Schema hashes include the required `close` field (TEACH-110 part ab); the system text is unchanged.
+  // Schemas repinned for the writer's cached prefix: `flow[].teaches` runs to the most objectives a
+  // teacher can confirm (4), not the lesson's count (was 53148fca, c4b100f0, f21aebc3).
   // KS1 schema repinned for TEACH-68 part b: the items-row lead is measured (was 2360cda4).
   const MASTER = {
     ks1: [
       "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
       "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
       // TEACH-215 part c: KS1 items-row lead 30 -> 26 chars on the round 5 themes (was 91d913cd).
-      "53148fca5b7a31d9da98c27b530d8f81ef92f12eaa758ec0d780d4e2a97e9376",
+      "6d59a7f3c8b8c28ecd91e95e5f9e552aa34d5cb28dc42a4864560832d707adc0",
     ],
     ks2: [
       "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
       "039d00abcdf890722c81fe1fe49497627837af90433f5ae941bf96e2b6503d9b",
-      "c4b100f07cacac1e0d4e90e071693b36e8c71d92730e88ef38b9410cced89d69",
+      "49b2a401827fba8b0db3d96afbad73c3b29061ed2cf1d3cb199c386b4bd5195f",
     ],
     ks4: [
       "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
       "3356aab2aa28b79288afc5925c853ed3302d92d06f4e361061508a28072fd430",
-      "f21aebc3ac2c4f56f5337310eb537259ba16eb9a1502b4917a2413652c0d8acd",
+      "4282ee3783bda2f4c14f08d5931568a79a40f8ebfd10c00c3d50403c8c3e28ac",
     ],
   } as const;
   const sha = (x: string) => createHash("sha256").update(x).digest("hex");

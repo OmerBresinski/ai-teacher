@@ -4,15 +4,21 @@ import { createAi, createBudget } from "@tj/ai";
 import { jsonSchema, Output, streamText } from "ai";
 import pino from "pino";
 import { providerOptionsFor } from "../call";
+import { WRITER_WORDS } from "../library/catalogue";
+import { writerBrief } from "../stages/write";
+import { sampleBriefLesson } from "../testing";
 import type { PipelineDeps } from "../types";
 import {
   aiWriterServices,
+  lessonPartAt,
   WRITER_CACHE_KEY,
   writerProviderOptions,
   writerRoute,
   writerSystem,
 } from "./ai-services";
-import { WRITER_EFFORT, WRITER_MODEL } from "./services";
+import { PILOT_PACK_ID } from "./pilot-pack";
+import { WRITER_EFFORT, WRITER_MODEL, type WriterReq, type WriterServices } from "./services";
+import { runWriter } from "./stage";
 
 /*
  * TEACH-202 part k: the writer call carries OpenAI's prompt cache options and a breakpoint on its
@@ -180,5 +186,99 @@ describe("the writer's prompt cache", () => {
     // And the system text itself, exactly as given.
     const sys = after.messages[0]?.content as Part[];
     expect(sha256(sys.map((p) => p.text).join(""))).toBe(sha256(SYSTEM));
+  });
+});
+
+/*
+ * The cached prefix carries nothing of the lesson (genlab records 1 and 2, 26 Oct: every writer
+ * call wrote ~20k tokens and read 0, because the schema held the lesson's menu ids and objectives
+ * count and the breakpoint sat after the lesson's model menu).
+ */
+const MENU = `${WRITER_WORDS.header}\n- plant_growth, Reception-Y3: how a plant grows\n`;
+const WITH_MENU = `Head rules.\n${WRITER_WORDS.menuLine}\n\n${MENU}\nFill shapes after the menu.\n`;
+
+describe("the writer's cached prefix ends before the lesson's model menu", () => {
+  test("the system text goes as a marked head and an unmarked menu, the same text in order", async () => {
+    const { bodies, deps } = capture();
+    await aiWriterServices(deps).writer(
+      {
+        model: WRITER_MODEL,
+        effort: WRITER_EFFORT,
+        system: WITH_MENU,
+        user: USER,
+        schema: SCHEMA,
+        name: "lesson",
+        maxTokens: 9000,
+      },
+      () => {},
+    );
+    const b = bodies[0] as Body;
+    const at = lessonPartAt(WITH_MENU);
+    expect(WITH_MENU.slice(at).startsWith(WRITER_WORDS.header)).toBe(true);
+    expect(b.messages[0]).toEqual({
+      role: "system",
+      content: [
+        {
+          type: "text",
+          text: WITH_MENU.slice(0, at),
+          prompt_cache_breakpoint: { mode: "explicit" },
+        },
+      ],
+    });
+    expect(b.messages[1]).toEqual({ role: "system", content: WITH_MENU.slice(at) });
+    expect(b.messages[2]).toEqual({ role: "user", content: USER });
+    expect(b.messages).toHaveLength(3);
+  });
+
+  test("a system text with no Models list stays one marked message", () => {
+    expect(lessonPartAt(SYSTEM)).toBe(-1);
+    expect(writerSystem(SYSTEM)).toHaveLength(1);
+  });
+
+  /** The production writer request (pilot pack, library filtered and ranked) for one lesson. */
+  async function prodRequest(yearGroup: string, ageBand: string, subject: string, objs: string[]) {
+    let got: WriterReq | undefined;
+    const services = {
+      log: () => {},
+      chat: async () => {
+        throw new Error("no chat in this test");
+      },
+      writer: async (r: WriterReq) => {
+        got = r;
+        throw new Error("stop after the request");
+      },
+    } as unknown as WriterServices;
+    const l = sampleBriefLesson({ yearGroup, ageBand, subject } as never);
+    await runWriter({
+      brief: writerBrief(l),
+      objectives: objs,
+      services,
+      pilotPack: PILOT_PACK_ID,
+      drawDiagrams: { callDrawer: async () => ({ out: undefined, usd: 0, ms: 0 }) },
+      library: true,
+      libraryMenuFilter: true,
+      libraryMenuRank: true,
+      libraryModelBody: true,
+      libraryPanelsOff: true,
+      checks: "log",
+    } as never).catch(() => {});
+    if (!got) throw new Error("no writer request");
+    const head = writerSystem(got.system)[0]?.content as string;
+    return { schema: JSON.stringify(got.schema), head, system: got.system };
+  }
+
+  test("two lessons at one key stage and length share the schema and the cached head", async () => {
+    const a = await prodRequest("Year 1", "ks1", "Science", ["Name the parts of a plant."]);
+    const b = await prodRequest("Year 2", "ks1", "Maths", [
+      "Add two 2-digit numbers.",
+      "Check with a number line.",
+      "Explain the method.",
+    ]);
+    // The lessons' menus differ (year, subject, ranking) …
+    expect(a.system).not.toBe(b.system);
+    // … and the prefix the provider caches (schema, then the system head) is byte for byte one.
+    expect(sha256(b.schema)).toBe(sha256(a.schema));
+    expect(sha256(b.head)).toBe(sha256(a.head));
+    expect(a.head.length).toBeGreaterThan(20000);
   });
 });

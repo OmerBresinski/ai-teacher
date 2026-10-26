@@ -1,6 +1,6 @@
-import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { loadGsap } from "@/lib/gsap";
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { type CharacterCapture, PERSONA_SPEED } from "./character-origin";
+import { creationMotionNow, loadCreationMotion } from "./creation-motion";
 import type { HandoverRig } from "./motion/handover-rig.js";
 import { READING, readingOrder } from "./planning-stage";
 
@@ -51,15 +51,15 @@ export function CharacterHost({
 }) {
   const planningRef = useRef(planning);
   planningRef.current = planning;
-  const [gsap, setGsap] = useState<Awaited<ReturnType<typeof loadGsap>> | null>(null);
-  const rigModule = useRef<RigModule | null>(null);
+  // Remembered once loaded (`creationMotionNow`): a character mounting after that, such as the
+  // planning stage's, draws on its first frame rather than leaving its place empty for one.
+  const [motion, setMotion] = useState(creationMotionNow);
   useEffect(() => {
+    if (motion) return;
     let cancelled = false;
-    // The rig is lazy: the form never waits for the characters' chunk.
-    void Promise.all([loadGsap(), import("./motion/handover-rig.js")])
-      .then(([runtime, module]) => {
-        rigModule.current = module;
-        if (!cancelled) setGsap(runtime);
+    void loadCreationMotion()
+      .then((loaded) => {
+        if (!cancelled) setMotion(loaded);
       })
       .catch(() => {
         /* Characters are optional; the form remains usable if its chunk fails. */
@@ -67,7 +67,10 @@ export function CharacterHost({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [motion]);
+  const gsap = motion?.gsap ?? null;
+  const rigModule = useRef<RigModule | null>(null);
+  rigModule.current = motion?.rig ?? null;
   const element = useRef<HTMLDivElement>(null);
   const rig = useRef<HandoverRig | null>(null);
   useImperativeHandle(
@@ -86,23 +89,26 @@ export function CharacterHost({
     [stage],
   );
   const previous = useRef<CharacterStage>(initialStage);
+  /** Whether this rig has already been on screen (a step before this one drew it). */
+  const onScreen = useRef(false);
   const phase = useRef(slidesPhase);
   phase.current = slidesPhase;
-  useEffect(() => {
+  // Layout effects: the rig and its first pose are drawn before the browser paints.
+  useLayoutEffect(() => {
     if (!element.current || !gsap) return;
     previous.current = initialStage;
     const context = gsap.context(() => {
       rig.current =
         rigModule.current?.createHandoverRig(element.current as HTMLDivElement, gsap) ?? null;
     });
+    onScreen.current = false;
     return () => {
       rig.current?.dispose();
       rig.current = null;
       context.revert();
     };
   }, [initialStage, gsap]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `planning` is read through its ref.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const actor = rig.current;
     if (!actor || !gsap) return;
     const prior = previous.current;
@@ -159,6 +165,8 @@ export function CharacterHost({
         },
       });
     };
+    const wasOnScreen = onScreen.current;
+    onScreen.current = true;
     if (stage === "planning" && planningRef.current) {
       // Reading the brief: three lines, then the next page (its check-through) or a look up with a
       // nod, in turn, without rests (it is reading), until the page leaves the planning stage.
@@ -176,7 +184,10 @@ export function CharacterHost({
       };
       actor.settle(actor.reduced ? READING.line : READING.pickUp);
       let entry: { cancel: () => void } | null = null;
-      if (!actor.reduced && element.current) {
+      // Plan's entrance is for arriving on the planning stage (a reload, a resumed plan). Already on
+      // screen from the brief, it carries on: the page's view transition moves it to centre stage.
+      if (wasOnScreen && !actor.reduced) afterRest(() => loop(READING.pickUp), 0.2);
+      else if (!actor.reduced && element.current) {
         const stageEl = element.current;
         const box = actor.restBox(0);
         let entering = true;

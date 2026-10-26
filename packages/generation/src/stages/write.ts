@@ -634,6 +634,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
               await pictures.settleSlide(i);
             },
             held: (i, key) => pictures.held(i, key),
+            slideDone: (i) => pictures.whenSlideDone(i),
             drawAs: (i, key) => pictures.drawAs(i, key),
             retryable: (i, key) => pictures.retryable(i, key),
             canReask: (i, key) => pictures.canReask(i, key),
