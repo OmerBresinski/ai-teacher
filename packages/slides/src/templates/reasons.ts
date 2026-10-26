@@ -16,6 +16,12 @@
  *   make an element appear), so nothing moves.
  * - Icons are all or none (matched through the icon library): one miss drops every icon and the
  *   reasons close up to text (a designed state, reported in `iconMisses`).
+ * - **Picture** (optional, TEACH-247 part ba): one photo of the thing, place or event the question
+ *   asks about, full bleed at the foot of the question panel (panel-list's idiom), the panel a
+ *   little wider to hold it. It is cover-cropped to the biggest of 4:3, 3:2 and 16:9 that still
+ *   leaves the question whole at 90% of title size (then down to 80%); a question that never fits
+ *   beside it drops the picture (`question.picture` in `over`), never the question. It stops above
+ *   the theme's foot strip, and shows from the first step: it is what the question is about.
  * - Fit: type steps down from the age sizes to the floors until the column holds; never shrunk
  *   past the floors, never truncated. A count past the age's maximum, a field past its measured
  *   hard maximum, or a count whose cap is 0 (four reasons at KS1, a four-link chain with long
@@ -27,16 +33,19 @@ import { blockArrow } from "../paths/arrow";
 import { countLines } from "../text-measure";
 import { resolveTextStyle } from "../text-style";
 import { v2Colors, v2Profile } from "../theme-v2";
+import { surfacesOf } from "../themes/surfaces";
 import {
   type Ctx,
   type FieldReport,
+  type Figure,
   kit,
   layoutTemplate,
   type Stage,
   type TemplateInput,
 } from "./index";
-import { type AgeKey, iconSrc, matchIcon, panelLook } from "./panel-list-deps";
+import { type AgeKey, cropFor, factsOf, iconSrc, matchIcon, panelLook } from "./panel-list-deps";
 import CAPACITY from "./reasons-capacity.json";
+import PICTURE_CAPACITY from "./reasons-picture-capacity.json";
 
 /** One reason (or chain link): a short head, one line, an optional icon label. */
 export type ReasonItem = { head: string; line: string; icon?: string | null };
@@ -61,6 +70,7 @@ export const REASON_NAMES = {
   dot: "Reason dot",
   arrow: "Chain arrow",
   icon: "Reason icon",
+  picture: "Question picture",
   head: "Reason head",
   text: "Reason text",
 } as const;
@@ -104,6 +114,22 @@ const NAME_LH = 1.08;
 /** The least join between chain links (room for a readable block arrow). */
 const CHAIN_GAP_MIN = 27;
 const QUESTION_LH = 1.04;
+/**
+ * A reason head's room for descenders (share of its size). The head's box clips (valign bottom, a
+ * fixed height), and at a 1.08 line height Crayon's "y" and "g" fell below it ("dry", "strong").
+ * The box grows this much on every side as padding, so the words sit exactly where they did.
+ */
+const HEAD_BLEED = 0.3;
+/** The question panel with a picture: a little wider than without, so the picture reads. */
+const PANEL_W_PICTURE: Readonly<Record<AgeKey, number>> = {
+  early: 408,
+  primary: 384,
+  secondary: 384,
+};
+/** The picture's shapes, biggest first (photo fit's standard shapes, ruling 216). */
+const PICTURE_ASPECTS = [4 / 3, 3 / 2, 16 / 9] as const;
+/** The least room between the question block and the picture. */
+const PICTURE_GAP = 29;
 
 /* Caps (the measured table, `reasons-capacity.json`). */
 /** A field's limits in characters: `cap` the writer's (the gold's, never past what the renderer holds), `hardMax` the longest that still fits. */
@@ -111,10 +137,24 @@ export type Cap = { cap: number; hardMax: number };
 export type ReasonsCaps = { question: Cap; lead: Cap; head: Cap; line: Cap };
 type Table = Record<AgeKey, Record<string, ReasonsCaps>>;
 const TABLE = CAPACITY as unknown as Table;
+/** The same cells with a question picture (`reasons-picture-capacity.json`): the question has less room. */
+const PICTURE_TABLE = PICTURE_CAPACITY as unknown as Table;
 /** The table's key for a count and look: "reasons-3", "chain-4". */
 export const capsKey = (chain: boolean, n: number) => `${chain ? "chain" : "reasons"}-${n}`;
-export function reasonsCapsFor(age: AgeKey, chain: boolean, n: number): ReasonsCaps | undefined {
-  return TABLE[age]?.[capsKey(chain, Math.max(chain ? CHAIN_LINKS : REASONS_MIN, n))];
+export function reasonsCapsFor(
+  age: AgeKey,
+  chain: boolean,
+  n: number,
+  picture = false,
+): ReasonsCaps | undefined {
+  const t = picture ? PICTURE_TABLE : TABLE;
+  return t[age]?.[capsKey(chain, Math.max(chain ? CHAIN_LINKS : REASONS_MIN, n))];
+}
+
+/** The input's question picture: a photo only (a diagram or a drawing never sits here). */
+export function reasonsPicture(input: TemplateInput): Extract<Figure, { photo: string }> | null {
+  const f = input.figure as Figure | undefined;
+  return f && "photo" in f && typeof f.photo === "string" && f.photo ? f : null;
 }
 
 type Geometry = { fits: boolean; comfortable: boolean };
@@ -232,35 +272,82 @@ export function layoutReasons(c: Ctx, input: TemplateInput) {
   const accent = col.accent;
   const off = mixHex(col.ink, col.sand, 0.1);
 
-  // The panel and the question.
-  const panelW = PANEL_W[age];
+  // The panel, its picture and the question. The picture's box is chosen first: the biggest shape
+  // that leaves the question whole, at 90% of title size, then at 80%; else the picture is left off.
+  const photo = reasonsPicture(input);
+  const foot = SLIDE_H - surfacesOf(c.t).marks.footBar;
+  const question = clean(input.heading);
+  const lead = clean(input.lead);
+  const leadSize = drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 0.92));
+  const fitQuestion = (panelW: number, picH: number, least: number) => {
+    const qW = panelW - PAD_X - PANEL_RIGHT;
+    const leadLines = lead ? linesOf(c.t, lead, "body", L.bodyWeight, leadSize, qW) : 0;
+    const leadH = lead ? Math.ceil(leadLines * leadSize * L.lineHeights.body) : 0;
+    // With a picture the question block keeps COL_TOP above it and PICTURE_GAP above the picture.
+    const roomH = picH ? SLIDE_H - picH - PICTURE_GAP - COL_TOP : SLIDE_H - 2 * COL_TOP;
+    const qAt = (size: number) => {
+      const lines = question ? linesOf(c.t, question, "title", L.displayWeight, size, qW) : 0;
+      const h = Math.ceil(lines * size * QUESTION_LH);
+      const whole =
+        !question || kit.wordsFit(c, question, "title", qW * CUSHION, size, L.displayWeight);
+      const room = h + (lead ? LEAD_GAP + leadH : 0) <= roomH;
+      return { size, lines, h, ok: lines <= 4 && whole && room };
+    };
+    let q = qAt(drawn(c.t, "title", P.sizes.title));
+    for (let k = 0.98; !q.ok && k >= least - 1e-9; k -= 0.02)
+      q = qAt(drawn(c.t, "title", P.sizes.title * k));
+    return { q, qW, leadLines, leadH, roomH };
+  };
+  let panelW = PANEL_W[age];
+  let picH = 0;
+  let laid = fitQuestion(panelW, 0, 0.8);
+  if (photo) {
+    const wide = PANEL_W_PICTURE[age];
+    search: for (const least of [0.9, 0.8])
+      for (const r of PICTURE_ASPECTS) {
+        const h = Math.round(wide / r);
+        const tryQ = fitQuestion(wide, h, least);
+        if (tryQ.q.ok) {
+          panelW = wide;
+          picH = h;
+          laid = tryQ;
+          break search;
+        }
+      }
+    if (!picH) over.push("question.picture");
+  }
+  const { q, qW, leadLines, leadH } = laid;
   kit.box(c, { x: 0, y: 0, w: panelW, h: SLIDE_H }, col.sand, {
     shape: "rect",
     radius: 0,
     name: REASON_NAMES.panel,
   });
-  const qW = panelW - PAD_X - PANEL_RIGHT;
-  const question = clean(input.heading);
-  const lead = clean(input.lead);
-  const leadSize = drawn(c.t, "body", Math.max(L.floors.body, L.sizes.body * 0.92));
-  const leadLines = lead ? linesOf(c.t, lead, "body", L.bodyWeight, leadSize, qW) : 0;
-  const leadH = lead ? Math.ceil(leadLines * leadSize * L.lineHeights.body) : 0;
-  const qAt = (size: number) => {
-    const lines = question ? linesOf(c.t, question, "title", L.displayWeight, size, qW) : 0;
-    const h = Math.ceil(lines * size * QUESTION_LH);
-    const whole =
-      !question || kit.wordsFit(c, question, "title", qW * CUSHION, size, L.displayWeight);
-    const room = h + (lead ? LEAD_GAP + leadH : 0) <= SLIDE_H - 2 * COL_TOP;
-    return { size, lines, h, ok: lines <= 4 && whole && room };
-  };
-  const qTop = drawn(c.t, "title", P.sizes.title);
-  let q = qAt(qTop);
-  for (let k = 0.98; !q.ok && k >= 0.8 - 1e-9; k -= 0.02)
-    q = qAt(drawn(c.t, "title", P.sizes.title * k));
   const qFits = q.ok;
   if (!qFits) over.push("question");
   const block = q.h + (lead ? LEAD_GAP + leadH : 0);
-  const qY = Math.round((SLIDE_H - block) / 2);
+  // The question sits in the middle of the room above the picture (of the panel, without one).
+  const qY = picH
+    ? Math.round(COL_TOP + (laid.roomH - block) / 2)
+    : Math.round((SLIDE_H - block) / 2);
+  if (photo && picH) {
+    // Full bleed at the panel's foot, its bottom on the theme's foot strip (never under it).
+    const box = { x: 0, y: foot - picH, w: panelW, h: picH };
+    const placed = photo.photo && photo.aspect && !photo.whole;
+    const crop = placed ? cropFor(factsOf(photo.aspect as number, photo.subjects), box) : undefined;
+    c.els.push({
+      id: uid(),
+      type: "image",
+      name: REASON_NAMES.picture,
+      ...box,
+      src: photo.photo,
+      alt: photo.alt ?? "",
+      ...(photo.request ? { request: photo.request } : {}),
+      ...(photo.subjects ? { subjects: photo.subjects } : {}),
+      ...(photo.source ? { source: photo.source } : {}),
+      ...(crop ? { crop } : {}),
+      fit: photo.whole ? "contain" : "cover",
+    } as ImageElement);
+  }
   if (question)
     put(
       c,
@@ -432,7 +519,12 @@ export function layoutReasons(c: Ctx, input: TemplateInput) {
         REASON_NAMES.head,
       );
       el.revealStep = stepNo;
-      el.style = { ...el.style, autoHeight: false, valign: "bottom" };
+      const bleed = Math.ceil(m.ns * HEAD_BLEED);
+      el.x -= bleed;
+      el.y -= bleed;
+      el.w += 2 * bleed;
+      el.h += 2 * bleed;
+      el.style = { ...el.style, autoHeight: false, valign: "bottom", padding: bleed };
       ty += b.hh + HEAD_GAP;
     }
     if (r.line) {
@@ -493,7 +585,7 @@ export function layoutReasons(c: Ctx, input: TemplateInput) {
 
   // Fields, the live counters, against the measured caps (ruling 215). A cap of 0 is a count the
   // layout never takes: every field there is over, never "no cap".
-  const caps = reasonsCapsFor(age, chain, n);
+  const caps = reasonsCapsFor(age, chain, n, picH > 0);
   const fields: FieldReport[] = [];
   const add = (field: string, key: keyof ReasonsCaps, s: string) => {
     const cp = caps?.[key];
