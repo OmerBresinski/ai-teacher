@@ -1086,7 +1086,11 @@ export function visualsOf(
       : key.startsWith("card.") && shows("card.").length >= 2
         ? "cards"
         : undefined;
-  return figs.map(
+  // A myth's proof picture the template gave way (the fact needs its room, TEACH-247 part ae) has
+  // no slot: it is never asked for, so no picture is searched for or lands without a place.
+  const laid =
+    str(s.template) === "myth" ? figs.filter(({ key, f }) => isDia(f) || slots[key]) : figs;
+  return laid.map(
     ({ key, f }): VisualAsk =>
       isDia(f)
         ? diagramVisualAsk(key, f as unknown as S)

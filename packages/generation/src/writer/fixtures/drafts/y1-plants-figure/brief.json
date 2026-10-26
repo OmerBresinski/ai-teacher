@@ -1,0 +1,16 @@
+{
+  "id": "plants",
+  "topic": "parts of a plant and what they do",
+  "subject": "Science",
+  "yearGroup": "Year 1",
+  "year": 1,
+  "keyStage": "ks1",
+  "theme": "crayon",
+  "readingLevel": "Year 1",
+  "language": "en-GB",
+  "durationMin": 60,
+  "exitTicketOnSlides": false,
+  "source": "ABLATE",
+  "tier": "detailed",
+  "slides": { "min": 11, "max": 14 }
+}

@@ -60,7 +60,7 @@ function setup(lesson: Lesson, extra: Partial<LessonEditorProps> = {}) {
           writingSlideIds={writing}
           drafts={drafts}
           followPace={INSTANT}
-          pillPace={{ settleMs: 0, dwellMs: 0, fadeMs: 0 }}
+          pillPace={{ settleMs: 0, dwellMs: 0, fadeMs: 0, stepMs: 0 }}
           {...extra}
         />
       </TooltipProvider>
@@ -316,7 +316,8 @@ describe("the filling editor", () => {
     const drafts = createDraftStore();
     const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[2] });
     act(() => rerender(tree(new Set(ids), drafts)));
-    const pill = () => container.querySelector("[data-writing-pill]")?.textContent?.trim();
+    const pill = () =>
+      container.querySelector("[data-writing-pill] [data-pill-text]")?.textContent?.trim();
     expect(pill()).toBe("Planning slide 3…");
     act(() =>
       drafts.set([

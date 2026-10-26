@@ -36,8 +36,9 @@ const SLIDE: S = {
     opening: "vote",
     verdict: "myth",
     claim: "People used modern fire engines in London in 1666.",
-    fact: "People used water buckets and pulled down houses instead.",
-    factEm: "water buckets",
+    // A short fact keeps the proof's slot (a long one gives it way, TEACH-247 part ae).
+    fact: "Buckets, not engines.",
+    factEm: "Buckets",
     proof: {
       line: "A leather bucket carried water to the fire.",
       icons: null,
