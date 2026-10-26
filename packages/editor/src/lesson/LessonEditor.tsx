@@ -75,7 +75,13 @@ import {
 import { type FollowPace, useFollowWriting } from "./use-follow-writing";
 import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
-import { FINISHING_TEXT, type PillPace, useLinger, useWritingPill } from "./writing-pill";
+import {
+  FINISHING_TEXT,
+  type PillPace,
+  pillSlideIds,
+  useLinger,
+  useWritingPill,
+} from "./writing-pill";
 
 /*
  * The lesson editor shell (ruling 186): TopBar over InsertRail | Canvas above the Navigator's
@@ -699,7 +705,7 @@ export function LessonEditor({
   });
   // One pill for the whole fill (jank audit #7): planning → writing N of M → finishing → gone,
   // never backwards, each text held long enough to read, at one place and one width.
-  const slideIds = useMemo(() => lesson?.slides.map((s) => s.id) ?? [], [lesson?.slides]);
+  const slideIds = useMemo(() => pillSlideIds(lesson?.slides), [lesson?.slides]);
   const pill = useWritingPill(
     { active: !!writingSlideIds, done: writerDone, writingId: writingNowId, slideIds },
     pillPace ? { pace: pillPace } : undefined,

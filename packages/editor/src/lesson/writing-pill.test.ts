@@ -11,6 +11,7 @@ import {
   PILL_START,
   type PillInput,
   type PillState,
+  pillSlideIds,
   pillText,
   stepText,
   useWritingPill,
@@ -222,5 +223,29 @@ describe("useWritingPill", () => {
       "Writing slide 5 of 8…",
       "Writing slide 6 of 8…",
     ]);
+  });
+});
+
+describe("Answers slides added during the fill (genux review J9, TEACH-247 part au)", () => {
+  const content = ids(14).map((id) => ({ id }));
+  const answers = ["g", "a1", "a2", "a3"].map((id) => ({
+    id,
+    answersRole: id === "g" ? "guard" : "answers",
+  }));
+  test("the pill counts only the lesson's own slides", () => {
+    expect(pillSlideIds([...content, ...answers])).toEqual(ids(14));
+    expect(pillSlideIds(undefined)).toEqual([]);
+  });
+  test("Writing slide 11 of 14 stays of 14 when four Answers slides land mid-writing", () => {
+    const before = pillSlideIds(content);
+    const after = pillSlideIds([...content, ...answers]);
+    const s = nextPill(PILL_START, look({ ...w(11), slideIds: before }));
+    expect(pillText(s, before)).toBe("Writing slide 11 of 14…");
+    const t = nextPill(s, look({ ...w(11), slideIds: after }));
+    expect(pillText(t, after)).toBe("Writing slide 11 of 14…");
+  });
+  test("the planning count does not jump by four when they land early", () => {
+    const planned = [...content.slice(0, 6), ...answers];
+    expect(pillText(PILL_START, pillSlideIds(planned))).toBe("Planning slide 6…");
   });
 });

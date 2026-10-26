@@ -48,6 +48,18 @@ export function nextPill(state: PillState, input: PillInput): PillState {
   return { phase, slideId };
 }
 
+/**
+ * The slides the pill counts, in order: the lesson's own slides, never the Answers slides the job
+ * adds after them (`answersRole`; genux review J9, TEACH-247 part au). They can land at any point in
+ * the fill, so counting them would flip "Writing slide 11 of 14" to "of 18" and jump the planning
+ * count by four.
+ */
+export function pillSlideIds(
+  slides: readonly { id: string; answersRole?: unknown }[] | undefined,
+): string[] {
+  return (slides ?? []).filter((s) => !s.answersRole).map((s) => s.id);
+}
+
 export const FINISHING_TEXT = "Adding pictures and final checks…";
 
 /** What the pill says, or `null` when it is gone. Numbers are read from the deck as it is now. */
