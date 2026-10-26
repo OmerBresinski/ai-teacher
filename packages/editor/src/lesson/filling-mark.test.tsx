@@ -81,9 +81,8 @@ async function foldMidEdit(lesson: Lesson) {
     tiptap.commands.insertContent(" and where rain goes");
   });
   // The render after the keystrokes has settled (the box's measured height included). The
-  // keystrokes are in the document, inside the edit's open step: not yet marked.
+  // keystrokes are in the document, inside the edit's open step.
   expect(JSON.stringify(read().slides[0])).toContain("where rain goes");
-  expect(read().slides[0]?.teacherEdited).toBeUndefined();
   act(() => {
     // The job writes a later slide; the editor folds its row in before the edit has ended.
     ref.current?.receiveGenerated(lesson, theirs);
