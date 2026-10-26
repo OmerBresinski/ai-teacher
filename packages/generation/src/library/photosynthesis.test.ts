@@ -3,8 +3,15 @@ import { svgAtBuild } from "@tj/slides/diagram-builds";
 import { modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
 import { type Element, Window } from "happy-dom";
-import { catalogue } from "./catalogue";
-import { checkParams, libraryDiagram, overlappingWords } from "./fill";
+import { catalogue, catalogueLines, WRITER_WORDS } from "./catalogue";
+import {
+  capabilityRefusals,
+  checkParams,
+  libraryDiagram,
+  overlappingWords,
+  panelsOff,
+  questionStep,
+} from "./fill";
 import { endDrawThread } from "./guard";
 import { kit, loadModel, renderLibraryModel } from "./render";
 import type { J } from "./types";
@@ -239,5 +246,81 @@ describe("photosynthesis draws every build", () => {
     expect(ks3.map((e) => e.id)).toContain("photosynthesis");
     const ks2 = await catalogue("KS2", { yearGroup: "Year 4", subject: "Science" });
     expect(ks2.map((e) => e.id)).not.toContain("photosynthesis");
+  });
+});
+
+describe("photosynthesis in the writer's menu and on question slides", () => {
+  test("the Year 8 science menu lists it, with meta.teaches until writer.json has its own phrase", async () => {
+    const entries = await catalogue("KS3-5", {
+      yearGroup: "Year 8",
+      subject: "Science",
+      objectives: ["Describe how plants make glucose by photosynthesis"],
+    });
+    // ranked first for a photosynthesis lesson
+    expect(entries[0]?.id).toBe("photosynthesis");
+    const m = await model();
+    const line = catalogueLines(entries).find((l) => l.startsWith("- photosynthesis,"));
+    expect(line).toBe(
+      `- photosynthesis, KS3, KS4: ${WRITER_WORDS.teaches?.photosynthesis ?? m.meta.teaches}`,
+    );
+  });
+
+  test("a question slide stops before what the leaf makes", async () => {
+    const m = await model();
+    const P = (await kit()).withDefaults(m.params, {});
+    const keys = m.builds?.(P).steps.map((s) => s.key) ?? [];
+    const q = await questionStep("photosynthesis", P);
+    expect(q).toBeDefined();
+    expect(keys[q ?? -1]).toBe("chloroplast");
+    expect(keys[(q ?? 0) + 1]).toBe("glucose");
+  });
+
+  test("what it cannot draw, and the zoom only when the intent asks for it", () => {
+    expect(
+      capabilityRefusals("photosynthesis", "a graph of the rate of photosynthesis").length,
+    ).toBeGreaterThan(0);
+    expect(
+      capabilityRefusals("photosynthesis", "palisade cells in a leaf cross-section").length,
+    ).toBeGreaterThan(0);
+    expect(
+      capabilityRefusals("photosynthesis", "how respiration and photosynthesis compare"),
+    ).toEqual([]);
+    expect(capabilityRefusals("photosynthesis", "show how a leaf makes glucose")).toEqual([]);
+    expect(panelsOff("photosynthesis", {}, "what a leaf takes in and makes")).toEqual({
+      chloroplast: false,
+    });
+    expect(
+      panelsOff("photosynthesis", {}, "where photosynthesis happens: the chloroplast"),
+    ).toEqual({});
+  });
+
+  test("a reworded label is read for its direction, whatever the verb", async () => {
+    const bad: [string, string][] = [
+      ["glucose", "Glucose escapes"],
+      ["glucose", "glucose given off"],
+      ["glucose", "Glucose leaves the leaf"],
+      ["glucose", "Glucose released into the air"],
+      ["oxygen", "Oxygen absorbed"],
+      ["oxygen", "Oxygen in"],
+      ["oxygen", "Oxygen enters through stomata"],
+      ["carbon_dioxide", "Carbon dioxide released"],
+      ["carbon_dioxide", "CO2 out"],
+      ["water", "Water lost through the stomata"],
+      ["starch", "Starch given off"],
+    ];
+    for (const [id, words] of bad)
+      expect((await refusals({ text: { [`label:${id}`]: words } })).join("\n"), words).toMatch(
+        new RegExp(`text.label:${id}`),
+      );
+    const fine: [string, string][] = [
+      ["glucose", "Glucose made in the leaf"],
+      ["oxygen", "Oxygen made in the leaf goes out"],
+      ["oxygen", "Oxygen given off"],
+      ["carbon_dioxide", "Carbon dioxide from the air"],
+      ["carbon_dioxide", "CO₂ taken in through stomata"],
+      ["water", "Water drawn up the xylem"],
+    ];
+    for (const [id, words] of fine)
+      expect(await refusals({ text: { [`label:${id}`]: words } }), words).toEqual([]);
   });
 });

@@ -78,11 +78,28 @@ const MUST_NAME = {
   starch: /starch|energy/i, sucrose: /sucrose|sugar/i, oxygen: /oxygen|O2|O₂/i, chloroplast: /chloroplast/i,
   chlorophyll: /chlorophyll/i, stomata: /stoma/i, leaf: /leaf/i,
 };
-const FORBID = {
-  glucose: [/\bgas\b|\bgiven off\b|\bout of the leaf\b|\breleased\b/i, 'Glucose is not a gas and does not leave the leaf: it is used, stored as starch or carried round the plant as sucrose.'],
-  oxygen: [/\bin(to)? (the leaf|through)\b|\btaken in\b|\babsorbed\b/i, 'Oxygen is a product of photosynthesis: it goes out of the leaf, not in.'],
-  carbon_dioxide: [/\bout\b|\breleased\b|\bgiven off\b/i, 'Carbon dioxide goes into the leaf in photosynthesis, not out.'],
+// Which way a reworded label says its substance goes, read from its words (not one fixed phrase):
+// leaving the leaf or a gas, or coming into it. Each drawn arrow has one direction, so a label that
+// says the other way is refused whatever verb it uses ("escapes", "given off", "absorbed", "in").
+const LEAVING = /\b(out|outs?ide|escap\w*|leav\w*|left|exit\w*|releas\w*|given off|gives? off|giving off|emit\w*|lost|los(e|es|ing)|evaporat\w*|exhal\w*|breathed out|bubbl\w*|gas(es|eous)?|vapou?r|into the (air|atmosphere)|to the (air|atmosphere))\b/i;
+const ENTERING = /\b(into|enter\w*|absorb\w*|taken (in|up)|tak(e|es|ing) (in|up)|intake|uptake|drawn (in|up)|draws? (in|up)|com(e|es|ing) in|goes in|go(es)? into|breathed in|inhal\w*|from the (air|atmosphere|roots|soil)|in (through|via|from|by))\b|\bin\s*$/i;
+const ROLE = {
+  glucose: { stays: true, why: 'Glucose is not a gas and does not leave the leaf: it is used, stored as starch or carried round the plant as sucrose.' },
+  starch: { stays: true, why: 'Starch is a solid store inside the plant: it does not leave the leaf.' },
+  sucrose: { stays: true, why: 'Sucrose is carried round inside the plant, not given off.' },
+  oxygen: { goes: 'out', why: 'Oxygen is a product of photosynthesis: it goes out of the leaf, not in.' },
+  carbon_dioxide: { goes: 'in', why: 'Carbon dioxide goes into the leaf in photosynthesis, not out.' },
+  water: { goes: 'in', why: 'This arrow is water coming into the leaf from the roots: the label must not say it leaves.' },
 };
+/** The reason a reworded label says its substance goes the wrong way, or null. */
+export function wrongWay(id, words) {
+  const r = ROLE[id]; if (!r) return null;
+  const out = LEAVING.test(words), inn = ENTERING.test(words);
+  if (r.stays && out) return r.why;
+  if (r.goes === 'out' && inn && !out) return r.why;
+  if (r.goes === 'in' && out) return r.why;
+  return null;
+}
 
 /* ------------------------------------------------------------------ the symbol equation */
 // A formula's atoms: "6CO2" -> {C: 6, O: 12}. Subscript digits are read as digits.
@@ -152,7 +169,8 @@ export function validate(raw) {
     const t = P.text && P.text[`label:${id}`];
     if (t == null || t === '') continue;
     if (!re.test(t)) R.push({ path: `text.label:${id}`, reason: `The label “${t}” no longer names ${id === 'starch' ? 'what glucose is used for' : NAME[id] || id.replace('_', ' ')}. Keep that word in it.` });
-    if (FORBID[id] && FORBID[id][0].test(t)) R.push({ path: `text.label:${id}`, reason: FORBID[id][1] });
+    const why = wrongWay(id, t);
+    if (why) R.push({ path: `text.label:${id}`, reason: why });
   }
   return result(R, W);
 }

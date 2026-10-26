@@ -178,6 +178,63 @@
           "when": ["\\bcounts?\\b", "how many", "tally", "number of", "population"]
         }
       ]
+    },
+    "photosynthesis": {
+      "answerKeys": ["glucose", "oxygen", "equation", "symbol"],
+      "cannot": [
+        {
+          "what": "a rate of photosynthesis or limiting factors graph",
+          "when": [
+            "limiting factor",
+            "rate of photosynthesis",
+            "\\bgraph\\b",
+            "light intensity",
+            "inverse square"
+          ]
+        },
+        {
+          "what": "a leaf cross-section with its cell layers",
+          "when": [
+            "cross[- ]?section",
+            "palisade",
+            "spongy",
+            "mesophyll",
+            "guard cells?",
+            "epidermis",
+            "cuticle"
+          ]
+        },
+        {
+          "what": "a practical (pondweed bubbles or the iodine starch test)",
+          "when": [
+            "pondweed",
+            "elodea",
+            "bubbles",
+            "iodine",
+            "starch test",
+            "testing a leaf",
+            "variegated"
+          ]
+        },
+        {
+          "what": "respiration as its own process",
+          "when": ["\\brespiration\\b(?!.*photosynth)", "aerobic", "anaerobic"]
+        }
+      ],
+      "optionalPanels": [
+        {
+          "param": "chloroplast",
+          "what": "the zoom into a chloroplast",
+          "when": [
+            "chloroplast",
+            "chlorophyll",
+            "where .*(happens|takes place)",
+            "inside (?:a|the) (?:leaf |plant )?cell",
+            "zoom",
+            "close[- ]?up"
+          ]
+        }
+      ]
     }
   }
 }
