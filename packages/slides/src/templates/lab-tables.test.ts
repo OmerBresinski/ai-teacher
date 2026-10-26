@@ -53,6 +53,10 @@ describe("capacities equal the lab's pinned tables (spot check)", () => {
     // The hinge was re-laid to the v13 gold (TEACH-256 part b): its caps are its own measured
     // table (`hinge-capacity.json`, proven in hinge.test.ts), no longer the lab's.
     .filter((c) => c.doc.id !== "hinge")
+    // TEACH-110 part an: the objectives slide flows with its objectives' length (full width, one
+    // size a slide) and no longer matches the lab's 720-point list; its room is measured in
+    // `@tj/generation`'s objectives-room.gen.json (scripts/objectives-room.ts).
+    .filter((c) => c.doc.id !== "objectives")
     .filter((c) => c.value >= 2 && c.value <= 238);
   // Every k-th cell: about 20, spread over templates and stages.
   const k = Math.max(1, Math.floor(cells.length / 20));

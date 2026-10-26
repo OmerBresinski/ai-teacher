@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { WRITER_BUNDLE_ID, WRITER_BUNDLES, type WriterBundle, writerBundle } from "./bundle";
+import { fillTemplate } from "./fixes";
 import { schemaText, type WriterStage } from "./schema";
 
 /*
@@ -87,9 +88,62 @@ describe.each(BUNDLES.map((b) => [b.id, b] as const))("writer bundle %s", (_id, 
 });
 
 describe("the shipped bundle", () => {
-  test("is base4f-p123, the evidence's pinned writer (T hash 8a0f9b4f6dde)", () => {
-    expect(WRITER_BUNDLE_ID).toBe("base4f-p123");
+  test("is base4f-p124, p123's writer hash (8a0f9b4f6dde) with four prompt files changed", () => {
+    expect(WRITER_BUNDLE_ID).toBe("base4f-p124");
     expect(writerBundle().tHash).toBe("8a0f9b4f6dde");
+  });
+
+  // TEACH-110 part am: only the objectives, the pupil wording (system and user turn) and the
+  // writer's user turn differ from p123; the user turn only gains its closing depth line.
+  test("p124 differs from p123 only in the four files of part am", () => {
+    const a = writerBundle("base4f-p123") as unknown as Record<string, unknown>;
+    const b = writerBundle("base4f-p124") as unknown as Record<string, unknown>;
+    const CHANGED = ["objectives", "pupilObjectives", "pupilObjectivesUser", "user"];
+    for (const k of Object.keys(a)) {
+      if (k === "id" || k === "pins") continue;
+      if (CHANGED.includes(k)) expect(b[k]).not.toEqual(a[k]);
+      else expect(b[k]).toEqual(a[k]);
+    }
+    expect((b.user as string).startsWith(a.user as string)).toBe(true);
+    expect(b.user as string).toContain("\nDepth: the slides beyond those that teach and check");
+  });
+
+  test("p124's templates fill with today's brief and extras (no placeholder code lacks)", () => {
+    const b = writerBundle("base4f-p124");
+    const brief = {
+      id: "l",
+      topic: "Parts of a plant",
+      subject: "Science",
+      yearGroup: "Year 1",
+      year: 1,
+      keyStage: "ks1" as const,
+      theme: "storytime",
+      readingLevel: "Year 1",
+      language: "en-GB",
+      durationMin: 45,
+      exitTicketOnSlides: true,
+      tier: "standard",
+      slides: { min: 13, max: 16 },
+    };
+    const objectives = ["Name roots, stem, leaves and flowers.", "Describe what roots do."].map(
+      (t) => ({ teacher: t, pupil: "" }),
+    );
+    const pupil = fillTemplate(b.pupilObjectivesUser, brief, { objectives, maxWords: 8 });
+    expect(pupil).toContain(
+      "Word limit per line: 8\nCharacter limit per line: six times the word limit",
+    );
+    expect(pupil).toContain("1. Name roots, stem, leaves and flowers.\n2. Describe what roots do.");
+    const withChars = fillTemplate(
+      b.pupilObjectivesUser,
+      { ...brief, maxChars: 48 } as typeof brief,
+      {
+        objectives,
+        maxWords: 8,
+      },
+    );
+    expect(withChars).toContain("Character limit per line: 48");
+    expect(fillTemplate(b.user, brief, { objectives })).toContain("Slides: 13 to 16");
+    expect(fillTemplate(b.objectivesUser, brief)).toContain("Slides: 13 to 16");
   });
 
   test("differs from base4 only by the three system lines, verbatim", () => {
