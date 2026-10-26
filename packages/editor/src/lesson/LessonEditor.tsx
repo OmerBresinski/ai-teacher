@@ -615,9 +615,9 @@ export function LessonEditor({
         // not yet marked: it is marked when it ends, against `lastDoc`. Marked now, before the
         // merge, or this fold would make `lastDoc` a copy that already holds it, the step's end
         // would find nothing new to mark, and the page would hold the unmarked slide as the
-        // editor's repaint until the job ended (TEACH-247 part ae).
+        // editor's repaint until the job ended (TEACH-247 part an).
         const open = h.isTransactionInFlight() ? h.rebase?.((d) => d) : undefined;
-        const marked = open && markTeacherEdited(lastDoc.current ?? lessonRef.current, open);
+        const marked = open && lastDoc.current && markTeacherEdited(lastDoc.current, open);
         const merged = h.rebase?.((doc) => {
           const mine = doc === open && marked ? marked : doc;
           // Its own repaint and fit of slides the teacher has not marked are the editor's, not

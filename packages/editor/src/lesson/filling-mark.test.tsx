@@ -5,7 +5,7 @@ import type { LessonEditorHandle } from "./LessonEditor";
 import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "./test-harness";
 
 /*
- * TEACH-247 part ae: a job's row folded in while the teacher is still typing must not swallow
+ * TEACH-247 part an: a job's row folded in while the teacher is still typing must not swallow
  * their typing into the copy the next step is marked against. The fold lands between the last
  * keystroke and the edit's end (Escape), as it did in CI's `editor-filling.spec.ts`: the slide was
  * then never marked `teacherEdited`, so the page held the save as the editor's own repaint and the
