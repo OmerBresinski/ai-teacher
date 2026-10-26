@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
 import { svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { openaiSchemaFaults } from "@tj/slides/diagrams";
@@ -96,6 +97,24 @@ describe("the writer's schema offers the templates' own defs", () => {
     expect(((defs["diagram-freeform"] as J).properties as J).kind).toMatchObject({
       enum: expect.arrayContaining(["river", "hydrograph"]),
     });
+  });
+
+  test("v4.16's whole request is byte-identical to master's (sha256 pinned from origin/master)", () => {
+    const pinned: Record<WriterStage, string> = {
+      KS1: "dbc2e279b56a834f",
+      KS2: "d47ef80203e766ce",
+      "KS3-5": "45c8aa3a590290ba",
+    };
+    for (const stage of STAGES) {
+      const r = pilotRequest(
+        "v4.16",
+        stage,
+        writerSchema(stage, SLIDE_TIER_RANGES.standard),
+        (s) => s,
+      );
+      const hash = createHash("sha256").update(JSON.stringify(r)).digest("hex").slice(0, 16);
+      expect(hash).toBe(pinned[stage]);
+    }
   });
 
   test("the request grows by about 3,000 characters per key stage (logged)", () => {
