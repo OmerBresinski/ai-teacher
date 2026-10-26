@@ -181,22 +181,28 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
   const addedSlot = mine.elements.some((e) => isSlot(e) && !b.has(e.id));
   const dropped = new Set(gone.filter((id) => !replacement.has(id)));
   // TEACH-247 part av: an empty picture frame the job held open and then took out (its picture
-  // never came) goes from the teacher's copy even when the teacher moved, cropped or relabelled
-  // it: still the job's placeholder (`src` as the job laid it), never a picture of theirs.
+  // never came) goes from a slide the teacher edited elsewhere: still the job's placeholder
+  // (`src` as the job laid it) where the job put it, under its name. A frame the teacher moved,
+  // resized, rotated, renamed or relabelled is theirs and stays.
+  const INTENT = ["src", "x", "y", "w", "h", "rotation", "name", "alt"] as const;
+  const heldFrame = (el: SlideElement) => {
+    const src = (b.get(el.id) as { type?: string; src?: unknown } | undefined)?.src;
+    return el.type === "image" && typeof src === "string" && PLACEHOLDER_SRC.test(src);
+  };
   const emptyFrame = (el: SlideElement) => {
-    const was = b.get(el.id) as { type?: string; src?: string; figure?: unknown } | undefined;
-    const now = el as { type?: string; src?: string; figure?: unknown };
+    const was = b.get(el.id) as Record<string, unknown> | undefined;
+    const now = el as unknown as Record<string, unknown>;
     return (
       now.type === "image" &&
       was?.type === "image" &&
       now.figure === undefined &&
       typeof now.src === "string" &&
-      now.src === was.src &&
-      PLACEHOLDER_SRC.test(now.src)
+      PLACEHOLDER_SRC.test(now.src) &&
+      INTENT.every((k) => sameJson(now[k], was[k]))
     );
   };
   const elements = mine.elements
-    .filter((el) => !(dropped.has(el.id) && (untouched(el) || emptyFrame(el))))
+    .filter((el) => !(dropped.has(el.id) && (heldFrame(el) ? emptyFrame(el) : untouched(el))))
     .map((el) => {
       if (!isSlot(el) || !untouched(el)) return el;
       const swap = replacement.get(el.id);
