@@ -403,7 +403,7 @@ export type WriterRun = {
    */
   onDesign?: (design: Plan["design"]) => void;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
-  onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
+  onEditable?: (slides: WriterSlide[], unheld: WriterSlide[]) => Promise<void> | void;
   /**
    * A slide's visuals as soon as it is parsed, with the words a picture is chosen for (TEACH-251:
    * the picture director starts placing them off the writing clock).
@@ -1954,7 +1954,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   } else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
   // Editable never waits for an early retry: one still running is waited for in its slide's tail.
   editable = true;
-  await run.onEditable?.(deck(true));
+  // `unheld`: the same deck with every held frame laid without its failed photo, for a job that
+  // stops before its final deck (the caller saves it then, so no held frame is left behind).
+  await run.onEditable?.(deck(true), deck());
 
   // ── notes off the tail: one call on the deck as shown now, beside the repairs ──
   // The notes need each slide's final words and placed visuals, not the repairs. So the one call

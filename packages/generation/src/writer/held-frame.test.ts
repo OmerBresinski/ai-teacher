@@ -34,6 +34,7 @@ async function run(retryLands: boolean) {
   };
   const shown: WriterSlide[] = [];
   let atEditable: WriterSlide | undefined;
+  let unheld: WriterSlide | undefined;
   let release: () => void = () => {};
   const gate = new Promise<void>((r) => {
     release = r;
@@ -66,12 +67,13 @@ async function run(retryLands: boolean) {
       await gate;
       if (retryLands) for (const a of more) placed.add(`${i}:${a.key}`);
     },
-    onEditable: (slides) => {
+    onEditable: (slides, plain) => {
       atEditable = slides[LOST];
+      unheld = plain[LOST];
       release();
     },
   });
-  return { out, shown, atEditable, src: src(`${LOST}:picture`) };
+  return { out, shown, atEditable, unheld, src: src(`${LOST}:picture`) };
 }
 
 const images = (s: WriterSlide | undefined) =>
@@ -102,5 +104,14 @@ describe("a seen picture frame holds until the job's final deck", () => {
     const final = out.slides.find((s) => s.id === last?.id);
     // Never ships a placeholder: the slide is laid once without its slot.
     expect(open(final)).toBe(0);
+  });
+
+  test("a job that stops before its final deck is handed the editable deck without held frames", async () => {
+    const { atEditable, unheld } = await run(false);
+    expect(open(atEditable)).toBeGreaterThan(0);
+    // write.ts saves this copy when the job stops after editable (a throw, a cancel, a budget
+    // stop), so a held frame never outlives the job.
+    expect(open(unheld)).toBe(0);
+    expect(unheld?.id).toBe(atEditable?.id);
   });
 });

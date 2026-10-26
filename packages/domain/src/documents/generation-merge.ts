@@ -109,6 +109,12 @@ export function sameSubstance(a: unknown, b: unknown): boolean {
   return sameJson(substance(a), substance(b));
 }
 
+/**
+ * The generator's open picture frame (`@tj/slides` PLACEHOLDER_IMAGE, an inline grey SVG; this
+ * package imports nothing internal). A real picture is a stored file, never an inline SVG.
+ */
+const PLACEHOLDER_SRC = /^data:image\/svg\+xml/;
+
 /** Whether the teacher changed this slide while the job ran (`Slide.teacherEdited`). */
 export const isTeacherEdited = (slide: Slide): boolean => slide.teacherEdited === true;
 
@@ -174,8 +180,23 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
   );
   const addedSlot = mine.elements.some((e) => isSlot(e) && !b.has(e.id));
   const dropped = new Set(gone.filter((id) => !replacement.has(id)));
+  // TEACH-247 part av: an empty picture frame the job held open and then took out (its picture
+  // never came) goes from the teacher's copy even when the teacher moved, cropped or relabelled
+  // it: still the job's placeholder (`src` as the job laid it), never a picture of theirs.
+  const emptyFrame = (el: SlideElement) => {
+    const was = b.get(el.id) as { type?: string; src?: string; figure?: unknown } | undefined;
+    const now = el as { type?: string; src?: string; figure?: unknown };
+    return (
+      now.type === "image" &&
+      was?.type === "image" &&
+      now.figure === undefined &&
+      typeof now.src === "string" &&
+      now.src === was.src &&
+      PLACEHOLDER_SRC.test(now.src)
+    );
+  };
   const elements = mine.elements
-    .filter((el) => !(dropped.has(el.id) && untouched(el)))
+    .filter((el) => !(dropped.has(el.id) && (untouched(el) || emptyFrame(el))))
     .map((el) => {
       if (!isSlot(el) || !untouched(el)) return el;
       const swap = replacement.get(el.id);
