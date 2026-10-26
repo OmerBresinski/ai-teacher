@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import type { SlideElement } from "@tj/domain/documents";
+import { svgFontFamily } from "../diagrams";
 import { THEMES } from "../themes";
 import { type Figure, layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { STEP_FOOT, STEP_GAP, STEP_MIN_STAGE, STEP_NAMES, stepModelOf } from "./steps-model";
+import {
+  restyleModelSvg,
+  STEP_FOOT,
+  STEP_GAP,
+  STEP_MIN_STAGE,
+  STEP_NAMES,
+  stepModelOf,
+} from "./steps-model";
 import { measureStepCaps, stepWords } from "./steps-model-capacity";
 import CAPACITY from "./steps-model-capacity.json" with { type: "json" };
 
@@ -121,6 +129,26 @@ describe("steps with a model: title, one line, stage", () => {
     expect(svg).toContain(`--ink-2:${t1.colors.muted}`);
     // after the kit CSS
     expect(svg.indexOf('data-restyle="tj"')).toBeGreaterThan(svg.indexOf(".theme-primary{"));
+  });
+
+  test("the restyle names the theme's own face, never its fallback alone", () => {
+    // verify8 S4: the stack's var(--font-nunito) was stripped, every word fell to Verdana, wider
+    // than the Nunito it was measured in, and a card read "Roman BritainAD 122".
+    const face = "'Nunito Variable', Verdana, sans-serif";
+    const drawn = `<svg class="slide tk" data-font="nunito"><style>.slide text{font-family:${face}}</style><text>Roman Britain</text></svg>`;
+    for (const t of THEMES) {
+      const out = decodeURIComponent(
+        restyleModelSvg(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(drawn)}`, t).split(
+          ",",
+        )[1] ?? "",
+      );
+      const tag = /<style data-restyle="tj">([\s\S]*?)<\/style>/.exec(out)?.[1] ?? "";
+      expect(tag).toContain(`--ink:${t.colors.ink}`);
+      expect(tag).not.toContain("var(");
+      const lead = /font-family:([^,}]+)/.exec(tag)?.[1] ?? "";
+      // the theme's own face leads, never a bare fallback such as Verdana
+      expect(lead).toBe(svgFontFamily(t.fonts.body).split(",")[0] ?? "x");
+    }
   });
 
   test("every theme and stage: nothing over, on the canvas, text at or over the floor", () => {

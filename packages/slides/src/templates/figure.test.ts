@@ -132,8 +132,8 @@ describe("figure slide: the open stage", () => {
       decodeURIComponent(
         (named(lay({}, stage).slide.elements, FIGURE_NAMES.model)[0] as ImageElement).src,
       );
-    expect(src("ks1")).toContain('"Andika"');
-    expect(src("ks2")).not.toContain('"Andika"');
+    expect(src("ks1")).toMatch(/["']Andika["']/);
+    expect(src("ks2")).not.toMatch(/["']Andika["']/);
   });
 
   test("a photo takes the stage at its shape; a portrait one is held at 3:4 at most", () => {
