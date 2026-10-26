@@ -1142,11 +1142,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           },
         ).then(async (r) => {
           if (cancelled()) return;
-          // TEACH-247 part ad: a living body is never drawn from shapes. A full slide takes the
-          // lesson's library model for a body when its fill draws; otherwise the figure fails and
-          // the fallback ladder places a picture of the same thing.
+          // TEACH-247 parts ad, ay: a living body or a science process is never drawn from shapes.
+          // A full slide takes the first library model the ban names (a process's own model, then
+          // the body models) whose fill draws; otherwise the figure fails and the fallback ladder
+          // places a picture of the same thing.
           if (r.body) {
-            for (const model of slot === "full" ? BODY_MODELS : []) {
+            for (const model of slot === "full" ? (r.models ?? BODY_MODELS) : []) {
               if (!models.some((m) => m.id === model)) continue;
               const drew = await libDraw({ model, intent: a2.shows }, true);
               if (drew === undefined) return;
