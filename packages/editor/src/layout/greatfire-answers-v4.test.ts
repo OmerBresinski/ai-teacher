@@ -12,6 +12,7 @@ import type { Lesson, Slide } from "@tj/domain/documents";
 import { answersFaults, measureHeadless } from "@tj/slides";
 import * as kit from "@tj/slides/relayout";
 import { THEMES } from "@tj/slides/themes";
+import { markTeacherEdited } from "../lesson/LessonEditor";
 import { seededLesson } from "../lesson/test-harness";
 import { setLayoutKit } from "../model/layout-kit";
 import { renderTheme } from "../model/themes";
@@ -76,6 +77,30 @@ describe("Answers slides drawn in another theme are laid again every pass (TEACH
     const ends = deck.filter((x) => x.answersRole);
     expect(ends.length).toBe(5);
     for (const s of ends) expect(answersFaults(s, ruler)).toEqual([]);
+  });
+
+  test("a page the teacher moved an answer on keeps the move on the next pass", () => {
+    const lesson = lessonIn("crayon", "ks1", jobDeck("crayon", "ks1"));
+    const page = lesson.slides.find((x) => x.answersRole === "answers") as Slide;
+    const moved: Slide = {
+      ...page,
+      elements: page.elements.map((e) =>
+        e.name === "Model answer" ? { ...e, x: e.x + 40, y: e.y + 12 } : e,
+      ),
+    };
+    // The editor marks the step's slide as the teacher's (ADR 0037, `markTeacherEdited`).
+    const next = markTeacherEdited(lesson, {
+      ...lesson,
+      slides: lesson.slides.map((s) => (s.id === page.id ? moved : s)),
+    });
+    const mine = next.slides.find((s) => s.id === page.id) as Slide;
+    expect(mine.teacherEdited).toBe(true);
+    // Drawn in another theme on the next pass: recoloured at most, never re-laid.
+    const out = inLessonTheme(mine, { ...next, themeId: "splash" } as Lesson);
+    expect(out.elements.map((e) => [e.x, e.y, e.w, e.h])).toEqual(
+      moved.elements.map((e) => [e.x, e.y, e.w, e.h]),
+    );
+    expect(kit.relayAnswersSlide(mine, next.slides, renderTheme(next), "ks1")).toBeNull();
   });
 
   test("a page whose words the teacher changed keeps its own rows", () => {

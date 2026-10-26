@@ -10,15 +10,16 @@
  * `TemplateResult.fields` when the template reports them (`{ path, cap, hardMax }` per field);
  * cards-grid, which predates `fields`, reads its published capacity table instead.
  */
-import type {
-  AdaptiveTemplateId,
-  GroupElement,
-  Id,
-  LayoutFrame,
-  LayoutRef,
-  Slide,
-  SlideElement,
-  Theme,
+import {
+  type AdaptiveTemplateId,
+  type GroupElement,
+  type Id,
+  isTeacherEdited,
+  type LayoutFrame,
+  type LayoutRef,
+  type Slide,
+  type SlideElement,
+  type Theme,
 } from "@tj/domain/documents";
 import { layoutTemplate, type Stage, type TemplateInput, type TemplateResult } from "./templates";
 import { GRID_MAX, GRID_NAMES } from "./templates/cards-grid";
@@ -439,6 +440,9 @@ export function relayAnswersSlide(
   theme: Theme,
   stage: Stage,
 ): Slide | null {
+  // A slide the teacher changed (moved or resized a part, ADR 0037's `teacherEdited` mark, set by
+  // the editor's `markTeacherEdited` on any step that changes it) is theirs: never re-laid.
+  if (isTeacherEdited(slide)) return null;
   if (slide.answersRole === "guard")
     return relaidIfSameWords(slide, layoutAnswersGuard(theme, stage));
   if (slide.answersRole !== "answers") return null;
