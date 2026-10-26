@@ -15,6 +15,8 @@ import {
   GeneratingThemeDialog,
   LessonEditor,
   type LessonEditorHandle,
+  layoutKit,
+  loadLayoutKit,
   ThemeCallout,
 } from "@tj/editor/lesson";
 import { type DraftStore, draftStoreFor } from "@tj/editor/live-draft";
@@ -403,6 +405,23 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     editorRef.current = handle;
     setEditorHandle(handle);
   }, []);
+  // The re-theme re-lays adaptive layouts with the slides' template code, which loads lazily; with
+  // it not yet loaded (a reload, or a pick on a cold page) the editor applies the theme only once
+  // the import lands, so its first paint showed the old theme. While a pick is pending, load that
+  // code first and hold the editor back until it is here (TEACH-202 part v).
+  const [kitReady, setKitReady] = useState(() => layoutKit() !== null);
+  const waitingForKit = pickedTheme !== null && !kitReady;
+  useEffect(() => {
+    if (!waitingForKit) return;
+    let live = true;
+    const ready = () => {
+      if (live) setKitReady(true);
+    };
+    loadLayoutKit().then(ready, ready);
+    return () => {
+      live = false;
+    };
+  }, [waitingForKit]);
   useLayoutEffect(() => {
     if (!editorHandle || (stoppedJobId && !keepEditing) || !pickedTheme) return;
     editorHandle.retheme(pickedTheme);
@@ -672,6 +691,8 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     </Suspense>
   ) : data.slides.length === 0 ? (
     <EmptyLesson lesson={data} onBack={onBack} />
+  ) : waitingForKit ? (
+    <EditorShellPending />
   ) : (
     <>
       {worksheetsDialog}

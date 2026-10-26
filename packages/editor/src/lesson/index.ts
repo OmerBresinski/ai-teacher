@@ -1,5 +1,7 @@
 /** `@tj/editor/lesson` — the lesson editor shell and the pieces the app composes around it. */
 
+// The re-lay code a re-theme needs, so a page can have it loaded before the editor's first paint.
+export { layoutKit, loadLayoutKit } from "../model/layout-kit";
 export { AUTOSAVE_MS, SaveRefusedError, type SaveState } from "../model/use-autosave";
 export { clearShift, GUTTER, stepZoom, ZOOM_STEPS } from "./Canvas";
 export { impactPreview, impactSentence, slidesReferencing } from "./impact-preview";
