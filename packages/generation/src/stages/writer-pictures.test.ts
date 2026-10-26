@@ -1563,4 +1563,41 @@ describe("a generated picture waiting on its judge outlives the deadline (picq, 
     await pictures.settleSlide(4, 20);
     expect(pictures.state(4, "card.0").status).toBe("photo");
   });
+
+  // greatfire verify4 (26 Oct): both retry-round paintings were refused 2-4 s into the grace and
+  // their new generations held the slides' tails for the rest of it (11-13 s before editable).
+  test("the grace ends when the judge refuses the made picture, not at its 15 s cap", async () => {
+    let generated = 0;
+    const refusing = {
+      ...made(() => undefined),
+      generate: (_req: unknown, _faithful: unknown, signal?: AbortSignal) => {
+        generated += 1;
+        if (generated === 1) return made(() => undefined).generate();
+        // The generation after the refusal is still running when the grace is judged.
+        return new Promise<never>((_, reject) =>
+          signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true }),
+        );
+      },
+    };
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "History" },
+      country: "UK",
+      images: images({}),
+      // The refusal comes 60 ms in, after the 20 ms deadline: the grace has started.
+      deps: recordingDeps(
+        createFakeAi({
+          script: [async () => new Promise<string>((r) => setTimeout(() => r(verdict({})), 60))],
+          fallback: verdict({}),
+        }),
+      ),
+      bank: refusing as never,
+      direct: directGenerate,
+    });
+    pictures.start(4, bucket, slide);
+    const t = Date.now();
+    await pictures.settleSlide(4, 20);
+    expect(generated).toBe(2);
+    expect(Date.now() - t).toBeLessThan(2_000);
+    expect(pictures.state(4, "card.0").status).toBe("failed");
+  });
 });

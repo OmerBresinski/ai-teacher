@@ -1287,6 +1287,8 @@ export function createWriterPictures(opts: {
     own?: boolean;
     /** A generated picture landed for this slot (paid); its judge may still be running. */
     made?: boolean;
+    /** Called when `made` goes back to false (refused, or a new generation started). */
+    unmade?: () => void;
   };
   /**
    * The bank as one slot sees it: a generated picture marks the slot `made`, so a deadline that
@@ -1298,7 +1300,7 @@ export function createWriterPictures(opts: {
     // Only a picture that is made and waiting on its judge earns the grace: a new generation in
     // flight (a retry after a refusal) or a refused picture does not.
     generate: (req, faithful, signal, retry) => {
-      slot.made = false;
+      unmake(slot);
       return b.generate(req, faithful, signal, retry).then((made) => {
         if (made) slot.made = true;
         return made;
@@ -1307,24 +1309,44 @@ export function createWriterPictures(opts: {
     ...(b.reject
       ? {
           reject: (photo: PlacedPhoto) => {
-            slot.made = false;
+            unmake(slot);
             return b.reject?.(photo) ?? Promise.resolve();
           },
         }
       : {}),
   });
-  /** After a deadline: the slots among `list` still pending with a generated picture, waited for. */
+  const unmake = (slot: Slot) => {
+    slot.made = false;
+    slot.unmade?.();
+  };
+  /**
+   * After a deadline: the slots among `list` still pending with a generated picture, waited for.
+   * Each slot's grace ends with its judge: once the made picture is refused (or a new generation
+   * starts after a refusal) there is nothing paid left to wait for, so the round does not hold the
+   * rest of the grace for a picture that cannot land in it (greatfire verify4, 26 Oct: slides 3 and
+   * 6 were refused 2-4 s into the grace and their tail sat out the other 11-13 s).
+   */
   const graceForMade = async (list: Slot[]) => {
     const late = list.filter((x) => x.state.status === "pending" && x.made);
     if (!late.length || opts.deps.signal.aborted) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     await Promise.race([
-      Promise.all(late.map((x) => x.done)),
+      Promise.all(
+        late.map((x) =>
+          Promise.race([
+            x.done,
+            new Promise<void>((resolve) => {
+              x.unmade = resolve;
+            }),
+          ]),
+        ),
+      ),
       new Promise<void>((resolve) => {
         timer = setTimeout(resolve, WRITER_MADE_GRACE_MS);
       }),
     ]);
     if (timer) clearTimeout(timer);
+    for (const x of late) x.unmade = undefined;
   };
   /** The round's deps with the slot's own stop on the signal. */
   const slotDeps = (slot: Slot): PipelineDeps => {
