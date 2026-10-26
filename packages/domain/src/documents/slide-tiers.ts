@@ -1,13 +1,14 @@
 import { DEFAULT_SLIDE_TIER, SLIDE_COUNTS, type SlideTier } from "./brief";
 
 /*
- * Ruling 164's tier ranges (Detailed 13–16 since the ruling that amends it, 11 Oct 2026) and the helpers built on them. Kept out of `brief.ts` so the brief
+ * Ruling 164's tier ranges (Detailed 13–16 since ruling 204, 11 Oct 2026; Quick 7–8 and Standard
+ * 10–12 since ruling 295, 26 Oct 2026) and the helpers built on them. Kept out of `brief.ts` so the brief
  * schema's chunk (shared with the print pages) carries only the tier names (bundle budget).
  */
 
 export const SLIDE_TIER_RANGES: Record<SlideTier, { min: number; max: number }> = {
-  quick: { min: 6, max: 8 },
-  standard: { min: 9, max: 12 },
+  quick: { min: 7, max: 8 },
+  standard: { min: 10, max: 12 },
   detailed: { min: 13, max: 16 },
 };
 /**
@@ -41,11 +42,14 @@ export function slideTierOf(brief: DeckLength | undefined): SlideTier {
 
 /**
  * The exact count an outline planner builds: a tier's planner count (inside its range), else an
- * older lesson's own count, else the Standard tier's.
+ * older lesson's own count held to the tiers' span, else the Standard tier's.
  */
 export function plannerSlideCount(brief: DeckLength | undefined): number {
   if (brief?.slideTier) return PLANNER_COUNT_OF_TIER[brief.slideTier];
   const n = brief?.slideCount;
-  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n)) return n;
+  // Held to the tiers' span (7–16 since ruling 295), as the writer's `slideRange` holds it, so the
+  // planner never plans a count the writer is not asked for (an old 6-slide lesson plans 7).
+  if (n !== undefined && (SLIDE_COUNTS as readonly number[]).includes(n))
+    return Math.min(SLIDE_TIER_RANGES.detailed.max, Math.max(SLIDE_TIER_RANGES.quick.min, n));
   return PLANNER_COUNT_OF_TIER[DEFAULT_SLIDE_TIER];
 }
