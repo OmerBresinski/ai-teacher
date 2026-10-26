@@ -16,6 +16,8 @@ import {
   countImagePrompt,
   createDirectorBatcher,
   directPicture,
+  illustrationPrompt,
+  PERIOD_LANDMARK_LINE,
   planPicture,
   splitSubjects,
   stockFirstRoute,
@@ -821,4 +823,15 @@ describe("realFallbackFor: ruling 296's full table", () => {
               : "none";
           expect(realFallbackFor(kind, policy, named)).toBe(want);
         });
+});
+
+describe("illustrationPrompt: no later landmark in a period painting", () => {
+  test("the period line is followed by the landmark line", () => {
+    const text = illustrationPrompt("A painted scene of a street fire.", "A city, 1600s");
+    const lines = text.split("\n");
+    expect(lines[2]).toBe("Everything in it belongs to A city, 1600s.");
+    expect(lines[3]).toBe(PERIOD_LANDMARK_LINE);
+    expect(PERIOD_LANDMARK_LINE).toContain("unless the picture is about it");
+    expect(PERIOD_LANDMARK_LINE).toContain("as it stood then");
+  });
 });

@@ -277,12 +277,22 @@ export function countImagePrompt(c: NonNullable<PictureDirection["count"]>): str
   ].join("\n");
 }
 
+/**
+ * Code's period line for a painting (TEACH-251 part af): no famous landmark unless the picture is
+ * about it, and then as it stood. The generator draws a place's best-known landmark in its
+ * present form (verify6 Great Fire: 6 of 8 first paintings refused for the wrong period, most for
+ * a later domed cathedral in a 1666 skyline).
+ */
+export const PERIOD_LANDMARK_LINE =
+  "Show no famous landmark, monument or city skyline unless the picture is about it: any buildings in the background are ordinary buildings of that time and place. A landmark the picture is about is shown as it stood then, not as it looks today.";
+
 /** A historical subject Commons missed (ruling 163): an obvious painted illustration in its period. */
 export function illustrationPrompt(prompt: string, period: string): string {
   return [
     "A hand-painted educational illustration, clearly a painting and not a photograph.",
     prompt,
     `Everything in it belongs to ${period}.`,
+    PERIOD_LANDMARK_LINE,
   ].join("\n");
 }
 
