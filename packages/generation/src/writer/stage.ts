@@ -68,12 +68,12 @@ import {
   fitObjectives,
   fitTable,
   fixedFallback,
+  flowMatcher,
   keepAnswerKey,
   keepAsksHonest,
   layoutsFor,
   lineMatchesObjective,
   linkSteps,
-  lookForSlide,
   lookOf,
   lostFault,
   OVERFLOW,
@@ -1129,6 +1129,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     return qc.first;
   };
+  /** Each written slide's flow entry (fixes.ts `flowMatcher`), matched once, in order. */
+  const flowOf = flowMatcher(() => plan.flow);
   const openSlide = (idx: number, arrived: S) => {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
@@ -1148,6 +1150,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ...(a.fields.length ? { fields: a.fields } : {}),
       });
     }
+    // The template as written, before an activity, table or quick-check rewrite renames it.
+    const written = String(arrived.template ?? "");
     // No em dashes on slides. The writer's answer is its first option or card (key 1).
     let s = answerFirst(slideNoEmDash(raw));
     const figOpts = {
@@ -1189,10 +1193,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? s.heading ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
     // which asks for none gets the picture from look's phrase.
-    const entry = plan.flow?.find((x) => x.slide === idx + 1);
-    const look = lookForSlide(entry, s);
-    if (!look && lookOf(entry)?.kind === "picture")
-      log({ ev: "look-other-slide", slide: idx + 1, planned: entry?.layout ?? null });
+    // The entry that plans this slide, by the template the writer wrote (not by index).
+    const entry = flowOf(idx, written);
+    const look = lookOf(entry);
+    const byIndex = plan.flow?.find((x) => x.slide === idx + 1);
+    if (byIndex !== entry && lookOf(byIndex)?.kind === "picture")
+      log({ ev: "look-other-slide", slide: idx + 1, written, planned: byIndex?.layout ?? null });
     const added = withLook(s, look);
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
