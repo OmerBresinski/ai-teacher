@@ -22,7 +22,8 @@ const S8 = {
   points: ["Soldiers walked between posts to look for signs of danger."],
 } as const;
 const STAGES: Stage[] = ["ks1", "ks2"];
-const named = (els: { name?: string }[], n: string) => els.filter((e) => e.name === n);
+const named = <T extends { name?: string }>(els: readonly T[], n: string) =>
+  els.filter((e) => e.name === n);
 
 describe("explain: a sparse slide is a statement (TEACH-247 part al)", () => {
   test("Romans s3 and s8: larger than body, edged, inside the band, every word, in every theme", () => {
