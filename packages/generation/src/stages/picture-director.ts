@@ -384,6 +384,8 @@ interface Ask {
    * kept as a picture, it takes the real ladder and is never generated.
    */
   historical?: boolean;
+  /** The lesson's title: a monument it names stays real-only in a past scene (ruling 296). */
+  lessonTitle?: string;
 }
 
 /**
@@ -497,7 +499,16 @@ export function planPicture(
   // `shows` is read, it needs people and what they are doing, and a writer-named subject is
   // never reclassified: the place or monument itself, with people in it or not, a reconstruction
   // or its building included, stays real-only (rulings 210 and 296).
-  const pastScene = !!period && d.named === "place" && !ask.named && isPastScene(first.shows);
+  // TEACH-251 part ai (ruling 296, romans rompic s8): a scene at a real named monument, site or
+  // building (a gateway through Hadrian's Wall) is a picture of the monument, so it stays
+  // real-only; only a scene with no named monument in view ("a traveller near Hadrian's Wall") is
+  // painted.
+  const pastScene =
+    !!period &&
+    d.named === "place" &&
+    !ask.named &&
+    isPastScene(first.shows) &&
+    !monumentInView(`${first.shows} ${ask.text}`, ask.lessonTitle);
   const kind = pastScene ? "event" : (d.named ?? null);
   // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
   // ruling 209 never puts a generated panel beside real ones.
@@ -639,6 +650,8 @@ export async function findDirected(args: {
       ...(b.mustShow?.length ? { mustShow: b.mustShow } : {}),
       historical:
         isHistoricalSet([ask.subject]) || (isHistoricalLesson(lesson) && DEPICTS.test(ask.subject)),
+
+      lessonTitle: lesson.title,
     },
     { draws: args.draws === true, ...(args.realOnly ? { real: true } : {}) },
   );
@@ -976,6 +989,62 @@ const SCENE_DOING =
 /** A picture of people doing something at a past place: a scene there (ruling 210). */
 export function isPastScene(shows: string): boolean {
   return SCENE_PEOPLE.test(shows) && SCENE_DOING.test(shows);
+}
+
+/**
+ * Kinds of built thing: a proper name that holds one names a real monument, site or building
+ * ("Hadrian's Wall", "Housesteads Roman Fort", "Old St Paul's Cathedral"). Kinds, never names.
+ */
+const STRUCTURE =
+  /\b(walls?|forts?|fortress|castles?|cathedral|church|abbey|priory|chapel|minster|mosque|temple|palace|towers?|bridge|gates?|gateway|villa|amphitheatre|colosseum|forum|baths|pyramids?|henge|monument|hall|house|museum|theatre|stadium|lighthouse|barracks|milecastles?)\b/i;
+/** Proper-name phrases: capitalised words, joined by "of"/"the", a saint's prefix included. */
+const PROPER = /\b(?:St\.?\s+|Saint\s+)?[A-Z][\w'’-]*(?:\s+(?:of\s+|the\s+)?[A-Z][\w'’-]*)*/g;
+/** Words before a name that put the monument out of view ("near Hadrian's Wall"). */
+const AWAY =
+  /\b(near|beyond|outside|away from|far from|towards?|(?:north|south|east|west) of|without showing[^.]*)\s*(?:the\s+)?$/i;
+
+/** The monument names in `text`, each with the words before its kind ("Housesteads") too. */
+function monumentNames(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(PROPER)) {
+    const name = m[0].replace(/’/g, "'");
+    const saint = /^(St\.?|Saint)\s/.test(name) && name.split(/\s+/).length > 1;
+    const kind = STRUCTURE.exec(name);
+    if (!kind && !saint) continue;
+    out.push(name);
+    const head = kind
+      ? name
+          .slice(0, kind.index)
+          .replace(/\b(Roman|Old|New)\s*$/, "")
+          .trim()
+      : "";
+    if (head && /^[A-Z]/.test(head) && !head.includes(" ") && head.length > 3) out.push(head);
+  }
+  return out;
+}
+
+/**
+ * Whether a past scene shows a real named monument, site or building (ruling 296): a monument the
+ * scene's words or the lesson's title name (its kind word too, "the wall", for the lesson's own)
+ * is mentioned and not as somewhere away ("near", "beyond", "without showing").
+ */
+export function monumentInView(text: string, lessonTitle = ""): boolean {
+  const plain = text.replace(/’/g, "'");
+  const own = monumentNames(lessonTitle);
+  const kinds = own.map((n) => STRUCTURE.exec(n)?.[0]).filter((k): k is string => !!k);
+  const names = [...new Set([...monumentNames(plain), ...own, ...kinds])];
+  // Longest first, and each name read is blanked, so "Wall" is never read again inside "near
+  // Hadrian's Wall".
+  let rest = plain;
+  for (const name of names.sort((a, b) => b.length - a.length)) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\b${esc}\\b`, "gi");
+    for (const m of rest.matchAll(re)) {
+      if (!AWAY.test(rest.slice(Math.max(0, (m.index ?? 0) - 60), m.index))) return true;
+    }
+    rest = rest.replace(re, "\u00a7");
+  }
+  return false;
 }
 
 /** Round 7: the artefact request for a past event or person whose scene has no real picture. */
