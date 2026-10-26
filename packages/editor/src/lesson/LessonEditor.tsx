@@ -513,6 +513,10 @@ export function LessonEditor({
   // latest lesson/history/session at run time.
   const lessonRef = useRef(lesson);
   lessonRef.current = lesson;
+  // The copy a teacher's step is marked against starts as the lesson the editor loaded (and again
+  // for another lesson), never empty: a job's first fold during the first edit marks that edit
+  // against it (TEACH-247 part an).
+  if (lesson && (!lastDoc.current || lastDoc.current.id !== lesson.id)) lastDoc.current = lesson;
   const restoreRef = useRef(restore);
   const onRestoredRef = useRef(onRestored);
   onRestoredRef.current = onRestored;
@@ -610,7 +614,17 @@ export function LessonEditor({
         // The merge before the editor draws the job's slides in the teacher's theme: what of the
         // teacher's the row does not have yet. The repaint is the editor's, never the teacher's.
         let teachers: Lesson | undefined;
-        const merged = historyRef.current.rebase?.((mine) => {
+        const h = historyRef.current;
+        // A step of the teacher's still open (typing in a text box, a drag) is in the document but
+        // not yet marked: it is marked when it ends, against `lastDoc`. Marked now, before the
+        // merge, or this fold would make `lastDoc` a copy that already holds it, the step's end
+        // would find nothing new to mark, and the page would hold the unmarked slide as the
+        // editor's repaint until the job ended (TEACH-247 part an).
+        const open = h.isTransactionInFlight() ? h.rebase?.((d) => d) : undefined;
+        const marked =
+          open && lastDoc.current ? markTeacherEdited(lastDoc.current, open) : undefined;
+        const merged = h.rebase?.((doc) => {
+          const mine = doc === open && marked ? marked : doc;
           // Its own repaint and fit of slides the teacher has not marked are the editor's, not
           // the teacher's: left out, so the job's copy (late pictures included) comes whole.
           teachers = mergeJobLesson(base, withoutEditorCopies(mine, base), theirs);
