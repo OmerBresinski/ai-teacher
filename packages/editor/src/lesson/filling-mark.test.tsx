@@ -1,6 +1,8 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, jest, test } from "bun:test";
 import { act, fireEvent, waitFor } from "@testing-library/react";
 import type { Lesson, RichDoc, Slide, TextElement } from "@tj/domain/documents";
+import { AUTOSAVE_MS } from "../model/use-autosave";
+import { IDLE_MS } from "../model/use-edit-session";
 import type { LessonEditorHandle } from "./LessonEditor";
 import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "./test-harness";
 
@@ -13,6 +15,7 @@ import { catcher, loadTextEditor, pointer, renderEditor, seededLesson } from "./
  */
 
 beforeAll(loadTextEditor);
+afterEach(() => jest.useRealTimers());
 
 const para = (text: string): RichDoc => ({
   type: "doc",
@@ -66,10 +69,18 @@ async function foldMidEdit(lesson: Lesson) {
   });
   const pm = container.querySelector<HTMLElement>(".ProseMirror") as HTMLElement;
   // The teacher types: ProseMirror reads the change from its DOM.
+  // The clock is held from the first keystroke to Escape: the edit's step closes after
+  // `IDLE_MS` of quiet, and a slow runner must not reach it, or the step would end (and mark the
+  // slide) before the fold this test is about.
+  jest.useFakeTimers();
   const p = pm.querySelector("p") as HTMLElement;
   (p.firstChild as Text).data = "Hello and where rain goes";
+  await act(async () => {
+    jest.advanceTimersByTime(IDLE_MS / 10);
+    await Promise.resolve();
+  });
   // The keystrokes are in the document, inside the edit's open step: not yet marked.
-  await waitFor(() => expect(JSON.stringify(read().slides[0])).toContain("where rain goes"));
+  expect(JSON.stringify(read().slides[0])).toContain("where rain goes");
   expect(read().slides[0]?.teacherEdited).toBeUndefined();
   // The job writes a later slide; the editor folds its row in before the edit has ended.
   const theirs: Lesson = {
@@ -80,6 +91,12 @@ async function foldMidEdit(lesson: Lesson) {
     ref.current?.receiveGenerated(lesson, theirs);
   });
   fireEvent.keyDown(pm, { key: "Escape" });
+  // The edit has ended: the autosave's debounce runs on the held clock, then the clock is let go.
+  await act(async () => {
+    jest.advanceTimersByTime(AUTOSAVE_MS * 2);
+    await Promise.resolve();
+  });
+  jest.useRealTimers();
   await waitFor(
     () => {
       const last = saved.at(-1);
