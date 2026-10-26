@@ -261,3 +261,39 @@ export function renderedHeights(slide: Slide, measure: Measurer): Slide {
 /** The slide as drawn, linted: `renderedHeights` then `lintSlide`, the first-open migration's test. */
 export const lintAsDrawn = (slide: Slide, measure: Measurer, theme: Theme): SlideLint =>
   lintSlide(renderedHeights(slide, measure), measure, theme);
+
+/** `ANSWERS_NAMES.hidden` / `.cover` (templates/end-answers.ts), named here to keep lint template-free. */
+const ANSWER_DISC = "Hidden answer";
+const ANSWER_COVER = "Revealed";
+
+/**
+ * The layout faults on a guard or Answers slide, as the renderer draws it, in the ship gate's
+ * words (`clipped:` / `overlap:`); empty for any other slide. `lintSlide` cannot judge one: the
+ * template lays each answer over its hidden "?" disc and the disc's cover on purpose, so every
+ * clean Answers slide has overlaps, and the deck's checks skipped these slides. That hid a disc
+ * left behind its moved cover over the answer above ("?.dding Lane") and an answer pushed past
+ * the slide's foot (TEACH-247 part ai, Great Fire Y2 s15/s16). The rules here are the template's
+ * own: each disc sits under its cover, on its answer's first line, and nothing runs off the slide.
+ */
+export function answersFaults(slide: Slide, measure?: Measurer): string[] {
+  if (!slide.answersRole) return [];
+  const drawn = measure ? renderedHeights(slide, measure) : slide;
+  const out: string[] = [];
+  const covers = drawn.elements.filter((e) => e.name === ANSWER_COVER);
+  const answers = drawn.elements.filter(
+    (e) => e.revealStep !== undefined && e.name !== ANSWER_COVER,
+  );
+  for (const disc of drawn.elements.filter((e) => e.name === ANSWER_DISC)) {
+    const r = rectOf(disc);
+    if (!covers.some((c) => contains(rectOf(c), r)))
+      out.push(`overlap: hidden answer ${disc.id} is not under its cover`);
+    const line = (a: SlideElement) =>
+      Math.abs(a.x - disc.x) <= 1 && a.y <= disc.y + 1 && disc.y < a.y + Math.max(a.h, disc.h);
+    if (!answers.some(line)) out.push(`overlap: hidden answer ${disc.id} is off its answer's line`);
+  }
+  for (const el of drawn.elements) {
+    if (isBackdrop(el) || isBleed(el)) continue;
+    if (el.y + el.h > SLIDE_H + EPS) out.push(`clipped: ${el.id} runs past the slide's foot`);
+  }
+  return out;
+}

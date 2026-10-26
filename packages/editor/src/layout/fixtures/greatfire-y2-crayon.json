@@ -1,0 +1,3723 @@
+{
+  "note": "Great Fire of London Y2, Crayon Box: slides as saved by run 20261026-043258-record-y2-greatfire-detailed-verify2 (debug.json lesson.slides; image evidence stripped).",
+  "themeId": "crayon",
+  "ageBand": "ks1",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "The Great Fire of London, with Ludgate and Old St. Paul's",
+          "fit": "cover",
+          "src": "/files/01a1767b-b586-777f-83d5-af6852575f35/images/01a1767c-b307-7354-be11-1043dcf0c46b.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "commons-1599453",
+            "author": "Unknown author Unknown author",
+            "licence": "Public domain",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:The_Great_Fire_of_London,_with_Ludgate_and_Old_St._Paul%27s.JPG",
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:The_Great_Fire_of_London,_with_Ludgate_and_Old_St._Paul%27s.JPG",
+            "photographer": "Unknown author Unknown author",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:The_Great_Fire_of_London,_with_Ludgate_and_Old_St._Paul%27s.JPG"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 192,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#1A52A8",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 121,
+          "w": 402.67,
+          "x": 58,
+          "y": 228,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Great Fire of London",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 56,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 600,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 467,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 467,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Say that the Great Fire began in Pudding Lane in 1666.",
+                "Tell how wooden houses and strong winds helped the fire spread.",
+                "Say how people rebuilt houses with brick and stone after the fire."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 58,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 51,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 122,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#1A52A8",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 152,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#1A52A8",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 93,
+              "w": 752,
+              "x": 83,
+              "y": 130,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Say that the Great Fire began in Pudding Lane in 1666.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 236,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#1A52A8",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 266,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#1A52A8",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 93,
+              "w": 752,
+              "x": 83,
+              "y": 244,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Tell how wooden houses and strong winds helped the fire spread.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 350,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#1A52A8",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 380,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#1A52A8",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 93,
+              "w": 752,
+              "x": 83,
+              "y": 358,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Say how people rebuilt houses with brick and stone after the fire.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "kind": "image-text",
+      "notes": "Running\nTake about 3 minutes. Pupils find the place and year in the sentence, then say the answer together.\n\nAnswers\nIt began in a bakery in Pudding Lane in 1666.\n\nBackground\nThe fire started on 2 September 1666. Pudding Lane was in the City of London.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s3-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where did it begin?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 181,
+          "w": 392,
+          "x": 64,
+          "y": 217,
+          "id": "d-s3-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The Great Fire of London began in a bakery in Pudding Lane in the year 1666.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 328,
+          "w": 392,
+          "x": 504,
+          "y": 160,
+          "id": "d-s3-Photo-0",
+          "alt": "A historical reconstruction of the bakery on Pudding Lane, with its timber front and a small fire visible inside beside the narrow lane.",
+          "fit": "cover",
+          "src": "/files/01a1767b-b586-777f-83d5-af6852575f35/images/01a1767d-049d-73dd-b7ff-5e1644d34fb7.png",
+          "name": "Photo",
+          "type": "image",
+          "radius": 26,
+          "source": {
+            "id": "01a1767d-049d-73dd-b7ff-5e1644d34fb7",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "image-text",
+      "notes": "Running\nAbout 4 minutes. Read the flow together, then ask pupils to explain the steps to a partner using \u201cbecause\u201d. Take one or two explanations from the class.\n\nMisconceptions\nPupils may think the fire spread only because houses were close together, or that wood itself spreads flames. Explain that wood burns; when houses are close, flames can reach the next wooden house. The diagram\u2019s steps are: wooden beams, houses close together, flames reach the next house, fire spreads.\n\nBackground\nMany London houses were built with timber frames and wooden parts. Narrow streets meant buildings stood close together, helping flames pass from one house to another.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s4-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Wood helped fire spread",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 225,
+          "w": 392,
+          "x": 64,
+          "y": 196,
+          "id": "d-s4-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Many houses had wooden walls. Wood burns, so flames could spread from one house to the next.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "kind": "image-text",
+      "notes": "Running\nSpend about 4 minutes. Read the flow aloud, pointing to each step. Pupils explain the sequence to a partner, then invite one pupil to describe how the fire reaches another roof.\n\nMisconceptions\nPupils may think the wind itself sets houses alight. Explain that it carries burning pieces of wood, which can land on another roof and start a fire. They may think the burning pieces simply disappear in the wind; trace how a piece is carried and lands on the roof.\n\nBackground\nThese burning pieces are called embers. Strong winds can carry embers ahead of the main fire, helping it spread to buildings that are not touching the burning ones.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s5-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Wind helped fire spread",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 225,
+          "w": 392,
+          "x": 64,
+          "y": 196,
+          "id": "d-s5-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Strong winds blew burning pieces of wood through the air. These could start fires on other houses.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "kind": "multiple-choice",
+      "notes": "Running\nTake about 4 minutes. Pupils choose an option on their own, then explain their choice to a partner. Take a quick class vote.\n\nAnswers\nB: They carried burning pieces further.\n\nMisconceptions\n\u201cThey made wooden houses\u201d confuses the cause of the fire\u2019s spread with how houses were built. \u201cThey stopped houses from burning\u201d reverses the effect. Remind pupils that wind carried burning pieces to other houses.",
+      "elements": [
+        {
+          "h": 358,
+          "w": 960,
+          "x": 0,
+          "y": 182,
+          "id": "d-s6-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 112,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How did strong winds help the Great Fire spread?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 214,
+          "id": "d-s6-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 232,
+          "id": "d-s6-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 38,
+          "w": 677,
+          "x": 150,
+          "y": 236,
+          "id": "d-s6-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They made wooden houses.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 311,
+          "id": "d-s6-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 329,
+          "id": "d-s6-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#7E5600",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 38,
+          "w": 677,
+          "x": 150,
+          "y": 333,
+          "id": "d-s6-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They carried burning pieces further.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 408,
+          "id": "d-s6-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 426,
+          "id": "d-s6-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 38,
+          "w": 677,
+          "x": 150,
+          "y": 430,
+          "id": "d-s6-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They stopped houses from burning.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s6-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s6-Option-1",
+            "correct": true
+          },
+          {
+            "id": "d-s6-Option-2",
+            "correct": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "s7",
+      "kind": "image-text",
+      "notes": "Running\nSpend about 3 minutes. Ask pupils to study the picture quietly, then tell a partner how the fire could reach a house across the street. Take one or two explanations and link them to the role of wind.\n\nMisconceptions\nPupils may think fire could spread only between houses that touched. Explain that wind could carry burning pieces over a gap and set another roof alight.\n\nBackground\nBurning pieces carried through the air are often called embers. They can start new fires when they land on something that burns.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s7-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Across a gap",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 225,
+          "w": 392,
+          "x": 64,
+          "y": 196,
+          "id": "d-s7-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Burning pieces could blow across a street. Houses did not have to touch for the fire to reach them.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "kind": "open-response",
+      "notes": "Running\nTake about 6 minutes. Pupils answer the museum-label question independently, then write or rehearse an explanation for the second prompt with a partner.\n\nAnswers\n1. Pudding Lane.\n2. The wind could carry burning pieces from the wooden houses through the air. A piece could land on another house and set it alight.\n\nMisconceptions\nPupils may name a different lane because they focus on where the fire spread rather than where it began. For the second task, they may say the fire needed houses to touch. Remind them that it began in Pudding Lane and that wind could carry burning pieces across a gap.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s8-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Use what you know",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 147,
+          "id": "d-s8-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 64,
+          "y": 182,
+          "id": "d-s8-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 169,
+          "w": 392,
+          "x": 64,
+          "y": 245,
+          "id": "d-s8-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A museum label says, \u2018The fire began here.\u2019 Which lane should it name?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 147,
+          "id": "d-s8-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 504,
+          "y": 182,
+          "id": "d-s8-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 210,
+          "w": 392,
+          "x": 504,
+          "y": 245,
+          "id": "d-s8-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine strong winds near burning wooden houses. Explain how another house could catch.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Pudding Lane\n2. Strong winds could carry burning pieces to another wooden house."
+      }
+    },
+    {
+      "id": "s9",
+      "kind": "content",
+      "notes": "Running\nTake about 4 minutes. Let pupils look closely at both pictures. Ask what building material they can identify and how they know.\n\nMisconceptions\nPupils may assume that every old-looking building is from the time of the Great Fire. Explain that the pictures show examples of brick buildings, but a picture alone does not prove when a building was built.\n\nBackground\nThe fire destroyed many buildings in the City of London. The pictures show surviving or later examples of brick buildings, not necessarily buildings rebuilt immediately after the fire.",
+      "elements": [
+        {
+          "h": 521,
+          "w": 960,
+          "x": 0,
+          "y": 0,
+          "id": "d-s9-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 960,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "sides": [
+                {
+                  "text": "Many walls were wooden.",
+                  "title": "Before",
+                  "picture": {
+                    "alt": "A London timber house before the Great Fire, with its wooden wall structure clearly visible",
+                    "photo": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+                    "request": "A London timber house before the Great Fire, with its wooden wall structure clearly visible. exposed timber beams. wooden wall structure"
+                  }
+                },
+                {
+                  "text": "Houses were rebuilt using brick and stone.",
+                  "title": "After",
+                  "picture": {
+                    "alt": "A London house rebuilt after the Great Fire with brick walls and stone around the doorway",
+                    "photo": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+                    "request": "A London house rebuilt after the Great Fire with brick walls and stone around the doorway. red brick walls. stone door surround"
+                  }
+                }
+              ],
+              "heading": "House walls changed",
+              "template": "split-compare",
+              "accentWord": "changed"
+            },
+            "template": "split-compare"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 960,
+              "x": 0,
+              "y": 0,
+              "id": "d-s9-layout:~Background-0",
+              "fill": "#FFFDF7",
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 58,
+              "w": 832,
+              "x": 64,
+              "y": 46,
+              "id": "d-s9-layout:~Heading-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "House walls ",
+                        "type": "text"
+                      },
+                      {
+                        "text": "changed",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#1A52A8"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 51,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 398,
+              "w": 478,
+              "x": 0,
+              "y": 142,
+              "id": "d-s9-layout:~Side_field-0",
+              "fill": "#BCD6E9",
+              "name": "Side field",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 398,
+              "w": 477,
+              "x": 483,
+              "y": 142,
+              "id": "d-s9-layout:~Side_field-1",
+              "fill": "#E0EBF0",
+              "name": "Side field",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 37,
+              "w": 366,
+              "x": 58,
+              "y": 166,
+              "id": "d-s9-layout:sides.0.title",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Before",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Side title",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 167,
+              "w": 297,
+              "x": 58,
+              "y": 232,
+              "id": "d-s9-layout:~Side_picture-0",
+              "alt": "A London timber house before the Great Fire, with its wooden wall structure clearly visible",
+              "fit": "cover",
+              "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+              "name": "Side picture",
+              "type": "image",
+              "radius": 14
+            },
+            {
+              "h": 40,
+              "w": 366,
+              "x": 58,
+              "y": 418,
+              "id": "d-s9-layout:sides.0.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Many walls were wooden.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Side words",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 28,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 37,
+              "w": 366,
+              "x": 536,
+              "y": 166,
+              "id": "d-s9-layout:sides.1.title",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "After",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Side title",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 167,
+              "w": 297,
+              "x": 536,
+              "y": 232,
+              "id": "d-s9-layout:~Side_picture-1",
+              "alt": "A London house rebuilt after the Great Fire with brick walls and stone around the doorway",
+              "fit": "cover",
+              "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+              "name": "Side picture",
+              "type": "image",
+              "radius": 14
+            },
+            {
+              "h": 79,
+              "w": 366,
+              "x": 536,
+              "y": 418,
+              "id": "d-s9-layout:sides.1.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Houses were rebuilt using brick and stone.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Side words",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 28,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 66,
+              "w": 66,
+              "x": 447,
+              "y": 308,
+              "id": "d-s9-layout:~Seam_marker_ring-0",
+              "fill": "#FFFDF7",
+              "name": "Seam marker ring",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 56,
+              "w": 56,
+              "x": 452,
+              "y": 313,
+              "id": "d-s9-layout:~Seam_marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "vs",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#232120",
+              "name": "Seam marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFDF7",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 20,
+                "fontWeight": 700
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "kind": "content",
+      "notes": "Running\nTake about 4 minutes. Pupils identify which close-up shows brick and which shows stone, then compare their visible features.\n\nMisconceptions\nPupils may think the rough wall texture means the material is wood. Point out the mortar joints between bricks and the natural patterns in the stone; neither material burns like wood.\n\nBackground\nMortar is the material placed between bricks or stones to hold a wall together. Builders can use brick and stone in walls because they do not burn like timber.",
+      "elements": [
+        {
+          "h": 521,
+          "w": 960,
+          "x": 0,
+          "y": 0,
+          "id": "d-s10-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 960,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "rows": [
+                {
+                  "icon": null,
+                  "name": "Brick",
+                  "text": "Brick does not burn.",
+                  "picture": {
+                    "alt": "A close view of a brick house wall",
+                    "photo": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+                    "request": "A close view of a brick house wall. small rectangular bricks. mortar between bricks"
+                  }
+                },
+                {
+                  "icon": null,
+                  "name": "Stone",
+                  "text": "Stone does not burn.",
+                  "picture": {
+                    "alt": "A close view of a stone house wall",
+                    "photo": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+                    "request": "A close view of a stone house wall. large stone blocks. mortar between stones"
+                  }
+                }
+              ],
+              "panel": null,
+              "heading": "Rebuilding materials",
+              "template": "panel-list"
+            },
+            "template": "panel-list"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 960,
+              "x": 0,
+              "y": 0,
+              "id": "d-s10-layout:~Background-0",
+              "fill": "#FFFDF7",
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 540,
+              "w": 313,
+              "x": 0,
+              "y": 0,
+              "id": "d-s10-layout:~Title_panel-0",
+              "fill": "#232120",
+              "name": "Title panel",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 88,
+              "w": 233,
+              "x": 40,
+              "y": 64,
+              "id": "d-s10-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Rebuilding materials",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#FFFDF7",
+                "preset": "title",
+                "padding": 0,
+                "fontSize": 44,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1
+              }
+            },
+            {
+              "h": 176,
+              "w": 235,
+              "x": 360,
+              "y": 76,
+              "id": "d-s10-layout:~Row_picture-0",
+              "alt": "A close view of a brick house wall",
+              "fit": "cover",
+              "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+              "name": "Row picture",
+              "type": "image",
+              "radius": 25
+            },
+            {
+              "h": 36,
+              "w": 278,
+              "x": 618,
+              "y": 103,
+              "id": "d-s10-layout:rows.0.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Brick",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 83,
+              "w": 278,
+              "x": 618,
+              "y": 142,
+              "id": "d-s10-layout:rows.0.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Brick does not burn.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.25
+              }
+            },
+            {
+              "h": 176,
+              "w": 235,
+              "x": 360,
+              "y": 289,
+              "id": "d-s10-layout:~Row_picture-1",
+              "alt": "A close view of a stone house wall",
+              "fit": "cover",
+              "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='844' height='1080' viewBox='0 0 844 1080'%3E%3Crect width='844' height='1080' fill='%23E9E8E3'/%3E%3Cpath d='M0 1080 L0 780 L211 600 L422 760 L633 540 L844 700 L844 1080 Z' fill='%23CFCCC4'/%3E%3Ccircle cx='633' cy='300' r='90' fill='%23DFDCD4'/%3E%3C/svg%3E",
+              "name": "Row picture",
+              "type": "image",
+              "radius": 25
+            },
+            {
+              "h": 36,
+              "w": 278,
+              "x": 618,
+              "y": 316,
+              "id": "d-s10-layout:rows.1.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Stone",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 83,
+              "w": 278,
+              "x": 618,
+              "y": 355,
+              "id": "d-s10-layout:rows.1.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Stone does not burn.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.25
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 278,
+              "x": 618,
+              "y": 270,
+              "id": "d-s10-layout:~Divider-0",
+              "fill": "#F5C9CF",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s11",
+      "kind": "multiple-choice",
+      "notes": "Running\nTake about 4 minutes. Pupils choose the reason independently and explain why the other option does not answer the question.\n\nAnswers\nB: They do not burn like wood does.\n\nMisconceptions\n\u201cThey stop strong winds from blowing outside\u201d mistakes a material\u2019s resistance to fire for protection from wind. Explain that brick and stone were better choices because they do not burn like wooden walls.\n\nBackground\nAfter the fire, new building rules required houses in the City of London to be built with brick or stone rather than timber. The materials helped reduce the risk of fire spreading from house to house.",
+      "elements": [
+        {
+          "h": 353,
+          "w": 960,
+          "x": 0,
+          "y": 187,
+          "id": "d-s11-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 112,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s11-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why were brick and stone better choices for rebuilt house walls?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 265,
+          "id": "d-s11-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 283,
+          "id": "d-s11-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 38,
+          "w": 677,
+          "x": 150,
+          "y": 287,
+          "id": "d-s11-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They stop strong winds from blowing outside.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 362,
+          "id": "d-s11-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 380,
+          "id": "d-s11-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#7E5600",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 38,
+          "w": 677,
+          "x": 150,
+          "y": 384,
+          "id": "d-s11-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They do not burn like wood does.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s11-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s11-Option-1",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "notes": "Running\nTake about 6 minutes. Pupils answer both prompts on their own, then compare answers in pairs. Ask a few pupils to share their reasons.\n\nAnswers\n1. A safer change would be to build the walls with brick or stone because they do not burn like wood.\n2. Yes. Nearby wooden houses could still catch fire from flames or burning pieces, even without strong winds. The wind can carry burning pieces further, but it is not the only way fire spreads.\n\nMisconceptions\nPupils may think rebuilding with brick and stone would stop every fire, or that fire cannot spread without wind. Explain that these materials do not burn like wood, while nearby wooden houses can still catch from flames; wind makes it easier for burning pieces to travel further.\n\nBackground\nThis prompt asks pupils to apply both ideas: choosing less flammable wall materials and understanding that wind helps fire spread but is not essential for every nearby house to catch.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s12-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Think like a builder",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 147,
+          "id": "d-s12-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 64,
+          "y": 182,
+          "id": "d-s12-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 169,
+          "w": 392,
+          "x": 64,
+          "y": 245,
+          "id": "d-s12-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine rebuilding a wooden street after a fire. Describe a safer change and why.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 147,
+          "id": "d-s12-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 504,
+          "y": 182,
+          "id": "d-s12-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 210,
+          "w": 392,
+          "x": 504,
+          "y": 245,
+          "id": "d-s12-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Imagine wooden houses burning without strong winds. Could fire still spread nearby? Explain why.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. I would use brick or stone walls because these materials do not burn like wood.\n2. Yes. Wood burns, so flames could still spread to a nearby wooden house."
+      }
+    },
+    {
+      "id": "s13",
+      "kind": "exit-ticket",
+      "notes": "Running\nAllow about 7 minutes for the exit ticket. Pupils answer both questions independently. Collect their work to check recall of the place and year and their explanation of wood, wind and safer rebuilding.\n\nAnswers\n1. The Great Fire of London began in a bakery in Pudding Lane in 1666.\n2. Wooden walls could catch fire and pass flames to nearby houses. Strong winds could carry burning pieces to other houses and start more fires. Brick and stone do not burn like wood, so they were safer materials for rebuilding.\n\nMisconceptions\nPupils may give the year but not the lane, or name where the fire spread instead of where it began. In the second answer, they may say wind made houses wooden or that it stopped fires. Revisit the chain: wooden walls burn; wind carries burning pieces; brick and stone do not burn like wood.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s13-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Show what you know",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 254,
+          "w": 960,
+          "x": 0,
+          "y": 286,
+          "id": "d-s13-surface_field-b-0",
+          "fill": "#DDF0F8",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 358,
+          "w": 746,
+          "x": 107,
+          "y": 153,
+          "id": "d-s13-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 26,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 35,
+          "w": 660,
+          "x": 150,
+          "y": 182,
+          "id": "d-s13-Kicker-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "EXIT TICKET",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 221,
+          "id": "d-s13-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 150,
+          "y": 266,
+          "id": "d-s13-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 86,
+          "w": 603,
+          "x": 207,
+          "y": 266,
+          "id": "d-s13-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where and when did the Great Fire of London begin?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 352,
+          "id": "d-s13-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 150,
+          "y": 406,
+          "id": "d-s13-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 86,
+          "w": 603,
+          "x": 207,
+          "y": 406,
+          "id": "d-s13-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why replace wooden walls after the fire? Include wind.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Pudding Lane, 1666.\n2. Wind carried burning wood to other houses, so houses were rebuilt using brick and stone, which do not burn."
+      }
+    },
+    {
+      "id": "SI45JoIV6I",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "sNZZoiFs7M",
+          "fill": "#DDF0F8",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "w5TJG1e598",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#2E7D32",
+          "strokeWidth": 6
+        },
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "k64Jw5N8mm",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 39,
+          "w": 832,
+          "x": 64,
+          "y": 385,
+          "id": "oCBL-NdptL",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard"
+    },
+    {
+      "id": "XWt1_-OmU8",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "b2uybvayro",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 283,
+          "x": 613,
+          "y": 49,
+          "id": "w3BHYAA6nE",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 638,
+          "y": 58,
+          "id": "OacGYwY_co",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 283,
+          "x": 677,
+          "y": 110,
+          "id": "j4kFXL7OSD",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 152,
+          "id": "UBVu3yIcL3",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 72,
+          "w": 190,
+          "x": 64,
+          "y": 187,
+          "id": "LCrxg93uoe",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Use what you know",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 301,
+          "y": 209,
+          "id": "YlivwMseDv",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 15,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 352,
+          "y": 152,
+          "id": "sZVB6Rh1tv",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 37,
+          "w": 37,
+          "x": 351,
+          "y": 152,
+          "id": "25uFrBaaSv",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 39,
+          "w": 544,
+          "x": 352,
+          "y": 208,
+          "id": "I0BmWRytgM",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Pudding Lane",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 301,
+          "y": 272,
+          "id": "8T_w_Hx0UB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 15,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 352,
+          "y": 208,
+          "id": "cLib7KeMrB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 37,
+          "w": 37,
+          "x": 351,
+          "y": 271,
+          "id": "ZNFORXb3Ii",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 75,
+          "w": 544,
+          "x": 352,
+          "y": 271,
+          "id": "cOY4zkegz9",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Strong winds could carry burning pieces to another wooden house.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 1,
+          "w": 832,
+          "x": 64,
+          "y": 301,
+          "id": "XvpzXKW1Up",
+          "fill": "#F5C9CF",
+          "name": "Rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 348,
+          "id": "AMH81MPFVV",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 72,
+          "w": 190,
+          "x": 64,
+          "y": 383,
+          "id": "7Aj9CvgCg4",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Think like a builder",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 301,
+          "y": 412,
+          "id": "Vtx4EOv0tp",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 15,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 352,
+          "y": 411,
+          "id": "ts1V5EuQzC",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 37,
+          "w": 37,
+          "x": 351,
+          "y": 411,
+          "id": "OAJZvUzHW3",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 75,
+          "w": 544,
+          "x": 352,
+          "y": 411,
+          "id": "hNgzsxmw1i",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "I would use brick or stone walls because these materials do not burn like wood.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 301,
+          "y": 510,
+          "id": "MkMmyqhgZj",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 15,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 35,
+          "w": 35,
+          "x": 352,
+          "y": 502,
+          "id": "RmQ4guJcts",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 37,
+          "w": 37,
+          "x": 351,
+          "y": 509,
+          "id": "MAlpV4DPnF",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 75,
+          "w": 544,
+          "x": 352,
+          "y": 509,
+          "id": "NwCzfPYiRa",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Yes. Wood burns, so flames could still spread to a nearby wooden house.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        }
+      ],
+      "answersRole": "answers"
+    },
+    {
+      "id": "opKvonacor",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "K4557pw2_M",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 51,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 283,
+          "x": 613,
+          "y": 49,
+          "id": "MHo_jlG6s3",
+          "fill": "#DDF0F8",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 638,
+          "y": 60,
+          "id": "prNrBnudic",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 283,
+          "x": 677,
+          "y": 112,
+          "id": "OU4ntnDPOz",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 154,
+          "id": "JjhHgXPVni",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "EXIT TICKET",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 20,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 72,
+          "w": 190,
+          "x": 64,
+          "y": 189,
+          "id": "TsnYEzCCwV",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Show what you know",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 211,
+          "id": "NAzJ1hXCB6",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 154,
+          "id": "3mcN7A4j0d",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 154,
+          "id": "eqdcFc0zUI",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 39,
+          "w": 538,
+          "x": 358,
+          "y": 210,
+          "id": "gB-R6mlK5M",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Pudding Lane, 1666.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 316,
+          "id": "z6iQkYwcTN",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 259,
+          "id": "vagQ2KL7Bi",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#DDF0F8",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 315,
+          "id": "e2Sdlxsngx",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 112,
+          "w": 538,
+          "x": 358,
+          "y": 315,
+          "id": "S2OZJM7Ajg",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Wind carried burning wood to other houses, so houses were rebuilt using brick and stone, which do not burn.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers"
+    }
+  ]
+}

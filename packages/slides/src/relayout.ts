@@ -423,6 +423,43 @@ export function buildEndAnswers(slides: readonly Slide[], theme: Theme, stage: S
 }
 
 /**
+ * One guard or Answers slide of `slides` laid out again by its template in `theme`, keeping its
+ * id, its page of the stored split and every slide field but its elements; null when it is not one
+ * or its answers no longer read back as the deck's (then it is the teacher's, or out of date).
+ *
+ * A job slide that arrives in the job's starting theme after the teacher picked another one is
+ * fitted to the teacher's theme (TEACH-247 part ag). A generic Tidy reflowed this template's rows
+ * and left each hidden "?" disc behind its moved cover and answer, and pushed the last answer off
+ * the slide (TEACH-247 part ai, Great Fire Y2 s15/s16); the template lays them again instead.
+ */
+export function relayAnswersSlide(
+  slide: Slide,
+  slides: readonly Slide[],
+  theme: Theme,
+  stage: Stage,
+): Slide | null {
+  if (slide.answersRole === "guard") {
+    return { ...slide, elements: keepIds(layoutAnswersGuard(theme, stage).slide, slide) };
+  }
+  if (slide.answersRole !== "answers") return null;
+  const stored = slides.filter((s) => s.answersRole === "answers");
+  const k = stored.findIndex((s) => s.id === slide.id);
+  if (k < 0) return null;
+  const pages = storedPages(stored, answerGroupsOf(slides.filter((s) => !s.answersRole)));
+  const page = pages?.[k];
+  if (!page) return null;
+  return { ...slide, elements: keepIds(layoutAnswersPage(page, theme, stage).slide, slide) };
+}
+
+/** The built elements, each with the id of the old element in its place (same type and name). */
+function keepIds(built: Slide, old: Slide): Slide["elements"] {
+  return built.elements.map((e, i) => {
+    const was = old.elements[i];
+    return was && was.type === e.type && was.name === e.name ? { ...e, id: was.id } : e;
+  });
+}
+
+/**
  * True when the deck's guard and Answers slides are exactly what the builder makes from its
  * questions in `theme` (elements, words, formatting and reveal steps compared; positions and ids
  * ignored): nothing of the teacher's is on them. False when the teacher has edited one, or when

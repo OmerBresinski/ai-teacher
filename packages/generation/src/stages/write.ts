@@ -11,6 +11,7 @@ import {
   SlideSchema,
   type SlideTier,
 } from "@tj/domain/documents";
+import { answersFaults, measureHeadless } from "@tj/slides";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
@@ -740,16 +741,26 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     : credited(out.slides);
   // TEACH-191 part b: the practice and exit answers on Answers slides behind a guard, at the end.
   const keyStage = stageOf(lesson.ageBand, lesson.yearGroup);
+  const answersTheme = atKeyStage(getTheme(lesson.themeId, null), keyStage);
   const shipped = withEndAnswers(deck as unknown as Slide[], {
-    theme: atKeyStage(getTheme(lesson.themeId, null), keyStage),
+    theme: answersTheme,
     stage: keyStage,
   });
   const generated = toLesson(shipped, "generated", allIn(shipped, "done"));
+  // TEACH-247 part ai: the writer's checks never see the guard and Answers slides (they are added
+  // here, after them), and `lintSlide` reads their designed disc-under-answer layering as overlaps.
+  // They are checked on their own rules, measured in the theme they were laid in.
+  const ruler = measureHeadless(answersTheme);
+  const answersOver = shipped.flatMap((s, i) => {
+    const faults = answersFaults(s, ruler);
+    return faults.length ? [{ slide: i + 1, id: s.id, faults }] : [];
+  });
+  const over = [...out.overflow, ...answersOver];
   // UX-C J8: a slide the stage could not fit ships with a "things to check" finding, never silently.
-  const overflow = overflowFindings(out.overflow, shipped);
+  const overflow = overflowFindings(over, shipped);
   if (overflow.length)
     deps.logger.warn(
-      { stage: "generate", slides: out.overflow.map((o) => o.slide) },
+      { stage: "generate", slides: over.map((o) => o.slide) },
       "slides shipped overflowing, flagged to check",
     );
   const done = {

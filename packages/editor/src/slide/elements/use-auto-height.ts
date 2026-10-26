@@ -62,11 +62,16 @@ export function useAutoHeight({
     let frame = 0;
 
     const measure = () => {
-      const content = Math.round(node.scrollHeight + chrome);
       if (!autoHeight) {
-        setOverflowing(content - h > MIN_DELTA);
+        // A fixed box overflows when its lines need more room than it has: the body's laid-out
+        // height (`offsetHeight`, the line boxes). `scrollHeight` also counts each glyph's content
+        // area, which in a face with tall ascenders and descenders (Playpen Sans, Crayon Box) pokes
+        // past a tight line height: the Great Fire Y2 title measured 129 for its two 116-point lines
+        // in a 121 box and showed the warning with nothing cut off (TEACH-247 part ai).
+        setOverflowing(Math.round(node.offsetHeight + chrome) - h > MIN_DELTA);
         return;
       }
+      const content = Math.round(node.scrollHeight + chrome);
       setOverflowing(false);
       if (Math.abs(content - h) < MIN_DELTA) return;
       if (lastWrite.current === content) return;

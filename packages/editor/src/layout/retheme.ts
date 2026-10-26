@@ -200,6 +200,20 @@ export function inLessonTheme(slide: Slide, lesson: Lesson, measure?: Measurer):
   // lesson's theme: tidied (a no-op on a slide that already fits). Lint alone is not the trigger:
   // it does not see a divider a grown task runs through.
   if (!measure) return recoloured;
+  // TEACH-247 part ai: a guard or Answers slide is its template's, never Tidy's. Tidy reflowed its
+  // rows and left each hidden "?" disc behind its moved cover, over the answer above, and pushed
+  // the last answer off the slide (Great Fire Y2 s15/s16). The template lays it again in the
+  // lesson's theme; without the template code loaded it keeps the job's places, recoloured.
+  if (slide.answersRole) {
+    const kit = layoutKit();
+    const relaid = kit?.relayAnswersSlide(
+      recoloured,
+      lesson.slides.map((s) => (s.id === slide.id ? recoloured : s)),
+      own,
+      kit.stageOf(own, lesson.ageBand),
+    );
+    return relaid ?? recoloured;
+  }
   const one = { ...lesson, slides: [recoloured] };
   const cardFoot = SAFE.y + SAFE.h + SPACE[2];
   return (
