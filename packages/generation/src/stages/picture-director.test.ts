@@ -109,6 +109,28 @@ describe("planPicture", () => {
     );
     expect(place.request.realFallback).toBe("none");
     expect(place.request.style).toBeUndefined();
+    // The monument itself is never painted (rulings 210, 296): people merely in it, its building,
+    // a writer-named subject, or people in the writer's ask but not in the director's `shows`.
+    const real = (shows: string, text = shows, named: string | null = null) =>
+      planPicture(
+        dir({ route: "commons", named: "place", period: "the past", pictures: [pic({ shows })] }),
+        { ...ask, text, named },
+      );
+    const fallbackOf = (p: ReturnType<typeof planPicture>) =>
+      p.kind === "photo" ? (p.request.realFallback ?? "none") : p.kind;
+    expect(fallbackOf(real("The Great Wall of China being built by workers"))).toBe("none");
+    expect(fallbackOf(real("The Colosseum with crowds watching"))).toBe("none");
+    expect(fallbackOf(real("Hadrian's Wall with soldiers"))).toBe("none");
+    expect(fallbackOf(real("Hadrian's Wall crossing the hills"))).toBe("none");
+    expect(fallbackOf(real("Hadrian's Wall", "Roman soldiers patrolling Hadrian's Wall"))).toBe(
+      "none",
+    );
+    expect(
+      fallbackOf(real("Roman soldiers patrolling Hadrian's Wall", "x", "Hadrian's Wall")),
+    ).toBe("none");
+    expect(fallbackOf(real("A traveller approaching the gateway as Roman guards watch"))).toBe(
+      "illustration",
+    );
   });
 
   // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:
