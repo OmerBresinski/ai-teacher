@@ -245,14 +245,37 @@ describe("the lesson's title after the writer", () => {
 });
 
 // Ruling 261 (TEACH-110 part ae): the writer plans near a range's low end, so the schema's maximum
-// must leave room for a split to add one or two slides; an exact count stays exact.
+// must leave room for a split to add one or two slides; an exact count stays exact. Ruling 295
+// sets Quick at 7–8, so Quick leaves one slide of room and the others two.
 describe("the slide range leaves room for splits", () => {
-  for (const slideTier of ["quick", "standard", "detailed"] as const)
-    test(`${slideTier}: a plan at the minimum may add two slides`, () => {
+  for (const [slideTier, room] of [
+    ["quick", 1],
+    ["standard", 2],
+    ["detailed", 2],
+  ] as const)
+    test(`${slideTier}: a plan at the minimum may add ${room} slide(s)`, () => {
       const r = slideRange({ slideTier });
-      expect(r.min + 2).toBeLessThanOrEqual(r.max);
+      expect(r.min + room).toBeLessThanOrEqual(r.max);
     });
   test("an exact slide count is not a range", () => {
     expect(slideRange({ slideCount: 10 })).toEqual({ min: 10, max: 10 });
+  });
+});
+
+describe("the writer brief (TEACH-110 part ao)", () => {
+  const lesson = (brief: Partial<NonNullable<Lesson["brief"]>>) =>
+    ({
+      ...sampleBriefLesson({ yearGroup: "Year 2" }),
+      brief: { topic: "Plants", ...brief },
+    }) as unknown as Lesson;
+  test("the stored minutes are the writer's budget, typed or defaulted", () => {
+    expect(
+      writerBrief(lesson({ durationMin: 60, durationDefaulted: true, slideTier: "detailed" }))
+        .durationMin,
+    ).toBe(60);
+    expect(writerBrief(lesson({ durationMin: 45, slideTier: "detailed" })).durationMin).toBe(45);
+  });
+  test("the brief carries no stray tier field", () => {
+    expect("tier" in writerBrief(lesson({ durationMin: 45, slideTier: "detailed" }))).toBe(false);
   });
 });

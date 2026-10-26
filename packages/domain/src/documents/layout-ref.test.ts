@@ -68,6 +68,8 @@ describe("LayoutRef (TEACH-205 part b)", () => {
       "source",
       // TEACH-75 part ad (C5).
       "reasons",
+      // TEACH-110 part an: the objectives slide.
+      "objectives",
     ]);
     expect(LayoutRefSchema.safeParse({ template: "items-row", input: {} }).success).toBe(true);
   });

@@ -10,6 +10,7 @@ import {
   type MadePicture,
   type PictureBank,
   REAL_FALLBACK,
+  realFallbackFor,
 } from "./photo-bank";
 import {
   countImagePrompt,
@@ -76,9 +77,9 @@ describe("planPicture", () => {
     expect(p.request.route).toBe("real");
     expect(p.brief.queries).toEqual(["hyperinflation 1923", "Weimar inflation children"]);
     expect(p.brief.period).toBe("Germany, 1923");
-    // Ruling 163 strict: a past event has no generated fallback at all.
-    expect(p.request.realFallback).toBe("none");
-    expect(p.request.style).toBeUndefined();
+    // Rulings 163 and 210: a past event with no real picture is the painted illustration.
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
   });
 
   // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:
@@ -94,6 +95,7 @@ describe("planPicture", () => {
         });
         expect(p.request.route).toBe("real");
         expect(p.request.period).toBe("Germany, 1923");
+        // The director gave no kind: real-only, never painted (it could be a portrait or a place).
         expect(p.request.realFallback).toBe("none");
         expect(p.request.depicts).toBe(true);
         expect(p.request.style).toBeUndefined();
@@ -269,13 +271,13 @@ describe("planPicture", () => {
     expect(historyPolicy(undefined)).toBe("strict");
     expect(historyPolicy("labelled")).toBe("labelled");
     expect(REAL_FALLBACK.strict).toEqual({
-      event: "none",
+      event: "illustration",
       person: "none",
       work: "none",
       place: "none",
       object: "none",
     });
-    expect(REAL_FALLBACK.present.place).toBe("faithful");
+    expect(REAL_FALLBACK.present.place).toBe("none");
     const person = photoPlan(dir({ route: "commons", named: "person", period: "England, 1540s" }));
     expect(person.request.realFallback).toBe("none");
   });
@@ -478,14 +480,14 @@ describe("lesson look (dd-pics, 6 Oct)", () => {
     expect(p.request.style).toBeUndefined();
     expect(p.request.palette).toBeUndefined();
   });
-  test("ruling 163 strict: a historical event is real only, not the lesson's illustration look", () => {
+  test("rulings 163, 210: a historical event is real first, then painted, not the lesson's look", () => {
     const p = photoPlan(dir({ route: "pexels", period: "Germany, 1923", named: "event" }), {
       ...ask,
       look,
     } as never);
     expect(p.request.route).toBe("real");
-    expect(p.request.realFallback).toBe("none");
-    expect(p.request.style).toBeUndefined();
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
     expect(p.request.palette).toBeUndefined();
   });
   test("a photo lesson is unchanged", () => {
@@ -514,8 +516,8 @@ describe("generic: generate (house photo look)", () => {
       ...ask,
       look: house,
     } as never);
-    expect(hist.request.style).toBeUndefined();
-    expect(hist.request.realFallback).toBe("none");
+    expect(hist.request.style).toBe("illustration");
+    expect(hist.request.realFallback).toBe("illustration");
   });
 });
 
@@ -525,8 +527,13 @@ describe("ruling 163 ships in code", () => {
     process.env.HISTORY_POLICY = "illustrate";
     try {
       expect(historyPolicy()).toBe("strict");
+      // A named object is a particular artefact (ruling 296): real-only, like a person or a work.
+      const namedAsk = { text: "The Mary Rose's bronze cannon", named: "The Mary Rose cannon" };
       for (const named of ["person", "work", "object"] as const) {
-        const p = photoPlan(dir({ route: "commons", named, period: "England, 1540s" }));
+        const p = photoPlan(
+          dir({ route: "commons", named, period: "England, 1540s" }),
+          namedAsk as never,
+        );
         expect(p.request.realFallback).toBe("none");
         expect(p.request.style).toBeUndefined();
       }
@@ -534,8 +541,8 @@ describe("ruling 163 ships in code", () => {
         text: "The Roman landing in Kent",
         named: null,
       });
-      expect(event.request.realFallback).toBe("none");
-      expect(event.request.style).toBeUndefined();
+      expect(event.request.realFallback).toBe("illustration");
+      expect(event.request.style).toBe("illustration");
     } finally {
       if (prev === undefined) delete process.env.HISTORY_POLICY;
       else process.env.HISTORY_POLICY = prev;
@@ -625,4 +632,128 @@ describe("split at ask (TEACH-167 part b)", () => {
     expect(splitSubjects(photoAsk(wives))).toBeUndefined();
     expect(splitSubjects(photoAsk(wives, { named: true }))).toBeUndefined();
   });
+});
+
+// Ruling 296 (amends 210): AI pictures are fine for a generic object or artefact of a period; real
+// places, monuments, real people and unique, identifiable artefacts or documents stay real-only.
+describe("ruling 296: which real things may fall back to a generated picture", () => {
+  const hist = (named: PictureDirection["named"], text: string, writerNamed: string | null) =>
+    photoPlan(dir({ route: "commons", named, period: "London, 1666" }), {
+      text,
+      named: writerNamed,
+    } as never);
+  test("a generic period object (a leather fire bucket) falls back to a painted illustration", () => {
+    for (const text of [
+      "A 17th-century leather fire bucket",
+      "A hand water squirt used to fight fires in 1666",
+    ]) {
+      const p = hist("object", text, null);
+      expect(p.request.route).toBe("real");
+      expect(p.brief.specific).toBe(true);
+      expect(p.request.realFallback).toBe("illustration");
+      expect(p.request.style).toBe("illustration");
+      expect(p.request.imagePrompt).toContain("London, 1666");
+    }
+  });
+  test("a present-day generic object the director sent to Commons takes the generic route", () => {
+    const p = photoPlan(dir({ route: "commons", named: "object" }), {
+      text: "A fire extinguisher",
+      named: null,
+    });
+    expect(p.request.route).toBe("generic");
+    expect(p.request.realFallback).toBeUndefined();
+    expect(p.request.stockFirst).toBe(true);
+    expect(p.brief.specific).toBe(true);
+    expect(p.request.style).toBeUndefined();
+    expect(p.request.imagePrompt).toBe(pic().imagePrompt);
+  });
+  test("fails closed: a real thing with no kind is real-only, past or present", () => {
+    for (const period of ["London, 1666", null]) {
+      const p = photoPlan(dir({ route: "commons", named: null, period }), {
+        text: "A thing in the lesson",
+        named: null,
+      });
+      expect(p.request.route).toBe("real");
+      expect(p.request.realFallback ?? "none").toBe("none");
+    }
+  });
+  test("a forced-real slot (a named set's panel) never generates a generic object", () => {
+    const p = planPicture(
+      dir({ route: "commons", named: "object", period: "London, 1666" }),
+      { text: "A leather fire bucket", named: null },
+      { real: true },
+    );
+    if (p.kind !== "photo") throw new Error("photo expected");
+    expect(p.request.realFallback).toBe("none");
+  });
+  test("a real place (the Pudding Lane bakery) stays real-only, named or not", () => {
+    for (const writerNamed of ["Pudding Lane bakery", null])
+      expect(
+        hist("place", "A reconstruction of the Pudding Lane bakery", writerNamed).request
+          .realFallback,
+      ).toBe("none");
+  });
+  test("a present-day real place stays real-only", () => {
+    for (const writerNamed of ["Buckingham Palace", null])
+      expect(
+        photoPlan(dir({ route: "commons", named: "place" }), {
+          text: "Buckingham Palace",
+          named: writerNamed,
+        } as never).request.realFallback,
+      ).toBe("none");
+  });
+  test("a named person stays real-only", () => {
+    expect(hist("person", "Samuel Pepys", "Samuel Pepys").request.realFallback).toBe("none");
+  });
+  test("a historic monument stays real-only", () => {
+    expect(
+      hist("place", "The Monument to the Great Fire", "The Monument").request.realFallback,
+    ).toBe("none");
+    expect(
+      hist("work", "The Monument to the Great Fire", "The Monument").request.realFallback,
+    ).toBe("none");
+  });
+  test("a unique artefact (the Rosetta Stone) stays real-only", () => {
+    const p = photoPlan(dir({ route: "commons", named: "object", period: "Egypt, 196 BC" }), {
+      text: "The Rosetta Stone",
+      named: "Rosetta Stone",
+    } as never);
+    expect(p.request.realFallback).toBe("none");
+    expect(p.request.style).toBeUndefined();
+  });
+  test("a past ask the director did not classify is real-only, never painted", () => {
+    for (const text of ["The Great Fire spreading across London", "A portrait of Charles II"]) {
+      const p = hist(null, text, null);
+      expect(p.request.realFallback).toBe("none");
+      expect(p.request.style).toBeUndefined();
+    }
+  });
+  test("an explicit event the writer named is painted (rulings 163, 210)", () => {
+    const p = hist("event", "The Great Fire spreading across London", "The Great Fire of London");
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
+  });
+  test("a past person stays real-only", () => {
+    expect(hist("person", "Charles II", null).request.realFallback).toBe("none");
+  });
+  test("a past event, named or not, falls back to the painted illustration (rulings 163, 210)", () => {
+    for (const named of ["The Great Fire of London", null])
+      expect(
+        hist("event", "The Great Fire spreading across London", named).request.realFallback,
+      ).toBe("illustration");
+  });
+});
+
+describe("realFallbackFor: ruling 296's full table", () => {
+  const kinds = [undefined, null, "person", "place", "work", "event", "object"] as const;
+  for (const policy of ["strict", "present"] as const)
+    for (const kind of kinds)
+      for (const named of [true, false])
+        test(`${policy}, ${kind ?? "no kind"}, writer ${named ? "named" : "generic"}`, () => {
+          const want =
+            (kind === "object" && !named) || (kind === "event" && policy === "strict")
+              ? "illustration"
+              : "none";
+          expect(realFallbackFor(kind, policy, named)).toBe(want);
+        });
 });

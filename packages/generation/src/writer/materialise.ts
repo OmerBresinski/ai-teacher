@@ -80,6 +80,8 @@ export type Plan = {
   flow?: {
     slide: number;
     does: string;
+    /** The planned layout, template first (`visual-text points-0-fig`). */
+    layout?: string;
     look_at?: { kind: string; shows: string | null };
     teaches?: number[];
   }[];
@@ -1234,12 +1236,23 @@ function kindByRole(s: S, ctx: MaterialiseCtx, kind: Slide["kind"]): Slide["kind
 
 /** The objectives slide from the approved objectives (the writer never writes slide 2). */
 export function codeObjectives(ctx: Omit<MaterialiseCtx, "visual">): Materialised {
-  const r = layoutTemplate(
-    toInput({ template: "objectives" }, { ...ctx, visual: () => ({ status: "pending" }) }),
+  const input = toInput(
+    { template: "objectives" },
+    { ...ctx, visual: () => ({ status: "pending" }) },
+  );
+  const r = layoutTemplate(input, ctx.theme, ctx.stage);
+  // One adaptive group (TEACH-110 part an): a teacher's typing re-lays the cards, as the writer did.
+  const group = layoutGroup(
+    { template: "objectives", input: input as unknown as Record<string, unknown> },
     ctx.theme,
     ctx.stage,
+    `${stableIdPrefix(ctx.index)}layout`,
   );
-  return aiAuthored({ slide: r.slide, over: r.over });
+  const slide = {
+    ...r.slide,
+    elements: [{ ...group, authoredBy: "ai" } as unknown as Slide["elements"][number]],
+  };
+  return aiAuthored({ slide, over: r.over });
 }
 
 /** The title slide in code from the brief, before the writer answers. */

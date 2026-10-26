@@ -44,9 +44,10 @@ export type HistoryPolicy = "strict" | "illustrate" | "labelled";
  * reconstruction" caption).
  */
 export const REAL_FALLBACK: Record<HistoryPolicy | "present", Record<NamedKind, RealFallback>> = {
-  // An event's illustration fallback was unreachable under strict (a past event always depicts,
-  // and nothing is generated for one), so strict says what happens: no generated picture.
-  strict: { event: "none", person: "none", work: "none", place: "none", object: "none" },
+  // Rulings 163 and 210 (26 Oct 2026): a past event, scene or reconstruction with no real
+  // picture is a painted illustration (never photo style), judged for wrong-period details;
+  // something beats nothing (ruling 209). People, places, works and named objects stay real-only.
+  strict: { event: "illustration", person: "none", work: "none", place: "none", object: "none" },
   illustrate: {
     event: "illustration",
     person: "illustration",
@@ -55,8 +56,30 @@ export const REAL_FALLBACK: Record<HistoryPolicy | "present", Record<NamedKind, 
     object: "none",
   },
   labelled: { event: "faithful", person: "faithful", work: "none", place: "none", object: "none" },
-  present: { event: "none", person: "none", work: "none", place: "faithful", object: "none" },
+  // Ruling 296 / 210: a real place is real-only, present-day too.
+  present: { event: "none", person: "none", work: "none", place: "none", object: "none" },
 };
+
+/**
+ * Ruling 296 (amends 210, 26 Oct 2026): a real thing's fallback when Commons and stock miss. Real
+ * places, monuments and works, real people and events keep ruling 163's table (real-only under
+ * `strict`). A generic object or artefact of a period (a leather fire bucket, a Roman oil lamp) may
+ * be generated: the director's `object` that the writer did not mark `named`, since the writer
+ * marks a subject named only when it must show one particular real thing. A unique, identifiable
+ * artefact or document (the Rosetta Stone) is named, so it stays real-only. A past object is drawn
+ * as the painted illustration (`illustration`), never photo style (ruling 163). A missing kind
+ * is real-only.
+ */
+export function realFallbackFor(
+  kind: NamedKind | null | undefined,
+  policy: HistoryPolicy | "present",
+  writerNamed: boolean,
+): RealFallback {
+  // Fails closed: a real thing the director did not classify is never generated.
+  if (!kind) return "none";
+  if (kind === "object" && !writerNamed) return "illustration";
+  return REAL_FALLBACK[policy][kind];
+}
 
 /** Ruling 163's policy, a code default (Greg confirmed `strict`, 6 Oct): config ships in code. */
 export const HISTORY_POLICY: HistoryPolicy = "strict";
@@ -183,13 +206,20 @@ export function lookMatches(req: BankRequest, hit: MadePicture): boolean {
 
 /**
  * Ruling 163, tightened in a lesson trial (an AI "illustration" of the Roman landing):
- * a request that depicts a past event or person never places a generated picture of any style; only
- * a code drawing (`drawn`) may. They are shown by real artefacts and artworks. Round 7: a generic
+ * a request that depicts a past event or person never places a generated photo; a code drawing
+ * (`drawn`) may, and since rulings 163 and 210 (26 Oct 2026) so may the painted illustration of a
+ * past event whose fallback asks for it. They are shown by real artefacts and artworks. Round 7: a generic
  * thing with a period (wheat, ore) is not depicting and may still be generated.
  */
 export function styleAllowed(req: BankRequest, picture: MadePicture): boolean {
   if (!req.period || !req.depicts || picture.source.provider !== "generated") return true;
-  return picture.style === "drawn";
+  if (picture.style === "drawn") return true;
+  // Rulings 163 and 210: a past event whose fallback is the painted illustration may place one.
+  return (
+    req.realFallback === "illustration" &&
+    req.style === "illustration" &&
+    picture.style === "illustration"
+  );
 }
 
 export interface PictureBank {
@@ -318,8 +348,10 @@ export async function findPicture(
     return done(photo, via);
   };
   const make = async (faithful: boolean, sig: AbortSignal = signal) => {
-    // Ruling 163 (narrowed later): nothing is generated for a past event or person.
-    if (req.period && req.depicts && !req.draw) return undefined;
+    // Ruling 163 (narrowed later): nothing is generated for a past event or person, except the
+    // painted illustration of a past event whose fallback asks for it (rulings 163 and 210).
+    const painted = req.realFallback === "illustration" && req.style === "illustration";
+    if (req.period && req.depicts && !req.draw && !painted) return undefined;
     let hint: RetryHint | undefined;
     /** The safety retry runs once at most, with its own line; a second refusal ends the picture. */
     let safetyRetried = false;

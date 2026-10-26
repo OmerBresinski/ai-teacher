@@ -42,7 +42,7 @@ import { createProgressiveDeck, type ProgressiveDeck } from "./progressive";
 /**
  * The slides the writer may write, title and objectives included. A tier (ruling 164) gives its
  * range and the writer picks the count inside it; the schema holds it there. A lesson made before
- * tiers keeps its exact count (ADR 0036), held to Quick's minimum and Detailed's maximum (6–16). Neither keeps the Standard range.
+ * tiers keeps its exact count (ADR 0036), held to Quick's minimum and Detailed's maximum (7–16). Neither keeps the Standard range.
  */
 export function slideRange(
   brief: { slideTier?: SlideTier | undefined; slideCount?: number | undefined } | undefined,
@@ -108,7 +108,6 @@ export function writerBrief(lesson: Lesson): Brief {
     // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
     // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
     exitTicketOnSlides: b?.worksheet !== true,
-    tier: "standard",
     slides: slideRange(b),
   };
 }

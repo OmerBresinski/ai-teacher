@@ -65,11 +65,14 @@ import {
   charsOver,
   contextBlock,
   fillTemplate,
+  fitObjectives,
   fitTable,
   fixedFallback,
+  flowMatcher,
   keepAnswerKey,
   keepAsksHonest,
   layoutsFor,
+  lineMatchesObjective,
   linkSteps,
   lookOf,
   lostFault,
@@ -77,9 +80,12 @@ import {
   overflowPt,
   plainWords,
   promptStage,
+  pupilCharLimit,
+  pupilLinesProblem,
   pupilWordLimit,
   repairTerms,
   roomLine,
+  shortenObjective,
   shuffleHinge,
   switchesFor,
   titleOneThing,
@@ -552,6 +558,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // Slide 2 is laid from the approved objectives; pupil wording falls back to the teacher's.
     objectives: run.objectives.map((t) => ({ teacher: t, pupil: t })),
   };
+  /** The objectives slide holds these lines: laid, nothing reported over. */
+  const objectivesFit = (lines: string[]) =>
+    codeObjectives({
+      ...base,
+      index: 1,
+      plan: {
+        ...plan,
+        objectives: lines.map((l, k) => ({ teacher: run.objectives[k] ?? l, pupil: l })),
+      },
+    }).over.length === 0;
+  /** Sets slide 2's lines, shortened (whole clauses, then words) until the slide holds them. */
+  const setObjectiveLines = (lines: string[]) => {
+    const fitted = fitObjectives(lines, objectivesFit, log);
+    (plan.objectives ?? []).forEach((o, k) => {
+      o.pupil = fitted[k] ?? o.pupil;
+    });
+  };
+  // Until the pupil wording lands, slide 2 shows the teacher's wording, fitted to the slide.
+  setObjectiveLines(run.objectives);
   const asks = new Map<number, VisualAsk[]>();
   const laid = new Map<number, Materialised>();
   /** fallbackOnlyOnFailure: slides laid out full width to fit their drawn diagram (points to notes). */
@@ -657,29 +682,53 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // ── pupil wording: one small call, started with the writer (the objectives are confirmed), so
   // slide 2 is laid once, before editable, and never changes after. A failed or late call keeps
   // the teacher's wording; a budget or abort error still stops the lesson, when it is awaited. ──
-  const pupilJob: Promise<{ lines: unknown[] } | { fatal: unknown }> =
-    run.pupilWording === false
+  // The schema is pinned to exactly one line per objective, and the lines are checked in code
+  // against the slide's measured room: one re-ask, then the teacher's wording (TEACH-110 part an).
+  const nObjectives = run.objectives.length;
+  const pupilSchema = JSON.parse(P.pupilObjectivesSchema) as {
+    properties?: { pupil?: { minItems?: number; maxItems?: number } };
+  };
+  if (pupilSchema.properties?.pupil && nObjectives > 0) {
+    pupilSchema.properties.pupil.minItems = nObjectives;
+    pupilSchema.properties.pupil.maxItems = nObjectives;
+  }
+  const askPupil = (): Promise<{ lines: unknown } | { fatal: unknown }> =>
+    chat({
+      model: SMALL_MODEL,
+      effort: "low",
+      system: P.pupilObjectives,
+      user: fillTemplate(P.pupilObjectivesUser, brief, {
+        objectives: plan.objectives ?? [],
+        maxWords: pupilWordLimit(brief.keyStage, nObjectives),
+        maxChars: pupilCharLimit(brief.keyStage, nObjectives),
+      }),
+      schema: pupilSchema,
+      name: "pupil_objectives",
+      maxTokens: 1500,
+      timeoutMs: PUPIL_WORDING_DEADLINE_MS,
+    }).then(
+      (r) => ({ lines: (r.out as { pupil?: unknown } | undefined)?.pupil }),
+      (e: unknown) => {
+        if (isFatal(e)) return { fatal: e };
+        log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
+        return { lines: undefined };
+      },
+    );
+  const pupilJob: Promise<{ lines: string[] } | { fatal: unknown }> =
+    run.pupilWording === false || nObjectives === 0
       ? Promise.resolve({ lines: [] })
-      : chat({
-          model: SMALL_MODEL,
-          effort: "low",
-          system: P.pupilObjectives,
-          user: fillTemplate(P.pupilObjectivesUser, brief, {
-            objectives: plan.objectives ?? [],
-            maxWords: pupilWordLimit(brief.keyStage, (plan.objectives ?? []).length),
-          }),
-          schema: JSON.parse(P.pupilObjectivesSchema),
-          name: "pupil_objectives",
-          maxTokens: 1500,
-          timeoutMs: PUPIL_WORDING_DEADLINE_MS,
-        }).then(
-          (r) => ({ lines: (r.out as { pupil?: unknown[] } | undefined)?.pupil ?? [] }),
-          (e: unknown) => {
-            if (isFatal(e)) return { fatal: e };
-            log({ ev: "pupil-objectives-error", err: String(e).slice(0, 200) });
-            return { lines: [] };
-          },
-        );
+      : (async () => {
+          let got: unknown;
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            const r = await askPupil();
+            if ("fatal" in r) return r;
+            got = r.lines;
+            const problem = pupilLinesProblem(got, nObjectives, brief.keyStage, run.objectives);
+            if (!problem) return { lines: (got as string[]).map((l) => l.trim()) };
+            if (got !== undefined) log({ ev: "pupil-objectives-rejected", attempt, why: problem });
+          }
+          return { lines: pupilFallback(got, run.objectives, brief.keyStage) };
+        })();
 
   // ── the writer call ──
   const user = withCloseLine(
@@ -1080,6 +1129,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     return qc.first;
   };
+  /** Each written slide's flow entry (fixes.ts `flowMatcher`), matched once, in order. */
+  const flowOf = flowMatcher(() => plan.flow);
   const openSlide = (idx: number, arrived: S) => {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
@@ -1099,6 +1150,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ...(a.fields.length ? { fields: a.fields } : {}),
       });
     }
+    // The template as written, before an activity, table or quick-check rewrite renames it.
+    const written = String(arrived.template ?? "");
     // No em dashes on slides. The writer's answer is its first option or card (key 1).
     let s = answerFirst(slideNoEmDash(raw));
     const figOpts = {
@@ -1140,7 +1193,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? s.heading ?? "")}`);
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
     // which asks for none gets the picture from look's phrase.
-    const look = lookOf(plan.flow?.find((x) => x.slide === idx + 1));
+    // The entry that plans this slide, by the template the writer wrote (not by index).
+    const entry = flowOf(idx, written);
+    const look = lookOf(entry);
+    const byIndex = plan.flow?.find((x) => x.slide === idx + 1);
+    if (byIndex !== entry && lookOf(byIndex)?.kind === "picture")
+      log({ ev: "look-other-slide", slide: idx + 1, written, planned: byIndex?.layout ?? null });
     const added = withLook(s, look);
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
@@ -1325,11 +1383,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   if (closed.note) log({ ev: "close-missing", level: "warn", why: closed.note });
   out.slides = closed.slides;
-  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring.
+  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring. A tier's
+  // deck under its minimum ships too, logged, never retried (TEACH-110 part ao): a second writer
+  // run would double the cost and splice two attempts' slides.
+  const writtenCount = out.slides?.length ?? 0;
   const miss =
     brief.slides.min === brief.slides.max
-      ? countMiss(out.slides?.length ?? 0, brief.slides.max)
-      : undefined;
+      ? countMiss(writtenCount, brief.slides.max)
+      : writtenCount + 2 < brief.slides.min
+        ? countMiss(writtenCount, brief.slides.min)
+        : undefined;
   if (miss) log({ ev: "count-miss", level: "warn", ...miss });
   plan.design = out.design;
   plan.flow = out.flow;
@@ -1351,15 +1414,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     openSlide(idx, raw);
   }
   // Slide 2 with the pupil wording (a small call started with the writer, so it has landed by
-  // now or soon after); any line missing keeps the teacher's. Then slide 2 is final too, and is
+  // now or soon after); a line that failed its checks keeps the teacher's. Then slide 2 is final too, and is
   // handed over with the written slides (TEACH-202 part o).
   const pupil = await pupilJob;
   if ("fatal" in pupil) throw pupil.fatal;
   if (pupil.lines.length) {
-    (plan.objectives ?? []).forEach((o, k) => {
-      const line = pupil.lines[k];
-      if (typeof line === "string" && line.trim()) o.pupil = line.trim();
-    });
+    // Checked and fitted lines (TEACH-110 part an): the room, relevance and slide fit.
+    setObjectiveLines(pupil.lines);
     laid.set(1, codeObjectives({ ...base, index: 1, plan }));
   }
   const objectivesShown = laid.has(1);
@@ -2763,4 +2824,34 @@ function listQuestion(
   if (!s || !["question-set", "practice", "exit-ticket"].includes(String(s.template))) return;
   const qs = Array.isArray(s.questions) ? s.questions.map(String) : [];
   return listAnswers(qs, n?.answers);
+}
+
+/**
+ * Slide 2's lines when the pupil wording failed its checks twice. With one line per objective,
+ * a line within the room and about its own objective (`lineMatchesObjective`) is kept and any
+ * other takes its teacher's wording; with a wrong count no line can be matched to its objective,
+ * so every line is the teacher's. The teacher's wording is approved and always about the right
+ * objective; only its filler, parentheticals and trailing qualifiers are trimmed, never a term.
+ */
+export function pupilFallback(
+  lines: unknown,
+  teacher: string[],
+  stage: Brief["keyStage"],
+): string[] {
+  const n = teacher.length;
+  const room = pupilCharLimit(stage, n);
+  const words = pupilWordLimit(stage, n);
+  const byLine = Array.isArray(lines) && lines.length === n;
+  return teacher.map((t, k) => {
+    const line = byLine ? (lines as unknown[])[k] : undefined;
+    const kept = typeof line === "string" ? line.trim() : "";
+    if (
+      kept &&
+      kept.length <= room &&
+      kept.split(/\s+/).length <= words &&
+      lineMatchesObjective(kept, k, teacher)
+    )
+      return kept;
+    return shortenObjective(t, room);
+  });
 }
