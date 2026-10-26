@@ -228,6 +228,16 @@ describe("freehandBan, the rule itself", () => {
       "Camille's family tree: grandparents, parents, brother and sister",
       "A free-body diagram of a box on a slope",
       "A power plant turbine",
+      "A computer mouse and keyboard",
+      "Count each mouse click on the button",
+      "A fence 12 feet long",
+      "A room of 200 square feet",
+      "A rocket with its nose cone and fins",
+      "The mouth of a cave",
+      "A bottle mouth and its cap",
+      "The mouth of the volcano with its crater",
+      "A motorway with its hard shoulder",
+      "STEM careers in engineering",
     ])
       expect(ban(shows)).toBeUndefined();
   });
@@ -241,6 +251,9 @@ describe("freehandBan, the rule itself", () => {
       "A family portrait",
       "A dog and her puppies",
       "Root hair cells in soil",
+      "A mouse in its nest",
+      "A child's foot and its bones",
+      "A flower stem and its leaves",
     ])
       expect(ban(shows)).toBeDefined();
     // A label alone names it.

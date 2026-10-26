@@ -144,7 +144,8 @@ describe("labelled drawings route on the drawer's subject (TEACH-247 part ad)", 
     ]);
     // Part ay: the living words also withhold these, each naming people, organs, cells or plants
     // (the drawer had tagged them as objects): capillary exchange, the eye and ear, a park's
-    // trees, family members, a cleared slope's roots, a testudo of soldiers.
+    // trees, family members, a cleared slope's roots, a testudo of soldiers. Landscape trees going
+    // to a picture is accepted (review of #696): a tree drawn from primitives is the crude look.
     const BY_WORDS = [7, 19, 42, 93, 101, 171, 186, 189, 190];
     let withheld = 0;
     let drew = 0;

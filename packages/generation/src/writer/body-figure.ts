@@ -251,6 +251,14 @@ export const NOT_LIVING_PHRASES = [
   String.raw`\bhuman\s+(geography|features?|factors?|activit(y|ies)|impacts?|settlements?|and physical)\b`,
   String.raw`\b(pipe organ|organ pipes?)\b`,
   String.raw`\bgold[- ]leaf\b`,
+  String.raw`\b(computer|wireless|optical|usb)\s+(mouse|mice)\b`,
+  String.raw`\bmouse\s+(clicks?|buttons?|pointer|cursor|pad|mat|wheel)\b`,
+  String.raw`\b\d+(\.\d+)?\s*(feet|foot|ft)\b`,
+  String.raw`\b(square|cubic)\s+(feet|foot)\b`,
+  String.raw`\bnose[- ]cones?\b`,
+  String.raw`\b(cave|bottle|volcano|jar|tunnel|river|estuary|flask|bay)\s+mouths?\b`,
+  String.raw`\bmouths?\s+of\s+(an?|the|its)\s+(\w+\s+)?(cave|bottle|volcano|jar|tunnel|river|estuary|flask|bay)s?\b`,
+  String.raw`\bhard\s+shoulders?\b`,
   String.raw`\b(egg\s+timer|egg\s+box)\b`,
   // A chart or count of living things is a chart: "bar chart of people by age", "population of fish".
   String.raw`\b(numbers?|population|populations|percentage|proportion|count|survey|chart|graph|table|tally|pictogram)\s+of\s+(\w+\s+){0,2}\w+`,
@@ -328,7 +336,8 @@ export function freehandText(ask: { shows?: string; labels?: string[] }, spec?: 
 
 /** A living word or process phrase in the text, after the non-living uses are taken out. */
 export function livingOrProcessWord(text: string): { word: string; process: boolean } | undefined {
-  let t = text;
+  // "STEM" in capitals is the acronym (science, technology, engineering, maths), not a plant's stem.
+  let t = text.replace(/\bSTEMS?\b/g, " ");
   for (const re of NOT_LIVING_RE) t = t.replace(re, " ");
   const p = PROCESS_RE.exec(t);
   if (p) return { word: (p[1] ?? "").toLowerCase(), process: true };
