@@ -42,6 +42,8 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_hinge_first_unmet: ["correct", "slide"],
   gen_keep_pic: ["key", "orphans", "rule", "slide"],
   gen_keep_pic_unused: ["key", "path", "slide", "why"],
+  gen_layout_gate: ["faults", "outcome", "slide"],
+  gen_layout_gate_split_capped: ["parts", "slide"],
   gen_lib_catalogue_failed: [],
   gen_lib_check_logged: ["key", "model", "reason"],
   gen_lib_drawn: ["attempts", "builds", "bytes", "key", "model"],

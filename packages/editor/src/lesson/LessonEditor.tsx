@@ -7,8 +7,10 @@ import {
   type RichDoc,
   type SlideElement,
   sameJson,
+  sameSubstance,
   type Theme,
   type Worksheet,
+  withoutEditorCopies,
 } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import {
@@ -254,10 +256,30 @@ export function LessonEditor({
   // (`systemWrite`); a job's merged write reaches the autosave directly (`receiveGenerated`).
   const teacherEdits = useMemo(() => createTeacherEdits(), []);
   const systemWrite = useRef(false);
+  // The copy the last history change or job fold left: what the next teacher change is read
+  // against, to mark the slides it changed (`teacherEdited`, TEACH-251 part p).
+  const lastDoc = useRef<Lesson | undefined>(undefined);
+  const replaying = useRef(false);
   const onHistoryChange = useCallback(
     (doc: Lesson) => {
-      if (!systemWrite.current) teacherEdits.mark();
-      autosave.onChange(doc, { teacher: !systemWrite.current });
+      if (systemWrite.current) {
+        lastDoc.current = doc;
+        autosave.onChange(doc, { teacher: false });
+        return;
+      }
+      teacherEdits.mark();
+      if (replaying.current) {
+        lastDoc.current = doc;
+        autosave.onChange(doc, { teacher: true });
+        return;
+      }
+      // ADR 0037: the job's merge keeps a slide as the teacher's only when it is marked. A real
+      // action marks the slides it changed; the fit migration (`systemWrite`) and a re-theme (the
+      // theme changed in this step: every slide is redrawn by the editor) mark none.
+      const marked = markTeacherEdited(lastDoc.current ?? lessonRef.current, doc);
+      if (marked !== doc) historyRef.current.rebase?.((d) => (d === doc ? marked : d));
+      lastDoc.current = marked;
+      autosave.onChange(marked, { teacher: true });
     },
     [autosave, teacherEdits],
   );
@@ -395,11 +417,29 @@ export function LessonEditor({
     measuredScale.current = s;
   }, []);
 
+  // Undo and redo step back to copies the history already holds, each marked as it was when it
+  // was made: they mark nothing new (`markTeacherEdited`).
+  const undo = useCallback(() => {
+    replaying.current = true;
+    try {
+      historyRef.current.undo();
+    } finally {
+      replaying.current = false;
+    }
+  }, []);
+  const redo = useCallback(() => {
+    replaying.current = true;
+    try {
+      historyRef.current.redo();
+    } finally {
+      replaying.current = false;
+    }
+  }, []);
   const historyApi = useMemo(
     () => ({
       dispatch: history.dispatch,
-      undo: history.undo,
-      redo: history.redo,
+      undo,
+      redo,
       canUndo: history.canUndo,
       canRedo: history.canRedo,
       beginTransaction: history.beginTransaction,
@@ -410,8 +450,8 @@ export function LessonEditor({
     }),
     [
       history.dispatch,
-      history.undo,
-      history.redo,
+      undo,
+      redo,
       history.canUndo,
       history.canRedo,
       history.beginTransaction,
@@ -485,6 +525,7 @@ export function LessonEditor({
     const current = lessonRef.current;
     if (!current) return;
     autosave.noteServerCopy(current);
+    lastDoc.current ??= current;
     const kept = restoreRef.current;
     restoreRef.current = undefined;
     if (!kept) return;
@@ -566,14 +607,22 @@ export function LessonEditor({
         return reducers.proposalSlideIds(current, incoming);
       },
       receiveGenerated: (base, theirs) => {
-        const merged = historyRef.current.rebase?.((mine) =>
-          inTeachersTheme(mergeJobLesson(base, mine, theirs), theirs, base),
-        );
+        // The merge before the editor draws the job's slides in the teacher's theme: what of the
+        // teacher's the row does not have yet. The repaint is the editor's, never the teacher's.
+        let teachers: Lesson | undefined;
+        const merged = historyRef.current.rebase?.((mine) => {
+          // Its own repaint and fit of slides the teacher has not marked are the editor's, not
+          // the teacher's: left out, so the job's copy (late pictures included) comes whole.
+          teachers = mergeJobLesson(base, withoutEditorCopies(mine, base), theirs);
+          return inTeachersTheme(teachers, theirs, base);
+        });
+        if (merged) lastDoc.current = merged;
         // Nothing of the teacher's left to send: hold the job's very copy, so the next round sees
         // an untouched document and the autosave stays quiet.
         if (merged && sameJson(merged, theirs)) {
           autosave.noteServerCopy(theirs);
           historyRef.current.rebase?.((doc) => (doc === merged ? theirs : doc));
+          lastDoc.current = theirs;
           return theirs;
         }
         // The teacher's changes the row does not have yet: the next autosave sends the merged copy,
@@ -583,12 +632,17 @@ export function LessonEditor({
         // differs from the job's only in the editor's own stamps (the fit version set on open and
         // the body's `updatedAt`) is written quietly, so the indicator does not flip to "Unsaved
         // changes" and back with every row (P0 25 Oct).
+        // Nothing of the teacher's in it (only the editor's repaint of the job's slides, or its
+        // stamps): quiet, and the page holds it while the job writes (TEACH-251 part p).
         if (merged) {
-          autosave.onChange(merged, { teacher: false, quiet: onlyStampsDiffer(merged, theirs) });
+          const quiet =
+            onlyStampsDiffer(merged, theirs) ||
+            (teachers !== undefined && onlyStampsDiffer(teachers, theirs));
+          autosave.onChange(merged, { teacher: false, quiet });
         }
         return merged;
       },
-      undo: () => historyRef.current.undo(),
+      undo,
       goToSlide: (slideId) => {
         session.actions.setActiveSlide(slideId);
       },
@@ -610,7 +664,7 @@ export function LessonEditor({
         else void loadLayoutKit().then(run, run);
       },
     }),
-    [session, autosave],
+    [session, autosave, undo],
   );
 
   const theme = useMemo(() => renderTheme(lesson), [lesson]);
@@ -1123,6 +1177,29 @@ function inTeachersTheme(merged: Lesson, theirs: Lesson, base?: Lesson): Lesson 
     return next;
   });
   return changed ? { ...merged, slides } : merged;
+}
+
+/**
+ * `doc` with every slide a teacher's step changed since `prev` marked `teacherEdited` (ADR 0037,
+ * TEACH-251 part p): the job's merge keeps those as the teacher's. Only for a generated lesson
+ * (one a job may still write).
+ */
+export function markTeacherEdited(prev: Lesson | undefined, doc: Lesson): Lesson {
+  if (!prev || !doc.generation) return doc;
+  // A step that changed the theme redraws every slide: only a slide whose words, elements, notes
+  // or fields changed beyond that redraw is marked (an edit in the same step as a theme pick).
+  const retheme = prev.themeId !== doc.themeId;
+  const before = new Map(prev.slides.map((s) => [s.id, s]));
+  let changed = false;
+  const slides = doc.slides.map((s) => {
+    if (s.teacherEdited) return s;
+    const was = before.get(s.id);
+    if (was === s || (was !== undefined && sameJson(was, s))) return s;
+    if (retheme && was !== undefined && sameSubstance(was, s)) return s;
+    changed = true;
+    return { ...s, teacherEdited: true as const };
+  });
+  return changed ? { ...doc, slides } : doc;
 }
 
 /** Whether two copies of a lesson differ only in the editor's stamps: `fitVersion`, `updatedAt`. */

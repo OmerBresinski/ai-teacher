@@ -341,8 +341,8 @@ describe("the filling editor", () => {
     };
     const { rerender, tree } = setup(lesson, { editorRef: ref, onSave });
     act(() => rerender(tree(new Set([ids[2] as Id]))));
-    // The job, still in the opening theme: rewords slide 1 (the teacher's, once re-themed), adds
-    // notes to slide 3 and writes a new slide after it.
+    // The job, still in the opening theme: rewrites slide 1 (re-themed by the editor, never marked
+    // as the teacher's: TEACH-251 part p), adds notes to slide 3 and writes a new slide after it.
     const first = lesson.slides[0] as Slide;
     const jobWords = {
       ...first,
@@ -379,5 +379,37 @@ describe("the filling editor", () => {
       renderTheme(last).colors.accent,
     );
     expect(JSON.stringify(last.slides[0])).not.toContain("JOB WORDS");
+  });
+
+  // TEACH-251 part p: a re-theme while the job writes is the editor redrawing every slide, not the
+  // teacher's change to any of them: nothing is marked, so the job's late work still lands.
+  test("a theme pick while the job writes marks no slide as the teacher's", async () => {
+    await loadLayoutKit();
+    const seeded = seededLesson();
+    const ids = seeded.slides.map((s) => s.id);
+    const lesson: Lesson = {
+      ...seeded,
+      generation: {
+        jobId: "job",
+        stage: "planned",
+        startedAt: "2026-10-26T04:00:00.000Z",
+        promptVersions: {},
+        usage: { calls: 1, inputTokens: 1, outputTokens: 1, costUsd: 0 },
+        findings: [],
+        slideStates: Object.fromEntries(ids.map((id) => [id, "done" as const])),
+      },
+    };
+    const other = lesson.themeId === "exam-hall" ? "playground" : "exam-hall";
+    const ref: { current: LessonEditorHandle | null } = { current: null };
+    const saved: Lesson[] = [];
+    const onSave = (l: Lesson) => {
+      saved.push(l);
+      return Promise.resolve();
+    };
+    const { rerender, tree } = setup(lesson, { editorRef: ref, onSave });
+    act(() => rerender(tree(new Set([ids[2] as Id]))));
+    act(() => ref.current?.retheme(other));
+    await waitFor(() => expect(saved.at(-1)?.themeId).toBe(other));
+    expect((saved.at(-1) as Lesson).slides.some((s) => s.teacherEdited)).toBe(false);
   });
 });

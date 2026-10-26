@@ -1449,6 +1449,21 @@ describe("holdsFitStamp (UX-A)", () => {
   it("never holds a real edit", () => {
     expect(holdsFitStamp({ ...stamped, title: "Edited" }, stored, "job-1", "job-1")).toBe(false);
   });
+  // TEACH-251 part p: the editor's repaint of slides the teacher has not marked waits for the
+  // job's end (one save then, built by the fold from the job's last row); a marked slide saves now.
+  it("holds the editor's repaint of unmarked slides, never a marked slide", () => {
+    const first = row.slides[0] as (typeof row.slides)[number];
+    const repaint = (extra: object) => ({
+      ...row,
+      slides: [{ ...first, background: { color: "#123456" }, ...extra }, ...row.slides.slice(1)],
+    });
+    expect(holdsFitStamp(repaint({}), row, "job-1", "job-1")).toBe(true);
+    expect(holdsFitStamp(repaint({}), row, null, "job-1")).toBe(false);
+    expect(holdsFitStamp(repaint({ teacherEdited: true }), row, "job-1", "job-1")).toBe(false);
+    expect(holdsFitStamp({ ...row, slides: row.slides.slice(1) }, row, "job-1", "job-1")).toBe(
+      false,
+    );
+  });
 });
 
 describe("the budget-stop notice (UX-A)", () => {
