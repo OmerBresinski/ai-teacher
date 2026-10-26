@@ -8,7 +8,7 @@ import { toInput } from "./materialise";
 /*
  * TEACH-239 part b (C7): the figure slide in the writer. Wide library models come here (the split
  * with picture and text is FIGURE_WIDE_ASPECT); one a lesson, never beside another diagram slide
- * (ruling 229); a failed model is the icon plate, or the words alone with no icon. The draft path
+ * (ruling 229); a failed model leaves the words alone (TEACH-251 part ab), never an icon plate. The draft path
  * keeps every element's id from the first word to the saved slide.
  */
 type S = Record<string, unknown>;
@@ -78,13 +78,24 @@ describe("writer: the figure slide", () => {
     expect(laid).toEqual(["figure", "explain", "big-diagram"]);
     expect(laid.filter((t) => t === "figure")).toHaveLength(1);
   });
-  test("a failed model is the icon plate; with no icon the words stand alone", () => {
+  test("a failed model leaves the words standing alone, never the icon plate (TEACH-251 part ab)", () => {
     const failed = () => ({ status: "failed" });
-    const plate = toInput(figureSlide, ctx([figureSlide], 0, failed));
-    expect(plate).toMatchObject({ template: "figure", icon: "water" });
-    expect(plate.figure).toBeUndefined();
+    const words = toInput(figureSlide, ctx([figureSlide], 0, failed));
+    expect(words).toMatchObject({
+      template: "explain",
+      heading: "The water cycle in a town",
+      lead: "The same water goes round and round.",
+    });
+    expect((words as S).icon).toBeUndefined();
     const { icon: _, ...noIcon } = figureSlide;
     expect(toInput(noIcon, ctx([noIcon], 0, failed)).template).toBe("explain");
+    // While the model is still coming, the slide keeps its figure stage.
+    expect(
+      toInput(
+        figureSlide,
+        ctx([figureSlide], 0, () => ({ status: "pending" })),
+      ).template,
+    ).toBe("figure");
   });
   test("a big visual's library model wider than 1.45 comes here; a narrower one does not", () => {
     const big: S = { template: "big-visual", heading: "Rain", lead: "It falls.", figure: model };
