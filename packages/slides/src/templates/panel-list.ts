@@ -17,7 +17,8 @@
  *   slot (`PLACEHOLDER_IMAGE`), so nothing vanishes. With row pictures the panel takes no picture,
  *   pie or icon of its own (it keeps its width, ruling 257), and row icons are not drawn: pictures
  *   win over icons. Pictures on only some rows go to the panel instead: with no visual of its
- *   own, the panel shows the first of them (TEACH-247 part aj), so no saved picture goes undrawn.
+ *   own, the panel shows the first of them (TEACH-247 part aj); any others are reported in
+ *   `droppedPictures`, never silent.
  * - Icons are all or none (matched through the icon library); any miss draws numbers and is
  *   reported in `iconMisses`. With icons or a pie the discs take the category colours, so each
  *   row's disc is the swatch of its wedge.
@@ -297,7 +298,13 @@ export function layoutPanelList(c: Ctx, input: TemplateInput) {
   const ownVisual =
     !!own &&
     (("shares" in own && Array.isArray(own.shares)) || ("picture" in own && !!own.picture));
-  const lone = rowPics || ownVisual ? null : (rows.find((r) => r.picture)?.picture ?? null);
+  // The panel holds one picture (two stacked do not fit under a heading in its 313 pt width), so
+  // with two or more the first row's wins: the writer's order, which leads with its main item,
+  // and stable while the others are still being made. The rest are reported, never silent.
+  const pictured = rowPics ? [] : rows.flatMap((r, i) => (r.picture ? [i] : []));
+  const lone = ownVisual ? null : (rows[pictured[0] ?? -1]?.picture ?? null);
+  const dropped = ownVisual ? pictured : pictured.slice(1);
+  if (dropped.length) c.droppedPictures = dropped;
   const panel = rowPics ? null : lone ? { picture: lone } : own;
   let shares: number[] | null = null;
   let figure: Figure | null = null;

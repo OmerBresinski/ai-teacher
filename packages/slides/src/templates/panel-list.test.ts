@@ -701,6 +701,75 @@ describe("panel-list row pictures", () => {
     expect(faults).toEqual([]);
   });
 
+  test("two or more partial row pictures: the first row's goes to the panel, the rest are reported", () => {
+    for (const stage of STAGES) {
+      const inp = pictured(4);
+      const rows = (inp.rows ?? []).map((r, i) =>
+        i === 1 || i === 3 ? r : { ...r, picture: null },
+      );
+      const r = layoutTemplate({ ...inp, rows }, T0, stage);
+      const pics = named(r.slide.elements, PANEL_NAMES.photo) as ImageElement[];
+      expect(pics.map((e) => e.src)).toEqual(["https://x.test/row1.jpg"]);
+      expect(tiles(r.slide.elements)).toHaveLength(0);
+      expect(r.droppedPictures).toEqual([3]);
+    }
+    // One picture moved to the panel drops nothing; the panel's own picture drops every row's.
+    const one = pictured(3);
+    const single = (one.rows ?? []).map((r, i) => (i === 2 ? r : { ...r, picture: null }));
+    expect(layoutTemplate({ ...one, rows: single }, T0, "ks2").droppedPictures).toBeUndefined();
+    const own = { photo: "https://x.test/own.jpg", aspect: 1.5 };
+    const r = layoutTemplate({ ...one, rows: single, panel: { picture: own } }, T0, "ks2");
+    expect(r.droppedPictures).toEqual([2]);
+  });
+
+  test("a row picture still being made holds its slot in the panel and lands there, same box, same ask", () => {
+    // The writer's pending slot (materialise `figureNow`): the placeholder with the ask's key.
+    const inp = pictured(3);
+    const withRow1 = (picture: Figure) =>
+      (inp.rows ?? []).map((r, i) => (i === 1 ? { ...r, picture } : { ...r, picture: null }));
+    const pending = { photo: PLACEHOLDER_IMAGE, alt: "a fire hook", request: "slot:row.1" };
+    const landed = {
+      photo: "https://x.test/hook.jpg",
+      aspect: 3 / 2,
+      alt: "",
+      request: "slot:row.1",
+    };
+    for (const theme of THEMES)
+      for (const stage of ["ks1", "ks2"] as Stage[]) {
+        const a = named(
+          layoutTemplate({ ...inp, rows: withRow1(pending) }, theme, stage).slide.elements,
+          PANEL_NAMES.photo,
+        ) as ImageElement[];
+        const b = named(
+          layoutTemplate({ ...inp, rows: withRow1(landed) }, theme, stage).slide.elements,
+          PANEL_NAMES.photo,
+        ) as ImageElement[];
+        expect(a).toHaveLength(1);
+        expect(b).toHaveLength(1);
+        expect(a[0]?.src).toBe(PLACEHOLDER_IMAGE);
+        expect(b[0]?.src).toBe(landed.photo);
+        // The ask travels with the picture, so the landed photo finds the panel, not a row.
+        const ask = (e: ImageElement | undefined) =>
+          (e as { request?: string } | undefined)?.request;
+        expect(ask(a[0])).toBe("slot:row.1");
+        expect(ask(b[0])).toBe("slot:row.1");
+        expect([b[0]?.x, b[0]?.y, b[0]?.w, b[0]?.h]).toEqual([a[0]?.x, a[0]?.y, a[0]?.w, a[0]?.h]);
+      }
+  });
+
+  test("a panel that would show only the group's icon shows the row picture instead", () => {
+    const inp = input(3, "none");
+    const rows = (inp.rows ?? []).map((r, i) => (i === 0 ? { ...r, picture: photo(0) } : r));
+    const plain = layoutTemplate(inp, T0, "ks2", { panelNoVisual: "icon" });
+    expect(named(plain.slide.elements, PANEL_NAMES.photo)).toHaveLength(0);
+    expect(named(plain.slide.elements, PANEL_NAMES.groupIcon)).toHaveLength(1);
+    const r = layoutTemplate({ ...inp, rows }, T0, "ks2", { panelNoVisual: "icon" });
+    expect((named(r.slide.elements, PANEL_NAMES.photo) as ImageElement[])[0]?.src).toBe(
+      (photo(0) as { photo: string }).photo,
+    );
+    expect(named(r.slide.elements, PANEL_NAMES.groupIcon)).toHaveLength(0);
+  });
+
   test("the panel's own picture or pie wins over a lone row picture", () => {
     const inp = pictured(3);
     const rows = (inp.rows ?? []).map((r, i) => (i === 0 ? r : { ...r, picture: null }));
