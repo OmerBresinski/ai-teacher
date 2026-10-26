@@ -32,6 +32,7 @@ import {
   type PipelineState,
   throwIfAborted,
 } from "../types";
+import { nonFatalSync } from "../writer/services";
 import { withUsage } from "./generate";
 import type { JudgeCheck } from "./photo-bank";
 import { audienceOf, generationOf, slideText } from "./shared";
@@ -974,9 +975,10 @@ export function imageKeys(photo: Pick<PhotoResult, "pageUrl">): string[] {
   const keys = [photo.pageUrl];
   const file = /\/wiki\/File:([^?#]+)$/.exec(photo.pageUrl)?.[1];
   if (file) {
-    // Percent escapes decoded byte by byte: a key, never shown, so no malformed-escape throw.
-    const name = file.replace(/%([0-9a-f]{2})/gi, (_, h: string) =>
-      String.fromCharCode(Number.parseInt(h, 16)),
+    // A malformed escape keeps the raw name (a key, never shown).
+    const name = nonFatalSync(
+      () => decodeURIComponent(file),
+      () => file,
     );
     const title = name
       .replace(/\.[a-z0-9]{2,5}$/i, "")
@@ -984,8 +986,12 @@ export function imageKeys(photo: Pick<PhotoResult, "pageUrl">): string[] {
       .toLowerCase()
       .replace(COPY_WORDS, " ")
       .replace(/\(\s*\)/g, " ")
-      .replace(/[^\p{L}\p{N}]+/gu, "");
-    if (title.length >= 8) keys.push(`title:${title}`);
+      // "(1)" and "(2)" are two files, not one: their numbers stay apart from the words.
+      .replace(/\(\s*(\d+)\s*\)/g, " n$1 ")
+      .replace(/\b(\d+)\b/g, "#$1#")
+      .replace(/[^\p{L}\p{N}#]+/gu, "");
+    // Short titles ("Fire", "IMG 1234") name too little to call two files one picture.
+    if (title.length >= 14) keys.push(`title:${title}`);
   }
   return keys;
 }

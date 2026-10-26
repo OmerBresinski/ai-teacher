@@ -37,4 +37,19 @@ describe("one picture from two Commons files is one picture (picq, greatfire 26 
       "https://www.pexels.com/photo/9/",
     ]);
   });
+  test("the review's pairs: a restored copy merges; numbered and named variants stay apart", () => {
+    const same = (a: string, b: string) =>
+      shared(imageKeys(commons(a)), imageKeys(commons(b))).length > 0;
+    expect(same("Portrait_of_a_Man.jpg", "Portrait_of_a_man_(restored).jpg")).toBe(true);
+    expect(same("Great_Fire_(1).jpg", "Great_Fire_(2).jpg")).toBe(false);
+    expect(same("St_Paul%27s_Cathedral_-_North.jpg", "St_Paul%27s_Cathedral_-_South.jpg")).toBe(
+      false,
+    );
+    expect(same("Great_Fire_of_London_1666.jpg", "Great_Fire_of_London_1667.jpg")).toBe(false);
+    // A short title is too little to go on.
+    expect(same("Fire.jpg", "Fire_(cropped).jpg")).toBe(false);
+  });
+  test("a malformed escape keeps the raw name instead of throwing", () => {
+    expect(imageKeys(commons("Bad_%E0%A4%A_escape_name.jpg")).length).toBe(2);
+  });
 });
