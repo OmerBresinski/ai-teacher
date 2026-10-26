@@ -18,6 +18,12 @@ export const FOLLOW_PACE = {
   catchUpMinMs: 1000,
   /** This far behind (or on "Follow writing"), the follow goes straight to the slide being written. */
   jump: 5,
+  /**
+   * A slide that never reports its words typed out (a view that cannot tell) is left anyway this
+   * long after the writer moved past it, or this long after it opened, whichever comes first.
+   */
+  maxAfterTextMs: 6000,
+  maxOpenMs: 8000,
 };
 export type FollowPace = typeof FOLLOW_PACE;
 
@@ -44,7 +50,7 @@ export function useFollowWriting({
   revealing,
   typedId,
   pace = FOLLOW_PACE,
-  now = () => performance.now(),
+  now = perfNow,
 }: {
   slides: readonly { id: Id; elements?: readonly unknown[] }[] | undefined;
   /**
@@ -108,14 +114,26 @@ export function useFollowWriting({
   /** The slide the follow is opening, until the session reports it open. */
   const mark = useRef<Id | null>(null);
   const previous = useRef(activeSlideId);
-  /** When the open slide opened, and when its words were all on screen. */
-  const opened = useRef({ id: activeSlideId, at: now() });
+  /**
+   * When the open slide opened, when its words were all on screen, and when the writer moved past
+   * it (its words complete in the document). Set in effects declared before the follow's own, so
+   * they are current when it runs.
+   */
+  const opened = useRef<{ id: Id | null; at: number }>({ id: null, at: 0 });
   const typed = useRef<{ id?: Id; at: number }>({ at: 0 });
+  const passed = useRef<{ id: Id | null; at: number } | null>(null);
   /** "Follow writing" was pressed: the next move goes straight to the slide being written. */
   const jump = useRef(false);
   const [, wake] = useState(0);
-  if (opened.current.id !== activeSlideId) opened.current = { id: activeSlideId, at: now() };
-  if (typedId !== typed.current.id) typed.current = { id: typedId, at: now() };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stamps the time the open slide changed; `now` is a clock.
+  useEffect(() => {
+    opened.current = { id: activeSlideId, at: now() };
+    passed.current = null;
+  }, [activeSlideId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stamps the time the typing caught up; `now` is a clock.
+  useEffect(() => {
+    typed.current = { id: typedId, at: now() };
+  }, [typedId]);
 
   useEffect(() => {
     const moved = activeSlideId !== previous.current;
@@ -129,7 +147,11 @@ export function useFollowWriting({
         return;
       }
     }
-    if (!following || !target || target === activeSlideId) return;
+    if (!following || !target || target === activeSlideId) {
+      // Nothing to move to: a "Follow writing" press is spent, not saved for a later slide.
+      jump.current = false;
+      return;
+    }
     // Forward only: the follow never takes the view back to an earlier slide.
     const list = slides ?? [];
     const at = (id: Id | null) => list.findIndex((s) => s.id === id);
@@ -141,15 +163,21 @@ export function useFollowWriting({
     if (from >= 0 && !jump.current && behind < pace.jump) {
       // One slide at a time, each read before the next: its words all shown, then a pause.
       const fast = behind >= pace.behind;
-      const due = Math.max(
-        opened.current.at + (fast ? pace.catchUpMinMs : pace.minMs),
+      if (passed.current?.id !== activeSlideId) passed.current = { id: activeSlideId, at: now() };
+      const read =
         typed.current.id === activeSlideId
           ? typed.current.at + (fast ? pace.catchUpReadMs : pace.readMs)
-          : Number.POSITIVE_INFINITY,
+          : Number.POSITIVE_INFINITY;
+      const giveUp = Math.min(
+        opened.current.at + pace.maxOpenMs,
+        passed.current.at + pace.maxAfterTextMs,
+      );
+      const due = Math.max(
+        opened.current.at + (fast ? pace.catchUpMinMs : pace.minMs),
+        Math.min(read, giveUp),
       );
       const wait = due - now();
       if (wait > 0) {
-        if (!Number.isFinite(wait)) return;
         const t = setTimeout(() => wake((n) => n + 1), wait);
         return () => clearTimeout(t);
       }
@@ -187,3 +215,5 @@ export function useFollowWriting({
   }, []);
   return { following, target, resume, mark };
 }
+
+const perfNow = () => performance.now();

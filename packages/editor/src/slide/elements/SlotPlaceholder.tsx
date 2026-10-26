@@ -1,5 +1,5 @@
 import type { Theme } from "@tj/domain/documents";
-import { accentTint } from "@tj/slides";
+import { accentTint, PLACEHOLDER_IMAGE } from "@tj/slides";
 import { Camera, Shapes } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useProposals } from "../../lesson/proposals-context";
@@ -78,10 +78,21 @@ export function SlotPlaceholder({
 }
 
 /**
+ * A picture slot the generating job will fill: it still holds the placeholder picture, and it is
+ * not a blank picture box the teacher added (the layouts' blanks ask the teacher to "Describe this
+ * image…", the job's slots carry what the picture shows).
+ */
+export function isJobPictureSlot(el: { src: string; alt?: string | undefined }): boolean {
+  return el.src === PLACEHOLDER_IMAGE && !(el.alt ?? "").startsWith("Describe this");
+}
+
+/**
  * A picture still on its way (TEACH-202 part o; Greg 25 Oct: "no animation on image placeholders
  * to show they're loading"): while the lesson's job runs, a soft band of light sweeps across the
- * slot every 2.4 s. Once the job has ended no picture will come, so the slot settles, still. With
- * reduced motion the band never moves. (Not named for the effect's usual word: it contains
+ * slot every 2.4 s. The document cannot tell a picture that failed from one still coming (a failed
+ * slot is laid away only when the lesson turns editable), so the sweep stops when the job ends.
+ * With reduced motion nothing moves: the slot takes a soft tint and says "Adding picture…". (Not
+ * named for the effect's usual word: it contains
  * "immer", which the thumb test bans.)
  */
 export function PendingSheen({ radius }: { radius?: number | undefined }) {
@@ -101,7 +112,29 @@ export function PendingSheen({ radius }: { radius?: number | undefined }) {
     );
     return () => a?.cancel();
   }, [coming, reduced]);
-  if (!coming || reduced) return null;
+  if (!coming) return null;
+  if (reduced)
+    return (
+      <div
+        data-slot-sheen="still"
+        className="pointer-events-none absolute inset-0 flex items-end justify-start"
+        style={{ borderRadius: radius || undefined, background: "rgba(255,255,255,0.3)" }}
+      >
+        <span
+          style={{
+            margin: 12,
+            padding: "4px 12px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.85)",
+            color: "rgba(0,0,0,0.6)",
+            fontSize: 18,
+            lineHeight: 1.3,
+          }}
+        >
+          Adding picture…
+        </span>
+      </div>
+    );
   return (
     <div
       aria-hidden

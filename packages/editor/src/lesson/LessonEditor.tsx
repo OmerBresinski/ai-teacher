@@ -156,6 +156,11 @@ export type LessonEditorProps = {
    * generated). Read once at mount; an id not in the deck opens the first slide as usual.
    */
   initialSlideId?: Id;
+  /**
+   * The job's writer has finished every slide's words (TEACH-202 part o); its slides stay the
+   * job's until the lesson is editable, while it adds pictures and checks the lesson.
+   */
+  writingFinished?: boolean;
   /** How the follow paces itself through the slides being written (tests pass a faster one). */
   followPace?: FollowPace;
   /** The app's Worksheet control (list and maker), the one Worksheet entry in ⋯ (ruling 186). */
@@ -231,6 +236,7 @@ export function LessonEditor({
   editorRef,
   initialSlideId,
   followPace,
+  writingFinished = false,
   worksheetsSlot,
   sidePane,
   onAbandon,
@@ -330,12 +336,7 @@ export function LessonEditor({
   const writingNowId = lead !== undefined && writingSlideIds?.has(lead) ? lead : undefined;
   // The writer has finished every content slide; the job still adds pictures and checks the lesson
   // (often a minute or more), and only the objectives slide waits for the job's end.
-  const writerDone =
-    lead !== undefined &&
-    !!writingSlideIds &&
-    !!lesson &&
-    lesson.slides.length > 2 &&
-    lesson.slides.slice(2).every((s) => !writingSlideIds.has(s.id));
+  const writerDone = !!writingSlideIds && writingFinished;
   // Greg 20 Oct (62 C): the companion waits in the margin only until the first slide has words,
   // then leaves for good (latched: a later gap between drafts never brings it back).
   const [companionGone, setCompanionGone] = useState(false);
@@ -352,15 +353,24 @@ export function LessonEditor({
             reservedFactIds,
             writingSlideIds,
             writingNowId,
+            writingFinished: writerDone,
             drafts,
             reveal,
           }
         : writingSlideIds
-          ? { ...NO_PROPOSALS, writingSlideIds, writingNowId, drafts, reveal }
+          ? {
+              ...NO_PROPOSALS,
+              writingSlideIds,
+              writingNowId,
+              writingFinished: writerDone,
+              drafts,
+              reveal,
+            }
           : NO_PROPOSALS,
     [
       writingSlideIds,
       writingNowId,
+      writerDone,
       drafts,
       reveal,
       proposalsEnabled,

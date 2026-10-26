@@ -1,5 +1,5 @@
 import type { ImageElement } from "@tj/domain/documents";
-import { isOpenPhotoSlot, PHOTO_NAME, PLACEHOLDER_IMAGE } from "@tj/slides";
+import { isOpenPhotoSlot, PHOTO_NAME } from "@tj/slides";
 import {
   builtSvgDataUrl,
   hasAnswerPart,
@@ -13,7 +13,7 @@ import { useResolvedImageSrc } from "../../images/image-origin";
 import { pictureStyle, renderedFit, type Size } from "../../lesson/image-adjust";
 import { useReducedMotion } from "../../present/use-fullscreen";
 import type { ElementViewProps } from "./kit";
-import { PendingSheen, SlotPlaceholder } from "./SlotPlaceholder";
+import { isJobPictureSlot, PendingSheen, SlotPlaceholder } from "./SlotPlaceholder";
 
 /**
  * Images are plain <img> so capture and print see a resolved bitmap.
@@ -53,7 +53,7 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
   }
   // A writer's picture slot holds the placeholder picture until its picture lands: in the editor it
   // shows the picture is on its way (TEACH-202 part o).
-  if (props.mode === "edit" && props.element.src === PLACEHOLDER_IMAGE)
+  if (props.mode === "edit" && isJobPictureSlot(props.element))
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <Picture {...props} />
