@@ -1865,10 +1865,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     await run.beforeEditable();
     await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
-    for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
-  }
-  // A slide still showing an open slot that nothing fills is laid again without it.
-  for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
+    // A slide still showing an open slot that nothing fills is laid again without it; each slide
+    // at most once.
+    for (let i = 0; i < n; i++)
+      if ((asks.get(i) ?? []).some((x) => x.type === "photo") || holdsPlaceholder(i)) relay(i);
+  } else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
   // Editable never waits for an early retry: one still running is waited for in its slide's tail.
   editable = true;
   await run.onEditable?.(deck());
