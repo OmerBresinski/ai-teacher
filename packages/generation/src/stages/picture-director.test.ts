@@ -82,6 +82,57 @@ describe("planPicture", () => {
     expect(p.request.style).toBe("illustration");
   });
 
+  // TEACH-251 part r (romans verify3 s8): the director filed a patrol at Hadrian's Wall under
+  // `place`, so a real miss left the slide bare. Ruling 210: a scene or reconstruction at a real
+  // place in its own time is painted; the place as it is today stays real-only.
+  test("a past scene at a real place is painted on a miss; the place alone stays real-only", () => {
+    const scene = photoPlan(
+      dir({
+        route: "commons",
+        named: "place",
+        period: "Roman Britain, 2nd century CE",
+        pictures: [pic({ shows: "Roman soldiers walking beside Hadrian's Wall" })],
+      }),
+      { text: "Reconstruction of Roman soldiers patrolling Hadrian's Wall", named: null },
+    );
+    expect(scene.request.route).toBe("real");
+    expect(scene.request.realFallback).toBe("illustration");
+    expect(scene.request.style).toBe("illustration");
+    const place = photoPlan(
+      dir({
+        route: "commons",
+        named: "place",
+        period: "Roman Britain, 2nd century CE",
+        pictures: [pic({ shows: "Hadrian's Wall crossing the hills at Housesteads" })],
+      }),
+      { text: "Hadrian's Wall crossing the hills today", named: null },
+    );
+    expect(place.request.realFallback).toBe("none");
+    expect(place.request.style).toBeUndefined();
+    // The monument itself is never painted (rulings 210, 296): people merely in it, its building,
+    // a writer-named subject, or people in the writer's ask but not in the director's `shows`.
+    const real = (shows: string, text = shows, named: string | null = null) =>
+      planPicture(
+        dir({ route: "commons", named: "place", period: "the past", pictures: [pic({ shows })] }),
+        { ...ask, text, named },
+      );
+    const fallbackOf = (p: ReturnType<typeof planPicture>) =>
+      p.kind === "photo" ? (p.request.realFallback ?? "none") : p.kind;
+    expect(fallbackOf(real("The Great Wall of China being built by workers"))).toBe("none");
+    expect(fallbackOf(real("The Colosseum with crowds watching"))).toBe("none");
+    expect(fallbackOf(real("Hadrian's Wall with soldiers"))).toBe("none");
+    expect(fallbackOf(real("Hadrian's Wall crossing the hills"))).toBe("none");
+    expect(fallbackOf(real("Hadrian's Wall", "Roman soldiers patrolling Hadrian's Wall"))).toBe(
+      "none",
+    );
+    expect(
+      fallbackOf(real("Roman soldiers patrolling Hadrian's Wall", "x", "Hadrian's Wall")),
+    ).toBe("none");
+    expect(fallbackOf(real("A traveller approaching the gateway as Roman guards watch"))).toBe(
+      "illustration",
+    );
+  });
+
   // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:
   // Commons first, and any generation is the painted illustration, never a photograph.
   test("a historical subject on any route is Commons or nothing, never generated", () => {
