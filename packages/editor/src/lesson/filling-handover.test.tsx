@@ -57,6 +57,7 @@ function setup(lesson: Lesson, extra: Partial<LessonEditorProps> = {}) {
           writingSlideIds={writing}
           drafts={drafts}
           followPace={INSTANT}
+          pillPace={{ settleMs: 0, dwellMs: 0, fadeMs: 0 }}
           {...extra}
         />
       </TooltipProvider>
@@ -101,7 +102,7 @@ describe("the filling editor", () => {
     expect(container.querySelectorAll("[data-navigator] [data-slide-writing]").length).toBe(3);
     expect(container.querySelectorAll("[data-slide-writing-now]").length).toBe(0);
     expect(container.querySelector("[data-slide-writing-overlay]")?.textContent).toContain(
-      "Planning the slides…",
+      "Planning slide 3…",
     );
 
     act(() =>
@@ -170,7 +171,9 @@ describe("the filling editor", () => {
     expect(queryByRole("button", { name: /^Delete slide/ })).toBeNull();
     // The job lets go of the open slide: it turns editable, but nothing opens by itself.
     act(() => rerender(tree(undefined)));
-    expect(container.querySelector("[data-slide-writing-overlay]")).toBeNull();
+    // The pill fades out (jank audit #9) rather than vanishing next to the toolbar.
+    const pill = container.querySelector<HTMLElement>("[data-slide-writing-overlay]");
+    expect(pill === null || pill.style.opacity === "0").toBe(true);
     expect(queryByRole("button", { name: /^Delete slide/ })).toBeNull();
     // The teacher's click on the canvas brings them back.
     const canvas = container.querySelector("[data-slide-frame]") as HTMLElement;
@@ -225,7 +228,7 @@ describe("the filling editor", () => {
     act(() => rerender(tree(new Set([ids[1] as Id]))));
     const region = container.querySelector("[data-writing-status]");
     expect(region?.getAttribute("role")).toBe("status");
-    expect(region?.textContent).toContain("Planning the slides…");
+    expect(region?.textContent).toContain("Planning slide 3…");
     // Slide 1 is done: the same region stays mounted, empty.
     act(() => {
       fireEvent.click(row(container, 1) as HTMLElement);
@@ -309,12 +312,13 @@ describe("the filling editor", () => {
     const { container, rerender, tree } = setup(lesson, { initialSlideId: ids[2] });
     act(() => rerender(tree(new Set(ids), drafts)));
     const pill = () => container.querySelector("[data-slide-writing-overlay]")?.textContent?.trim();
-    expect(pill()).toBe("Planning the slides…");
+    expect(pill()).toBe("Planning slide 3…");
     act(() =>
       drafts.set([
         { index: 2, slideId: ids[2] as string, slide: draftOf(ids[2] as string, "Divide by four") },
       ]),
     );
-    expect(pill()).toBe("Writing this slide…");
+    // One format for the whole fill: the slide being written and how many there are.
+    expect(pill()).toBe("Writing slide 3 of 3…");
   });
 });

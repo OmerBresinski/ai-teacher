@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
 import type { Id } from "@tj/domain/documents";
 import { useState } from "react";
-import { FOLLOW_PACE, type FollowTimer, useFollowWriting } from "./use-follow-writing";
+import {
+  FOLLOW_PACE,
+  type FollowTimer,
+  isTeacherNavigation,
+  useFollowWriting,
+} from "./use-follow-writing";
 
 /*
  * TEACH-202 part o: the follow walks the deck one slide at a time, leaving a slide only once its
@@ -34,7 +39,7 @@ function setup(start: number, typed: Props["typed"] = "open") {
         now: clock.now,
         timer: clock.timer,
       });
-      return { active, ...follow };
+      return { active, setActive, ...follow };
     },
     { initialProps: { lead: start, typed } as Props },
   );
@@ -122,7 +127,7 @@ describe("the follow paces itself", () => {
 
   test("Follow writing with nothing to move to is spent, not kept for the next slide", () => {
     const r = setup(3);
-    act(() => document.dispatchEvent(new Event("pointerdown")));
+    act(() => r.result.current.stop());
     expect(r.result.current.following).toBe(false);
     act(() => r.result.current.resume());
     expect(r.result.current.following).toBe(true);
@@ -132,5 +137,82 @@ describe("the follow paces itself", () => {
     expect(r.result.current.active).toBe(id(3));
     tick(FOLLOW_PACE.minMs);
     expect(r.result.current.active).toBe(id(4));
+  });
+
+  test("a change of the open slide the follow did not make does not stop it (P0 26 Oct)", () => {
+    // Opening Theme mid-generation moved the open slide (a preview dropped the slide for a moment)
+    // and the follow took it as the teacher leaving: the view sat on slide 2 while the writer
+    // reached 11.
+    const r = setup(3);
+    tick(10);
+    expect(r.result.current.active).toBe(id(3));
+    act(() => r.result.current.setActive(id(2)));
+    expect(r.result.current.following).toBe(true);
+    r.rerender({ lead: 5, typed: "open" });
+    for (let i = 0; i < 8; i++) tick(FOLLOW_PACE.minMs);
+    expect(r.result.current.active).toBe(id(5));
+    expect(r.result.current.following).toBe(true);
+  });
+});
+
+describe("isTeacherNavigation", () => {
+  const zone = (attr: string) => {
+    const el = document.createElement("div");
+    el.setAttribute(attr, "");
+    const inner = document.createElement("span");
+    el.append(inner);
+    document.body.append(el);
+    return { el, inner };
+  };
+  const on = (target: Element, e: Event) => {
+    let seen = false;
+    const look = (ev: Event) => {
+      seen = isTeacherNavigation(ev);
+    };
+    target.addEventListener(e.type, look);
+    target.dispatchEvent(e);
+    target.removeEventListener(e.type, look);
+    return seen;
+  };
+  const down = () => new Event("pointerdown", { bubbles: true });
+  const key = (k: string, init: KeyboardEventInit = {}) =>
+    new KeyboardEvent("keydown", { key: k, bubbles: true, ...init });
+
+  test("a click or a movement key on a thumbnail or the canvas is navigation", () => {
+    const strip = zone("data-navigator");
+    const canvas = zone("data-slide-frame");
+    expect(on(strip.inner, down())).toBe(true);
+    expect(on(strip.inner, key("ArrowDown"))).toBe(true);
+    expect(on(canvas.inner, down())).toBe(true);
+    expect(on(canvas.inner, key("Enter"))).toBe(true);
+    strip.el.remove();
+    canvas.el.remove();
+  });
+
+  test("a scroll in the strip is navigation; a wheel over the canvas is not", () => {
+    const strip = zone("data-navigator");
+    const canvas = zone("data-slide-frame");
+    expect(on(strip.inner, new Event("wheel", { bubbles: true }))).toBe(true);
+    expect(on(strip.inner, new Event("touchmove", { bubbles: true }))).toBe(true);
+    expect(on(canvas.inner, new Event("wheel", { bubbles: true }))).toBe(false);
+    strip.el.remove();
+    canvas.el.remove();
+  });
+
+  test("the top bar, a dialog, the chip and shortcut chords are not", () => {
+    const bar = zone("data-top-bar");
+    const dialog = zone("role");
+    dialog.el.setAttribute("role", "dialog");
+    const strip = zone("data-navigator");
+    const chipEl = document.createElement("button");
+    chipEl.setAttribute("data-follow-writing", "");
+    strip.el.append(chipEl);
+    expect(on(bar.inner, down())).toBe(false);
+    expect(on(dialog.inner, down())).toBe(false);
+    expect(on(dialog.inner, key("ArrowDown"))).toBe(false);
+    expect(on(chipEl, down())).toBe(false);
+    expect(on(strip.inner, key("0", { metaKey: true }))).toBe(false);
+    expect(on(strip.inner, key("Tab"))).toBe(false);
+    for (const z of [bar, dialog, strip]) z.el.remove();
   });
 });

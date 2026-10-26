@@ -111,15 +111,28 @@ describe("the editor follows the slide being written", () => {
     expect(chip()).not.toBeNull();
   });
 
-  test("a key press anywhere stops the follow for good", () => {
+  test("only the teacher's navigation stops the follow: a key elsewhere or a dialog does not", () => {
     const lesson = worded(seededLesson());
     lesson.slides.push(fourth(lesson));
     const { write } = setup(lesson);
+    // P0 26 Oct: a key or click outside the slides (the top bar, the Theme dialog) is not the
+    // teacher leaving the slide being written.
     fireEvent.keyDown(document.body, { key: "Tab" });
+    fireEvent.pointerDown(document.body);
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    document.body.append(dialog);
+    fireEvent.pointerDown(dialog);
+    fireEvent.keyDown(dialog, { key: "ArrowDown" });
+    dialog.remove();
     write(2);
-    expect(open(2)).toBe("true");
+    expect(open(3)).toBe("true");
+    expect(chip()).toBeNull();
+    // A wheel in the strip is: the follow stops there.
+    fireEvent.wheel(screen.getByRole("listbox", { name: "Slides" }));
     write(3);
-    expect(open(2)).toBe("true");
+    expect(open(3)).toBe("true");
+    expect(chip()).not.toBeNull();
   });
 
   test("between content slides an empty next slide is not opened: the view stays on the last words", () => {

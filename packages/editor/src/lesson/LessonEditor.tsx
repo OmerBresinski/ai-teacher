@@ -26,7 +26,7 @@ import type { ImageSearchClient } from "../images/image-search";
 import { SaveFailedBar } from "../kit/SaveFailedBar";
 import { isFitStale } from "../layout/fit-plan";
 import { createMeasurer } from "../layout/measure";
-import { rethemeFromReducer } from "../layout/retheme";
+import { recolourSlide, rethemeFromReducer } from "../layout/retheme";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
@@ -73,6 +73,7 @@ import {
 import { type FollowPace, useFollowWriting } from "./use-follow-writing";
 import { useHistoryKeys } from "./use-history-keys";
 import { useMobileEditor } from "./use-mobile-editor";
+import { type PillPace, useLinger, useWritingPill } from "./writing-pill";
 
 /*
  * The lesson editor shell (ruling 186): TopBar over InsertRail | Canvas above the Navigator's
@@ -163,6 +164,8 @@ export type LessonEditorProps = {
   writingFinished?: boolean;
   /** How the follow paces itself through the slides being written (tests pass a faster one). */
   followPace?: FollowPace;
+  /** The pill's settle and dwell (tests pass zeros). */
+  pillPace?: PillPace;
   /** The app's Worksheet control (list and maker), the one Worksheet entry in ⋯ (ruling 186). */
   worksheetsSlot?: ReactNode;
   /**
@@ -236,6 +239,7 @@ export function LessonEditor({
   editorRef,
   initialSlideId,
   followPace,
+  pillPace,
   writingFinished = false,
   worksheetsSlot,
   sidePane,
@@ -383,6 +387,15 @@ export function LessonEditor({
     ],
   );
   const [canvasFocused, setCanvasFocused] = useState(false);
+  /**
+   * The theme the job writes in (its row's), so a slide or draft it sends after the teacher picked
+   * another theme is drawn in the teacher's at once (P1 26 Oct: a theme picked mid-generation
+   * reached the writer's slides only at the hand-over, and the accent trailed the rest).
+   */
+  const jobTheme = useRef<string | undefined>(undefined);
+  if (jobTheme.current === undefined && lesson) jobTheme.current = lesson.themeId;
+  /** The follow's `stop`, for `goToSlide` (declared before the follow). */
+  const followStop = useRef<() => void>(() => {});
 
   // Canvas writes its measured scale here on every render of SlideScaler. A ref, not state: the
   // scale changes on every zoom frame and `stepZoom` only needs the latest value when ⌘± is pressed.
@@ -556,7 +569,10 @@ export function LessonEditor({
         return reducers.proposalSlideIds(current, incoming);
       },
       receiveGenerated: (base, theirs) => {
-        const merged = historyRef.current.rebase?.((mine) => mergeJobLesson(base, mine, theirs));
+        jobTheme.current = theirs.themeId;
+        const merged = historyRef.current.rebase?.((mine) =>
+          inTeachersTheme(mergeJobLesson(base, mine, theirs), theirs),
+        );
         // Nothing of the teacher's left to send: hold the job's very copy, so the next round sees
         // an untouched document and the autosave stays quiet.
         if (merged && sameJson(merged, theirs)) {
@@ -577,7 +593,11 @@ export function LessonEditor({
         return merged;
       },
       undo: () => historyRef.current.undo(),
-      goToSlide: (slideId) => session.actions.setActiveSlide(slideId),
+      goToSlide: (slideId) => {
+        // A slide opened from a side pane is the teacher's own move: the follow lets go.
+        followStop.current();
+        session.actions.setActiveSlide(slideId);
+      },
       retheme: (themeId) => {
         const run = () => {
           const h = historyRef.current;
@@ -615,6 +635,23 @@ export function LessonEditor({
     typedId,
     ...(followPace ? { pace: followPace } : {}),
   });
+  followStop.current = follow.stop;
+  // One pill for the whole fill (jank audit #7): planning → writing N of M → finishing → gone,
+  // never backwards, each text held long enough to read, at one place and one width.
+  const pill = useWritingPill(
+    {
+      active: !!writingSlideIds,
+      done: writerDone,
+      writingIndex:
+        writingNowId === undefined
+          ? -1
+          : (lesson?.slides.findIndex((s) => s.id === writingNowId) ?? -1),
+      slideCount: lesson?.slides.length ?? 0,
+    },
+    pillPace ? { pace: pillPace } : undefined,
+  );
+  // The chip goes at once when following resumes; at the hand-over it fades with the pill.
+  const chip = useLinger(!!follow.target && !follow.following, writingSlideIds ? 0 : 200);
 
   // UX audit J1: the slide the teacher watched being written turns editable at the hand-over, and
   // its toolbar, actions and tabs would open by themselves. They wait for the teacher: a click or
@@ -785,36 +822,25 @@ export function LessonEditor({
                                     >
                                       {/* One live region for the whole fill, mounted across slide changes, so moving
                                           between slides never drops an announcement. */}
-                                      {writingSlideIds ? (
+                                      {pill.text !== null ? (
                                         <span
                                           role="status"
                                           aria-atomic="true"
                                           data-writing-status
                                           className="sr-only"
                                         >
-                                          {writerDone
-                                            ? FINISHING_TEXT
-                                            : slide && writingSlideIds.has(slide.id)
-                                              ? writingText(
-                                                  lesson.slides,
-                                                  slide.id,
-                                                  writingNowId,
-                                                  writerDone,
-                                                )
-                                              : ""}
+                                          {pill.visible ? pill.text : ""}
                                         </span>
                                       ) : null}
                                       {slide && writingSlideIds?.has(slide.id) ? (
-                                        <WritingOverlay
-                                          text={writingText(
-                                            lesson.slides,
-                                            slide.id,
-                                            writingNowId,
-                                            writerDone,
-                                          )}
+                                        <WritingBlocker />
+                                      ) : null}
+                                      {pill.text !== null ? (
+                                        <WritingPill
+                                          text={pill.text}
+                                          visible={pill.visible}
+                                          phase={pill.state.phase}
                                         />
-                                      ) : writerDone ? (
-                                        <WritingOverlay text={FINISHING_TEXT} passive />
                                       ) : null}
                                       {companion && !companionGone ? (
                                         <div
@@ -826,8 +852,11 @@ export function LessonEditor({
                                           {companion}
                                         </div>
                                       ) : null}
-                                      {follow.target && !follow.following ? (
-                                        <FollowWritingChip onFollow={follow.resume} />
+                                      {chip.mounted ? (
+                                        <FollowWritingChip
+                                          onFollow={follow.resume}
+                                          visible={chip.visible}
+                                        />
                                       ) : null}
                                       {/* Always wrapped, so the canvas never remounts when a slide's state turns. */}
                                       <div
@@ -847,7 +876,15 @@ export function LessonEditor({
                                                 live || (writingSlideIds?.has(slide.id) ?? false)
                                               }
                                               controls={!quietControls}
-                                              slide={shown ?? slide}
+                                              slide={
+                                                shown && jobTheme.current !== lesson.themeId
+                                                  ? recolourSlide(
+                                                      shown,
+                                                      renderTheme(lesson, jobTheme.current),
+                                                      theme,
+                                                    )
+                                                  : (shown ?? slide)
+                                              }
                                               theme={theme}
                                               onFocusChange={setCanvasFocused}
                                               onScaleChange={onScaleChange}
@@ -938,13 +975,15 @@ function asSystem<T>(flag: { current: boolean }, run: () => T): T {
  * it again. The shell's "Newest slide" (TEACH-252) in the editor's words. Bottom left: the docked
  * side pane covers the canvas's right edge.
  */
-function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
+function FollowWritingChip({ onFollow, visible }: { onFollow: () => void; visible: boolean }) {
   return (
     <button
       type="button"
       data-follow-writing
       onClick={onFollow}
-      className="absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+      disabled={!visible}
+      style={{ opacity: visible ? 1 : 0 }}
+      className="absolute bottom-4 left-4 z-20 flex transition-opacity duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
     >
       <span
         aria-hidden
@@ -956,63 +995,63 @@ function FollowWritingChip({ onFollow }: { onFollow: () => void }) {
 }
 
 /**
- * Over a slide the generating job is still writing (UX ruling 189): the slide shows, nothing on it
- * can be picked, and a pill says why.
+ * Over a slide the generating job is still writing (UX ruling 189): the slide shows and nothing on
+ * it can be picked. The pill that says why is `WritingPill`, mounted for the whole fill.
  */
-/**
- * UX audit J4: what the writer is doing now, so a slide waiting its turn (or the objectives, held
- * until the end) never reads as stuck on itself.
- */
-function writingText(
-  slides: readonly { id: Id }[],
-  slideId: Id,
-  writingNowId: Id | undefined,
-  writerDone = false,
-) {
-  if (writerDone) return FINISHING_TEXT;
-  const now = writingNowId === undefined ? -1 : slides.findIndex((s) => s.id === writingNowId);
-  return writingNowId === slideId
-    ? "Writing this slide…"
-    : now >= 0
-      ? `Writing slide ${now + 1} of ${slides.length}…`
-      : "Planning the slides…";
+function WritingBlocker() {
+  return (
+    <div
+      aria-hidden
+      data-slide-writing-blocker
+      className="absolute inset-0 z-20"
+      onPointerDownCapture={(e) => e.stopPropagation()}
+    />
+  );
 }
 
 /**
- * After the writer's last slide (TEACH-202 part o): the job still adds pictures, checks the lesson
- * and writes notes, so the editor says that rather than "Writing this slide…" on the last slide.
+ * The writing pill (jank audit #7): one element from the first slide to the hand-over, at the
+ * bottom centre between the "Follow writing" chip and the zoom, at one width whatever it says, so
+ * it never jumps between the top of a writing slide and the bottom of a done one. A new text fades
+ * in; at the hand-over the pill fades out. The editor's one `data-writing-status` live region
+ * announces it.
  */
-const FINISHING_TEXT = "Adding pictures and final checks…";
-
-/**
- * The visible pill; the editor's one `data-writing-status` live region announces it. `passive`
- * (a done slide, the job finishing): the pill only, nothing under it blocked.
- */
-function WritingOverlay({ text, passive = false }: { text: string; passive?: boolean }) {
+function WritingPill({ text, visible, phase }: { text: string; visible: boolean; phase: string }) {
   return (
     <div
-      data-slide-writing-overlay={passive ? "finishing" : ""}
-      // Passive, the slide is editable and its toolbar sits at the top: the pill waits at the
-      // bottom, centred between the "Follow writing" chip (left) and the zoom (right).
-      className={
-        passive
-          ? "pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center"
-          : "absolute inset-0 z-20 flex items-start justify-center pt-4"
-      }
-      onPointerDownCapture={passive ? undefined : (e) => e.stopPropagation()}
+      data-slide-writing-overlay={phase}
+      className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center transition-opacity duration-(--duration-base) ease-(--ease-standard) motion-reduce:transition-none"
+      style={{ opacity: visible ? 1 : 0 }}
     >
       <span
         aria-hidden
-        className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta shadow-sm"
+        className="flex min-w-[17.5rem] items-center justify-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-foreground text-meta tabular-nums shadow-sm"
       >
         <span
           aria-hidden
-          className="block size-2 rounded-full bg-primary motion-safe:animate-pulse"
+          className="block size-2 shrink-0 rounded-full bg-primary motion-safe:animate-pulse"
         />
-        {text}
+        <span key={text} className="motion-safe:animate-fade-in">
+          {text}
+        </span>
       </span>
     </div>
   );
+}
+
+/**
+ * The job's slides in the teacher's theme: a slide the merge took from the job (`theirs`) whole,
+ * written in the job's theme, recoloured into the one the teacher picked since.
+ */
+function inTeachersTheme(merged: Lesson, theirs: Lesson): Lesson {
+  if (merged.themeId === theirs.themeId) return merged;
+  const from = renderTheme(theirs);
+  const to = renderTheme(merged);
+  const job = new Set(theirs.slides);
+  return {
+    ...merged,
+    slides: merged.slides.map((s) => (job.has(s) ? recolourSlide(s, from, to) : s)),
+  };
 }
 
 /** Whether two copies of a lesson differ only in the editor's stamps: `fitVersion`, `updatedAt`. */
