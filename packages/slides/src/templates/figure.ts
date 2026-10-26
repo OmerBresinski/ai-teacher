@@ -229,24 +229,6 @@ function plateMedal(
     } as ShapeElement);
 }
 
-/** The longest run of the caption's words that, with an ellipsis, stays on one line. */
-function oneLine(c: Ctx, caption: string): string {
-  const words = caption.split(/\s+/);
-  const lineH = c.s[CAPTION_ROLE] * kit.LH[CAPTION_ROLE];
-  let lo = 1;
-  let hi = words.length - 1;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    const t = `${words.slice(0, mid).join(" ")}…`;
-    if (Math.round(kit.measure(c, t, CAPTION_ROLE, G.width) / lineH) <= 1) lo = mid;
-    else hi = mid - 1;
-  }
-  return `${words
-    .slice(0, lo)
-    .join(" ")
-    .replace(/[,;:.]$/, "")}…`;
-}
-
 /** Lays the figure slide: title, the stage's one figure (or its plate), the caption. */
 export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
   // Laid from the measured heading down: the body band is not moved under a taller heading.
@@ -262,12 +244,17 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
   const capLine = Math.ceil(lineH);
   const capH = caption ? kit.measure(c, caption, CAPTION_ROLE, G.width) : 0;
   const capLines = caption ? Math.round(capH / lineH) : 0;
-  // The stage leaves one caption line: an over-long caption is flagged, never given more room.
+  // The stage leaves the caption's lines: one when it fits its cap. An over-long caption is
+  // flagged for the caller (to rewrite it or switch layout) and meanwhile shown whole on the lines
+  // it takes, the figure giving up the room: never cut with an ellipsis (TEACH-247 part aq: the
+  // Romans Y5 verify6 s4 caption shipped as "Bowness-on-Solway: 73…").
   const st: { x: number; y: number; w: number; h: number } = {
     x: G.margin,
     y: top,
     w: G.width,
-    h: Math.round(FIGURE_FOOT - (caption ? capLine + FIGURE_CAPTION_GAP : 0) - top),
+    h: Math.round(
+      FIGURE_FOOT - (caption ? capLine * Math.max(1, capLines) + FIGURE_CAPTION_GAP : 0) - top,
+    ),
   };
   const f = input.figure;
   let box = st;
@@ -303,12 +290,10 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
     } else c.over.push("figure has no drawing and no icon");
   }
   if (caption) {
-    // Over one line the caption is flagged for repair; meanwhile it shows as one line cut at a word
-    // with an ellipsis (never two lines, never smaller). The full words stay in the field report.
-    const shown = capLines > 1 ? oneLine(c, caption) : caption;
+    // Over one line the caption is flagged; it is drawn whole, never smaller and never cut.
     kit.text(
       c,
-      shown,
+      caption,
       CAPTION_ROLE,
       { x: G.margin, y: box.y + box.h + FIGURE_CAPTION_GAP, w: G.width },
       { color: c.t.colors.muted, name: FIGURE_NAMES.caption },
