@@ -55,6 +55,28 @@ describe("layout gate (TEACH-247 part af)", () => {
       calls: ["split", "drop"],
     });
   });
+  // TEACH-251 part s: the other layout that keeps the visual comes before a split or a drop.
+  test("a layout switch that clears the faults keeps the visual; one that does not is undone", () => {
+    const calls: string[] = [];
+    const steps = (afterSwitch: string[]) => {
+      let k = 0;
+      const seq = [["clipped: lead runs off"], afterSwitch, []];
+      return layoutGate({
+        faults: () => seq[Math.min(k++, seq.length - 1)] ?? [],
+        switchLayout: () => calls.push("switch") > 0,
+        undoSwitch: () => void calls.push("undo-switch"),
+        dropVisuals: () => calls.push("drop") > 0,
+        undoDrop: () => void calls.push("undo"),
+        split: () => calls.push("split") < 0,
+        undoSplit: () => void calls.push("undo-split"),
+      });
+    };
+    expect(steps([]).outcome).toBe("switched");
+    expect(calls).toEqual(["switch"]);
+    calls.length = 0;
+    expect(steps(["clipped: still"]).outcome).toBe("dropped-visual");
+    expect(calls).toEqual(["switch", "undo-switch", "split", "drop"]);
+  });
   test("only layout faults go through the gate", () => {
     for (const f of ["overlap: a and b", "clipped: x", "off-slide: x"])
       expect(LAYOUT_FAULT.test(f)).toBe(true);
