@@ -64,6 +64,74 @@ describe("Answers slides arriving in the starting theme are laid by their templa
     }
   });
 
+  test("an Answers page keeps every id when the template reorders or adds an element", () => {
+    const deck = jobDeck();
+    const page = deck.find((x) => x.answersRole === "answers") as Slide;
+    // Badges, discs and covers repeat: ids follow each name's occurrence, not the index.
+    // The covers stored last and the rule missing (the split reads kickers then badges in order,
+    // so those keep theirs).
+    const rest = page.elements.filter((e) => e.name !== "Rule");
+    const stored: Slide = {
+      ...page,
+      elements: [
+        ...rest.filter((e) => e.name !== "Revealed"),
+        ...rest.filter((e) => e.name === "Revealed"),
+      ],
+    };
+    const out = kit.relayAnswersSlide(
+      stored,
+      deck.map((s) => (s.id === page.id ? stored : s)),
+      crayon,
+      "ks1",
+    ) as Slide;
+    const ids = new Set(out.elements.map((e) => e.id));
+    for (const e of stored.elements) expect(ids.has(e.id)).toBe(true);
+    const badges = (s: Slide) =>
+      s.elements.filter((e) => e.name === "surface:badge").map((e) => e.id);
+    expect(badges(out)).toEqual(badges(page));
+    expect(out.elements.length).toBe(page.elements.length);
+  });
+
+  test("a page whose answer the teacher reworded is only recoloured", () => {
+    const deck = jobDeck();
+    const page = deck.find((x) => x.answersRole === "answers") as Slide;
+    const edited: Slide = {
+      ...page,
+      elements: page.elements.map((e) =>
+        e.name === "Answer"
+          ? ({
+              ...e,
+              doc: {
+                type: "doc",
+                content: [
+                  { type: "paragraph", content: [{ type: "text", text: "Pudding Lane, London" }] },
+                ],
+              },
+            } as typeof e)
+          : e,
+      ),
+    };
+    const lesson = lessonIn(
+      "crayon",
+      deck.map((s) => (s.id === page.id ? edited : s)),
+    );
+    expect(kit.relayAnswersSlide(edited, lesson.slides, crayon, "ks1")).toBeNull();
+    const out = inLessonTheme(edited, lesson, ruler);
+    expect(out.elements.map((e) => [e.x, e.y])).toEqual(edited.elements.map((e) => [e.x, e.y]));
+  });
+
+  test("the page split reads words and counts only: other pages may still be in Splash", () => {
+    const deck = jobDeck();
+    const [, p2] = deck.filter((x) => x.answersRole === "answers") as [Slide, Slide];
+    // Page 1 already re-laid in Crayon; page 2 still the job's Splash copy.
+    const lesson = lessonIn("crayon", deck);
+    const p1 = inLessonTheme(deck.find((x) => x.answersRole === "answers") as Slide, lesson, ruler);
+    const mixed = deck.map((s) => (s.id === p1.id ? p1 : s));
+    const out = kit.relayAnswersSlide(p2, mixed, crayon, "ks1");
+    expect(out).not.toBeNull();
+    expect(answersFaults(out as Slide, ruler)).toEqual([]);
+  });
+
   test("without the template code loaded it is recoloured, never reflowed", () => {
     setLayoutKit(null);
     try {
