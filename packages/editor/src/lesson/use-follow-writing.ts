@@ -33,9 +33,13 @@ export type FollowPace = typeof FOLLOW_PACE;
  * objectives slide stays `writing` until the job ends). The shell's pick arrives as
  * `startFollowing` (`initialSlideId` absent: the shell was following).
  *
- * Any act of the teacher stops the follow for good: a click or key press anywhere on the page,
- * focus on a done slide's canvas, or opening a slide by any other route. Only the "Follow
- * writing" chip (`resume`) starts it again. The follow sets the session's active slide and marks
+ * Any change of the open slide the follow did not make stops it for good: the strip, the toolbar,
+ * undo, search, Present, a screen reader's activation, focus onto a thumbnail. On top of that, the
+ * teacher's own gestures stop it before any move (`isTeacherNavigation`: a click or movement key on
+ * a slide, thumbnail or the canvas, a wheel or touch scroll in the strip), and so does focus on a
+ * done slide's canvas. Clicks and keys elsewhere (the top bar, the Theme dialog, P0 26 Oct: opening
+ * Theme mid-generation used to stop it through a document-wide pointer listener) do not.
+ * Only the "Follow writing" chip (`resume`) starts it again. The follow sets the session's active slide and marks
  * it (`mark`, read by the strip through `FollowMarkContext`): the strip scrolls a followed row into
  * view without focusing it, and not at all while the teacher is busy.
  */
@@ -76,6 +80,8 @@ export function useFollowWriting({
   following: boolean;
   target: Id | undefined;
   resume: () => void;
+  /** The teacher opened a slide by a route the events cannot see (a link in a side pane). */
+  stop: () => void;
   mark: { current: Id | null };
 } {
   const [following, setFollowing] = useState(startFollowing);
@@ -144,7 +150,7 @@ export function useFollowWriting({
     if (moved) {
       const own = activeSlideId !== null && activeSlideId === mark.current;
       if (!own) {
-        // The teacher opened a slide: the follow stops until the chip.
+        // The teacher opened a slide, by whatever route: the follow stops until the chip.
         mark.current = null;
         setFollowing(false);
         return;
@@ -191,19 +197,18 @@ export function useFollowWriting({
     setActiveSlide(next);
   });
 
-  // A click or key press anywhere is the teacher acting (the chip itself excepted).
+  // The teacher's navigation: a click, tap or key on a slide or thumbnail, a scroll in the strip.
   const writing = writingSlideIds !== undefined;
   useEffect(() => {
     if (!following || !writing) return;
     const act = (e: Event) => {
-      if (e.target instanceof Element && e.target.closest("[data-follow-writing]")) return;
-      setFollowing(false);
+      if (isTeacherNavigation(e)) setFollowing(false);
     };
-    document.addEventListener("pointerdown", act, true);
-    document.addEventListener("keydown", act, true);
+    const events = ["pointerdown", "keydown", "wheel", "touchmove"] as const;
+    for (const type of events)
+      document.addEventListener(type, act, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", act, true);
-      document.removeEventListener("keydown", act, true);
+      for (const type of events) document.removeEventListener(type, act, { capture: true });
     };
   }, [following, writing]);
 
@@ -216,10 +221,54 @@ export function useFollowWriting({
     jump.current = true;
     setFollowing(true);
   }, []);
-  return { following, target, resume, mark };
+  const stop = useCallback(() => setFollowing(false), []);
+  return { following, target, resume, stop, mark };
 }
 
 const perfNow = () => performance.now();
+
+/** Where the teacher's own navigation happens: the slide strip (or phone list) and the canvas. */
+const NAVIGATION = "[data-navigator], [data-mobile-lesson-list], [data-slide-frame]";
+/** Keys that move between slides or start an edit; a modifier chord (⌘+, ⌘0) is neither. */
+const MOVE_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "Enter",
+  " ",
+]);
+
+/**
+ * Whether an event is the teacher navigating between slides (P0 26 Oct): a pointer down or a
+ * movement key on a slide or thumbnail, or a wheel or touch scroll in the slide strip. The top bar,
+ * dialogs (Theme), side panes and the "Follow writing" chip are not.
+ */
+export function isTeacherNavigation(e: Event): boolean {
+  const target = e.target;
+  if (!(target instanceof Element)) return false;
+  if (target.closest("[data-follow-writing], [data-navigator-toggle], [role=dialog]")) return false;
+  const zone = target.closest(NAVIGATION);
+  if (!zone) return false;
+  switch (e.type) {
+    case "pointerdown":
+      return true;
+    case "keydown": {
+      const k = e as KeyboardEvent;
+      return !k.metaKey && !k.ctrlKey && !k.altKey && MOVE_KEYS.has(k.key);
+    }
+    case "wheel":
+    case "touchmove":
+      // Only the strip scrolls; a wheel over the canvas is zoom or nothing.
+      return !zone.matches("[data-slide-frame]");
+    default:
+      return false;
+  }
+}
 
 /** Runs `fn` after `ms`; returns a cancel. */
 export type FollowTimer = (fn: () => void, ms: number) => () => void;

@@ -15,7 +15,7 @@ export const WRITER_MODEL = "openai/gpt-6.1-sol";
 /** Every other call the stage makes: Luna at low effort. */
 export const SMALL_MODEL = "openai/gpt-6-luna";
 export const WRITER_EFFORT: Effort = "low";
-/** The pinned writer's output cap (Standard, 9–12 slides): the floor of `writerMaxTokens`. */
+/** The pinned writer's output cap (9–12 slides, the pinned bound): the floor of `writerMaxTokens`. */
 export const WRITER_MAX_TOKENS = 9000;
 /**
  * The most output tokens a slide took in the 24 saved base4 writer runs (3,065 for 12 slides,

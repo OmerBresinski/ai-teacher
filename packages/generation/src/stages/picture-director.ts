@@ -51,7 +51,7 @@ import {
   type MadePicture,
   mustShowOf,
   type PictureBank,
-  REAL_FALLBACK,
+  realFallbackFor,
   sharedVerdictCache,
 } from "./photo-bank";
 import {
@@ -463,10 +463,10 @@ export function planPicture(
     (d.named === "event" ||
       d.named === "person" ||
       (!d.named && DEPICTS.test(`${ask.text} ${d.pictures[0]?.shows ?? ""}`)));
-  const real = opts.real === true || d.route === "commons" || depicts;
+  const ruled = opts.real === true || d.route === "commons" || depicts;
   // The request's year-plus-event anchor leads a Commons search ("hyperinflation 1923" ranks the
   // real 1923 Weimar photo first; the director's own wording did not).
-  const dated = real ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
+  const dated = ruled ? anchorQueries(ask.text).filter((q) => /\d{4}/.test(q)) : [];
   const pictures: DirectedPicture[] = d.pictures
     .map((p) => ({
       shows: clip(p.shows, 400),
@@ -477,9 +477,23 @@ export function planPicture(
     .filter((p) => p.shows && p.imagePrompt);
   const first = pictures[0];
   if (!first) return keep();
-  // A historical scene with no named kind is read as an event (an illustration under `strict`).
-  const kind = d.named ?? (depicts ? "event" : "object");
-  const fallback = real ? REAL_FALLBACK[period ? historyPolicy() : "present"][kind] : undefined;
+  // Only the director's own kind counts. An unclassified ask stays null, which is real-only, even
+  // a depicting past scene: it could be a portrait, a place or a monument (rulings 163, 296). Only
+  // an explicit `event` is painted, whether or not the writer named it (rulings 163, 210).
+  const kind = d.named ?? null;
+  // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
+  // ruling 209 never puts a generated panel beside real ones.
+  const ruledFallback = !ruled
+    ? undefined
+    : opts.real === true
+      ? "none"
+      : realFallbackFor(kind, period ? historyPolicy() : "present", !!ask.named);
+  // Ruling 296: a present-day generic object the director sent to Commons is searched like a real
+  // thing (Commons, then stock), then made as any generic picture is: the generic route, the
+  // lesson's look. A past one stays on the real route with the painted illustration (ruling 163).
+  const genericObject = ruledFallback === "illustration" && !period && kind === "object";
+  const real = ruled && !genericObject;
+  const fallback = real ? ruledFallback : undefined;
   const mustShow = countedPhoto
     ? uniq([
         `exactly ${countedPhoto.total} ${countedPhoto.things.trim()}`,
@@ -510,7 +524,7 @@ export function planPicture(
       imagePrompt,
       draw: null,
       stockFirst:
-        stockFirstRoute(d.route, `${ask.text} ${first.shows}`) &&
+        (genericObject || stockFirstRoute(d.route, `${ask.text} ${first.shows}`)) &&
         !countedPhoto &&
         !looked &&
         !housed,
@@ -525,7 +539,7 @@ export function planPicture(
       request: first.shows,
       mustShow,
       queries: first.queries,
-      specific: real,
+      specific: ruled,
       ...(period ? { period } : {}),
     },
     pictures,
