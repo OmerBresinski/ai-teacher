@@ -273,3 +273,73 @@ describe("C7: stock races generation after the threshold", () => {
     }
   });
 });
+
+describe("TEACH-251 part q: a real thing with a generated fallback overlaps search and generation", () => {
+  const realReq: BankRequest = {
+    text: "A seventeenth-century leather fire bucket",
+    named: null,
+    route: "real",
+    realFallback: "illustration",
+    style: "illustration",
+    period: "London, 1666",
+    imagePrompt: "A leather fire bucket.",
+    draw: null,
+  } as BankRequest;
+
+  test("a slow search that misses: generation started beside it is placed, not after it", async () => {
+    const { bank, log } = fakeBank((s) => after(40, madePhoto("/g.png"), s));
+    const t0 = Date.now();
+    const out = await findPicture(
+      realReq,
+      bank,
+      (s) => after(60, undefined, s),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      20,
+    );
+    expect(out.via).toBe("generated");
+    expect(out.photo?.src).toBe("/g.png");
+    expect(log.generated).toBe(1);
+    // Overlapped: 20 ms + 40 ms of generation ends before the 60 ms search; one after the other
+    // would take 100 ms.
+    expect(Date.now() - t0).toBeLessThan(95);
+  });
+
+  test("a slow search that finds a real picture wins: the generation is cancelled and taken out", async () => {
+    const { bank, log, signals } = fakeBank(() => after(10, madePhoto("/g.png")));
+    const out = await findPicture(
+      realReq,
+      bank,
+      (s) => after(50, stockPhoto("/p.jpg"), s),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      20,
+    );
+    expect(out.via).toBe("fetched");
+    expect(out.photo?.src).toBe("/p.jpg");
+    expect(signals[0]?.aborted).toBe(true);
+    await sleep(30);
+    expect(log.rejected).toEqual(["/g.png"]);
+    expect(log.remembered).toEqual(["/p.jpg"]);
+  });
+
+  test("a real-only thing (no fallback) never generates, however slow its search", async () => {
+    const { bank, log } = fakeBank((s) => after(5, madePhoto("/g.png"), s));
+    const out = await findPicture(
+      { ...realReq, realFallback: "none" },
+      bank,
+      (s) => after(40, undefined, s),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      10,
+    );
+    expect(out.via).toBe("none");
+    expect(log.generated).toBe(0);
+  });
+});

@@ -464,6 +464,14 @@ export async function findPicture(
   if (libraryDown) return done(await fetchStock().catch(stockFailed), "fetched");
   if (req.draw) return done(await make(false), "generated");
   if (req.route !== "real" && req.stockFirst && raceMs !== undefined) return race(raceMs);
+  // TEACH-251 part q: a real thing that may be generated when the real search misses (a generic
+  // period object or a past scene, rulings 210 and 296) starts that generation beside a search
+  // still running after `raceMs`, so the search and the generation overlap instead of running one
+  // after the other past the writer's picture deadline (greatfire verify3 s8: the bucket's search
+  // took 15 s, generation and its judge did not fit, twice). A real picture still wins (ruling
+  // 209): the generation is placed only when the search misses.
+  const fallbackOf = req.route === "real" ? (req.realFallback ?? "none") : "none";
+  if (fallbackOf !== "none" && raceMs !== undefined) return realFirst(raceMs, fallbackOf);
   if (req.route === "real" || req.stockFirst) {
     const fetched = await fetchStock().catch(stockFailed);
     if (fetched) {
@@ -481,6 +489,54 @@ export async function findPicture(
     );
   }
   return placeMade(await make(false), "generated");
+
+  /**
+   * The real ladder with its generated fallback started beside it once the search has run `ms`.
+   * The search always decides: a real picture wins and the generation is cancelled (anything it
+   * still delivers is taken back out); a miss places the generation, judged as ever.
+   */
+  async function realFirst(ms: number, fallback: RealFallback): Promise<BankOutcome> {
+    const faithful = fallback === "faithful";
+    const via: BankVia = faithful ? "generated-faithful" : "generated";
+    // The same answers as the race's stock side: a failed search is a miss, an abort rethrows.
+    const stockP = fetchStock(signal).then((p) => p, stockFailed);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<"late">((resolve) => {
+      timer = setTimeout(() => resolve("late"), ms);
+    });
+    const early = await Promise.race([stockP, late]);
+    clearTimeout(timer);
+    if (early !== "late") {
+      if (early) {
+        await bank.remember(req, early).catch(whenNonFatal(() => undefined));
+        return done(early, "fetched");
+      }
+      trace.stock = "miss";
+      return placeMade(await make(faithful), via);
+    }
+    const genStop = new AbortController();
+    const discardMade = (p: PlacedPhoto) =>
+      (bank.reject?.(p) ?? Promise.resolve()).catch(whenNonFatal(() => undefined));
+    const genP = make(faithful, AbortSignal.any([signal, genStop.signal])).then(
+      (p) => p,
+      (error: unknown) => {
+        if (genStop.signal.aborted && !signal.aborted) return undefined;
+        return rethrowAbort(error);
+      },
+    );
+    const fetched = await stockP;
+    if (fetched) {
+      genStop.abort();
+      void genP.then(
+        (p) => (p ? discardMade(p) : undefined),
+        () => undefined,
+      );
+      await bank.remember(req, fetched).catch(whenNonFatal(() => undefined));
+      return done(fetched, "fetched");
+    }
+    trace.stock = "miss";
+    return placeMade(await genP, via);
+  }
 
   /**
    * Stock first, and generation beside it once stock has run `ms`. The race settles exactly once:
