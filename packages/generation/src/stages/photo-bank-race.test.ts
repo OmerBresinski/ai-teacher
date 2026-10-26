@@ -327,6 +327,33 @@ describe("TEACH-251 part q: a real thing with a generated fallback overlaps sear
     expect(log.remembered).toEqual(["/p.jpg"]);
   });
 
+  test("a painting that lost to a real picture is discarded, never rejected as a refusal (TEACH-202 part x)", async () => {
+    const { bank, log } = fakeBank(() => after(10, madePhoto("/g.png")));
+    const discarded: string[] = [];
+    const rejected: string[] = [];
+    const counted = {
+      ...bank,
+      reject: async (p: { src: string }) => void rejected.push(p.src),
+      discard: async (p: { src: string }) => void discarded.push(p.src),
+    };
+    // The painting is made and judged good before the 50 ms search wins.
+    const out = await findPicture(
+      realReq,
+      counted as never,
+      (s) => after(50, stockPhoto("/p.jpg"), s),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      20,
+    );
+    expect(out.via).toBe("fetched");
+    await sleep(30);
+    expect(discarded).toEqual(["/g.png"]);
+    expect(rejected).toEqual([]);
+    expect(log.remembered).toEqual(["/p.jpg"]);
+  });
+
   test("a job abort during the search rejects once; the pending generation is never unhandled", async () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (e: unknown) => void unhandled.push(e);

@@ -1471,6 +1471,11 @@ export function createWriterPictures(opts: {
               refused.set(index, (refused.get(index) ?? 0) + 1);
             return b.reject?.(photo) ?? Promise.resolve();
           },
+          // A race a real picture won: taken out, never counted as a refusal.
+          discard: (photo: PlacedPhoto) => {
+            slot.made = false;
+            return (b.discard ?? b.reject)?.call(b, photo) ?? Promise.resolve();
+          },
         }
       : {}),
   });
