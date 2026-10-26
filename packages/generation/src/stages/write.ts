@@ -108,7 +108,6 @@ export function writerBrief(lesson: Lesson): Brief {
     // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
     // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
     exitTicketOnSlides: b?.worksheet !== true,
-    tier: "standard",
     slides: slideRange(b),
   };
 }

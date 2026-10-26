@@ -261,3 +261,21 @@ describe("the slide range leaves room for splits", () => {
     expect(slideRange({ slideCount: 10 })).toEqual({ min: 10, max: 10 });
   });
 });
+
+describe("the writer brief (TEACH-110 part ao)", () => {
+  const lesson = (brief: Partial<NonNullable<Lesson["brief"]>>) =>
+    ({
+      ...sampleBriefLesson({ yearGroup: "Year 2" }),
+      brief: { topic: "Plants", ...brief },
+    }) as unknown as Lesson;
+  test("the stored minutes are the writer's budget, typed or defaulted", () => {
+    expect(
+      writerBrief(lesson({ durationMin: 60, durationDefaulted: true, slideTier: "detailed" }))
+        .durationMin,
+    ).toBe(60);
+    expect(writerBrief(lesson({ durationMin: 45, slideTier: "detailed" })).durationMin).toBe(45);
+  });
+  test("the brief carries no stray tier field", () => {
+    expect("tier" in writerBrief(lesson({ durationMin: 45, slideTier: "detailed" }))).toBe(false);
+  });
+});

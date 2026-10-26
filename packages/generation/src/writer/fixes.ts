@@ -35,7 +35,6 @@ export type Brief = {
   language: string;
   durationMin: number;
   exitTicketOnSlides: boolean;
-  tier: string;
   slides: { min: number; max: number };
   teacherTheme?: string;
 };
@@ -52,7 +51,9 @@ export function objectiveCount(b: Brief): string {
 /**
  * K3: why a writer output is incomplete, or undefined when it is whole. A stream cut at the token
  * limit, JSON that does not close, or a deck more than 2 under the count fails the job instead of
- * saving the flow's placeholders as a headings-only deck.
+ * saving the flow's placeholders as a headings-only deck. A tier's deck 1 or 2 under its minimum
+ * ships and is logged (`count-miss` in stage.ts, TEACH-110 part ao): never a retry, which would
+ * double the cost and splice two attempts' slides.
  */
 export function writerIncomplete(o: {
   finishReason?: string | null;

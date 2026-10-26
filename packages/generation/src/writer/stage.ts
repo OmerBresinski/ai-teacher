@@ -1325,11 +1325,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   if (closed.note) log({ ev: "close-missing", level: "warn", why: closed.note });
   out.slides = closed.slides;
-  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring.
+  // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring. A tier's
+  // deck under its minimum ships too, logged, never retried (TEACH-110 part ao): a second writer
+  // run would double the cost and splice two attempts' slides.
+  const writtenCount = out.slides?.length ?? 0;
   const miss =
     brief.slides.min === brief.slides.max
-      ? countMiss(out.slides?.length ?? 0, brief.slides.max)
-      : undefined;
+      ? countMiss(writtenCount, brief.slides.max)
+      : writtenCount + 2 < brief.slides.min
+        ? countMiss(writtenCount, brief.slides.min)
+        : undefined;
   if (miss) log({ ev: "count-miss", level: "warn", ...miss });
   plan.design = out.design;
   plan.flow = out.flow;

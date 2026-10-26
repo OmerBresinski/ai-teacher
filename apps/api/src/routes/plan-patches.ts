@@ -9,6 +9,7 @@
  */
 import type { JobId } from "@tj/domain";
 import {
+  type AgeBand,
   applyObjectiveEdits,
   type Brief,
   defaultDurationMin,
@@ -18,11 +19,34 @@ import {
   type Lesson,
   type LessonFacts,
   type PlanLesson,
+  type SlideTier,
   type SourceRef,
   slideTierOf,
 } from "@tj/domain/documents";
 
 /** The facts a pinned re-plan starts from: the objectives, and nothing derived from them. */
+/**
+ * The re-planned brief's minutes (TEACH-110 part ao): typed minutes win and are never rescaled;
+ * minutes that were defaulted (`durationDefaulted`) follow the key stage and tier; an older lesson
+ * with no flag keeps its stored value.
+ */
+function replanMinutes(
+  stored: Brief | undefined,
+  sent: {
+    durationMin?: number | undefined;
+    slideTier?: SlideTier | undefined;
+    slideCount?: number | undefined;
+  },
+  ageBand: AgeBand | undefined,
+): Pick<Brief, "durationMin" | "durationDefaulted"> {
+  if (sent.durationMin !== undefined)
+    return { durationMin: sent.durationMin, durationDefaulted: undefined };
+  const tier = sent.slideCount !== undefined ? undefined : (sent.slideTier ?? stored?.slideTier);
+  if (stored?.durationMin !== undefined && !stored.durationDefaulted)
+    return { durationMin: stored.durationMin, durationDefaulted: undefined };
+  return { durationMin: defaultDurationMin(ageBand, tier), durationDefaulted: true };
+}
+
 export function pinnedFacts(facts: LessonFacts): LessonFacts {
   const { keyIdeas, ...rest } = facts;
   return {
@@ -72,8 +96,7 @@ export function replanLesson(
     ...(input.brief.slideTier !== undefined && input.brief.slideCount === undefined
       ? { slideCount: undefined }
       : {}),
-    durationMin:
-      input.brief.durationMin ?? lesson.brief?.durationMin ?? defaultDurationMin(ageBand),
+    ...replanMinutes(lesson.brief, input.brief, ageBand),
   };
   const next: Lesson = {
     ...withoutCheckpoint(lesson),
@@ -130,7 +153,12 @@ export function confirmLesson(
           ...brief,
           ...(input.slideCount !== undefined ? { slideCount: input.slideCount } : {}),
           ...(tierChanged ? { slideTier: input.slideTier, slideCount: undefined } : {}),
-          ...(input.durationMin !== undefined ? { durationMin: input.durationMin } : {}),
+          ...(input.durationMin !== undefined
+            ? { durationMin: input.durationMin, durationDefaulted: undefined }
+            : tierChanged && brief.durationDefaulted
+              ? // Defaulted minutes follow the tier (TEACH-110 part ao); typed ones never move.
+                { durationMin: defaultDurationMin(lesson.ageBand, input.slideTier) }
+              : {}),
           // Ruling 201: the worksheet choice is a brief fact; it re-plans nothing.
           ...(input.worksheet !== undefined ? { worksheet: input.worksheet } : {}),
         },
