@@ -49,9 +49,11 @@ describe("a diagram that cannot be shown keeps the writer's slide", () => {
     const r = await run(b, b === "y8-french-my-family" ? withUnshowable(b, slide - 1) : undefined);
     expect(r.pathOf(slide)).toBe("unshown");
     expect(r.events.some((e) => e.ev === "restage-fallback" && e.slide === slide)).toBe(false);
-    // The slide is the writer's own (same heading), not a restaged rewrite.
+    // No restaged rewrite: the writer's own words, laid full width in code when a figure layout
+    // is left with no visual (TEACH-251 part aw: never an empty half).
     const written = r.res.plan.slides[slide - 1] as Record<string, unknown>;
-    expect(written.template).not.toBe("explain");
+    if (written.template === "explain")
+      expect(r.events).toContainEqual(expect.objectContaining({ ev: "unshown-text-only", slide }));
   });
 });
 describe("the objective repair call is gone", () => {

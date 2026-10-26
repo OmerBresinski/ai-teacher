@@ -3188,6 +3188,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       });
   };
   for (let i = 0; i < n; i++) gateSlide(i);
+  // TEACH-251 part aw: a figure layout that ends with no visual on it (lost, refused, dropped by
+  // the gate, or drawn but not laid: Rivers v417 s6) is laid as words, full width, never beside an
+  // empty half. A visual still on its way (pending) keeps its slot.
+  for (let i = 2; i < n; i++) {
+    if (continued.has(i) || !repairable(plan.slides[i] as S, i)) continue;
+    if ((laid.get(i)?.slide.elements ?? []).some((e) => e.type === "image")) continue;
+    if ((asks.get(i) ?? []).some((a) => visualState(i)(a.key).status === "pending")) continue;
+    textOnly(i);
+  }
   // A picture that lands after the gate is laid again (`bindPictureLanded`): it is judged again,
   // with no split (only drop the visual, or keep). A dropped visual stays dropped: its `failed`
   // override is read before any landed state.

@@ -92,8 +92,8 @@ const reroute = {
     points: ["The hen is the adult.", "The chick is the young chicken."],
     figure: {
       kind: "labelled-diagram",
-      shows: "A hen beside a chick, with the parts that tell them apart",
-      labels: ["hen", "chick"],
+      shows: "A farm gate in a wooden fence, with its parts named",
+      labels: ["post", "gate"],
     },
   },
   to_notes: [],
@@ -101,12 +101,12 @@ const reroute = {
 const spec = {
   kind: "labelled-diagram",
   subject: "object_or_machine",
-  alt: "A hen beside a chick.",
+  alt: "A farm gate in a fence.",
   canvas: "square",
   shapes: [{ type: "rect", x: 10, y: 10, w: 80, h: 80 }],
   labels: [
-    { text: "hen", at: [30, 50] },
-    { text: "chick", at: [70, 50] },
+    { text: "post", at: [30, 50] },
+    { text: "gate", at: [70, 50] },
   ],
 };
 
