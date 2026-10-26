@@ -51,6 +51,7 @@ export function useFollowWriting({
   typedId,
   pace = FOLLOW_PACE,
   now = perfNow,
+  timer = TIMER,
 }: {
   slides: readonly { id: Id; elements?: readonly unknown[] }[] | undefined;
   /**
@@ -69,6 +70,8 @@ export function useFollowWriting({
   typedId?: Id | undefined;
   pace?: FollowPace;
   now?: () => number;
+  /** Schedules the next look (tests pass their own clock, not global fake timers). */
+  timer?: FollowTimer;
 }): {
   following: boolean;
   target: Id | undefined;
@@ -178,8 +181,8 @@ export function useFollowWriting({
       );
       const wait = due - now();
       if (wait > 0) {
-        const t = setTimeout(() => wake((n) => n + 1), wait);
-        return () => clearTimeout(t);
+        const cancel = timer(() => wake((n) => n + 1), wait);
+        return cancel;
       }
       next = list[from + 1]?.id ?? target;
     }
@@ -217,3 +220,10 @@ export function useFollowWriting({
 }
 
 const perfNow = () => performance.now();
+
+/** Runs `fn` after `ms`; returns a cancel. */
+export type FollowTimer = (fn: () => void, ms: number) => () => void;
+const TIMER: FollowTimer = (fn, ms) => {
+  const t = setTimeout(fn, ms);
+  return () => clearTimeout(t);
+};

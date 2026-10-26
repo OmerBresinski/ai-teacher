@@ -1,13 +1,14 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { act, renderHook } from "@testing-library/react";
 import type { Id } from "@tj/domain/documents";
 import { useState } from "react";
-import { FOLLOW_PACE, useFollowWriting } from "./use-follow-writing";
+import { FOLLOW_PACE, type FollowTimer, useFollowWriting } from "./use-follow-writing";
 
 /*
  * TEACH-202 part o: the follow walks the deck one slide at a time, leaving a slide only once its
  * words are on screen and have stood a readable time; it gives up waiting on a slide that never
- * says so, and goes straight to the writer when far behind or on "Follow writing". Fake timers.
+ * says so, and goes straight to the writer when far behind or on "Follow writing". A manual clock
+ * goes in through the hook's `now` and `timer`, so no global timers change for other test files.
  */
 
 const slides = Array.from({ length: 10 }, (_, i) => ({
@@ -30,16 +31,45 @@ function setup(start: number, typed: Props["typed"] = "open") {
         startFollowing: true,
         canvasFocused: false,
         typedId: p.typed === "open" ? (active ?? undefined) : (p.typed ?? undefined),
+        now: clock.now,
+        timer: clock.timer,
       });
       return { active, ...follow };
     },
     { initialProps: { lead: start, typed } as Props },
   );
 }
-const tick = (ms: number) => act(() => jest.advanceTimersByTime(ms));
+/** A clock the test moves by hand: due callbacks run in time order as it advances. */
+function manualClock() {
+  let at = 0;
+  let seq = 0;
+  const due = new Map<number, { at: number; fn: () => void }>();
+  const timer: FollowTimer = (fn, ms) => {
+    const id = seq++;
+    due.set(id, { at: at + ms, fn });
+    return () => due.delete(id);
+  };
+  const advance = (ms: number) => {
+    const end = at + ms;
+    for (;;) {
+      const next = [...due.entries()]
+        .filter(([, t]) => t.at <= end)
+        .sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+      if (!next) break;
+      due.delete(next[0]);
+      at = next[1].at;
+      next[1].fn();
+    }
+    at = end;
+  };
+  return { now: () => at, timer, advance };
+}
+let clock = manualClock();
+const tick = (ms: number) => act(() => clock.advance(ms));
 
-beforeEach(() => jest.useFakeTimers());
-afterEach(() => jest.useRealTimers());
+beforeEach(() => {
+  clock = manualClock();
+});
 
 describe("the follow paces itself", () => {
   test("a typed slide stays open its minimum, then the next slide, one at a time", () => {
