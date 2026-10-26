@@ -80,6 +80,8 @@ export type Plan = {
   flow?: {
     slide: number;
     does: string;
+    /** The planned layout, template first (`visual-text points-0-fig`). */
+    layout?: string;
     look_at?: { kind: string; shows: string | null };
     teaches?: number[];
   }[];
