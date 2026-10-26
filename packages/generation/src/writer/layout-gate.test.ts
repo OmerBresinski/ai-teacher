@@ -10,6 +10,7 @@ const run = (o: { faults: string[][]; visuals: boolean; split: boolean }) => {
     dropVisuals: () => (calls.push("drop"), o.visuals),
     undoDrop: () => void calls.push("undo"),
     split: () => (calls.push("split"), o.split),
+    undoSplit: () => void calls.push("undo-split"),
   });
   return { ...r, calls };
 };
@@ -26,6 +27,15 @@ describe("layout gate (TEACH-247 part af)", () => {
     const r = run({ faults: [["overflow: x"], []], visuals: true, split: true });
     expect(r.outcome).toBe("split");
     expect(r.calls).toEqual(["split"]);
+  });
+  test("a split that leaves faults in any part is undone before the drop", () => {
+    const r = run({
+      faults: [["overlap: a and b"], ["part 2: overlap: c and d"], []],
+      visuals: true,
+      split: true,
+    });
+    expect(r.outcome).toBe("dropped-visual");
+    expect(r.calls).toEqual(["split", "undo-split", "drop"]);
   });
   test("no split: dropping the visual that clears the faults is kept", () => {
     const r = run({ faults: [["overlap: a over a picture"], []], visuals: true, split: false });
@@ -56,5 +66,39 @@ describe("layout gate (TEACH-247 part af)", () => {
       "unanswered: 1",
     ])
       expect(LAYOUT_FAULT.test(f)).toBe(false);
+  });
+});
+
+describe("clipped: what bleeds by design and what is clipped (TEACH-247 part af)", () => {
+  const { checkSlide } = require("./checks") as typeof import("./checks");
+  const faults = (elements: unknown[]) =>
+    checkSlide({
+      index: 0,
+      slide: { elements } as never,
+      over: [],
+      questions: [],
+      answers: undefined,
+      notesChecked: false,
+      words: "",
+    }).faults.filter((f) => f.startsWith("clipped:"));
+  const doc = (t: string) => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: t }] }],
+  });
+  test("a wordless surface ground running to the foot is not clipped", () => {
+    expect(
+      faults([{ type: "shape", name: "surface:field-b", x: 661, y: 147, w: 299, h: 414 }]),
+    ).toEqual([]);
+  });
+  test("a surface carrying words past the edge is clipped", () => {
+    expect(
+      faults([
+        { type: "shape", name: "surface:badge", x: 940, y: 520, w: 41, h: 41, doc: doc("3") },
+      ]),
+    ).toHaveLength(1);
+  });
+  test("a picture bleeding a little is not clipped; one mostly off the slide is", () => {
+    expect(faults([{ type: "image", x: 480, y: 0, w: 500, h: 540 }])).toEqual([]);
+    expect(faults([{ type: "image", x: 800, y: 0, w: 400, h: 540 }])).toHaveLength(1);
   });
 });

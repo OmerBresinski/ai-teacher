@@ -17,6 +17,9 @@
  */
 export const LAYOUT_FAULT = /^(clipped|overlap|off-slide):/;
 
+/** Continuation slides a gate split may add to one slide (rulings 261, 295: one or two). */
+export const MAX_GATE_PARTS = 2;
+
 export type GateOutcome = "clean" | "dropped-visual" | "split" | "left";
 
 export type GateSteps = {
@@ -26,14 +29,19 @@ export type GateSteps = {
   dropVisuals: () => boolean;
   /** Puts the visuals back after a drop that did not clear the faults. */
   undoDrop: () => void;
-  /** Splits the slide over continuation slides; false when no split fits. */
+  /** Splits the slide over continuation slides; false when no split fits or it adds too many. */
   split: () => boolean;
+  /** Puts the slide back whole after a split that left faults in any part. */
+  undoSplit: () => void;
 };
 
 export function layoutGate(steps: GateSteps): { outcome: GateOutcome; faults: string[] } {
   const before = steps.faults();
   if (!before.length) return { outcome: "clean", faults: [] };
-  if (steps.split() && !steps.faults().length) return { outcome: "split", faults: before };
+  if (steps.split()) {
+    if (!steps.faults().length) return { outcome: "split", faults: before };
+    steps.undoSplit();
+  }
   if (steps.dropVisuals()) {
     if (!steps.faults().length) return { outcome: "dropped-visual", faults: before };
     steps.undoDrop();

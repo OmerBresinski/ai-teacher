@@ -105,7 +105,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
-import { LAYOUT_FAULT, layoutGate } from "./layout-gate";
+import { LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
 import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -1076,9 +1076,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Each slide's raw JSON as it was opened, by index. */
   const opened = new Map<number, string>();
+  /** The layout gate, once it has run: a slide a late picture re-lays is judged again. */
+  let gateAfterLanding: ((i: number) => void) | undefined;
   run.bindPictureLanded?.((i) => {
     if (editable || !opened.has(i)) return;
     relay(i);
+    gateAfterLanding?.(i);
     shown(i);
   });
   /**
@@ -2812,14 +2815,45 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const ok = continueSlide(i, visualState(i));
     log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
   }
-  // TEACH-247 part af: the layout gate. A slide still carrying an overlap, an overflow or clipped
-  // text falls back in code (no model call, in log mode too): its visuals dropped, then a split.
-  for (let i = 0; i < n; i++) {
-    if (continued.has(i) || !repairable(plan.slides[i] as S, i)) continue;
+  // TEACH-247 part af: the layout gate. A slide still carrying an overlap or clipped text falls back
+  // in code (no model call, in log mode too): a split over at most two continuation slides inside
+  // the tier's maximum (rulings 261, 295), else its visuals dropped. Every part is judged for every
+  // layout fault, and a step that leaves one is undone.
+  const layoutFaultsAt = (i: number) => [
+    ...(check()[i]?.faults ?? []).filter((f) => LAYOUT_FAULT.test(f)),
+    ...(continued.get(i) ?? []).flatMap((c, k) =>
+      checkSlide({
+        index: i,
+        slide: c.slide,
+        over: c.over ?? [],
+        questions: [],
+        answers: undefined,
+        notesChecked: true,
+        words: "",
+      })
+        .faults.filter((f) => LAYOUT_FAULT.test(f))
+        .map((f) => `part ${k + 2}: ${f}`),
+    ),
+  ];
+  const addedSlides = () => [...continued.values()].reduce((t, c) => t + c.length, 0);
+  const gateSlide = (i: number) => {
+    if (continued.has(i) || !repairable(plan.slides[i] as S, i)) return;
     const keys = (asks.get(i) ?? []).map((a) => a.key);
     const kept = keys.map((k) => [k, override.get(`${i}:${k}`)] as const);
+    const s0 = plan.slides[i] as S;
+    const n0 = notes.get(i);
+    const asks0 = asks.get(i) ?? [];
     const gate = layoutGate({
-      faults: () => (check()[i]?.faults ?? []).filter((f) => LAYOUT_FAULT.test(f)),
+      faults: () => layoutFaultsAt(i),
+      split: () => {
+        if (!continueSlide(i, visualState(i))) return false;
+        const parts = continued.get(i)?.length ?? 0;
+        if (parts <= MAX_GATE_PARTS && n + addedSlides() <= brief.slides.max) return true;
+        restore(i, s0, n0, asks0);
+        log({ ev: "layout-gate-split-capped", slide: i + 1, parts });
+        return false;
+      },
+      undoSplit: () => restore(i, s0, n0, asks0),
       dropVisuals: () => {
         if (!keys.length) return false;
         for (const k of keys) override.set(`${i}:${k}`, { status: "failed" });
@@ -2832,7 +2866,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           else override.delete(`${i}:${k}`);
         relay(i);
       },
-      split: () => continueSlide(i, visualState(i)),
     });
     if (gate.outcome !== "clean")
       log({
@@ -2842,7 +2875,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         outcome: gate.outcome,
         faults: gate.faults.slice(0, 4),
       });
-  }
+  };
+  for (let i = 0; i < n; i++) gateSlide(i);
+  // A picture that lands after the gate is laid again (`bindPictureLanded`): it is judged again. A
+  // dropped visual stays dropped: its `failed` override is read before any landed state.
+  gateAfterLanding = gateSlide;
   for (const [i, p] of path) {
     const warnings = laid.get(i)?.diagramWarnings;
     log({ ev: "visual-path", slide: i + 1, path: p, ...(warnings?.length ? { warnings } : {}) });
