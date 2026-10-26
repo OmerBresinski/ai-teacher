@@ -88,9 +88,37 @@ describe.each(BUNDLES.map((b) => [b.id, b] as const))("writer bundle %s", (_id, 
 });
 
 describe("the shipped bundle", () => {
-  test("is base4f-p124, p123's writer hash (8a0f9b4f6dde) with four prompt files changed", () => {
-    expect(WRITER_BUNDLE_ID).toBe("base4f-p124");
+  test("is base4f-p125, p123's writer hash (8a0f9b4f6dde) with the objectives text changed", () => {
+    expect(WRITER_BUNDLE_ID).toBe("base4f-p125");
     expect(writerBundle().tHash).toBe("8a0f9b4f6dde");
+  });
+
+  // TEACH-110 part as: only the objectives system text differs from p124. It gains the paragraph
+  // that picks the topic's core for the age before an after-effect, and keeps every p124 line
+  // except the narrowing sentence, which now narrows to that core.
+  test("p125 differs from p124 only in the objectives system text", () => {
+    const a = writerBundle("base4f-p124") as unknown as Record<string, unknown>;
+    const b = writerBundle("base4f-p125") as unknown as Record<string, unknown>;
+    for (const k of Object.keys(a)) {
+      if (k === "id" || k === "pins") continue;
+      if (k === "objectives") expect(b[k]).not.toEqual(a[k]);
+      else expect(b[k]).toEqual(a[k]);
+    }
+    const objectives = b.objectives as string;
+    expect(objectives).toContain(
+      "Choose what they cover before you word them: the core of the topic",
+    );
+    expect(objectives).toContain(
+      "A later consequence, an after-effect or a side detail takes an objective only when the core is already covered",
+    );
+    expect(objectives).toContain("so a broad topic is narrowed to its core for this age.");
+    expect(objectives).not.toContain("narrowed to the part this lesson covers");
+    // No topic is named: the rule is generic (the Great Fire brief that prompted it is not in it).
+    expect(objectives).not.toMatch(/fire|London|bucket|plant|Roman/i);
+    const kept = (a.objectives as string)
+      .split("\n")
+      .filter((l) => l && !l.startsWith("Together they are"));
+    for (const l of kept) expect(objectives).toContain(l);
   });
 
   // TEACH-110 part am: only the objectives, the pupil wording (system and user turn) and the

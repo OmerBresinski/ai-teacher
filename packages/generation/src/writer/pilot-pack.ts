@@ -33,6 +33,9 @@ import t93 from "./bundles/pilot-v4.9-menu/system-KS3.template.txt" with { type:
 import t101 from "./bundles/pilot-v4.10-menu/system-KS1.template.txt" with { type: "text" };
 import t102 from "./bundles/pilot-v4.10-menu/system-KS2.template.txt" with { type: "text" };
 import t103 from "./bundles/pilot-v4.10-menu/system-KS3.template.txt" with { type: "text" };
+import t111 from "./bundles/pilot-v4.11-menu/system-KS1.template.txt" with { type: "text" };
+import t112 from "./bundles/pilot-v4.11-menu/system-KS2.template.txt" with { type: "text" };
+import t113 from "./bundles/pilot-v4.11-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -243,10 +246,34 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.11 (TEACH-110 part as): v4.10 with whole questions and 3-option hinges for the young. A
+  // question never ends on a clipped second command ("Explain.", "Include ..."), the exit ticket
+  // included, and an exit question covering two objectives is one whole question; a KS1 hinge
+  // takes 3 short-phrase options (Years 3 and 4 at KS2 take 3, ruling 147) and every hinge has the
+  // option count its flow size names. Schema and code as v4.10; templates differ in 1 line.
+  "v4.11": {
+    id: "v4.11",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t111, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t112, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t113, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.10";
+export const PILOT_PACK_ID: PilotPackId = "v4.11";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
