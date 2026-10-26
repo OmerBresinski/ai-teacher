@@ -1,6 +1,7 @@
 // The writer stage's code checks on one laid-out slide.
 import type { Slide, SlideElement } from "@tj/domain/documents";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
+import { shownSpans, shownTogether } from "@tj/slides/reflow";
 import { cutSubjects, type SubjectBox } from "@tj/slides/templates";
 import { pointTaskFault } from "./point-guard";
 
@@ -94,20 +95,30 @@ export function checkSlide(a: {
   for (const e of s.elements)
     if (e.x < -1 || e.y < -1 || e.x + e.w > W + 1 || e.y + e.h > H + 1)
       faults.push(`clipped: ${label(e)} runs off the slide`);
-  // Overlap: text over text, text over a picture or diagram (markers and panels under text are by design).
+  // Overlap: text over text, text over a picture or diagram (markers and panels under text are by
+  // design). Two boxes never on screen at the same click do not overlap: a build's earlier card
+  // painted over by a later click's panels (the myth slide's vote card, TEACH-247 part ae).
+  const spans = shownSpans(s.elements);
+  const at = (e: SlideElement) => s.elements.indexOf(e);
+  const together = (a: SlideElement, b: SlideElement) => shownTogether(spans, at(a), at(b));
   const texts = s.elements.filter((e) => e.type === "text");
   const pics = s.elements.filter((e) => e.type === "image");
   for (let i = 0; i < texts.length; i++)
     for (let j = i + 1; j < texts.length; j++) {
       const A = texts[i] as SlideElement;
       const B = texts[j] as SlideElement;
-      if (inter(A, B) > 4) faults.push(`overlap: ${label(A)} and ${label(B)}`);
+      if (inter(A, B) > 4 && together(A, B)) faults.push(`overlap: ${label(A)} and ${label(B)}`);
     }
   for (const t of texts)
-    for (const p of pics) if (inter(t, p) > 4) faults.push(`overlap: ${label(t)} over a picture`);
+    for (const p of pics)
+      if (inter(t, p) > 4 && together(t, p)) faults.push(`overlap: ${label(t)} over a picture`);
   for (let i = 0; i < pics.length; i++)
     for (let j = i + 1; j < pics.length; j++)
-      if (inter(pics[i] as Box, pics[j] as Box) > 4) faults.push("overlap: two pictures");
+      if (
+        inter(pics[i] as Box, pics[j] as Box) > 4 &&
+        together(pics[i] as SlideElement, pics[j] as SlideElement)
+      )
+        faults.push("overlap: two pictures");
   // PICTURE-FIT gate: a crop that cuts a must-see subject's box (boxes from the vision judge).
   for (const p of pics) {
     const e = p as {

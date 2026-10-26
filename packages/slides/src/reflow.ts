@@ -167,9 +167,70 @@ export function isHairline(el: SlideElement): boolean {
  * the label off its card. A hairline is not one of these — a rule is part of the
  * vertical flow and travels with the blocks it separates.
  */
+function isFilledPanel(el: SlideElement): boolean {
+  const p = el as { closed?: boolean; fill?: string };
+  return (
+    el.type === "path" &&
+    !!p.closed &&
+    !!p.fill &&
+    p.fill !== "none" &&
+    p.fill !== "transparent" &&
+    el.w > 2 &&
+    el.h > 2
+  );
+}
+
 export function isLayerBelow(el: SlideElement): boolean {
+  // A closed, filled path is a panel (Geometric's cut-corner field, Scrapbook's torn one): text laid
+  // on it stays on it (TEACH-247 part ae).
+  if (isFilledPanel(el)) return true;
   if (el.type !== "shape" && el.type !== "image" && el.type !== "icon") return false;
   return !isHairline(el);
+}
+
+/** The click an element appears on (0: shown from the start). */
+const stepOf = (el: SlideElement) => (el as { revealStep?: number }).revealStep ?? 0;
+
+/**
+ * The clicks each element is on screen, `[from, to)`: from its reveal step until a filled shape
+ * drawn over it on a later click covers it whole (TEACH-247 part ae). The myth slide's vote card
+ * (click 0) is painted over by the verdict's ground and panels (click 1), so the card's words and
+ * the verdict's words are never on screen together, though their boxes cross.
+ */
+export function shownSpans(elements: readonly SlideElement[]): [number, number][] {
+  const isCover = (c: SlideElement) => {
+    if (isFilledPanel(c)) return true;
+    if (c.type !== "shape" || isHairline(c)) return false;
+    const fill = (c as { fill?: string }).fill;
+    return !!fill && fill !== "none" && fill !== "transparent";
+  };
+  return elements.map((el, i) => {
+    const from = stepOf(el);
+    // Covers drawn after the element on a later click (several may tile it: the myth slide's
+    // claim panel and verdict ground meet at the seam under the vote card).
+    const covers = elements.slice(i + 1).filter((c) => stepOf(c) > from && isCover(c));
+    if (!covers.length || el.w <= 0 || el.h <= 0) return [from, Number.POSITIVE_INFINITY];
+    // Sample points across the box: covered once every point is under a cover shown by then.
+    const pts: [number, number][] = [];
+    for (let a = 0; a <= 8; a++)
+      for (let b = 0; b <= 4; b++) pts.push([el.x + (el.w * a) / 8, el.y + (el.h * b) / 4]);
+    const under = (c: SlideElement, [x, y]: [number, number]) =>
+      x >= c.x - 1 && x <= c.x + c.w + 1 && y >= c.y - 1 && y <= c.y + c.h + 1;
+    const steps = [...new Set(covers.map(stepOf))].sort((p, q) => p - q);
+    for (const s of steps) {
+      const by = covers.filter((c) => stepOf(c) <= s);
+      if (pts.every((p) => by.some((c) => under(c, p)))) return [from, s];
+    }
+    return [from, Number.POSITIVE_INFINITY];
+  });
+}
+
+/** Whether elements `i` and `j` are ever on screen at the same click. */
+export function shownTogether(spans: readonly [number, number][], i: number, j: number): boolean {
+  const a = spans[i];
+  const b = spans[j];
+  if (!a || !b) return true;
+  return a[0] < b[1] && b[0] < a[1];
 }
 
 /**
@@ -433,6 +494,8 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
   const order = [...slots].sort((a, b) => a.y0 - b.y0 || a.index - b.index);
   const placed: Slot[] = [];
   const riders = ridersOf(slots);
+  // A box hidden under a later click's cover never pushes what that click shows (TEACH-247 part ae).
+  const spans = shownSpans(slide.elements);
   for (const slot of order) {
     if (riders.has(slot)) continue;
     if (slot.frozen) {
@@ -441,6 +504,7 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
     }
     let top = slot.y0;
     for (const other of placed) {
+      if (!shownTogether(spans, slot.index, other.index)) continue;
       if (isHairline(slot.el) && isHairline(other.el)) continue;
       if (!overlapsX(rect(slot), rect(other))) continue;
       // Anything involving a card, an image or an icon was stacked on purpose.
