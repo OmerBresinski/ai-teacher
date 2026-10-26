@@ -71,6 +71,7 @@ import {
   keepAnswerKey,
   keepAsksHonest,
   layoutsFor,
+  lineMatchesObjective,
   linkSteps,
   lookOf,
   lostFault,
@@ -563,7 +564,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }).over.length === 0;
   /** Sets slide 2's lines, shortened (whole clauses, then words) until the slide holds them. */
   const setObjectiveLines = (lines: string[]) => {
-    const fitted = fitObjectives(lines, objectivesFit);
+    const fitted = fitObjectives(lines, objectivesFit, log);
     (plan.objectives ?? []).forEach((o, k) => {
       o.pupil = fitted[k] ?? o.pupil;
     });
@@ -716,7 +717,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             const r = await askPupil();
             if ("fatal" in r) return r;
             got = r.lines;
-            const problem = pupilLinesProblem(got, nObjectives, brief.keyStage);
+            const problem = pupilLinesProblem(got, nObjectives, brief.keyStage, run.objectives);
             if (!problem) return { lines: (got as string[]).map((l) => l.trim()) };
             if (got !== undefined) log({ ev: "pupil-objectives-rejected", attempt, why: problem });
           }
@@ -2795,10 +2796,10 @@ function listQuestion(
 
 /**
  * Slide 2's lines when the pupil wording failed its checks twice. With one line per objective,
- * a line within the room is kept and any other takes its teacher's wording, shortened to the room;
- * with a wrong count no line can be matched to its objective, so every line is the teacher's.
- * The teacher's wording is approved and always about the right objective; it is cut (whole
- * clauses first) rather than reworded, so nothing on the slide is unchecked model text.
+ * a line within the room and about its own objective (`lineMatchesObjective`) is kept and any
+ * other takes its teacher's wording; with a wrong count no line can be matched to its objective,
+ * so every line is the teacher's. The teacher's wording is approved and always about the right
+ * objective; only its filler, parentheticals and trailing qualifiers are trimmed, never a term.
  */
 export function pupilFallback(
   lines: unknown,
@@ -2812,7 +2813,13 @@ export function pupilFallback(
   return teacher.map((t, k) => {
     const line = byLine ? (lines as unknown[])[k] : undefined;
     const kept = typeof line === "string" ? line.trim() : "";
-    if (kept && kept.length <= room && kept.split(/\s+/).length <= words) return kept;
+    if (
+      kept &&
+      kept.length <= room &&
+      kept.split(/\s+/).length <= words &&
+      lineMatchesObjective(kept, k, teacher)
+    )
+      return kept;
     return shortenObjective(t, room);
   });
 }

@@ -1,5 +1,5 @@
 {
-  "KS1": { "2 objectives": 136, "3 objectives": 100, "4 objectives": 50 },
-  "KS2": { "2 objectives": 136, "3 objectives": 106, "4 objectives": 54 },
-  "KS3-5": { "2 objectives": 136, "3 objectives": 128, "4 objectives": 128 }
+  "KS1": { "1 objective": 136, "2 objectives": 136, "3 objectives": 100, "4 objectives": 50 },
+  "KS2": { "1 objective": 136, "2 objectives": 136, "3 objectives": 106, "4 objectives": 54 },
+  "KS3-5": { "1 objective": 136, "2 objectives": 136, "3 objectives": 128, "4 objectives": 128 }
 }

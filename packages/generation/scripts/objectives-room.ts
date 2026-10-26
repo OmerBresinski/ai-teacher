@@ -1,7 +1,7 @@
 /**
- * Regenerates `src/writer/objectives-room.gen.json`: for each prompt stage and 2 to 4 objectives,
+ * Regenerates `src/writer/objectives-room.gen.json`: for each prompt stage and 1 to 4 objectives,
  * the longest objective line, in characters, at which the objectives slide (`layoutTemplate`
- * "objectives", full width, no figure) holds that many such lines at the body size or larger, with
+ * "objectives", full width, no figure) holds that many (1 to 4) such lines at the body size or larger, with
  * nothing over, in every theme. The pupil-wording call is asked for lines within it and its lines
  * are checked against it (`pupilCharLimit`, `pupilLinesProblem` in `src/writer/fixes.ts`).
  *
@@ -47,10 +47,10 @@ export function objectivesRoomTable(): Record<string, Record<string, number>> {
   const out: Record<string, Record<string, number>> = {};
   for (const [key, stage] of Object.entries(STAGES)) {
     out[key] = {};
-    for (const n of [2, 3, 4]) {
+    for (const n of [1, 2, 3, 4]) {
       let best = 0;
       for (let c = 20; c <= ROOM_SAMPLE.length; c += 2) if (roomHolds(stage, n, c)) best = c;
-      (out[key] as Record<string, number>)[`${n} objectives`] = best;
+      (out[key] as Record<string, number>)[n === 1 ? "1 objective" : `${n} objectives`] = best;
     }
   }
   return out;

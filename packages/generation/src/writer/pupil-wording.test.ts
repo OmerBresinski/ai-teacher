@@ -6,6 +6,7 @@ import type { Brief } from "./fixes";
 import {
   fillTemplate,
   fitObjectives,
+  lineMatchesObjective,
   pupilCharLimit,
   pupilLinesProblem,
   shortenObjective,
@@ -27,7 +28,12 @@ const read = (f: string) => JSON.parse(readFileSync(join(DIR, f), "utf8"));
 const objectives = (
   read("objectives.json") as { objectives: { teacher: string }[] }
 ).objectives.map((o) => o.teacher);
-const PUPIL = objectives.map((_, k) => `We can do thing ${k + 1}.`);
+/** Pupil lines, one about each objective (the relevance check reads their words). */
+const PUPIL = [
+  "I can find a unit fraction of an amount.",
+  "I can find non-unit fractions by multiplying by the numerator.",
+  "I can solve word problems about money.",
+];
 
 /** Slide 2's text, as the deck shows it. */
 const slide2Text = (slides: { elements: unknown[] }[]) => JSON.stringify(slides[1]?.elements ?? []);
@@ -173,31 +179,67 @@ describe("pupil line helpers", () => {
     );
   });
 
-  test("shortenObjective cuts whole clauses, then whole words, never mid-word", () => {
-    const o2 =
-      "Describe how roots take in water and hold the plant in place, and how the stem holds it up and carries water.";
-    expect(shortenObjective(o2, 200)).toBe(o2);
-    expect(shortenObjective(o2, 70)).toBe(
-      "Describe how roots take in water and hold the plant in place.",
+  test("shortenObjective trims filler, brackets and a trailing qualifier, never a term", () => {
+    const o1 =
+      "Calculate unit fractions of whole-number amounts by dividing by the denominator, where the answer is a whole number.";
+    expect(shortenObjective(o1, 200)).toBe(o1);
+    expect(shortenObjective(o1, 90)).toBe(
+      "Calculate unit fractions of whole-number amounts by dividing by the denominator.",
     );
-    expect(shortenObjective(o2, 40)).toBe("Describe how roots take in water.");
-    const cut = shortenObjective("Identify and name the roots stem leaves flowers fruit seeds", 30);
-    expect(cut.length).toBeLessThanOrEqual(30);
-    expect(cut).toMatch(/^Identify and name the [a-z ]+\.$/);
-    expect(cut).not.toMatch(/\b(and|the)\.$/);
+    expect(shortenObjective("Pupils will be able to compare fractions and decimals.", 40)).toBe(
+      "Compare fractions and decimals.",
+    );
+    expect(shortenObjective("Find fractions of amounts (for example 1/2 of 8).", 30)).toBe(
+      "Find fractions of amounts.",
+    );
+    // Two terms, three terms and a long noun phrase stay whole even when over: the slide's type
+    // steps hold them, never a cut that drops "decimals" or ends on "the water".
+    for (const whole of [
+      "Compare fractions and decimals.",
+      "Name the roots, stem and leaves of a plant.",
+      "Describe the water cycle's evaporation, condensation and precipitation stages.",
+      "Explain where rivers come from and where they go.",
+    ])
+      expect(shortenObjective(whole, 12)).toBe(whole);
   });
 
-  test("fitObjectives shortens the longest line until the slide holds them", () => {
-    const fits = (ls: string[]) => ls.every((l) => l.length <= 50);
-    const out = fitObjectives(
-      [
-        "Short one.",
-        "Describe how roots take in water and hold the plant in place, and how the stem carries water.",
-      ],
-      fits,
-    );
-    expect(out[0]).toBe("Short one.");
-    expect(fits(out)).toBe(true);
+  test("fitObjectives trims what it can; lines still over stay whole, logged", () => {
+    const logs: object[] = [];
+    const long = "Describe the water cycle's evaporation, condensation and precipitation stages.";
+    const qualified = "Find fractions of amounts, where the answer is a whole number.";
+    const fits = (ls: string[]) => ls.every((l) => l.length <= 30);
+    const out = fitObjectives(["Short one.", qualified, long], fits, (e) => logs.push(e));
+    expect(out).toEqual(["Short one.", "Find fractions of amounts.", long]);
+    expect(logs).toEqual([{ ev: "objectives-under-floor", lines: [10, 26, long.length] }]);
+    expect(fitObjectives(["Short one."], fits)).toEqual(["Short one."]);
+  });
+
+  test("lineMatchesObjective: a line is about its own objective, not another's", () => {
+    const teacher = [
+      "Name the roots, stem, leaves and flowers of a plant.",
+      "Say what roots do for a plant.",
+      "Describe how leaves make food from sunlight.",
+    ];
+    expect(lineMatchesObjective("I can name a plant's parts.", 0, teacher)).toBe(true);
+    expect(lineMatchesObjective("Leaves make food from light.", 2, teacher)).toBe(true);
+    // Swapped: the leaves line in the roots place, and nothing shared at all.
+    expect(lineMatchesObjective("Leaves make food from light.", 1, teacher)).toBe(false);
+    expect(lineMatchesObjective("We can do thing 2.", 1, teacher)).toBe(false);
+  });
+
+  test("pupilFallback: a swapped pair takes the teacher's wording for both", () => {
+    const teacher = [
+      "Name the roots, stem, leaves and flowers of a plant.",
+      "Say what roots do for a plant.",
+      "Describe how leaves make food from sunlight.",
+    ];
+    expect(
+      pupilFallback(
+        ["I can name a plant's parts.", "Leaves make food from light.", "Roots drink water."],
+        teacher,
+        "ks1",
+      ),
+    ).toEqual(["I can name a plant's parts.", teacher[1] as string, teacher[2] as string]);
   });
 
   test("pupilFallback keeps good lines only when the count is right", () => {

@@ -68,7 +68,7 @@ export type AdaptiveSpec = {
    * Which input path each laid element shows, in draw order (undefined: not editable through the
    * ref). Without it only the heading and lead are bound; cards-grid is bound by its card names.
    */
-  paths?: (els: SlideElement[]) => (string | undefined)[];
+  paths?: (els: SlideElement[], input: Record<string, unknown>) => (string | undefined)[];
   /**
    * The neutral icon a blank item carries (items-row: `PLACEHOLDER_ICON`), so adding an item to an
    * icon row keeps every icon. An item still on it is re-resolved from its name when the name is
@@ -156,10 +156,19 @@ export const ADAPTIVE_SPECS = {
     blank: () => "Add an objective here.",
     continuation: false,
     noun: "objectives",
-    paths: (els: SlideElement[]) => {
+    // Each objective's text is bound to its point; when the drawn items and the points ever
+    // disagree in number, no item is bound, so a teacher's typing detaches the group (its words
+    // kept as typed) rather than writing one objective's words into another's point.
+    paths: (els: SlideElement[], input: Record<string, unknown>) => {
+      const points = Array.isArray(input.points) ? input.points.length : 0;
+      const items = els.filter((e) => e.name === "Item").length;
       let k = 0;
       return els.map((e) =>
-        e.name === "Heading" ? "heading" : e.name === "Item" ? `points.${k++}` : undefined,
+        e.name === "Heading"
+          ? "heading"
+          : e.name === "Item" && items === points
+            ? `points.${k++}`
+            : undefined,
       );
     },
   },
@@ -608,9 +617,13 @@ export function fieldStates(ref: LayoutRef, result: TemplateResult, stage: Stage
 /* ------------------------------------------------------------------ */
 
 /** Which input path each named text element shows, in draw order (cards-grid by its card boxes). */
-function pathsOf(template: AdaptiveTemplateId, els: SlideElement[]) {
+function pathsOf(
+  template: AdaptiveTemplateId,
+  els: SlideElement[],
+  input: Record<string, unknown>,
+) {
   const own = ADAPTIVE_SPECS[template].paths;
-  if (own) return own(els);
+  if (own) return own(els, input);
   const out: (string | undefined)[] = [];
   let card = -1;
   for (const el of els) {
@@ -694,7 +707,7 @@ export function relayout(ref: LayoutRef, theme: Theme, stage: Stage, idPrefix?: 
   const result = layoutTemplate(input, theme, stage);
   if (!result.slide.kind) throw new NotAdaptiveError(`"${ref.template}" is not laid out yet`);
   const raw = result.slide.elements;
-  const bound = pathsOf(ref.template, raw);
+  const bound = pathsOf(ref.template, raw, ref.input);
   const paths: Record<string, string> = {};
   // A box with no field path (a disc, a line) is named by its element name and how many before it
   // share that name, not by its place in the list: a draft that gains an item keeps every earlier
