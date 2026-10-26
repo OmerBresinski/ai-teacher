@@ -1350,8 +1350,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     openSlide(idx, raw);
   }
+  // Slide 2 with the pupil wording (a small call started with the writer, so it has landed by
+  // now or soon after); any line missing keeps the teacher's. Then slide 2 is final too, and is
+  // handed over with the written slides (TEACH-202 part o).
+  const pupil = await pupilJob;
+  if ("fatal" in pupil) throw pupil.fatal;
+  if (pupil.lines.length) {
+    (plan.objectives ?? []).forEach((o, k) => {
+      const line = pupil.lines[k];
+      if (typeof line === "string" && line.trim()) o.pupil = line.trim();
+    });
+    laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+  }
+  const objectivesShown = laid.has(1);
+  if (objectivesShown) shown(1);
   nonFatalSync(
-    () => run.onWritten?.(written.map(([i]) => i)),
+    () =>
+      run.onWritten?.(
+        [...(objectivesShown ? [1] : []), ...written.map(([i]) => i)].sort((a, b) => a - b),
+      ),
     (e) => log({ ev: "written-hook-failed", err: String(e).slice(0, 200) }),
   );
   // ── roleStamp: each written slide's role, logged only (no consumer reads it yet) ──
@@ -1431,16 +1448,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     await retryTitle();
     // The settled pictures (or their absence) replace the open slots.
     for (const [i, a] of asks) if (a.some((x) => x.type === "photo")) relay(i);
-  }
-  // Slide 2 with the pupil wording, before editable; any line missing keeps the teacher's.
-  const pupil = await pupilJob;
-  if ("fatal" in pupil) throw pupil.fatal;
-  if (pupil.lines.length) {
-    (plan.objectives ?? []).forEach((o, k) => {
-      const line = pupil.lines[k];
-      if (typeof line === "string" && line.trim()) o.pupil = line.trim();
-    });
-    laid.set(1, codeObjectives({ ...base, index: 1, plan }));
   }
   editable = true;
   await run.onEditable?.(deck());

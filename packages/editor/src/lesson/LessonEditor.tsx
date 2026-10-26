@@ -982,7 +982,13 @@ function WritingOverlay({ text, passive = false }: { text: string; passive?: boo
   return (
     <div
       data-slide-writing-overlay={passive ? "finishing" : ""}
-      className={`${passive ? "pointer-events-none " : ""}absolute inset-x-0 top-0 z-20 flex items-start justify-center pt-4${passive ? "" : " bottom-0"}`}
+      // Passive, the slide is editable and its toolbar sits at the top: the pill waits at the
+      // bottom, centred between the "Follow writing" chip (left) and the zoom (right).
+      className={
+        passive
+          ? "pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center"
+          : "absolute inset-0 z-20 flex items-start justify-center pt-4"
+      }
       onPointerDownCapture={passive ? undefined : (e) => e.stopPropagation()}
     >
       <span

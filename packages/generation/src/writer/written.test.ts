@@ -33,8 +33,9 @@ describe("the writer's stream has ended", () => {
     expect(order.indexOf("written")).toBeLessThan(order.indexOf("editable"));
     // Every slide laid while the stream ran is among the written ones, in deck order, title first.
     expect(written[0]).toBe(0);
-    expect(written).not.toContain(1);
+    // Slide 2 (the objectives, with its pupil wording) is final at the stream's end too.
+    expect(written).toContain(1);
     expect([...written].sort((a, b) => a - b)).toEqual([...written]);
-    for (const i of laid) if (i !== 1) expect(written).toContain(i);
+    for (const i of laid) expect(written).toContain(i);
   });
 });
