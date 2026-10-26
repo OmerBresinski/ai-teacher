@@ -81,7 +81,10 @@ describe("label floor", () => {
     const grown = placedTypeSize(after.drawing.svg, a.place).minPt;
     expect(grown).toBeGreaterThan(before * 1.05);
     expect(grownTextFault(plain.drawing.svg, after.drawing.svg)).toBeUndefined();
-  });
+    // Irreducible: with checks only logged the floor backs off from each size that breaks the map's
+    // key (up to LABEL_FLOOR_TRIES + 3 full draws, then whole-word steps), about 1 s locally and
+    // past bun's 5 s default on a loaded CI runner (#665).
+  }, 30_000);
   test("the D52 heart: cropped to its marks it reaches the floor ungrown; grown, its key splits", async () => {
     // Before HEART1 D its blood cells sat at the slide's corner, the crop reached it, and growing
     // the type to the floor split "Oxygen-poor" across lines. Cropped to its marks, it needs none.

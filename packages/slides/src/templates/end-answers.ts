@@ -600,6 +600,22 @@ export function answersSize(
   return undefined;
 }
 
+/** Under comfort: the largest size, down to 70% of it, at which a fixed page's groups fit. */
+function squeezedSize(
+  c: Ctx,
+  t: Theme,
+  stage: Stage,
+  groups: readonly AnswerGroup[],
+): number | undefined {
+  const { comfort } = ANSWER_TYPE[stage];
+  for (let asked = comfort - 1; asked >= Math.floor(comfort * 0.7); asked--) {
+    const size = px(t, asked);
+    if (size >= px(t, comfort)) continue;
+    if (pageHeight(c, stage, groups, sizedAt(t, size, stage)) <= BODY_H) return size;
+  }
+  return undefined;
+}
+
 const fits = (t: Theme, stage: Stage, groups: readonly AnswerGroup[]) =>
   answersSize(t, stage, groups) !== undefined;
 
@@ -669,6 +685,12 @@ export function layoutAnswersPage(
     teacherOnly?: boolean;
     /** Gold `&reveal=`: answers start hidden and show a group or an answer per click; `all` shows them. */
     reveal?: AnswersReveal;
+    /**
+     * A page whose split is fixed (a stored page re-laid in another theme, TEACH-247 part am) that
+     * does not fit at the comfort size steps on down until it does, rather than running off the
+     * slide. The deck builder never passes it: it splits instead.
+     */
+    squeeze?: boolean;
   } = {},
 ): AnswersLayout {
   const reveal = opts.reveal ?? "group";
@@ -679,7 +701,10 @@ export function layoutAnswersPage(
   if (opts.teacherOnly !== false)
     teacherPill(c, stage, head.y + Math.round((c.s.heading * kit.LH.heading) / 2));
   const { comfort } = ANSWER_TYPE[stage];
-  const size = answersSize(t, stage, page.groups) ?? px(t, comfort);
+  const size =
+    answersSize(t, stage, page.groups) ??
+    (opts.squeeze ? squeezedSize(c, t, stage, page.groups) : undefined) ??
+    px(t, comfort);
   let z = sizedAt(t, size, stage);
   let h = pageHeight(c, stage, page.groups, z);
   if (h > BODY_H) c.over.push(`answers ${h}/${BODY_H}pt`);
