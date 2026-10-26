@@ -45,6 +45,11 @@ export interface AiCallContext {
   promptVersion?: string | undefined;
   /** The reasoning effort the call asked for (`none` … `high`), a string for the log. */
   effort?: string | undefined;
+  /**
+   * The model the call asked for, when the caller picks it (the lesson writer's pack, v4.17 on).
+   * A route may read it; an id, never content.
+   */
+  model?: string | undefined;
 }
 
 export interface ConfiguredAi {

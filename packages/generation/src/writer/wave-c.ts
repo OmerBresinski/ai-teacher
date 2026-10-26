@@ -428,7 +428,21 @@ const bounds = (node: J) => [node.minItems as number, node.maxItems as number] a
  * item bounds, or picture-text's `KEY_CAPS`/`PT_CAPS`; none is typed. Each line says when the layout
  * is the right one, and where it overlaps a layout already offered, which one takes the case.
  */
-export function waveCMenu(s: WriterStage): Record<string, string> {
+/**
+ * Pack options for the wave C menu. Every option is off by default, so a pack that sets none sends
+ * the lines it always sent (v4.8 to v4.16 byte-identical).
+ */
+export type WaveCMenuOpts = {
+  /**
+   * The reasons line offers the question picture (TEACH-247 part ba, pack v4.17): `picture` is null
+   * or a photo of what the question asks about, the pictured-reasons route to visual-text is gone
+   * (only a diagram or model sends reasons there), and the Fits are the tighter of the cells with
+   * and without a picture.
+   */
+  reasonsPicture?: boolean;
+};
+
+export function waveCMenu(s: WriterStage, opts: WaveCMenuOpts = {}): Record<string, string> {
   const W = waveCWords(s);
   const D = waveCDefs(s);
   const wk = W.worked;
@@ -446,7 +460,21 @@ export function waveCMenu(s: WriterStage): Record<string, string> {
     return `pictures, not icons; names ${name}, lines ${upTo(pics.line)}`;
   };
 
-  const R = W.reasons as Record<string, J>;
+  // With the question picture on offer, each reasons field is the tighter of the two cells, so a
+  // reason written to the Fits fits whether or not its slide gets the picture.
+  const tighter = (a: J, b: J | undefined): J =>
+    b ? Object.fromEntries(Object.entries(a).map(([k, v]) => [k, Math.min(v, b[k] ?? v)])) : a;
+  const R = (
+    opts.reasonsPicture
+      ? Object.fromEntries(
+          Object.entries(W.reasons as Record<string, J>).map(([k, c]) => [
+            k,
+            tighter(c, (W.reasonsPicture as Record<string, J>)[k]),
+          ]),
+        )
+      : W.reasons
+  ) as Record<string, J>;
+  const plainQ = (Object.values(W.reasons as Record<string, J>)[0] as J).question;
   const rCells = (kind: string) =>
     Object.entries(R)
       .filter(([k]) => k.startsWith(`${kind}-`))
@@ -474,7 +502,11 @@ export function waveCMenu(s: WriterStage): Record<string, string> {
       stageCounts.map((n): [number, string] => [n, stageCell(n)]),
       "stages",
     )}.`,
-    reasons: `- reasons: why or how something happened or is so (flow shape ${WHY_SHAPE}): the heading asks the question, answered on this one slide by ${span(reasonNs[0] ?? 0, reasonNs.at(-1) ?? 0)} reasons, one per click, each a head, one line and its closest listed icon; kind chain is a chain of consequences instead, each link leading to the next, ${span(chainNs[0] ?? 0, chainNs.at(-1) ?? 0)} links. lead is null or one line under the question. The reasons of a why or how question come here together, rather than one visual-text slide a reason, a flow diagram of causes, panel-list or explain. The slide carries no picture or diagram: give every reason its closest listed icon whenever the listed icons cover them all, and every icon null only when they do not; the slide then shows words alone. Reasons pupils learn by seeing, through a diagram or model that explains them or a picture of the thing, place or event, go to visual-text beside that figure rather than here. Otherwise, a reason pupils must see to grasp may take a picture slide of its own after this one, never in its place. Fits: the question ${upTo(anyR.question)}; the lead ${upTo(anyR.lead)}; ${runs(rCells("reasons"), "reasons")}; a chain of ${runs(rCells("chain"), "links")}.`,
+    reasons: `- reasons: why or how something happened or is so (flow shape ${WHY_SHAPE}): the heading asks the question, answered on this one slide by ${span(reasonNs[0] ?? 0, reasonNs.at(-1) ?? 0)} reasons, one per click, each a head, one line and its closest listed icon; kind chain is a chain of consequences instead, each link leading to the next, ${span(chainNs[0] ?? 0, chainNs.at(-1) ?? 0)} links. lead is null or one line under the question. The reasons of a why or how question come here together, rather than one visual-text slide a reason, a flow diagram of causes, panel-list or explain. ${
+      opts.reasonsPicture
+        ? `picture is null, or one photo of the thing, place or event the question asks about, shown under the question from the start; the slide carries no diagram. Give every reason its closest listed icon whenever the listed icons cover them all, and every icon null only when they do not. Reasons that a diagram or library model explains go to visual-text beside that figure rather than here. A reason pupils must see to grasp may take a picture slide of its own after this one, never in its place. Fits: the question ${upTo(plainQ)}${anyR.question < plainQ ? `, ${anyR.question} with a picture` : ""}; the lead`
+        : `The slide carries no picture or diagram: give every reason its closest listed icon whenever the listed icons cover them all, and every icon null only when they do not; the slide then shows words alone. Reasons pupils learn by seeing, through a diagram or model that explains them or a picture of the thing, place or event, go to visual-text beside that figure rather than here. Otherwise, a reason pupils must see to grasp may take a picture slide of its own after this one, never in its place. Fits: the question ${upTo(anyR.question)}; the lead`
+    } ${upTo(anyR.lead)}; ${runs(rCells("reasons"), "reasons")}; a chain of ${runs(rCells("chain"), "links")}.`,
     "figure-slide": `- figure-slide: one figure filling the slide that carries the slide's idea on its own, so pupils learn it by looking at the figure whole: a model from the Models list, or a photo pupils study the way they would a model. A one-line caption says what to take from it, with the topic's closest listed icon, shown if the figure fails. At most one figure-slide per lesson. Such a model comes here rather than big-visual, and a further one goes to big-visual; a chart or diagram drawn from your data goes to big-visual. Fits: the caption ${upTo(W.figure.caption)}.`,
     myth: `- myth: the misconception slide: one belief pupils of this age commonly hold about what this lesson's objectives teach, one a teacher would recognise, settled on its own slide: the claim in plain words, its verdict (myth, or true for a true claim pupils commonly doubt), the fact that settles it, using only ideas this lesson teaches or pupils of this age already know, with factEm null or one exact span of the fact to show in colour, and proof null or one short line with ${span(icLo, icHi)} listed icons or one picture. opening vote asks the class first; straight starts at the verdict and is only for a myth. The slide asks no question: a belief among options to choose from goes to hinge. The proof holds no diagram: a misconception pupils see put right on a diagram or model goes to visual-text, with a watch-out key card beside it. A lesson whose objectives pupils hold no such belief about has no myth slide; never make one up, or reach past the objectives for one. Fits: the heading ${upTo(my.title)}; the claim ${upTo(my.claim)}; the fact ${upTo(my.fact)}, or ${my.factPicture} with a proof picture; the proof ${upTo(my.proof)}.`,
     "visual-text key-card-fig": `- visual-text key-card-fig: a picture beside a lead, up to ${points} points and ${span(cLo, cHi)} key cards, for one named idea pupils need to see, plus the closest listed icon, shown if the picture fails. Each card is a word or rule (label, term and meaning), examples (label and pairs) or a fact (label, number and unit); fields a card does not use are null. A card with a meaning, examples or a number comes here rather than visual-text's points-1-key-fig. Fits: lead and points together ${upTo(W.pictureText.leadAndPoints)}; each label ${upTo(K.label)}; a term ${upTo(K.term)}; a meaning ${upTo(K.meaning)}; up to ${K.pairs} example pairs, ${upTo(K.side)} a side; a number up to ${K.num} characters, its unit ${upTo(K.unit)}.`,
@@ -502,8 +534,8 @@ const MODEL_ONLY = "steps step-model";
  * The wave C menu lines at a stage, in menu order, for the template's `{{menu:wave-c}}` slot:
  * every line but step-model's, which a lesson without a library model is never offered.
  */
-export const waveCMenuBlock = (s: WriterStage): string =>
-  Object.entries(waveCMenu(s))
+export const waveCMenuBlock = (s: WriterStage, opts: WaveCMenuOpts = {}): string =>
+  Object.entries(waveCMenu(s, opts))
     .filter(([k]) => k !== MODEL_ONLY)
     .map(([, l]) => l)
     .join("\n");

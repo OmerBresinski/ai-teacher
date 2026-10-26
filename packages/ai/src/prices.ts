@@ -112,6 +112,15 @@ export const PRICES: Record<string, ModelPrice> = {
   },
   // The lab writer's model (lab/ab arm T, effort low). OpenAI's pricing page, read 2026-10-08:
   // $2 in, $0.10 cached in (half `gpt-6-sol`'s), $10 out.
+  // The lesson writer from pack v4.17 (effort low; Greg, 26 Oct 2026: parity with Sol in blind
+  // judging, 2-3x faster). OpenAI's pricing page, read 2026-10-26: $1 in, $0.05 cached in, $5
+  // out; cache write $1.25.
+  "openai/gpt-6.1-terra": {
+    inputPerMTok: 1,
+    outputPerMTok: 5,
+    cachedInputPerMTok: 0.05,
+    cacheWriteInputPerMTok: 1.25,
+  },
   "openai/gpt-6.1-sol": {
     inputPerMTok: 2,
     outputPerMTok: 10,

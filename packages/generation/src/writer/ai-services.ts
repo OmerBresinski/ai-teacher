@@ -31,9 +31,10 @@ export const WRITER_VERSION = "lesson-writer.v1";
  */
 export function writerRoute(_cls: unknown, context: AiCallContext | undefined): string | undefined {
   if (!context?.promptVersion?.startsWith(`${WRITER_VERSION}/`)) return undefined;
-  return context.stage === "write" || context.stage === "write-frontier"
-    ? WRITER_MODEL
-    : SMALL_MODEL;
+  // The writer call runs the model its pack names (`PilotPack.writer`, v4.17 on), carried on the
+  // call's context; every other frontier call stays on WRITER_MODEL.
+  if (context.stage === "write") return context.model ?? WRITER_MODEL;
+  return context.stage === "write-frontier" ? WRITER_MODEL : SMALL_MODEL;
 }
 
 /** Whether a small call asks for the writer's model (the objectives call, TEACH-110 part f). */
@@ -214,12 +215,13 @@ function recordBudgetStop(
 
 /** The stage's calls on `@tj/ai`: every call carries the writer's context, so the route applies. */
 export function aiWriterServices(deps: PipelineDeps): WriterServices {
-  const ctx = (stage: string, name: string, effort: string): AiCallContext => ({
+  const ctx = (stage: string, name: string, effort: string, model?: string): AiCallContext => ({
     lessonId: deps.context.lessonId,
     jobId: deps.context.jobId,
     stage,
     promptVersion: `${WRITER_VERSION}/${name}`,
     effort,
+    ...(model ? { model } : {}),
   });
   return {
     log: (e) => deps.logger.info({ writer: e }, "writer stage"),
@@ -257,7 +259,7 @@ export function aiWriterServices(deps: PipelineDeps): WriterServices {
     async writer(r: WriterReq, onDelta): Promise<WriterResult> {
       const t0 = Date.now();
       let firstTokenMs: number | undefined;
-      const c = ctx("write", r.name, r.effort);
+      const c = ctx("write", r.name, r.effort, r.model);
       const model = withGenerationBudget(
         deps.ai.model("frontier", c),
         writerRoute("frontier", c) ?? deps.ai.modelId("frontier"),

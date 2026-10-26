@@ -30,7 +30,7 @@ const NEW_GENERIC =
 
 describe("pilot pack v4.15", () => {
   test("v4.15 was production until v4.16 (TEACH-251 part aq)", () =>
-    expect(PILOT_PACK_ID).toBe("v4.16"));
+    expect(PILOT_PACK_ID).not.toBe("v4.15"));
 
   for (const stage of STAGES) {
     const ks = KS[stage];

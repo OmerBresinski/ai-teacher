@@ -156,8 +156,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.16", () => {
-    expect(PILOT_PACK_ID).toBe("v4.16");
+  test("production runs v4.17", () => {
+    expect(PILOT_PACK_ID).toBe("v4.17");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
@@ -228,7 +228,11 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
         // Wave C (TEACH-110 part v) is new teaching layouts, not the question layouts: left out.
         const st = ks === "KS3" ? "KS3-5" : ks;
-        const waveLines = new Set(Object.values(waveCMenu(st)));
+        // v4.17's reasons line (the question picture) is a wave C line too.
+        const waveLines = new Set([
+          ...Object.values(waveCMenu(st)),
+          ...Object.values(waveCMenu(st, { reasonsPicture: true })),
+        ]);
         // v4.11 and v4.12 lengthened prose rules (wording, not a question layout): each changed
         // line is replaced by v4.10's line with the same opening, so only that delta is left out;
         // its own caps are the tests below.
@@ -247,6 +251,9 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         expect(lines.length - kept.length, `${id} ${ks}: one panel-list line`).toBe(1);
         const schema = structuredClone(r.schema);
         for (const k of Object.keys(waveCDefs(st, true))) delete schema.$defs[k];
+        // v4.17's river and hydrograph defs (writerTemplates) are diagrams, not question layouts.
+        for (const k of Object.keys(schema.$defs))
+          if (/^dg-(river|hydrograph)(-|$)/.test(k)) delete schema.$defs[k];
         return kept.join("\n").length + JSON.stringify(schema).length;
       };
       expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));

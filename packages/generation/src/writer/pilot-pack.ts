@@ -51,6 +51,9 @@ import t153 from "./bundles/pilot-v4.15-menu/system-KS3.template.txt" with { typ
 import t161 from "./bundles/pilot-v4.16-menu/system-KS1.template.txt" with { type: "text" };
 import t162 from "./bundles/pilot-v4.16-menu/system-KS2.template.txt" with { type: "text" };
 import t163 from "./bundles/pilot-v4.16-menu/system-KS3.template.txt" with { type: "text" };
+import t171 from "./bundles/pilot-v4.17-menu/system-KS1.template.txt" with { type: "text" };
+import t172 from "./bundles/pilot-v4.17-menu/system-KS2.template.txt" with { type: "text" };
+import t173 from "./bundles/pilot-v4.17-menu/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -135,7 +138,36 @@ export type PilotPack = {
    * A spec that does not parse or fit still goes to the drawer (TEACH-247 part bb).
    */
   writerTemplates?: boolean;
+  /**
+   * The writer is no longer offered a freehand `labelled-diagram` (v4.17; 5 Oct audit item 12):
+   * the kind leaves the freeform branch's enum. The drawer, the director's own labelled route,
+   * the repair call and the checks keep the kind; only the writer's offer goes.
+   */
+  noLabelledDiagram?: boolean;
+  /**
+   * The writer call's model and effort (v4.17 on; Greg, 26 Oct 2026: Terra at low). Unset, the
+   * writer runs `WRITER_MODEL` at `WRITER_EFFORT`. The objectives call and the stage's other
+   * frontier calls never read it.
+   */
+  writer?: { model: string; effort: "low" | "medium" | "high" };
+  /**
+   * `title` streams straight after `design`, before `flow`, so slide 1 fills while the plan is
+   * still being written (v4.17). It needs only the lesson context, never the plan.
+   */
+  titleFirst?: boolean;
 };
+
+/** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
+export const ITEMS_ROW_LABELLED = / or more parts go to a labelled diagram or two slides\./g;
+export const ITEMS_ROW_V417 =
+  " or more parts go to two slides, or to a library model of the whole when the Models list has one.";
+/** v4.17's system text: the reasons picture on the wave C menu and the items-row reroute. */
+function v417System(template: string, stage: WriterStage): string {
+  const text = assembleWriterSystem(template, stage, { reasonsPicture: true });
+  if ((text.match(ITEMS_ROW_LABELLED) ?? []).length !== 1)
+    throw new Error("pilot pack v4.17: items-row's labelled-diagram reroute not found once");
+  return text.replace(ITEMS_ROW_LABELLED, ITEMS_ROW_V417);
+}
 
 /** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
 const FLOW_SIZE_COUNTED = {
@@ -417,10 +449,42 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.17 (TEACH-247 parts ba, bb): v4.16 with three menu changes. A reasons slide may carry one
+  // photo of what its question asks about, and only a diagram or model sends reasons to visual-text
+  // (the pictured-reasons route contradicted v4.16's own flow line). The writer specs river and
+  // hydrograph itself (`writerTemplates`), named as exact drawings, not freehand sketches. The
+  // freehand labelled-diagram is off the writer's menu and out of its schema (5 Oct audit item 12).
+  "v4.17": {
+    id: "v4.17",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(v417System(t171, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(v417System(t172, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(v417System(t173, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+    titleFirst: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
+/** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
+export const packWriter = (id: string | undefined): PilotPack["writer"] =>
+  id ? (PILOT_PACKS as Record<string, PilotPack>)[id]?.writer : undefined;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.16";
+export const PILOT_PACK_ID: PilotPackId = "v4.17";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
@@ -552,6 +616,25 @@ export function pilotRequest(
     fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
   }
   if (pack.writerTemplates) Object.assign(schema, withWriterTemplates(schema, writerStageOf(ks)));
+  if (pack.titleFirst) {
+    // Strict output streams keys in schema order: title before the flow, the rest as they were.
+    const { title, ...props } = schema.properties as J;
+    if (!title) throw new Error(`pilot pack ${id}: no title to move first`);
+    const [head, ...rest] = Object.entries(props);
+    if (head?.[0] !== "design") throw new Error(`pilot pack ${id}: design is not first`);
+    schema.properties = Object.fromEntries([head, ["title", title], ...rest]);
+    schema.required = [
+      "design",
+      "title",
+      ...(schema.required as string[]).filter((k) => k !== "design" && k !== "title"),
+    ];
+  }
+  if (pack.noLabelledDiagram) {
+    const kind = schema.$defs?.["diagram-freeform"]?.properties?.kind;
+    if (!Array.isArray(kind?.enum) || !kind.enum.includes("labelled-diagram"))
+      throw new Error(`pilot pack ${id}: no labelled-diagram in the freeform kinds to take out`);
+    kind.enum = (kind.enum as string[]).filter((k) => k !== "labelled-diagram");
+  }
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
   for (const k of [...replaced, ...pack.layouts.retired, ...floored])
