@@ -5,6 +5,7 @@ import { atKeyStage, THEMES } from "../themes";
 import {
   FIGURE_CAPTION_FITS,
   FIGURE_CAPTION_GAP,
+  FIGURE_FLOOR,
   FIGURE_FOOT,
   FIGURE_GAP,
   FIGURE_NAMES,
@@ -109,6 +110,20 @@ describe("figure slide: the open stage", () => {
     if (art) expect(art.y + art.h).toBeLessThanOrEqual((cap?.y ?? 0) + 0.5);
     expect((cap?.y ?? 0) + (cap?.h ?? 0)).toBeLessThanOrEqual(540);
     expect(f?.chars).toBe(long.length);
+  });
+
+  test("under a very long caption the figure keeps its floor and the slide is over (part aq)", () => {
+    const short = lay();
+    const shortArt = short.slide.elements.find((e) => e.type === "image" || e.name === "Plate");
+    const huge = Array.from({ length: 12 }, () => "The water cycle never stops moving water.").join(
+      " ",
+    );
+    const r = lay({ lead: huge });
+    expect(r.over).toContain("figure caption over one line");
+    const art = r.slide.elements.find((e) => e.type === "image" || e.name === "Plate");
+    const [cap] = named(r.slide.elements, FIGURE_NAMES.caption) as TextElement[];
+    expect(JSON.stringify(cap?.doc)).not.toContain("…");
+    if (art && shortArt) expect(art.h).toBeGreaterThanOrEqual(shortArt.h * FIGURE_FLOOR - 1);
   });
 
   test("the caption cap is the writer's cap under the measured one-line fit, per age", () => {

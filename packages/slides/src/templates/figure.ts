@@ -46,6 +46,8 @@ export const figureAge = (stage: Stage): FigureAge =>
 export const FIGURE_GAP = 27;
 export const FIGURE_CAPTION_GAP = 16;
 export const FIGURE_FOOT = 540 - 37;
+/** The least share of its one-line stage a figure keeps under a long caption (TEACH-247 part aq). */
+export const FIGURE_FLOOR = 0.5;
 /** The share of the free height above the figure (the rest is below): 40/60. */
 export const FIGURE_TOP_SHARE = 0.4;
 /** A portrait photo is cropped to 3:4 at most, so it stays a picture, not a strip. */
@@ -248,12 +250,18 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
   // flagged for the caller (to rewrite it or switch layout) and meanwhile shown whole on the lines
   // it takes, the figure giving up the room: never cut with an ellipsis (TEACH-247 part aq: the
   // Romans Y5 verify6 s4 caption shipped as "Bowness-on-Solway: 73…").
+  // The figure never gives up more than half its one-line stage (the floor): a caption longer
+  // still keeps the figure at the floor and its lines run past the foot, the slide reported over.
+  const oneLineH = FIGURE_FOOT - (caption ? capLine + FIGURE_CAPTION_GAP : 0) - top;
   const st: { x: number; y: number; w: number; h: number } = {
     x: G.margin,
     y: top,
     w: G.width,
     h: Math.round(
-      FIGURE_FOOT - (caption ? capLine * Math.max(1, capLines) + FIGURE_CAPTION_GAP : 0) - top,
+      Math.max(
+        oneLineH * FIGURE_FLOOR,
+        FIGURE_FOOT - (caption ? capLine * Math.max(1, capLines) + FIGURE_CAPTION_GAP : 0) - top,
+      ),
     ),
   };
   const f = input.figure;
