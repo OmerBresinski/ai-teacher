@@ -39,6 +39,17 @@ const ctx = (slides: S[], index: number, visual: (k: string) => unknown) =>
   }) as never;
 
 describe("writer: the figure slide", () => {
+  test("a caption over the one-line cap is never cut: the big layout wraps it (TEACH-251 part ae)", () => {
+    const caption = "The wall stretched between Wallsend and Bowness-on-Solway: 73 miles long.";
+    const long = { ...figureSlide, caption };
+    const i = toInput(
+      long,
+      ctx([{ template: "title" }, long], 1, () => drawn(2.27)),
+    );
+    expect(i.template).toBe("big-diagram");
+    expect((i as S).lead).toBe(caption);
+    expect(JSON.stringify(i)).not.toContain("…");
+  });
   test("a figure slide with its drawn model keeps the layout, caption and accent", () => {
     const i = toInput(
       figureSlide,

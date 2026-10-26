@@ -499,6 +499,15 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   const failed = new AbortController();
   /** The editable deck is saved: from here a failure keeps it (today's behaviour). */
   let editableSaved = false;
+  /**
+   * The editable deck without its held frames (TEACH-247 part av): saved in its place when the job
+   * stops before its final deck, so a frame held open for a picture never outlives the job.
+   */
+  let heldBack:
+    | Parameters<NonNullable<Parameters<typeof runWriter>[0]["onEditable"]>>[1]
+    | undefined;
+  /** When the editable deck was saved: a save in its place keeps it (resume reads it). */
+  let editableAt: string | undefined;
   try {
     const services = aiWriterServices(deps);
     out = await runWriter({
@@ -646,14 +655,17 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
             canReask: (i, key) => pictures.canReask(i, key),
           }
         : {}),
-      onEditable: async (slides) => {
+      onEditable: async (slides, unheld) => {
+        // Kept only when the editable deck holds a frame open (it differs from the unheld copy).
+        heldBack = JSON.stringify(unheld) === JSON.stringify(slides) ? undefined : unheld;
         // Editable: every slide is laid out and done (rule (a): editable waits for the pictures);
         // the checkpoint stays at `planned` until the end. No streamed save lands after this one.
         await progressive.close();
         editableSaved = true;
         const deck = kept(credited(slides));
+        editableAt = deps.now().toISOString();
         const { updatedAt } = await deps.persist(
-          toLesson(deck, "planned", allIn(deck, "done"), deps.now().toISOString()),
+          toLesson(deck, "planned", allIn(deck, "done"), editableAt),
         );
         await deps.onProgress(70, "Slides written", "generate", updatedAt);
       },
@@ -675,6 +687,18 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     failed.abort();
     await progressive.close();
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
+    // Stopped after the editable deck: the frames it held for pictures are laid out without them
+    // (under the same per-slide ownership merge, ADR 0037). Best effort: the failure is the job's.
+    const cleared = editableSaved && heldBack ? kept(credited(heldBack)) : undefined;
+    if (cleared)
+      await deps
+        .persist(toLesson(cleared, "planned", allIn(cleared, "done"), editableAt))
+        .catch((err: unknown) =>
+          deps.logger.warn(
+            { stage: "generate", err: String(err).slice(0, 200) },
+            "held frames not cleared",
+          ),
+        );
     // Slides still `writing` are rolled back to the plan: the stream showed them, the lesson never
     // ships them. Its cost is saved, so a retry's budget counts it.
     const streamed = !editableSaved && (offScreen || progressive.patches().size > 0);

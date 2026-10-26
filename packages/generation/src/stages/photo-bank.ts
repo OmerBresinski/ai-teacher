@@ -242,6 +242,11 @@ export interface PictureBank {
   ): Promise<MadePicture | undefined>;
   /** Take a picture the judge refused (fresh or from the library) out of the library for good. */
   reject?(photo: PlacedPhoto): Promise<void>;
+  /**
+   * Take out a picture that lost a race a real picture already won: no verdict on it, so a caller
+   * counting refusals can tell it apart (TEACH-202 part x). Absent, `reject` does it.
+   */
+  discard?(photo: PlacedPhoto): Promise<void>;
 }
 
 /**
@@ -516,7 +521,9 @@ export async function findPicture(
     }
     const genStop = new AbortController();
     const discardMade = (p: PlacedPhoto) =>
-      (bank.reject?.(p) ?? Promise.resolve()).catch(whenNonFatal(() => undefined));
+      ((bank.discard ?? bank.reject)?.call(bank, p) ?? Promise.resolve()).catch(
+        whenNonFatal(() => undefined),
+      );
     const genP = make(faithful, AbortSignal.any([signal, genStop.signal])).then(
       (p) => p,
       (error: unknown) => {
@@ -556,7 +563,9 @@ export async function findPicture(
       return stop === stockStop ? stockFailed(error) : rethrowAbort(error);
     };
     const discard = (p: PlacedPhoto) =>
-      (bank.reject?.(p) ?? Promise.resolve()).catch(whenNonFatal(() => undefined));
+      ((bank.discard ?? bank.reject)?.call(bank, p) ?? Promise.resolve()).catch(
+        whenNonFatal(() => undefined),
+      );
     const stockP = fetchStock(AbortSignal.any([signal, stockStop.signal])).then((p) => {
       // A search that ran to the end and found nothing is a miss, whichever side then wins.
       if (!p && !trace.stock) trace.stock = "miss";
