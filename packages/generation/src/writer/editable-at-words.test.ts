@@ -23,15 +23,18 @@ const images = (s: WriterSlide | undefined) =>
 const open = (s: WriterSlide | undefined) =>
   images(s).filter((e) => e.src === PLACEHOLDER_IMAGE).length;
 
-async function run(early: boolean) {
+async function run(early: boolean, lands = true) {
   const rec = recordedVisuals(B);
   const placed = new Set<string>();
+  let settled = false;
   const src = (k: string) => `/files/test/${k.replace(":", "-")}.png`;
   const visual = (i: number, key: string, a: VisualAsk): VisualState => {
     const k = `${i}:${key}`;
     if (placed.has(k))
       return { status: "photo", photo: { src: src(k), alt: key, aspect: 1.5, request: key } };
-    if (i === LATE && a.type === "photo") return { status: "pending" };
+    // Pending until the pictures settle; a picture that never comes is failed at the deadline.
+    if (i === LATE && a.type === "photo")
+      return settled ? { status: "failed" } : { status: "pending" };
     return rec(i, key, a);
   };
   const order: string[] = [];
@@ -62,8 +65,11 @@ async function run(early: boolean) {
     beforeEditable: async () => {
       order.push("pictures-start");
       // The slide's picture lands while the pictures settle.
-      placed.add(`${LATE}:picture`);
-      landed(LATE);
+      if (lands) {
+        placed.add(`${LATE}:picture`);
+        landed(LATE);
+      }
+      settled = true;
       order.push("pictures-settled");
     },
     onEditable: (slides) => {
@@ -105,5 +111,14 @@ describe("editable when the words finish (part av)", () => {
     const { order, late } = await run(false);
     expect(order.indexOf("pictures-settled")).toBeLessThan(order.indexOf("editable"));
     expect(late).toEqual([]);
+  });
+
+  test("a picture that never comes is laid away at the deadline: no slot stays open", async () => {
+    const { out, settledDeck, atEditable, late } = await run(true, false);
+    expect(open(atEditable)).toBeGreaterThan(0);
+    expect(late).toEqual([]);
+    expect(open(settledDeck)).toBe(0);
+    const final = out.slides.find((s) => s.id === atEditable?.id);
+    expect(open(final)).toBe(0);
   });
 });
