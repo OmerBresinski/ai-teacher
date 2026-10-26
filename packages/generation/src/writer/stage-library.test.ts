@@ -170,6 +170,14 @@ describe("writer stage: library models", () => {
     expect(svgOfDataUrl(String(diagram?.src))).not.toContain("theme-primary");
   }, 60_000);
 
+  test("a model off the lesson's menu (the schema lists the stage's whole catalogue) goes to the drawer, no fill", async () => {
+    const { fills, events } = await run(() => undefined, { model: "not_on_this_menu" });
+    expect(fills.length).toBe(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "lib-off-menu", model: "not_on_this_menu" }),
+    );
+  }, 60_000);
+
   test("checks only logged (TEACH-312 part i): a model the words check rejects is kept, logged", async () => {
     const m = await loadModel("fractions");
     const heading = "Find 7/9 of the circle";
