@@ -106,9 +106,9 @@ describe("hist_map walls and frontiers", () => {
     };
     expect(Object.keys(s.properties)).toContain("frontiers");
     const F = await frontiers();
-    const keys = s.properties.frontiers.items?.properties.line.description ?? "";
+    const keys = s.properties.frontiers?.items?.properties.line?.description ?? "";
     for (const k of Object.keys(F)) expect(keys).toContain(`${k}:`);
-    expect(s.properties.frontiers.description).toContain("only when the slide is about that line");
+    expect(s.properties.frontiers?.description).toContain("only when the slide is about that line");
   });
 
   test("the wall is drawn and named on the map", async () => {
