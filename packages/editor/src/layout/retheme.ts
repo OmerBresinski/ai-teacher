@@ -1,4 +1,5 @@
 import type { GroupElement, Id, Lesson, Slide, Theme } from "@tj/domain/documents";
+import { SAFE, SPACE } from "@tj/slides";
 import { layoutKit } from "../model/layout-kit";
 import * as reducers from "../model/reducers";
 import { type LayoutKit, placeInto, tryRelayout } from "../model/reducers/layout";
@@ -167,9 +168,10 @@ function slideColours(slide: Slide): Set<string> {
  * started, so a slide it sends after the teacher picked another one (or after a reload, when the
  * row already holds the teacher's pick) still wears the old palette. The palette is read off the
  * slide: when another theme's colours match it strictly better than the lesson's own, the slide is
- * recoloured from that theme (P1 26 Oct). Otherwise the slide is returned as it is.
+ * recoloured from that theme (P1 26 Oct), and with `measure` fitted to it. Otherwise the slide is
+ * returned as it is.
  */
-export function inLessonTheme(slide: Slide, lesson: Lesson): Slide {
+export function inLessonTheme(slide: Slide, lesson: Lesson, measure?: Measurer): Slide {
   const colours = slideColours(slide);
   if (colours.size === 0) return slide;
   const score = (theme: Theme) => {
@@ -190,7 +192,20 @@ export function inLessonTheme(slide: Slide, lesson: Lesson): Slide {
       top = n;
     }
   }
-  return best === own ? slide : recolourSlide(slide, best, own);
+  if (best === own) return slide;
+  const recoloured = recolourSlide(slide, best, own);
+  // TEACH-247 part ag: the job laid the slide out in its starting theme's type ladder and faces,
+  // so a recolour alone left its words overrunning their boxes in the teacher's theme (Great Fire
+  // Y2: a divider through a task, an exit ticket's task through its card). It is fitted to the
+  // lesson's theme: tidied (a no-op on a slide that already fits). Lint alone is not the trigger:
+  // it does not see a divider a grown task runs through.
+  if (!measure) return recoloured;
+  const one = { ...lesson, slides: [recoloured] };
+  const cardFoot = SAFE.y + SAFE.h + SPACE[2];
+  return (
+    tidySlide(one, recoloured.id, measure, { split: false, cardFoot }).lesson.slides[0] ??
+    recoloured
+  );
 }
 
 /** Pure: the lesson in `themeId`, fitted to it. Choosing the theme it already has is a no-op. */

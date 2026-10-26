@@ -14,6 +14,7 @@ import { ACCENT_ABOVE, AGENDA_DIVIDER, OPTICAL_BIAS } from "./layouts";
 import { isBleed } from "./lint";
 import { OPTION, SAFE_BOTTOM } from "./metrics";
 import {
+  isBackdrop,
   isFrozen,
   isLayerBelow,
   type Measurer,
@@ -263,10 +264,25 @@ function changed(slide: Slide, result: ReflowResult): boolean {
  * A card (a shape the reflow treats as a layer) keeps the padding it had under every text laid
  * on it: when the text grows, the card grows by the same amount.
  */
-function growCards(before: SlideElement[], after: SlideElement[]): SlideElement[] {
+/**
+ * Each card grown to hold the text laid on it once that text has grown (`before` and `after` are
+ * the same elements, in order, before and after a reflow). Also run by the editor's Tidy
+ * (TEACH-247 part ag: an exit ticket's second task ran through its card's border).
+ */
+export function growCards(
+  before: SlideElement[],
+  after: SlideElement[],
+  /** How low a card may grow (a re-theme's Tidy lets it reach a little further). */
+  foot = SAFE_BOTTOM - SPACE[1],
+  /** Grow a template's locked `surface:` cards too (the editor's Tidy; generation's fit leaves them). */
+  surfaces = false,
+): SlideElement[] {
   return after.map((card, i) => {
     const card0 = before[i];
-    if (!card0 || card.type !== "shape" || !isLayerBelow(card) || isFrozen(card)) return card;
+    // A template's card is a locked `surface:` shape: it still grows with its words.
+    const surface = surfaces && (card.name ?? "").startsWith("surface:") && !isBackdrop(card);
+    if (!card0 || card.type !== "shape" || !isLayerBelow(card) || (isFrozen(card) && !surface))
+      return card;
     let bottom = card.y + card.h;
     before.forEach((el0, j) => {
       const el = after[j];
@@ -277,7 +293,7 @@ function growCards(before: SlideElement[], after: SlideElement[]): SlideElement[
     // A card never grows past the foot the recipe gives it (`SAFE_BOTTOM` less one spacing stop):
     // text that still does not fit is an overflow the editor's Tidy splits, and a card it cannot
     // shrink back would stay in the way.
-    bottom = Math.min(bottom, Math.max(card0.y + card0.h, SAFE_BOTTOM - SPACE[1]));
+    bottom = Math.min(bottom, Math.max(card0.y + card0.h, foot));
     return bottom > card.y + card.h ? { ...card, h: Math.ceil(bottom - card.y) } : card;
   });
 }
