@@ -327,6 +327,26 @@ function isMaxlag(body: unknown): boolean {
   return typeof error === "object" && error !== null && error.code === "maxlag";
 }
 
+/** `p`, or the signal's reason as soon as it aborts (the shared work itself goes on). */
+function untilAborted<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return p;
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+    p.then(
+      (v) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(v);
+      },
+      (e: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(e);
+      },
+    );
+  });
+}
+
 const realSleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     if (signal?.aborted) return reject(signal.reason);
@@ -367,28 +387,50 @@ export async function inlineThumbnails(
   fetchFn: typeof globalThis.fetch,
   agent: string,
   signal?: AbortSignal,
+  /**
+   * The job's thumbnails by URL (picq, greatfire 26 Oct: 536 thumbnail downloads of 208 files, one
+   * painting's 42 times, and 11 busy replies). A shared download runs on its own deadline only, so
+   * one caller's stop never fails another's; each caller still stops on its own signal.
+   */
+  cache?: Map<string, Promise<string | undefined>>,
 ): Promise<CommonsPhoto[]> {
   // a lesson trial profile: thumbnails were fetched one after another inside the one-at-a-time
   // API queue, so four Commons searches took 85-140 s end to end (y9 R2: last picture at 154 s).
   // Now a few thumbnails download at once, each with its own deadline, outside the API queue
   // (upload.wikimedia.org is not the API), and the first `limit` that load are kept in order.
-  const one = async (photo: CommonsPhoto): Promise<CommonsPhoto | undefined> => {
+  const download = async (url: string, stop?: AbortSignal): Promise<string | undefined> => {
     const timeout = AbortSignal.timeout(THUMB_TIMEOUT_MS);
     try {
-      const res = await fetchFn(photo.src.tiny, {
+      const res = await fetchFn(url, {
         headers: { "User-Agent": agent },
-        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        signal: stop ? AbortSignal.any([stop, timeout]) : timeout,
       });
       const type = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
       if (!res.ok || !/^image\/(jpeg|webp|png)$/.test(type)) return undefined;
       const bytes = new Uint8Array(await res.arrayBuffer());
       if (bytes.length === 0 || bytes.length > MAX_THUMB_BYTES) return undefined;
-      const tiny = `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
-      return { ...photo, src: { ...photo.src, tiny } };
+      return `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
     } catch (error) {
-      if (signal?.aborted) throw error;
+      if (stop?.aborted) throw error;
       return undefined;
     }
+  };
+  const tinyOf = (url: string): Promise<string | undefined> => {
+    if (!cache) return download(url, signal);
+    let p = cache.get(url);
+    if (!p) {
+      p = download(url);
+      cache.set(url, p);
+      // A thumbnail that did not load may be asked again later.
+      void p.then((t) => {
+        if (t === undefined && cache.get(url) === p) cache.delete(url);
+      });
+    }
+    return untilAborted(p, signal);
+  };
+  const one = async (photo: CommonsPhoto): Promise<CommonsPhoto | undefined> => {
+    const tiny = await tinyOf(photo.src.tiny);
+    return tiny === undefined ? undefined : { ...photo, src: { ...photo.src, tiny } };
   };
   const out: CommonsPhoto[] = [];
   for (let k = 0; k < photos.length && out.length < limit; k += THUMB_CONCURRENCY) {
@@ -419,6 +461,8 @@ export function createCommonsClient(
     /** Waits (the request gap and busy retries); tests pass a fake clock. */
     sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
     now?: () => number;
+    /** The job's stop: a search or download still queued when it fires never starts. */
+    signal?: AbortSignal;
   } = {},
 ): CommonsClient {
   const fetchFn = opts.fetch ?? globalThis.fetch;
@@ -430,6 +474,7 @@ export function createCommonsClient(
   let last = 0;
   const politely = <T>(task: () => Promise<T>): Promise<T> => {
     const run = chain.then(async () => {
+      if (opts.signal?.aborted) throw opts.signal.reason ?? new Error("The job stopped.");
       const wait = last + MIN_GAP_MS - now();
       if (wait > 0) await sleep(wait);
       try {
@@ -455,60 +500,88 @@ export function createCommonsClient(
         await sleep(wait, init.signal);
       }
     });
+  // One job's searches by URL (picq, greatfire 26 Oct: 76 searches in one serial queue, a quarter
+  // of them a query another slide had already sent). A search sent once answers every later ask
+  // of the same query; it runs on its own deadline, so one caller's stop never fails another's.
+  const searches = new Map<string, Promise<CommonsPhoto[]>>();
+  const thumbs = new Map<string, Promise<string | undefined>>();
+  const searchOnce = (
+    key: string,
+    run: () => Promise<CommonsPhoto[]>,
+    signal?: AbortSignal,
+  ): Promise<CommonsPhoto[]> => {
+    let p = searches.get(key);
+    if (!p) {
+      p = run();
+      searches.set(key, p);
+      // A failed or busy search is not kept: a later ask sends it again.
+      p.catch(() => {
+        if (searches.get(key) === p) searches.delete(key);
+      });
+    }
+    return untilAborted(p, signal);
+  };
   return {
     fetchFile,
-    search: ({ query, perPage = 20, allowDrawings, diagrams, signal, inline = 8 }) =>
-      politely(async () => {
-        const url = new URL(opts.apiUrl ?? API_URL);
-        const p = url.searchParams;
-        p.set("action", "query");
-        p.set("format", "json");
-        p.set("formatversion", "2");
-        p.set("maxlag", "5");
-        p.set("generator", "search");
-        p.set("gsrnamespace", "6");
-        p.set(
-          "gsrsearch",
-          diagrams
-            ? `${query} filetype:drawing`
-            : allowDrawings
-              ? query
-              : `${query} filetype:bitmap`,
-        );
-        p.set("gsrlimit", String(Math.min(Math.max(perPage, 1), 50)));
-        p.set("prop", "imageinfo|categories");
-        p.set("clshow", "!hidden");
-        p.set("cllimit", "max");
-        p.set("iiprop", "url|size|mime|extmetadata");
-        p.set("iiurlwidth", String(LARGE_WIDTH));
-        p.set(
-          "iiextmetadatafilter",
-          "LicenseShortName|License|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
-        );
-        // Busy (a `maxlag` error, 429 or 503) waits its `Retry-After` and tries again, up to
-        // COMMONS_BUSY_RETRIES times; then it reports busy, never an empty search.
-        for (let attempt = 0; ; attempt++) {
-          // A deadline on the API call too: a stalled request held the whole queue.
-          const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
-          const res = await fetchFn(url.toString(), {
-            headers: { "User-Agent": agent, "Api-User-Agent": agent },
-            signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-          });
-          const busyStatus = res.status === 429 || res.status === 503;
-          if (!res.ok && !busyStatus)
-            throw new CommonsError(res.status, `Commons search failed (${res.status})`);
-          const body: unknown = busyStatus ? undefined : await res.json();
-          if (!busyStatus && !isMaxlag(body))
-            return commonsPhotosOf(body, {
-              allowDrawings: allowDrawings || diagrams,
-              ...(diagrams ? { diagrams } : {}),
-            });
-          const wait = retryAfterMs(res.headers.get("Retry-After"));
-          if (attempt >= COMMONS_BUSY_RETRIES || wait > COMMONS_MAX_RETRY_AFTER_MS)
-            throw new CommonsError(busyStatus ? res.status : 503, "Commons is busy", true);
-          await sleep(wait, signal);
-        }
-      }).then((photos) => inlineThumbnails(photos, inline, fetchFn, agent, signal)),
+    search: ({ query, perPage = 20, allowDrawings, diagrams, signal, inline = 8 }) => {
+      const key = JSON.stringify([query, perPage, !!allowDrawings, !!diagrams]);
+      return searchOnce(
+        key,
+        () =>
+          politely(async () => {
+            const url = new URL(opts.apiUrl ?? API_URL);
+            const p = url.searchParams;
+            p.set("action", "query");
+            p.set("format", "json");
+            p.set("formatversion", "2");
+            p.set("maxlag", "5");
+            p.set("generator", "search");
+            p.set("gsrnamespace", "6");
+            p.set(
+              "gsrsearch",
+              diagrams
+                ? `${query} filetype:drawing`
+                : allowDrawings
+                  ? query
+                  : `${query} filetype:bitmap`,
+            );
+            p.set("gsrlimit", String(Math.min(Math.max(perPage, 1), 50)));
+            p.set("prop", "imageinfo|categories");
+            p.set("clshow", "!hidden");
+            p.set("cllimit", "max");
+            p.set("iiprop", "url|size|mime|extmetadata");
+            p.set("iiurlwidth", String(LARGE_WIDTH));
+            p.set(
+              "iiextmetadatafilter",
+              "LicenseShortName|License|LicenseUrl|Artist|Credit|Restrictions|ImageDescription|ObjectName|DateTimeOriginal|GPSLatitude|GPSLongitude",
+            );
+            // Busy (a `maxlag` error, 429 or 503) waits its `Retry-After` and tries again, up to
+            // COMMONS_BUSY_RETRIES times; then it reports busy, never an empty search.
+            for (let attempt = 0; ; attempt++) {
+              // A deadline on the API call too: a stalled request held the whole queue.
+              const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
+              const res = await fetchFn(url.toString(), {
+                headers: { "User-Agent": agent, "Api-User-Agent": agent },
+                signal: timeout,
+              });
+              const busyStatus = res.status === 429 || res.status === 503;
+              if (!res.ok && !busyStatus)
+                throw new CommonsError(res.status, `Commons search failed (${res.status})`);
+              const body: unknown = busyStatus ? undefined : await res.json();
+              if (!busyStatus && !isMaxlag(body))
+                return commonsPhotosOf(body, {
+                  allowDrawings: allowDrawings || diagrams,
+                  ...(diagrams ? { diagrams } : {}),
+                });
+              const wait = retryAfterMs(res.headers.get("Retry-After"));
+              if (attempt >= COMMONS_BUSY_RETRIES || wait > COMMONS_MAX_RETRY_AFTER_MS)
+                throw new CommonsError(busyStatus ? res.status : 503, "Commons is busy", true);
+              await sleep(wait);
+            }
+          }),
+        signal,
+      ).then((photos) => inlineThumbnails(photos, inline, fetchFn, agent, signal, thumbs));
+    },
   };
 }
 

@@ -12,6 +12,7 @@ import {
   type PillInput,
   type PillState,
   pillText,
+  stepText,
   useWritingPill,
 } from "./writing-pill";
 
@@ -101,6 +102,27 @@ function manualClock() {
   };
 }
 
+describe("stepText", () => {
+  test("a count moves one number at a time, never skipping a slide", () => {
+    expect(stepText("Planning slide 8…", "Planning slide 10…")).toEqual({
+      text: "Planning slide 9…",
+      step: true,
+    });
+    expect(stepText("Writing slide 11 of 13…", "Writing slide 13 of 13…")).toEqual({
+      text: "Writing slide 12 of 13…",
+      step: true,
+    });
+    // One on: the ordinary dwell; a phase change goes straight to its text.
+    expect(stepText("Writing slide 4 of 11…", "Writing slide 5 of 11…")).toEqual({
+      text: "Writing slide 5 of 11…",
+      step: false,
+    });
+    expect(stepText("Planning slide 13…", "Writing slide 3 of 13…").text).toBe(
+      "Writing slide 3 of 13…",
+    );
+  });
+});
+
 describe("useWritingPill", () => {
   const setup = () => {
     const clock = manualClock();
@@ -158,5 +180,47 @@ describe("useWritingPill", () => {
     expect(r.result.current).toMatchObject({ text: FINISHING_TEXT, visible: false });
     tick(PILL_PACE.fadeMs);
     expect(r.result.current.text).toBeNull();
+  });
+
+  test("the count shows every number on the way (Greg 26 Oct: 8 → 10, 11 → 13)", () => {
+    const { r, tick } = setup();
+    const seen: string[] = [];
+    const note = () => {
+      const t = r.result.current.text;
+      if (t && seen[seen.length - 1] !== t) seen.push(t);
+    };
+    note();
+    r.rerender(look({ slideIds: ids(5) }));
+    note();
+    r.rerender(look({ slideIds: ids(8) }));
+    for (let i = 0; i < 20; i++) {
+      tick(PILL_PACE.stepMs);
+      note();
+    }
+    r.rerender(look({ slideIds: ids(8), ...w(3) }));
+    note();
+    for (let i = 0; i < 8; i++) {
+      tick(PILL_PACE.dwellMs);
+      note();
+    }
+    r.rerender(look({ slideIds: ids(8), ...w(6) }));
+    note();
+    for (let i = 0; i < 20; i++) {
+      tick(PILL_PACE.stepMs);
+      note();
+    }
+    expect(seen).toEqual([
+      "Planning the slides…",
+      "Planning slide 3…",
+      "Planning slide 4…",
+      "Planning slide 5…",
+      "Planning slide 6…",
+      "Planning slide 7…",
+      "Planning slide 8…",
+      "Writing slide 3 of 8…",
+      "Writing slide 4 of 8…",
+      "Writing slide 5 of 8…",
+      "Writing slide 6 of 8…",
+    ]);
   });
 });

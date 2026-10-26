@@ -308,7 +308,9 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const res = resolveIcons(labels);
   if (res.misses.length) c.iconMisses = res.misses;
   const iconIds = res.ids.filter((id): id is string => !!id);
-  const pic = proof && hasPicture(proof.picture) ? proof.picture : null;
+  // A picture proof that leaves the fact too little room gives way (below): the line stands alone,
+  // so the picture never crowds the fact (TEACH-247 part ae).
+  let pic = proof && hasPicture(proof.picture) ? proof.picture : null;
   // Icons give way before the fact goes over: full medals, smaller medals, then the line alone.
   const full = Math.round(v2.disc);
   const rungs = iconIds.length && !pic ? [full, Math.round(full * 0.75), 0] : [full];
@@ -377,6 +379,14 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   for (const d of rungs.slice(1)) {
     if (!ff.over) break;
     ff = fitFact(d);
+  }
+  // The capacity script measures the picture's own caps, so it keeps the picture.
+  if (ff.over && pic && !MEASURING) {
+    const kept = pic;
+    pic = null;
+    const alone = fitFact(0);
+    if (alone.over) pic = kept;
+    else ff = alone;
   }
   const { disc, visH, lineW, lineH, over: factOver } = ff;
   const shownIcons = ff.shown;
