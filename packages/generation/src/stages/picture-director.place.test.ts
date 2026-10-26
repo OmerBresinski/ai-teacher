@@ -209,7 +209,7 @@ describe("ruling 163 under strict (placement)", () => {
       route: "real",
       sourceKind: "none",
       pictureKind: expect.stringMatching(/^(portrait|scene|object)$/),
-      promptVersion: "picture-director-batch.v2",
+      promptVersion: "picture-director-batch.v3",
       framingClause: true,
       frameMeasured: false,
       retryReasons: [],
