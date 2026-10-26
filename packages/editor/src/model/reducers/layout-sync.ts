@@ -22,7 +22,7 @@ import {
   type SlideElement,
   type Theme,
 } from "@tj/domain/documents";
-import { boundPath, fitInto, minLayoutSize, setAtPath } from "@tj/slides/layout-paths";
+import { boundPath, fitInto, getAtPath, minLayoutSize, setAtPath } from "@tj/slides/layout-paths";
 import { produce } from "immer";
 import { layoutKit } from "../layout-kit";
 import { renderTheme } from "../themes";
@@ -81,7 +81,9 @@ function judge(
     const db = (b as { doc?: unknown }).doc;
     if (da === db || !db) continue;
     const path = boundPath(next.id, b.id);
-    if (!path) return { kind: "detach" };
+    // A child id naming a field the ref no longer has (an older save, a renamed group) detaches:
+    // the teacher's words stay as typed, and no other field is written.
+    if (!path || getAtPath(ref, path) === undefined) return { kind: "detach" };
     const words = richDocToPlainText(db as never);
     ref = kit ? kit.editItem(ref, path, words) : setAtPath(ref, path, words);
     typed.push(b);

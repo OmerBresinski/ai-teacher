@@ -1356,51 +1356,126 @@ function processLine(c: Ctx, items: TemplatePoint[]): boolean {
   return false;
 }
 
+/** The bottom of the objectives' space: the safe area's foot (`grid.ts` SAFE, 43 + 454). */
+const OBJECTIVES_FOOT = 497;
 /**
- * The objectives as Chalkie's numbered cards (UX ruling 203, P12): one card per objective with an
- * accent outline, a filled numbered disc and the objective beside it, stacked. On the fit ladder;
- * when no rung holds them it returns false and the caller lays the numbered list, so the measured
- * objectives capacity never drops.
+ * The objectives' type floor below the theme's smallest step: 22 pt on the 960-point slide
+ * (33 px at 1440, about the size of a projected caption read from the back of a classroom), and
+ * never under the editor's body floor (`MIN_FONT_SIZE.body`, 20).
  */
-function objectiveCards(c: Ctx, items: string[], x: number, w: number): boolean {
-  if (!items.length) return false;
+const objectivesFloor = (small: number) => Math.min(small, Math.max(MIN_FONT_SIZE.body, 22));
+
+/**
+ * The objectives slide (UX ruling 203, P12; Greg, 25 Oct 2026: "the objectives slide needs to flow
+ * properly based on objective length"): one numbered card per objective, an accent outline and a
+ * filled disc, every card the tallest card's height. The slide takes the largest type that holds
+ * its longest objective, trying in order:
+ *   1. the theme's type steps (its heading stop, body, bodySmall), each roomy, snug, then with
+ *      tight card padding and gaps: a larger size with tight cards beats a smaller roomy one;
+ *   2. steps of 2 pt below bodySmall down to the floor (`objectivesFloor`, 22 pt), where 4
+ *      objectives with no figure may also sit as a 2x2 grid (the stack first: it reads in order);
+ *   3. past the floor, 1 pt at a time until it holds: nothing ever runs off the slide. This last
+ *      rung is reported (`objectives under the floor`), so the writer shortens the lines first.
+ * The stack centres in the space under the heading (the band's top to the safe area's foot), and
+ * spare height goes to the cards' padding, up to half as much again as roomy.
+ */
+function objectiveCards(c: Ctx, items: string[], x: number, w: number, grid = false): void {
+  if (!items.length) return;
   const full = c.s;
-  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
-  for (const r of rungs) {
-    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
-    const d = Math.round(c.s.body * 1.5);
-    const pad = Math.round(c.s.body * 0.55 * r.space);
-    const gap = Math.round(c.s.body * 0.5 * r.space);
-    const tx = pad + d + Math.round(c.s.body * 0.6);
-    const tw = w - tx - pad;
-    const hs = items.map((q) => Math.max(d, measure(c, q, "body", tw)) + 2 * pad);
-    const total = hs.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
-    if (total > G.band.h) continue;
-    let y = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
-    items.forEach((q, k) => {
-      const h = hs[k] ?? 0;
-      box(c, { x, y, w, h }, c.t.colors.surface, {
-        stroke: c.t.colors.accent,
-        strokeWidth: 2,
-        radius: Math.min(c.t.radius, 14),
-        name: "Objective card",
-      });
-      disc(c, String(k + 1), x + pad, y + Math.round((h - d) / 2), d);
-      const th = measure(c, q, "body", tw);
-      text(
-        c,
-        q,
-        "body",
-        { x: x + tx, y: y + Math.round((h - th) / 2), w: tw },
-        { color: c.t.colors.ink, name: "Item" },
-      );
-      y += h + gap;
-    });
-    c.s = full;
-    return true;
+  const limit = OBJECTIVES_FOOT - G.band.y;
+  const big = typeScale(c.t)?.heading ?? 0;
+  const floor = objectivesFloor(full.small);
+  type Lay = {
+    size: number;
+    cols: number;
+    cw: number;
+    d: number;
+    pad: number;
+    gap: number;
+    tx: number;
+    tw: number;
+    h: number;
+    total: number;
+  };
+  const plan = (size: number, space: number, cols: number): Lay => {
+    c.s = { ...full, body: size, lead: size };
+    const gap = Math.round(size * 0.5 * space);
+    const cw = cols === 1 ? w : Math.floor((w - gap) / 2);
+    const d = Math.round(size * 1.5);
+    const pad = Math.max(4, Math.round(size * 0.55 * space));
+    const tx = pad + d + Math.round(size * 0.6);
+    const tw = cw - tx - pad;
+    const h = Math.max(d, ...items.map((q) => measure(c, q, "body", tw))) + 2 * pad;
+    const rows = Math.ceil(items.length / cols);
+    return { size, cols, cw, d, pad, gap, tx, tw, h, total: h * rows + gap * (rows - 1) };
+  };
+  const layouts = grid && items.length === 4 ? [1, 2] : [1];
+  const tries: [number, number][] = [];
+  if (c.fullSize) tries.push([full.body, 1]);
+  else {
+    for (const size of [...new Set([big > full.body ? big : full.body, full.body, full.small])])
+      for (const space of [1, 0.6, 0.3]) tries.push([size, space]);
+    for (let size = full.small - 2; size >= floor; size -= 2) tries.push([size, 0.3]);
+    if (floor < full.small && tries.at(-1)?.[0] !== floor) tries.push([floor, 0.3]);
   }
+  let lay: Lay | undefined;
+  for (const [size, space] of tries) {
+    // The grid only once the stack would go under bodySmall: a stack reads in order.
+    for (const cols of size < full.small ? layouts : [1]) {
+      const l = plan(size, space, cols);
+      if (l.total <= limit) {
+        lay = l;
+        break;
+      }
+    }
+    if (lay) break;
+  }
+  if (!lay && !c.fullSize) {
+    // Past the floor: smaller until it holds, reported so the writer shortens the lines.
+    for (let size = floor - 1; size >= 8 && !lay; size--) {
+      const l = plan(size, 0.3, layouts.at(-1) ?? 1);
+      if (l.total <= limit) lay = l;
+    }
+    c.over.push("objectives under the floor");
+  }
+  if (!lay) {
+    lay = plan(c.fullSize ? full.body : 8, 0.3, 1);
+    c.over.push(`objectives ${lay.total}/${limit}pt`);
+  }
+  const at = lay;
+  c.s = { ...full, body: at.size, lead: at.size };
+  // Spare height grows the cards' top and bottom padding (to 1.5x roomy), then the stack centres.
+  const rows = Math.ceil(items.length / at.cols);
+  const roomyPad = Math.round(at.size * 0.55 * 1.5);
+  const grow = Math.max(
+    0,
+    Math.min(roomyPad - at.pad, Math.floor((limit - at.total) / (2 * rows))),
+  );
+  const h = at.h + 2 * grow;
+  const total = h * rows + at.gap * (rows - 1);
+  const y0 = G.band.y + Math.max(0, Math.round((limit - total) / 2));
+  items.forEach((q, k) => {
+    const col = at.cols === 1 ? 0 : k % 2;
+    const row = at.cols === 1 ? k : Math.floor(k / 2);
+    const cx = x + col * (at.cw + at.gap);
+    const y = y0 + row * (h + at.gap);
+    box(c, { x: cx, y, w: at.cw, h }, c.t.colors.surface, {
+      stroke: c.t.colors.accent,
+      strokeWidth: 2,
+      radius: Math.min(c.t.radius, 14),
+      name: "Objective card",
+    });
+    disc(c, String(k + 1), cx + at.pad, y + Math.round((h - at.d) / 2), at.d);
+    const th = measure(c, q, "body", at.tw);
+    text(
+      c,
+      q,
+      "body",
+      { x: cx + at.tx, y: y + Math.round((h - th) / 2), w: at.tw },
+      { color: c.t.colors.ink, name: "Item" },
+    );
+  });
   c.s = full;
-  return false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -2114,9 +2189,8 @@ function layoutOnce(
       // Ruling 203, P12: numbered disc cards, with the figure beside them when one is given.
       const fig =
         !!c.objectiveCards && !!input.figure && figureDraws(c, input.figure, undefined, c.fails);
-      const x = G.margin;
-      const w = fig ? G.left.w : 720;
-      if (!(c.objectiveCards && objectiveCards(c, pts, x, w))) numbered(c, pts, x, w, "objectives");
+      // No figure: the cards take the slide's full width.
+      objectiveCards(c, pts, G.margin, fig ? G.left.w : G.width, !fig);
       if (fig) figurePanel(c, input.figure);
       break;
     }
