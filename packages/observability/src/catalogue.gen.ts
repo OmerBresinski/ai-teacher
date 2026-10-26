@@ -134,6 +134,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_stream_stopped: ["why"],
   gen_summary: ["coverage", "dangling", "textOnlyTeach"],
   gen_table_continued: ["slide", "slides"],
+  gen_text_faults: ["faults", "slide"],
   gen_theme_now: ["from", "to"],
   gen_tile_pictures: ["keys", "slide"],
   gen_tile_unshown: ["keys", "slide"],

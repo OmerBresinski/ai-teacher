@@ -2009,11 +2009,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
     for (let i = 0; i < n; i++)
       res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
-    // TEACH-247 part ap: words on words and words broken inside, measured in the deck's theme.
-    for (let i = 0; i < n; i++) {
-      const sl = laid.get(i)?.slide;
-      if (sl) res[i]?.faults.push(...textFaults(sl as Slide, base.theme));
-    }
     // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
     for (const h of gasFaults(gasTexts()))
       if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);
@@ -2039,6 +2034,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  // TEACH-247 part ap: words on words and words broken inside, measured in the deck's theme. Log
+  // only for now: never a check fault, so it cannot drop a visual or start a repair until its
+  // false-positive rate is known (stacked or grouped boxes, long hyphenated words, URLs).
+  for (let i = 0; i < n; i++) {
+    const sl = laid.get(i)?.slide;
+    const faults = sl ? textFaults(sl as Slide, base.theme) : [];
+    if (faults.length) log({ ev: "text-faults", slide: i + 1, faults });
+  }
   // Each slide's check in the debug record: the fault lines and the measured overflows (which
   // element, by how much), failing or not.
   if (run.services.debug)

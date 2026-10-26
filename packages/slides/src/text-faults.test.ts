@@ -46,7 +46,7 @@ describe("text faults: words on words and words broken inside (TEACH-247 part ap
   test("laid in Splash and drawn in Crayon Box, both faults are caught", () => {
     const crayon = atKeyStage(getTheme("crayon"), "ks1");
     const q = layoutTemplate(S12, getTheme("splash"), "ks1").slide;
-    expect(textFaults(q as never, crayon).some((f) => f.startsWith("overlap:"))).toBe(true);
+    expect(textFaults(q as never, crayon).some((f) => f.startsWith("text-runs-into:"))).toBe(true);
     const s = layoutTemplate(
       { ...S10, cards: S10.cards?.map((c, i) => (i === 0 ? { ...c, figure: undefined } : c)) },
       getTheme("splash"),

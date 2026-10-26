@@ -334,7 +334,8 @@ export function answersFaults(slide: Slide, measure?: Measurer): string[] {
  * Words on words, measured in the theme the slide is drawn in (TEACH-247 part ap). For every text
  * box: a word wider than the box (the browser breaks it inside, "Firebreak/s"), and a box whose
  * words take more lines than its height holds where the next text box below it starts (a
- * question's second line running into the next question). The boxes are trusted for position;
+ * question's second line running into the next question). Its own prefixes (`text-wide:`,
+ * `text-runs-into:`), never the layout gate's `clipped:` / `overlap:`: the writer logs them only. The boxes are trusted for position;
  * lines are counted by the headless ruler (`measureHeadless`), the theme's real font advances with
  * each box's own style. Answers slides have their own rules (`answersFaults`) and are skipped.
  */
@@ -365,12 +366,12 @@ export function textFaults(slide: Slide, theme: Theme): string[] {
       measure({ doc, width: e.w, style: e.style, preset, inset, chrome: 0 });
     const one = r.fontSize * r.lineHeight;
     const wide = [...new Set(text.split(/\s+/))].find((w) => w && at(para(w)) > one + 0.5);
-    if (wide) out.push(`clipped: "${wide}" is wider than its box ${e.id}`);
+    if (wide) out.push(`text-wide: "${wide}" is wider than its box ${e.id}`);
     const h = at(e.doc) + inset;
     const below = texts
       .filter((o) => o !== e && o.y >= e.y + e.h - EPS && o.x < e.x + e.w && o.x + o.w > e.x)
       .sort((a, b) => a.y - b.y)[0];
-    if (below && e.y + h > below.y + 1) out.push(`overlap: ${e.id} runs into ${below.id}`);
+    if (below && e.y + h > below.y + 1) out.push(`text-runs-into: ${e.id} runs into ${below.id}`);
   }
   return out;
 }
