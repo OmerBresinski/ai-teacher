@@ -95,15 +95,29 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
     const was = b.get(el.id);
     return was !== undefined && sameJson(content(el), content(was));
   };
-  const elements = mine.elements.map((el) => {
-    if (!isSlot(el) || !untouched(el)) return el;
-    const swap = replacement.get(el.id);
-    if (swap) return inPlace(swap, el);
-    const next = t.get(el.id);
-    const was = b.get(el.id);
-    if (next && was && !sameJson(next, was)) return inPlace(next, el);
-    return el;
-  });
+  // Slots the job took out with nothing in their place: the picture never came, and the job laid
+  // the slide again without it (picq, 26 Oct: five grey placeholders shipped on master because the
+  // editor's re-fitted copy of the slide kept them). A copy that differs from `base` only in where
+  // its elements sit (the editor's fit, or a nudge) takes the job's re-laid slide whole; otherwise
+  // the teacher's slide keeps its words and loses only the empty slot. Never a placeholder.
+  const dropped = new Set(gone.filter((id) => !replacement.has(id)));
+  if (dropped.size > 0) {
+    const sameIds =
+      mine.elements.length === base.elements.length && mine.elements.every((e) => b.has(e.id));
+    if (sameIds && mine.elements.every(untouched) && sameJson(mine.notes, base.notes))
+      return theirs;
+  }
+  const elements = mine.elements
+    .filter((el) => !(dropped.has(el.id) && untouched(el)))
+    .map((el) => {
+      if (!isSlot(el) || !untouched(el)) return el;
+      const swap = replacement.get(el.id);
+      if (swap) return inPlace(swap, el);
+      const next = t.get(el.id);
+      const was = b.get(el.id);
+      if (next && was && !sameJson(next, was)) return inPlace(next, el);
+      return el;
+    });
   const notes = sameJson(mine.notes, base.notes) ? theirs.notes : mine.notes;
   const merged = { ...mine, elements } as Slide;
   if (notes === undefined) delete (merged as { notes?: unknown }).notes;
