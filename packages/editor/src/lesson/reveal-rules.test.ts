@@ -175,6 +175,15 @@ describe("revealSlide", () => {
     expect(ids(revealSlide(s, 6).slide)).toEqual(["title", "p0", "b0", "l0", "p1", "b1", "l1"]);
   });
 
+  test("the slide's visual zone (a big picture) comes with the title, before its caption (judge 638b)", () => {
+    const s = slideOf([
+      text("title", "Heading", "Four plant parts", 60, 30, 840, 50),
+      image("fig", 264, 125, 432, 324),
+      text("cap", "Caption", "Say each part as you point.", 264, 460, 432, 30),
+    ]);
+    expect(ids(revealSlide(s, 1).slide)).toEqual(["title", "fig"]);
+  });
+
   test("every word out: the whole slide, no caret", () => {
     const all = revealSlide(quiz, wordCount(quiz));
     expect(ids(all.slide)).toEqual(ids(quiz));

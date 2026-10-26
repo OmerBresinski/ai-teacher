@@ -351,7 +351,10 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
     if (all) return true;
     if (!started) return false;
     if (e.type === "text") return shownOf(e) > 0;
-    if (e.type === "image") return withOwn(item);
+    // The slide's visual zone (a big picture) comes with the title; an item's small picture with
+    // its own label (judge 638b: the footer typed before the picture of "Four plant parts").
+    if (e.type === "image")
+      return item.box.w * item.box.h >= ZONE_SHARE * 960 * 540 ? true : withOwn(item);
     if (e.type === "shape") {
       const held = texts.filter((t) => t.texts > 0 && inside(item, t));
       if (held.length) return held.some((t) => shownOf(t.e) > 0);
@@ -416,8 +419,25 @@ export function catchUpStep(total: number): number {
   return Math.max(1, Math.ceil(total / CATCH_UP_STEPS));
 }
 export const CATCH_UP_STEPS = 18;
+const SEEN = new WeakMap<object, Set<string>>();
+const SEEN_LOOSE = new Set<string>();
+/** The slides a view has shown whole, per draft store (one store per editor). */
+function seenFor(store: object | undefined): Set<string> {
+  if (!store) return SEEN_LOOSE;
+  let s = SEEN.get(store);
+  if (!s) {
+    s = new Set();
+    SEEN.set(store, s);
+  }
+  return s;
+}
+
 /** How far (slide px) a caption or label may sit from its picture or badge and still be its own. */
 const OWN_GAP = 120;
+/** How far apart items that join together fade in (a row of cards). */
+const JOIN_STAGGER_MS = 140;
+/** A picture at least this share of the slide is the slide's visual zone: it comes with the title. */
+const ZONE_SHARE = 0.12;
 export const CATCH_UP_STEP_MS = 35;
 
 function useReducedMotion(): boolean {
@@ -717,7 +737,12 @@ export function LiveSlide({
   if (paced !== undefined) pacedWas.current = { id: slideId, words: paced };
   const start = pacedWas.current.id === slideId ? pacedWas.current.words : undefined;
   // A done slide the follow opened that this view never typed: it types in, from its title.
-  const seen = useRef(new Set<string>());
+  // Kept per draft store (one per editor), not per mount: a canvas that remounts its slide when it
+  // turns done must not forget the slide was already typed.
+  const seen = useRef(seenFor(store));
+  // A slide the first-slides reveal typed was typed here: when the reveal ends it stays whole,
+  // never typed in again (judge 638b: the objectives cleared to "By the end" and retyped).
+  if (paced !== undefined && slideId) seen.current.add(slideId);
   const catchUp =
     typeIn &&
     !reduced &&
@@ -753,8 +778,13 @@ export function LiveSlide({
         ? words >= savedWords
         : paced === undefined || paced >= savedWords);
   // Every slide this view has shown whole is never typed in again (a hand-over, a revisit).
-  if (typed && slideId && (draft ? words >= wordCount(draft.slide) : true) && !writing)
-    seen.current.add(slideId);
+  // A slide shown whole while still writing (its first-slides reveal over, or a reload) counts too:
+  // when it turns done it never types in again (judge 638b: the objectives cleared to "By the end"
+  // and retyped when the slide was redrawn as done). Text that changes later updates in place.
+  if (typed && slideId && (draft ? words >= wordCount(draft.slide) : true)) {
+    const blank = writing && !draft && slide !== undefined && isPlannedBlank(slide);
+    if (!blank) seen.current.add(slideId);
+  }
   if (draft && slideId) seen.current.add(slideId);
   useEffect(() => onTyped?.(typed ? slideId : undefined), [typed, slideId, onTyped]);
   const host = useRef<HTMLDivElement | null>(null);
@@ -781,7 +811,13 @@ export function LiveSlide({
   // shows at once (fading it in would read as a blank canvas when the view moves on).
   // A box the next draft moves glides from where it stood by a transform (FLIP), never by animating
   // its left/top/size, so the settling is not a layout shift (UX audit, 20 Oct: CLS at 1440).
-  const joined = useRef<{ slide?: string; ids: Set<string>; at: Map<string, [number, number]> }>({
+  const joined = useRef<{
+    slide?: string;
+    ids: Set<string>;
+    at: Map<string, [number, number]>;
+    lastJoin: number;
+  }>({
+    lastJoin: 0,
     ids: new Set(),
     at: new Map(),
   });
@@ -793,6 +829,7 @@ export function LiveSlide({
       seen.slide = slideId;
       seen.ids = new Set();
       seen.at = new Map();
+      seen.lastJoin = 0;
     }
     const first = seen.ids.size === 0;
     const fresh: HTMLElement[] = [];
@@ -814,18 +851,40 @@ export function LiveSlide({
     // so a chip's word never shows on a bare slide before its chip (judge 638: "Stem" unstyled for a
     // frame). A text box on its own types in unfaded (a faint first word under a solid caret read
     // as a ghost, Greg 26 Oct).
-    const rects = fresh
+    // Items that join a frame or two apart (a row of cards as their labels type) are staggered
+    // JOIN_STAGGER_MS apart, each fading with its own words (judge 638b: four cards popped one
+    // per frame).
+    const now = performance.now();
+    const boxes = fresh
       .filter((el) => el.dataset.elementType !== "text")
-      .map((el) => el.getBoundingClientRect());
-    const within = (r: DOMRect) =>
-      rects.some((c) => {
+      .map((el) => ({ el, r: el.getBoundingClientRect(), delay: 0 }));
+    const clip = host.current?.closest("[data-slide-clip]")?.getBoundingClientRect();
+    const area = clip ? clip.width * clip.height : 0;
+    const big = (r: DOMRect) => area > 0 && r.width * r.height >= ZONE_SHARE * area;
+    for (const b of boxes) {
+      if (big(b.r)) continue;
+      b.delay = Math.max(0, seen.lastJoin + JOIN_STAGGER_MS - now);
+      seen.lastJoin = now + b.delay;
+    }
+    const around = (r: DOMRect) =>
+      boxes.find(({ r: c }) => {
         const x = r.left + r.width / 2;
         const y = r.top + r.height / 2;
         return x >= c.left && x <= c.right && y >= c.top && y <= c.bottom;
       });
-    for (const el of fresh)
-      if (el.dataset.elementType !== "text" || within(el.getBoundingClientRect()))
-        el.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+    for (const el of fresh) {
+      const box =
+        el.dataset.elementType === "text"
+          ? around(el.getBoundingClientRect())
+          : boxes.find((b) => b.el === el);
+      if (box)
+        el.animate?.([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 180,
+          delay: box.delay,
+          easing: "ease-out",
+          fill: "backwards",
+        });
+    }
   });
   const caretWord = draft || catchUp ? words : (paced ?? 0);
   // One tree whatever is shown, so the canvas never remounts when the saved slide takes over.
