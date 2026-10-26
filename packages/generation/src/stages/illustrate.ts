@@ -1074,6 +1074,8 @@ async function judgeDirected(
   pool: PhotoResult[],
   tried: string[],
   reuse?: boolean,
+  /** The one candidate is a generated painting, judged by its own rules (TEACH-251 part x). */
+  made?: boolean,
 ): Promise<DirectedVerdict> {
   const { lesson, slide, brief, deps } = args;
   const facts = lesson.facts;
@@ -1096,6 +1098,7 @@ async function judgeDirected(
       needAll: !!brief.request && !brief.specific && brief.mustShow.length > 1,
       ...(brief.period ? { period: brief.period } : {}),
       ...(reuse ? { reuse: true } : {}),
+      ...(made ? { made: true } : {}),
       purpose: brief.purpose,
       avoid: brief.avoid,
       queries: tried,
@@ -1151,6 +1154,7 @@ export async function judgeMadeDirected(args: {
     [made],
     [],
     args.reuse,
+    true,
   );
   args.deps.logger.info({
     stage: "illustrate",

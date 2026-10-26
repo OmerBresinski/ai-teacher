@@ -34,6 +34,12 @@ export type PickOrRequeryInput = {
   period?: string;
   /** The picture was made for another slide's request and is offered from the library. */
   reuse?: boolean;
+  /**
+   * The one candidate is a painting the generator made (TEACH-251 part x): judged by
+   * `MADE_PICTURE_RULES`, which refuse a wrong subject or period detail, unsuitable content, text
+   * or a misleading picture, never prominence, scale or composition. Real photographs never set it.
+   */
+  made?: boolean;
   purpose: ImageBrief["purpose"];
   avoid?: string[] | undefined;
   /** Every query already searched, so a requery never repeats one. */
@@ -165,8 +171,24 @@ const EXAMPLE_REQUERY: PickOrRequery = {
   query: "buttercup flower macro",
 };
 
+/**
+ * The rules for a painting the generator made, in the user turn so the pinned system text (v17) and
+ * every real photograph's request stay byte for byte (TEACH-251 part x; rulings 163, 209, 210,
+ * 296). The photograph rules refused usable paintings for a person "as prominent as the scene" or
+ * flames "large rather than small", and passed four of seven paintings with a later landmark in
+ * the background. A painting is judged only on what makes it wrong for pupils.
+ */
+export const MADE_PICTURE_RULES = [
+  "This candidate is a painting made for this slide, not a photograph. For it, these rules replace the photograph rules in your instructions wherever they differ:",
+  "- `onSubject`: true when it depicts the wanted subject or scene. It is meant to be a painted reconstruction, so being a painting or a reconstruction is never a reason to refuse.",
+  "- `clear`: false only when the picture contains writing, letters or numbers. How large, small, central or prominent anything in it is (people, objects, flames, the setting) never makes it false.",
+  "- `fits`: false only for one of these, named in `why`: it shows a different subject or scene from the one wanted; something in it belongs to another time or place than the one given; it shows something unsuitable for this year group; or it would teach pupils something untrue about the subject. Size, amount, scale, pose, viewing angle, composition and style never count, and a size or amount in the wording (small, large, a few) is a hint, not a requirement.",
+  "- When a period and place are given, look over the whole picture before you decide `fits`, its background and any view through a window or doorway included: every building, landmark, piece of clothing, tool, vehicle and flag. A landmark shown as it was built or rebuilt after that time, or anything not yet invented then, belongs to another time, even far in the background. Judge the shapes the picture actually shows, not what you know the place later became: a building is from a later time only when the form you can see is its later form, and `why` says what that form looks like.",
+  "- `visible`: an item counts as visible when the thing it names is in the picture, whatever its size or amount.",
+].join("\n");
+
 export const pickOrRequeryPrompt = {
-  version: "pick-or-requery-photo.v17",
+  version: "pick-or-requery-photo.v18",
   system: [
     "You choose the photograph for one slide of a school lesson from stock-photo search results. You see each candidate photograph (numbered to match its id) and its caption.",
     "",
@@ -206,6 +228,7 @@ export const pickOrRequeryPrompt = {
         ? `Required items — every one must be visible, each exactly as worded: ${input.mustShow.join("; ")}`
         : `Required items — prefer the photograph that shows the most of them; at least one must be visible: ${input.mustShow.join("; ")}`,
     );
+    if (input.made) parts.push(MADE_PICTURE_RULES);
     if (input.reuse)
       parts.push(
         "This picture was made for another slide. It fits only when nothing in it beyond what is wanted changes what it shows or draws the eye from it; a plain setting or background is fine.",

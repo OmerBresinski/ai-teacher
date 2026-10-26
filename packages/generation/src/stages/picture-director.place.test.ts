@@ -3,6 +3,7 @@ import { Writable } from "node:stream";
 import { createFakeAi } from "@tj/ai/testing";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import pino from "pino";
+import { MADE_PICTURE_RULES } from "../prompts/pick-or-requery-photo-directed";
 import type { PictureDirection } from "../prompts/picture-director";
 import { recordingDeps, sampleBriefLesson } from "../testing";
 import {
@@ -665,6 +666,9 @@ describe("ruling 296 (placement)", () => {
     expect(ai.calls.some((c) => c.promptText.includes("Period and place: London, 1666"))).toBe(
       true,
     );
+    // TEACH-251 part x: the made picture is judged by the painted rules, a real search never is.
+    const judged = ai.calls.filter((c) => c.promptText.includes("Period and place: London, 1666"));
+    expect(judged.every((c) => c.promptText.includes(MADE_PICTURE_RULES))).toBe(true);
   });
   test("a named past person with no real picture stays empty", async () => {
     const { run, made, outcomes } = fire("person", "Samuel Pepys", true);
