@@ -155,8 +155,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.10", () => {
-    expect(PILOT_PACK_ID).toBe("v4.10");
+  test("production runs v4.11", () => {
+    expect(PILOT_PACK_ID).toBe("v4.11");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
@@ -228,7 +228,12 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         // Wave C (TEACH-110 part v) is new teaching layouts, not the question layouts: left out.
         const st = ks === "KS3" ? "KS3-5" : ks;
         const waveLines = new Set(Object.values(waveCMenu(st)));
-        const lines = r.system.split("\n").filter((l) => !waveLines.has(l));
+        // The pupil-line rule (v4.10 on, longer in v4.11) is wording, not a question layout: left out.
+        const lines = r.system
+          .split("\n")
+          .filter(
+            (l) => !waveLines.has(l) && !l.startsWith("Every line is written for the pupils"),
+          );
         const kept = lines.filter((l) =>
           id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),
         );
