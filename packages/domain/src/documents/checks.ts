@@ -211,14 +211,21 @@ const NON_CONTENT_WORDS: ReadonlySet<string> = new Set(
   ).split(" "),
 );
 
-/** A word's crude stem: lower case, a plural, past or "-ing" ending and a final "e" dropped. */
+/**
+ * A word's crude stem, so an objective's "cities" or "stopped" meets a slide's "city" or "stop":
+ * "-ies"/"-ied" become "y"; else a plural, past or "-ing" ending and a final "e" drop; then a
+ * doubled final consonant is undoubled ("stopp" → "stop").
+ */
 function stem(word: string): string {
+  if (/i(?:es|ed)$/.test(word) && word.length > 4) return `${word.slice(0, -3)}y`;
+  let out = word;
   for (const suffix of ["ing", "ed", "es", "s", "e"]) {
     if (word.endsWith(suffix) && word.length - suffix.length >= 3) {
-      return word.slice(0, -suffix.length);
+      out = word.slice(0, -suffix.length);
+      break;
     }
   }
-  return word;
+  return out.length > 3 && /([b-df-hj-np-tv-z])\1$/.test(out) ? out.slice(0, -1) : out;
 }
 
 /** The content words of a text, stemmed; numbers count ("AD 122"). */

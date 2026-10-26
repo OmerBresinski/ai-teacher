@@ -629,15 +629,16 @@ function textsByPreset(
 
 /**
  * The names `@tj/slides` gives a question list's own lines: `Item` (the older recipes), `Question`
- * (question-set.ts `QS_NAMES.question`) and `Task` (practice.ts `WA_NAMES.task`, which lays out
- * practice and the exit ticket). Literal here because `@tj/domain` imports nothing internal.
+ * (question-set.ts `QUICK_NAMES.question`) and `Task` (practice.ts `WA_NAMES.task`, which lays out
+ * practice and the exit ticket). Literal here because `@tj/domain` imports nothing internal; `@tj/slides`'
+ * check-names.test.ts pins them to the template constants.
  */
-const ITEM_NAMES: ReadonlySet<string> = new Set(["Item", "Question", "Task"]);
+export const ITEM_NAMES: ReadonlySet<string> = new Set(["Item", "Question", "Task"]);
 /**
  * Labels that sit in the `body` preset but are no task: the exit ticket's "EXIT TICKET" eyebrow
  * (practice.ts `WA_NAMES.kicker`), which the check once read as an item that asks nothing.
  */
-const LABEL_NAMES: ReadonlySet<string> = new Set(["Kicker"]);
+export const LABEL_NAMES: ReadonlySet<string> = new Set(["Kicker"]);
 
 /**
  * A question list's own lines (template question sets, practice and exit tickets: `Item`,
@@ -658,7 +659,6 @@ function listItems(slide: Slide): string[] | undefined {
 }
 
 /** The stem of a question slide: the recipes set it in the `heading` preset; else the first text. */
-
 function stemOf(slide: Slide): string {
   const heading = textsByPreset(slide, "heading")[0];
   if (heading) return heading;

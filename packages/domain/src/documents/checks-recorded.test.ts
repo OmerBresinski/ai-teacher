@@ -100,6 +100,17 @@ describe("objective-coverage by wording when no slide carries provenance", () =>
     expect(of(l, "objective-coverage").map((f) => f.target)).toEqual([{ factId: "o4" }]);
   });
 
+  test("plurals in -ies and doubled consonants meet their stems", () => {
+    const l = greatFireLesson();
+    addObjective(l, "Explain how cities shipped bakeries.");
+    expect(of(l, "objective-coverage").map((f) => f.target)).toEqual([{ factId: "o4" }]);
+    const slide = structuredClone(slideOf(l, "s3"));
+    slide.id = "s3-copy";
+    setText(named(slide, "Lead")[0], "A city could ship a bakery.");
+    l.slides.push(slide);
+    expect(of(l, "objective-coverage")).toEqual([]);
+  });
+
   test("a slide with provenance puts the lesson back on the id path", () => {
     const l = greatFireLesson();
     const lead = named(slideOf(l, "s3"), "Lead")[0];

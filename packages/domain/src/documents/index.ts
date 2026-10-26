@@ -31,6 +31,8 @@ export * from "./migrate";
 export * from "./objectives";
 export {
   EXPLANATION_SHARE_MIN_PERCENT,
+  ITEM_NAMES,
+  LABEL_NAMES,
   PHRASE_REPEAT_LIMIT,
   QUALITY_CHECKS,
 } from "./quality-checks";
