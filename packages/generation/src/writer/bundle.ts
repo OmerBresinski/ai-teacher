@@ -4,6 +4,7 @@ import ACTIVITY_MENU_P123 from "./bundles/base4f-p123/activity-menu.txt" with { 
 import * as base4fP123 from "./bundles/base4f-p123/prompts.gen";
 import * as base4fP124 from "./bundles/base4f-p124/prompts.gen";
 import * as base4fP125 from "./bundles/base4f-p125/prompts.gen";
+import * as base4fP126 from "./bundles/base4f-p126/prompts.gen";
 import ACTIVITY_MENU_G from "./bundles/base4g/activity-menu.txt" with { type: "text" };
 import * as base4g from "./bundles/base4g/prompts.gen";
 
@@ -78,6 +79,10 @@ export const WRITER_BUNDLES = {
   // about it), and an after-effect takes an objective only when the core is covered. Writer hash
   // unchanged.
   "base4f-p125": bundle("base4f-p125", base4fP125, "8a0f9b4f6dde", base4Defs),
+  // base4f-p125 with one sentence added to the objectives system text (TEACH-110 part aw): when the
+  // context gives a range ("two or three"), the larger number when the topic's core has that many
+  // distinct parts for the age, never split or padded. Writer hash unchanged.
+  "base4f-p126": bundle("base4f-p126", base4fP126, "8a0f9b4f6dde", base4Defs),
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.
@@ -93,7 +98,7 @@ export const WRITER_BUNDLES = {
 export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 
 /** The writer prompt set production ships: the one value to change when a new winner lands. */
-export const WRITER_BUNDLE_ID: WriterBundleId = "base4f-p125";
+export const WRITER_BUNDLE_ID: WriterBundleId = "base4f-p126";
 
 /**
  * True when the process may be deployed: any Railway variable (every Railway environment, staging

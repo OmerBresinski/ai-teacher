@@ -577,6 +577,8 @@ function bboxOf(el: Element): { x: number; y: number; width: number; height: num
 }
 
 /** The drawn area: every visible mark's box, ignoring full-slide grounds and the foot. */
+/** The share of a text's measured width the crop adds on each side (TEACH-251 part ad). */
+export const TEXT_SLACK = 0.12;
 function drawnBox(svg: Element, foot: Element | null) {
   let [x0, y0, x1, y1] = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, -1e9, -1e9];
   const walk = (el: Element, m: M) => {
@@ -593,6 +595,13 @@ function drawnBox(svg: Element, foot: Element | null) {
       const bw = Math.max(...xs) - Math.min(...xs);
       // A ground that spans the slide is not the drawing's edge.
       if (bw < W - 1 && xs.every(Number.isFinite) && ys.every(Number.isFinite)) {
+        // TEACH-251 part ad (romans verify6 s4): a word's advance-table width runs short of the
+        // browser's (bold, hinting): "AD 1 to AD 500" measured 222 wide was cut at the crop's edge.
+        // The crop gives each text a share of its width as slack, beyond PAD.
+        if (tag === "text") {
+          const slack = bw * TEXT_SLACK;
+          xs.push(Math.min(...xs) - slack, Math.max(...xs) + slack);
+        }
         x0 = Math.min(x0, ...xs);
         y0 = Math.min(y0, ...ys);
         x1 = Math.max(x1, ...xs);
