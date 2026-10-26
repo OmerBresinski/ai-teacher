@@ -1786,6 +1786,30 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         trying.delete(i);
       }
     };
+  /**
+   * Slide i's diagram asks nothing has drawn yet, drawn now by the drawer (after editable a swap
+   * only draws a writer spec); `specless`: only those with no writer spec (a reroute's figure).
+   */
+  const drawUndrawn = async (i: number, specless = false) => {
+    if (!run.drawDiagrams) return;
+    const now = plan.slides[i] as S;
+    for (const a of asks.get(i) ?? [])
+      if (
+        a.type === "diagram" &&
+        !drawnDiagrams.has(`${i}:${a.key}`) &&
+        (!specless || a.spec === undefined)
+      ) {
+        const r = await drawWriterDiagram(diagramAsk(a, now), {
+          callDrawer: run.drawDiagrams.callDrawer,
+          drawerSystem: writerDrawerSystem,
+          fitActs: act,
+          theme: base.theme,
+          probe: layoutSlotProbe,
+          log: (e) => log({ ...e, slide: i + 1 }),
+        });
+        if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+      }
+  };
   /** attemptLost's body: the swap, its visuals, and keep or restore. */
   const attemptLostBody =
     (i: number, s0: S, n0: ReturnType<typeof notes.get>, lost: PhotoAsk) =>
@@ -1800,19 +1824,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           all.filter((a) => a.type === "photo"),
           { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
         );
-      if (kind === "library" && run.drawDiagrams)
-        for (const a of all)
-          if (a.type === "diagram" && !drawnDiagrams.has(`${i}:${a.key}`)) {
-            const r = await drawWriterDiagram(diagramAsk(a, now), {
-              callDrawer: run.drawDiagrams.callDrawer,
-              drawerSystem: writerDrawerSystem,
-              fitActs: act,
-              theme: base.theme,
-              probe: layoutSlotProbe,
-              log: (e) => log({ ...e, slide: i + 1 }),
-            });
-            if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
-          }
+      if (kind === "library") await drawUndrawn(i);
       const got = all.every((a) => {
         const st = visualState(i)(a.key).status;
         return kind === "library" ? st === "diagram" || a.type !== "diagram" : st === "photo";
@@ -1943,6 +1955,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const earlyLost = new Map<number, Promise<void>>();
   /** Slides whose early job actually ran retryLost (the tail runs it for every other slide). */
   const retriedEarly = new Set<number>();
+  // TEACH-251 part aw: a picture the retry could not ask again (a judge refused it) goes on to
+  // its fallback (pictureLost: a library drawing, a split, then the reroute) in the same early job,
+  // instead of waiting for the checks and repairs (verify11: Romans s3's split started 36 s after
+  // its picture was lost). The gate opens once the checks have said which slides the repairs will
+  // rewrite; those keep the tail's order. Only the start moves: the fallback is the tail's own.
+  let openLate: (early: (i: number) => boolean) => void = () => {};
+  const lateGate = new Promise<(i: number) => boolean>((r) => {
+    openLate = r;
+  });
+  /** Slides whose fallback ran early, with the slide and asks just before it (keepPic's view). */
+  const lostEarly = new Map<number, { s: S | undefined; a: VisualAsk[] }>();
   if (run.slideDone)
     for (let i = 2; i < n; i++) {
       const a0 = asks.get(i) ?? [];
@@ -1971,10 +1994,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           log({ ev: "lost-early", slide: i + 1 });
           retriedEarly.add(i);
           await retryLost(i);
+          if (run.signal?.aborted || path.has(i) || !lostAsks(i).length) return;
+          const early = await lateGate;
+          if (run.signal?.aborted || path.has(i) || !early(i)) return;
+          lostEarly.set(i, { s: plan.slides[i] as S | undefined, a: asks.get(i) ?? [] });
+          log({ ev: "lost-fallback-early", slide: i + 1 });
+          await pictureLost(i);
         },
         (e) => {
           if (run.signal?.aborted) throw e;
           log({ ev: "lost-early-failed", slide: i + 1, where: safeErrorWhere(e) });
+          // the tail runs the fallback again from the slide as it was before the retry
+          lostEarly.delete(i);
           if (kept) {
             restore(i, kept.s, kept.n, kept.a);
             if (kept.p) path.set(i, kept.p);
@@ -2439,144 +2470,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     continuedFrom.set(i, cont.rest);
     return true;
   };
-  // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
-  // call by the slide it sends, so it sees the same calls in any order.
-  // ── pilot layouts: validate at the drawn size and repair (TEACH-110 part s) ──
-  // A pilot slide's fields past their measured cap go back to a bounded fit repair whose schema
-  // keeps the layout, then a second with exact budgets; code then cuts whole sentences only, and a
-  // field with none to stop at stays whole (still over, the editor's chip). This is the pilot
-  // layouts' own fit, not a check: it runs when the checks only log too (TEACH-110 part s).
-  const pilotSlides = plan.slides.flatMap((s0, i) =>
-    isPilot(s0 as S) && repairable(s0 as S, i) ? [i] : [],
-  );
-  await eachBounded(pilotSlides, TAIL_CONCURRENCY, async (i) => {
-    const s0 = plan.slides[i] as S;
-    const pctx = { ...base, index: i, plan, visual: visualState(i) };
-    const at = pilotOvers(s0, pctx);
-    if (!at.overs.length && !at.tooMany && !pilotSlips(s0).length) return;
-    const repair = run.services
-      ? async (_s: S, faults: string[]) => {
-          const ok = await repairOne({ slide: i + 1, faults }, "fit", {
-            keepPartial: true,
-            schema: pilotRepairSchema(repairSchemaFor(stageKey), schema, String(s0.template)),
-          });
-          return ok ? (plan.slides[i] as S) : undefined;
-        }
-      : undefined;
-    const r = await fitPilot(s0, pctx, repair, !!pilot);
-    log({
-      ev: "pilot-fit",
-      slide: i + 1,
-      path: r.path,
-      overs: r.overs,
-      steps: r.steps,
-      ...(r.cut?.length ? { cut: r.cut } : {}),
-      ...(r.kept?.length ? { kept: r.kept } : {}),
-      ...(r.slips?.length ? { slips: r.slips } : {}),
-    });
-    // Members are never dropped silently: a re-lay is logged above, members nothing holds here.
-    if (r.membersOver)
-      log({
-        ev: "pilot-members-over",
-        slide: i + 1,
-        id: `${stableIdPrefix(i)}layout`,
-        template: String(r.slide.template),
-      });
-    if (r.path === "trimmed" || r.path === "still-over" || r.path === "relaid")
-      swapSlide(i, r.slide);
-  });
-  if (pilotSlides.length) {
-    checks = check();
-    failing = failingNow();
-  }
-  if (act) {
-    phaseSlides = [...plan.slides];
-    await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {
-      await fitLoop(c);
-    });
-    phaseSlides = undefined;
-  } else for (const c of failing) log({ ev: "repair-skipped", slide: c.slide, faults: c.faults });
-  void charsOver;
-  // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
-  // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
-  // whole lesson, so volumes compared across slides keep their order.
-  const gasHits = gasFaults(gasTexts());
-  const gasAll = gasHits.flatMap((x) => x.volumes);
-  const gasClaim = (h: (typeof gasHits)[number]) => ({
-    checker: "gas8",
-    claim: "every claimed gas volume is possible from the lesson's stated quantities",
-    verdict: "contradicted",
-    reason: h.fault,
-    volumes: h.volumes,
-    ...(h.vmax !== undefined ? { vmax: h.vmax } : {}),
-  });
-  for (const h of gasHits) {
-    if (!repairable(plan.slides[h.slide] as S, h.slide)) {
-      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "slide not repairable" });
-      continue;
-    }
-    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) {
-      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "dry run (act off)" });
-      continue;
-    }
-    const before = plan.slides[h.slide];
-    const t0 = performance.now();
-    swapSlide(h.slide, rescaleGas(plan.slides[h.slide] as S, gasAll, h.vmax));
-    const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
-    log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
-    factCheck(h.slide, {
-      ...gasClaim(h),
-      correction: "every volume rescaled under the stated maximum by one factor",
-      applied: true,
-      cleared: !left,
-      before,
-      after: plan.slides[h.slide],
-      ms: +(performance.now() - t0).toFixed(2),
-    });
-  }
-  // The writer path's fact check, per lesson: how many slides it read and how many it flagged.
-  if (run.services.debug)
-    debug("fact-check", {
-      checker: "gas8",
-      summary: true,
-      slidesChecked: n,
-      flagged: [...new Set(gasHits.map((h) => h.slide))].length,
-      model: "code",
-      usd: 0,
-    });
-  // figureSync: after repair, every drawn figure is checked against its slide's words; one that
-  // disagrees is dropped, so the fallback below restages the slide without it.
-  for (let i = 0; i < n; i++)
-    for (const a of asks.get(i) ?? []) {
-      const v = visualState(i)(a.key);
-      if (a.type !== "diagram" || v.status !== "diagram") continue;
-      const why = figureTextMismatch(v.spec, plan.slides[i] as S | undefined);
-      if (!why) continue;
-      const actedOn = actOn({
-        ev: "figure-text-mismatch",
-        slide: i + 1,
-        key: a.key,
-        why,
-        dropped: act,
-      });
-      factCheck(i, {
-        checker: "figure-text",
-        claim: "the drawn figure's numbers are the ones the words say",
-        verdict: "mismatch",
-        reason: why,
-        correction: "figure dropped",
-        applied: actedOn,
-        ...(actedOn ? {} : { dropped: "dry run (act off)" }),
-        figure: v.spec,
-        words: wordsOf(plan.slides[i] as S),
-      });
-      if (!actedOn) continue;
-      override.set(`${i}:${a.key}`, { status: "failed" });
-      relay(i);
-    }
-
   // ── a figure that cannot be shown (FOR-CODE item 5) ──
-  // A diagram fault went to repair once above; a diagram that still cannot draw becomes a picture
+  // A diagram fault goes to repair once (below); a diagram that still cannot draw becomes a picture
   // of the same thing when it is a real thing, a table becomes words that keep its data, anything
   // else is restaged to stand alone. A vetoed or missing picture goes straight to restage. A
   // restaged figure is never sent back to repair. A slot still pending (a placeholder) is left.
@@ -2817,6 +2712,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     restore(i, s0, n0, oldAsks);
     log({ ev: "unshown-strip", slide: i + 1, removed, how: "left" });
   };
+  /** Slide i without its figure, as a text-only full-width slide; undone if it would overflow. */
+  const textOnly = (i: number) => {
+    const s0 = plan.slides[i] as S;
+    const words = fixedFallback(s0, { type: "photo" }, [], 0).slide;
+    // only a figure layout changes template (to explain); any other slide is already words
+    if (words.template === s0.template) return;
+    const n0 = notes.get(i);
+    const oldAsks = asks.get(i) ?? [];
+    swapSlide(i, words);
+    const left = (check()[i]?.faults ?? []).some((f) => OVERFLOW.test(f));
+    if (left) restore(i, s0, n0, oldAsks);
+    log({ ev: "unshown-text-only", slide: i + 1, ok: !left, from: String(s0.template) });
+  };
   const pictureLost = async (i: number) => {
     if (path.has(i) || i < 2) return;
     const lost = lostAsks(i)[0];
@@ -2860,11 +2768,163 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // time or an error, never to a judge's refusal (picq, greatfire 26 Oct s3 and s8: both pictures
     // ran out of time, the diagrams failed, and the slides shipped as bare text).
     if (how === "rerouted" && (asks.get(i) ?? []).some((a) => a.type === "diagram")) {
+      // TEACH-251 part aw: a reroute figure with no spec (a labelled diagram the repair only
+      // named) is drawn by the drawer first; swapSlide draws only writer specs (Romans verify11
+      // s9 shipped half empty).
+      await drawUndrawn(i, true);
+      relay(i);
       await fallback(i, { noPicture: !run.retryable?.(i, lost.key), wasPicture: true });
       how = `to-${path.get(i) ?? "diagram"}`;
+      // A figure that still cannot be shown leaves the slide as words: laid full width (explain),
+      // never as a visual layout with an empty half.
+      if (path.get(i) === "unshown") textOnly(i);
     }
     path.set(i, `picture-${how}`);
   };
+  // In parallel, bounded: each repair reads and writes only its own slide. The replay matches each
+  // call by the slide it sends, so it sees the same calls in any order.
+  // ── pilot layouts: validate at the drawn size and repair (TEACH-110 part s) ──
+  // A pilot slide's fields past their measured cap go back to a bounded fit repair whose schema
+  // keeps the layout, then a second with exact budgets; code then cuts whole sentences only, and a
+  // field with none to stop at stays whole (still over, the editor's chip). This is the pilot
+  // layouts' own fit, not a check: it runs when the checks only log too (TEACH-110 part s).
+  const pilotSlides = plan.slides.flatMap((s0, i) =>
+    isPilot(s0 as S) && repairable(s0 as S, i) ? [i] : [],
+  );
+  await eachBounded(pilotSlides, TAIL_CONCURRENCY, async (i) => {
+    const s0 = plan.slides[i] as S;
+    const pctx = { ...base, index: i, plan, visual: visualState(i) };
+    const at = pilotOvers(s0, pctx);
+    if (!at.overs.length && !at.tooMany && !pilotSlips(s0).length) return;
+    const repair = run.services
+      ? async (_s: S, faults: string[]) => {
+          const ok = await repairOne({ slide: i + 1, faults }, "fit", {
+            keepPartial: true,
+            schema: pilotRepairSchema(repairSchemaFor(stageKey), schema, String(s0.template)),
+          });
+          return ok ? (plan.slides[i] as S) : undefined;
+        }
+      : undefined;
+    const r = await fitPilot(s0, pctx, repair, !!pilot);
+    log({
+      ev: "pilot-fit",
+      slide: i + 1,
+      path: r.path,
+      overs: r.overs,
+      steps: r.steps,
+      ...(r.cut?.length ? { cut: r.cut } : {}),
+      ...(r.kept?.length ? { kept: r.kept } : {}),
+      ...(r.slips?.length ? { slips: r.slips } : {}),
+    });
+    // Members are never dropped silently: a re-lay is logged above, members nothing holds here.
+    if (r.membersOver)
+      log({
+        ev: "pilot-members-over",
+        slide: i + 1,
+        id: `${stableIdPrefix(i)}layout`,
+        template: String(r.slide.template),
+      });
+    if (r.path === "trimmed" || r.path === "still-over" || r.path === "relaid")
+      swapSlide(i, r.slide);
+  });
+  if (pilotSlides.length) {
+    checks = check();
+    failing = failingNow();
+  }
+  // The early fallbacks may start now, beside the repairs, on every slide the repairs leave alone.
+  const repaired = new Set(act ? failing.map((c) => c.slide - 1) : []);
+  openLate((i) => !repaired.has(i));
+  if (act) {
+    phaseSlides = [...plan.slides];
+    await eachBounded(failing, TAIL_CONCURRENCY, async (c) => {
+      await fitLoop(c);
+    });
+    phaseSlides = undefined;
+  } else for (const c of failing) log({ ev: "repair-skipped", slide: c.slide, faults: c.faults });
+  void charsOver;
+  // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
+  // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
+  // whole lesson, so volumes compared across slides keep their order.
+  const gasHits = gasFaults(gasTexts());
+  const gasAll = gasHits.flatMap((x) => x.volumes);
+  const gasClaim = (h: (typeof gasHits)[number]) => ({
+    checker: "gas8",
+    claim: "every claimed gas volume is possible from the lesson's stated quantities",
+    verdict: "contradicted",
+    reason: h.fault,
+    volumes: h.volumes,
+    ...(h.vmax !== undefined ? { vmax: h.vmax } : {}),
+  });
+  for (const h of gasHits) {
+    // a slide whose fallback ran early is its fallback's (on master gas8 never saw it rewritten)
+    if (lostEarly.has(h.slide)) {
+      log({ ev: "gas8-skipped", slide: h.slide + 1, why: "fallback ran early" });
+      continue;
+    }
+    if (!repairable(plan.slides[h.slide] as S, h.slide)) {
+      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "slide not repairable" });
+      continue;
+    }
+    if (!actOn({ ev: "gas8", slide: h.slide + 1, fault: h.fault })) {
+      factCheck(h.slide, { ...gasClaim(h), applied: false, dropped: "dry run (act off)" });
+      continue;
+    }
+    const before = plan.slides[h.slide];
+    const t0 = performance.now();
+    swapSlide(h.slide, rescaleGas(plan.slides[h.slide] as S, gasAll, h.vmax));
+    const left = gasFaults(gasTexts()).some((x) => x.slide === h.slide);
+    log({ ev: "gas8-fallback", slide: h.slide + 1, fault: h.fault, cleared: !left });
+    factCheck(h.slide, {
+      ...gasClaim(h),
+      correction: "every volume rescaled under the stated maximum by one factor",
+      applied: true,
+      cleared: !left,
+      before,
+      after: plan.slides[h.slide],
+      ms: +(performance.now() - t0).toFixed(2),
+    });
+  }
+  // The writer path's fact check, per lesson: how many slides it read and how many it flagged.
+  if (run.services.debug)
+    debug("fact-check", {
+      checker: "gas8",
+      summary: true,
+      slidesChecked: n,
+      flagged: [...new Set(gasHits.map((h) => h.slide))].length,
+      model: "code",
+      usd: 0,
+    });
+  // figureSync: after repair, every drawn figure is checked against its slide's words; one that
+  // disagrees is dropped, so the fallback below restages the slide without it.
+  for (let i = 0; i < n; i++)
+    for (const a of lostEarly.has(i) ? [] : (asks.get(i) ?? [])) {
+      const v = visualState(i)(a.key);
+      if (a.type !== "diagram" || v.status !== "diagram") continue;
+      const why = figureTextMismatch(v.spec, plan.slides[i] as S | undefined);
+      if (!why) continue;
+      const actedOn = actOn({
+        ev: "figure-text-mismatch",
+        slide: i + 1,
+        key: a.key,
+        why,
+        dropped: act,
+      });
+      factCheck(i, {
+        checker: "figure-text",
+        claim: "the drawn figure's numbers are the ones the words say",
+        verdict: "mismatch",
+        reason: why,
+        correction: "figure dropped",
+        applied: actedOn,
+        ...(actedOn ? {} : { dropped: "dry run (act off)" }),
+        figure: v.spec,
+        words: wordsOf(plan.slides[i] as S),
+      });
+      if (!actedOn) continue;
+      override.set(`${i}:${a.key}`, { status: "failed" });
+      relay(i);
+    }
+
   // ── each slide's tail, in parallel (bounded): fallback, lost picture, keepPic, pointGuard ──
   // Every step reads and writes only its own slide, so a slide settles as soon as its own work is
   // done; it never waits behind another slide's restage or picture round.
@@ -2952,13 +3012,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // in retryLost's place; a stop it saw is rethrown.
     const early = earlyLost.get(i);
     if (early) await early;
-    await cardRetry(i);
-    await fallback(i);
+    // cardRetry and fallback had nothing to do before an early fallback (the early job's rule)
+    const pre = lostEarly.get(i);
+    if (!pre) await cardRetry(i);
+    if (!pre) await fallback(i);
     // A slide whose early job did not retry (its pictures were still pending at the wait's
     // deadline, or the wait was cut short) gets the tail's retry, as on master.
     if (!retriedEarly.has(i)) await retryLost(i);
-    const beforeLost = plan.slides[i] as S | undefined;
-    const asksBeforeLost = asks.get(i) ?? [];
+    const beforeLost = pre ? pre.s : (plan.slides[i] as S | undefined);
+    const asksBeforeLost = pre ? pre.a : (asks.get(i) ?? []);
+    // after an early fallback its path is set, so this does nothing
     await pictureLost(i);
     keepPic(i, beforeLost, asksBeforeLost);
     pointGuard(i);
