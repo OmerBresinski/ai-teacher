@@ -48,6 +48,7 @@ import {
   findPicture,
   historyPolicy,
   type JudgeCheck,
+  MADE_ATTEMPTS,
   type MadePicture,
   mustShowOf,
   type PictureBank,
@@ -1338,6 +1339,16 @@ export const WRITER_PICTURE_DEADLINE_MS = 45_000;
 export const WRITER_MADE_GRACE_MS = 15_000;
 
 /**
+ * Paid generations one slide may take over the whole lesson, whichever round asks (the writer's
+ * round, the lost-picture round after editable, the picture fallback after a reroute diagram).
+ * One round's ladder (`MADE_ATTEMPTS`) is untouched; a slide the judge keeps refusing stops being
+ * painted in later rounds, which still search for a real picture (TEACH-202 part x). Greatfire
+ * verify5 and verify6: every third or later painting of a slide (4 paid, 4 cancelled) was refused
+ * or cut, and none was placed; the cycling slides held the job open to its end.
+ */
+export const SLIDE_PAINTINGS_MAX = MADE_ATTEMPTS;
+
+/**
  * Split at ask (TEACH-167 part b): the subjects of a lone generic picture that names three or four
  * things after a colon ("Three golden retrievers: a small puppy, an older puppy and an adult dog"),
  * or undefined. One image of several subjects is the picture the generator and the judge fail
@@ -1423,15 +1434,26 @@ export function createWriterPictures(opts: {
    * The bank as one slot sees it: a generated picture marks the slot `made`, so a deadline that
    * passes while its judge runs waits `WRITER_MADE_GRACE_MS` more instead of throwing it away.
    */
-  const watched = (slot: Slot, b: PictureBank): PictureBank => ({
+  const watched = (slot: Slot, b: PictureBank, index: number): PictureBank => ({
     lookup: (req, signal) => b.lookup(req, signal),
     remember: (req, photo) => b.remember(req, photo),
     // Only a picture that is made and waiting on its judge earns the grace: a new generation in
     // flight (a retry after a refusal) or a refused picture does not.
     generate: (req, faithful, signal, retry) => {
       slot.made = false;
+      // The slide has had its paintings this lesson: the bank declines (the ladder's `declined`),
+      // so the slot ends on its real search alone. A code drawing is free and never counted.
+      if (!req.draw && (painted.get(index) ?? 0) >= SLIDE_PAINTINGS_MAX) {
+        opts.deps.logger.info(
+          { stage: "illustrate", slideIndex: index, paintings: painted.get(index) },
+          "slide painting cap reached: no generation",
+        );
+        return Promise.resolve(undefined);
+      }
       return b.generate(req, faithful, signal, retry).then((made) => {
         if (made) slot.made = true;
+        if (made && !req.draw && made.style !== "drawn")
+          painted.set(index, (painted.get(index) ?? 0) + 1);
         return made;
       });
     },
@@ -1444,6 +1466,8 @@ export function createWriterPictures(opts: {
         }
       : {}),
   });
+  /** Paid generations per slide index over the lesson (`SLIDE_PAINTINGS_MAX`). */
+  const painted = new Map<number, number>();
   /** After a deadline: the slots among `list` still pending with a generated picture, waited for. */
   const graceForMade = async (list: Slot[]) => {
     const late = list.filter((x) => x.state.status === "pending" && x.made);
@@ -1595,7 +1619,7 @@ export function createWriterPictures(opts: {
       deps: slotDeps(slot),
       taken,
       ...(slot.own ? (opts.direct ? { direct: opts.direct } : {}) : direct ? { direct } : {}),
-      ...(bank ? { bank: watched(slot, bank) } : {}),
+      ...(bank ? { bank: watched(slot, bank, index) } : {}),
       ...(opts.look ? { look: opts.look } : {}),
       onOutcome: (o) => {
         reason = o.reason;
@@ -2081,6 +2105,8 @@ export function createWriterPictures(opts: {
         reasked.delete(k);
       }
       for (const k of sets.keys()) if (k.startsWith(prefix)) sets.delete(k);
+      // New words are a new ask: the slide's paintings count again from none.
+      painted.delete(index);
     },
     lookForSets(look) {
       setLook = look;
