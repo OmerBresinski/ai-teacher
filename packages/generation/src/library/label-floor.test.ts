@@ -66,6 +66,22 @@ describe("label floor", () => {
     expect(placedTypeSize(after.drawing.svg, a.place).minPt).toBeGreaterThanOrEqual(17.99);
     expect(grownTextFault(plain.drawing.svg, after.drawing.svg)).toBeUndefined();
   });
+  // TEACH-251 part w (romans verify3 s3): the history map's smallest words showed at 11.7 pt with
+  // the floor off; production now runs it with checks only logged, as here.
+  // Preset 0 at the body box: 13.2 pt -> 14.4 pt; larger sizes break its words and are backed off
+  // from, so 18 pt needs the model's own label layout or a larger zone (out of this part).
+  test("history map: the logged floor grows its words toward 18 pt and keeps them whole", async () => {
+    const a = { ...ask("hist_map", "Where and when was Hadrian's Wall built?"), logOnly: true };
+    const fill = async () => preset("hist_map", 0);
+    const plain = await libraryDiagram(a, fill);
+    const after = await libraryDiagram({ ...a, labelFloor: true }, fill);
+    expect(plain.ok && after.ok).toBe(true);
+    if (!plain.ok || !after.ok) return;
+    const before = placedTypeSize(plain.drawing.svg, a.place).minPt;
+    const grown = placedTypeSize(after.drawing.svg, a.place).minPt;
+    expect(grown).toBeGreaterThan(before * 1.05);
+    expect(grownTextFault(plain.drawing.svg, after.drawing.svg)).toBeUndefined();
+  });
   test("the D52 heart: cropped to its marks it reaches the floor ungrown; grown, its key splits", async () => {
     // Before HEART1 D its blood cells sat at the slide's corner, the crop reached it, and growing
     // the type to the floor split "Oxygen-poor" across lines. Cropped to its marks, it needs none.
