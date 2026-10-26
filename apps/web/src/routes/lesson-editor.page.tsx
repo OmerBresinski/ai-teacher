@@ -6,6 +6,7 @@ import {
   isStartingJob,
   type Lesson,
   startingJobBase,
+  withoutEditorCopies,
   writingSlideIds,
 } from "@tj/domain/documents";
 import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
@@ -252,7 +253,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         // Not the teacher's content: held quietly ("Saved" stays), written once the job ends.
         if (holdsFitStamp(merged, base.body, lock, base.jobId))
           throw new SaveHeldError("The fit stamp waits for the job to end.");
-        return saveDocument(merged);
+        // While the job writes, only the teacher's slides go out: the editor's repaint of the
+        // job's slides would read as the teacher's at the job's next write and drop its late
+        // pictures (TEACH-251 part p). The repaint is sent once the job has let the lesson go.
+        const out = lock && lock === base.jobId ? withoutEditorCopies(merged, base.body) : merged;
+        return saveDocument(out);
       }
       throw new SaveDeferredError("The lesson is still being written.");
     },

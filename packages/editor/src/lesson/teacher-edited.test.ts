@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Lesson, Slide, SlideElement } from "@tj/domain/documents";
-import { mergeJobLesson } from "@tj/domain/documents";
+import { mergeJobLesson, withoutEditorCopies } from "@tj/domain/documents";
 import { imageElement, lesson as plainLesson, textElement } from "@tj/domain/documents/fixtures";
 import { markTeacherEdited } from "./LessonEditor";
 
@@ -94,7 +94,7 @@ describe("a marked slide survives a late picture; an unmarked one takes it", () 
       slideOf("a", [text("a-t"), imageElement("a-photo", { src: "/files/a.jpg" })]),
       slideOf("b", [text("b-t"), imageElement("b-photo", { src: "/files/b.jpg" })]),
     ]);
-    const merged = mergeJobLesson(jobBase, repainted, theirs);
+    const merged = mergeJobLesson(jobBase, withoutEditorCopies(repainted, jobBase), theirs);
     expect(get(merged, "a").elements.map((e) => e.id)).toEqual(["a-t", "a-photo"]);
     expect(get(merged, "a").elements[0]).toEqual(teacherText);
     expect(get(merged, "a").teacherEdited).toBe(true);

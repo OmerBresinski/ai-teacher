@@ -6,6 +6,7 @@ import {
   mergeJobLesson,
   sameJson,
   startingJobBase,
+  withoutEditorCopies,
   writingSlideIds,
 } from "./generation-merge";
 import type { Lesson } from "./lesson";
@@ -257,9 +258,9 @@ describe("a starting job (no slide states yet)", () => {
     const merged = mergeJobLesson(startingJobBase(row), refitted(row), theirs);
     expect(merged.slides.map((s) => s.id)).toEqual(["w1"]);
     expect(sameJson(slide(merged, "w1"), slide(theirs, "w1"))).toBe(true);
-    // An unmarked re-fit is never the teacher's (TEACH-251 part p), with or without that base.
+    // Without the starting base the re-fit reads as an edit and the dropped slide survives.
     const naive = mergeJobLesson(row, refitted(row), theirs);
-    expect(naive.slides.map((s) => s.id)).toEqual(["w1"]);
+    expect(naive.slides.map((s) => s.id)).toContain("w2");
   });
 
   test("a slide the job splits comes in as the job's two slides, both still writing", () => {
@@ -344,7 +345,7 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
   });
 });
 
-describe("ownership is the teacher's mark, never inferred from a diff (TEACH-251 part p)", () => {
+describe("the teacher's mark adds certainty; its absence never discards an edit (TEACH-251 part p)", () => {
   // Great Fire Y2 replay (26 Oct): the editor recoloured every job slide into the picked theme, so
   // each counted as the teacher's; diagrams and pictures the job made late were dropped.
   const styled = (color: string, size: number) =>
@@ -361,11 +362,24 @@ describe("ownership is the teacher's mark, never inferred from a diff (TEACH-251
   const w1 = (l: Lesson) => slide(l, "w1");
   const ids = (l: Lesson) => w1(l).elements.map((e) => e.id);
 
-  test("an unmarked slide the editor recoloured, with no slot left, takes the job's diagram", () => {
+  test("an unmarked change is still the teacher's on the server (an older editor), and the diagram lands", () => {
     const base = withW1(filling(), [styled("#111111", 32)]);
     const mine = withW1(base, [styled("#c0392b", 28)]);
     const theirs = withW1(base, [styled("#111111", 32), diagram()]);
-    expect(w1(mergeJobLesson(base, mine, theirs))).toEqual(w1(theirs));
+    const merged = w1(mergeJobLesson(base, mine, theirs));
+    expect(merged.elements.map((e) => e.id)).toEqual(["w1-t", "w1-fig"]);
+    expect(el(merged, "w1-t")).toEqual(el(w1(mine), "w1-t"));
+  });
+
+  test("the editor leaves its unmarked repaint out of the merge: the job's slide comes whole", () => {
+    const base = withW1(filling(), [styled("#111111", 32)]);
+    const mine = withW1(base, [styled("#c0392b", 28)]);
+    const theirs = withW1(base, [styled("#111111", 32), diagram()]);
+    const merged = mergeJobLesson(base, withoutEditorCopies(mine, base), theirs);
+    expect(w1(merged)).toEqual(w1(theirs));
+    // A marked slide is never swapped for the reference copy.
+    const marked = withW1(base, [styled("#c0392b", 28)], mark);
+    expect(withoutEditorCopies(marked, base)).toBe(marked);
   });
 
   test("an unmarked recoloured placeholder the job swaps for a diagram: the job's slide, no placeholder", () => {

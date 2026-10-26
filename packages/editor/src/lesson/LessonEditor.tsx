@@ -9,6 +9,7 @@ import {
   sameJson,
   type Theme,
   type Worksheet,
+  withoutEditorCopies,
 } from "@tj/domain/documents";
 import { toast } from "@tj/ui";
 import {
@@ -609,7 +610,9 @@ export function LessonEditor({
         // teacher's the row does not have yet. The repaint is the editor's, never the teacher's.
         let teachers: Lesson | undefined;
         const merged = historyRef.current.rebase?.((mine) => {
-          teachers = mergeJobLesson(base, mine, theirs);
+          // Its own repaint and fit of slides the teacher has not marked are the editor's, not
+          // the teacher's: left out, so the job's copy (late pictures included) comes whole.
+          teachers = mergeJobLesson(base, withoutEditorCopies(mine, base), theirs);
           return inTeachersTheme(teachers, theirs, base);
         });
         if (merged) lastDoc.current = merged;

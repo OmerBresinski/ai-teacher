@@ -96,6 +96,19 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
     const was = b.get(el.id);
     return was !== undefined && sameJson(content(el), content(was));
   };
+  // An unmarked copy that differs from `base` only in where its elements sit (an older editor's
+  // fit on open), on a slide the job re-laid without a slot: the job's slide (picq, 26 Oct).
+  const sameIds =
+    mine.elements.length === base.elements.length && mine.elements.every((e) => b.has(e.id));
+  const jobDroppedSlot = base.elements.some((e) => isSlot(e) && !t.has(e.id));
+  if (
+    !isTeacherEdited(mine) &&
+    jobDroppedSlot &&
+    sameIds &&
+    mine.elements.every(untouched) &&
+    sameJson(mine.notes, base.notes)
+  )
+    return theirs;
   // Slots the job replaced with a new element (a placeholder swapped for a diagram), in order.
   const gone = base.elements.filter((e) => isSlot(e) && !t.has(e.id)).map((e) => e.id);
   const arrived = theirs.elements.filter((e) => isSlot(e) && !b.has(e.id) && !m.has(e.id));
@@ -136,15 +149,33 @@ export function mergeEditedSlide(base: Slide, mine: Slide, theirs: Slide): Slide
 }
 
 /**
+ * `mine` with every slide the teacher has not marked (`teacherEdited`) taken from `ref` (the row,
+ * or the base of a fold) where `ref` has it: what the editor merges and sends while a job writes
+ * (TEACH-251 part p). Its own repaint into the lesson's theme and its fit are never sent as the
+ * teacher's, so the job's late pictures and diagrams land; the editor draws them again.
+ */
+export function withoutEditorCopies(mine: Lesson, ref: Lesson): Lesson {
+  const refOf = new Map(ref.slides.map((s) => [s.id, s]));
+  let changed = false;
+  const slides = mine.slides.map((s) => {
+    const r = refOf.get(s.id);
+    if (isTeacherEdited(s) || r === undefined || r === s) return s;
+    changed = true;
+    return r;
+  });
+  return changed ? { ...mine, slides } : mine;
+}
+
+/**
  * Three-way merge of a lesson while its job runs. `base` is the copy both sides last agreed on
  * (the job's previous write, or the row the editor last received), `mine` the teacher's copy and
  * `theirs` the job's newer copy. The result:
  *
  * - `generation` is always the job's (states, usage, stage);
  * - any other top-level field the teacher changed (title, theme) keeps the teacher's value;
- * - a slide the teacher did not mark as changed (`teacherEdited`) takes the job's copy; a marked
- *   one keeps the teacher's slide and takes only late slots and untouched notes
- *   (`mergeEditedSlide`);
+ * - a slide the teacher did not change takes the job's copy; one the teacher changed (marked
+ *   `teacherEdited`, or differing from `base` at all) keeps the teacher's slide and takes only late
+ *   slots and untouched notes (`mergeEditedSlide`);
  * - a slide the teacher deleted stays deleted, one the teacher added stays, in the teacher's
  *   order; slides new from the job land after the slide they follow in the job's copy.
  */
@@ -179,10 +210,10 @@ export function mergeJobLesson(base: Lesson | undefined, mine: Lesson, theirs: L
       // The teacher's new slide, or one both copies gained since `base`: the job's copy wins only
       // when it is the same slide the teacher has.
       slides.push(next !== undefined && sameJson(own, next) ? next : own);
-    } else if (!isTeacherEdited(own) || sameJson(own, was)) {
-      // Not the teacher's (TEACH-251 part p): the job's copy, or gone when the job dropped it. A
-      // copy that differs only by the editor's own fit, re-theme or stamps is not marked; the
-      // editor draws the job's copy in the lesson's theme again.
+    } else if (!isTeacherEdited(own) && sameJson(own, was)) {
+      // Untouched: the job's copy, or gone when the job dropped it. Any difference on a done slide
+      // is the teacher's, marked or not (a copy from an older editor carries no mark); the editor
+      // keeps its own repaint and fit out of what it merges and saves (`withoutEditorCopies`).
       if (next !== undefined) slides.push(next);
     } else {
       slides.push(next === undefined ? own : mergeEditedSlide(was, own, next));
