@@ -6,6 +6,7 @@ import {
   isStartingJob,
   type Lesson,
   startingJobBase,
+  withoutEditorCopies,
   writingSlideIds,
 } from "@tj/domain/documents";
 import { SaveDeferredError, SaveHeldError } from "@tj/editor/autosave";
@@ -252,7 +253,11 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         // Not the teacher's content: held quietly ("Saved" stays), written once the job ends.
         if (holdsFitStamp(merged, base.body, lock, base.jobId))
           throw new SaveHeldError("The fit stamp waits for the job to end.");
-        return saveDocument(merged);
+        // While the job writes, only the teacher's slides go out: the editor's repaint of the
+        // job's slides would read as the teacher's at the job's next write and drop its late
+        // pictures (TEACH-251 part p). The repaint is sent once the job has let the lesson go.
+        const out = lock && lock === base.jobId ? withoutEditorCopies(merged, base.body) : merged;
+        return saveDocument(out);
       }
       throw new SaveDeferredError("The lesson is still being written.");
     },
@@ -870,7 +875,28 @@ export function holdsFitStamp(
   lockedBy: string | null | undefined,
   jobId: string,
 ): boolean {
-  return !!lockedBy && lockedBy === jobId && onlyFitStampDiffers(mine, row);
+  return (
+    !!lockedBy &&
+    lockedBy === jobId &&
+    (onlyFitStampDiffers(mine, row) || onlyEditorCopyDiffers(mine, row))
+  );
+}
+
+/**
+ * Whether `mine` differs from the job's row only where the editor drew it, not the teacher
+ * (TEACH-251 part p): its stamps (`fitVersion`, `updatedAt`) and slides the teacher has not marked
+ * (`teacherEdited`), which the editor recolours and re-fits into the lesson's theme. The job's
+ * merge takes its own copy of those anyway, so the save waits for the job to end; a marked slide,
+ * a slide added or deleted, or any other field is the teacher's and saves at once.
+ */
+export function onlyEditorCopyDiffers(mine: Lesson, row: Lesson): boolean {
+  const drawn = (l: Lesson) => ({
+    ...l,
+    fitVersion: 0,
+    updatedAt: "",
+    slides: l.slides.map((s) => (s.teacherEdited ? s : { id: s.id })),
+  });
+  return sameValue(drawn(mine), drawn(row));
 }
 
 /** Deep equality of JSON values, key order ignored; an `undefined` field counts as absent. */

@@ -6,10 +6,11 @@ import {
   mergeJobLesson,
   sameJson,
   startingJobBase,
+  withoutEditorCopies,
   writingSlideIds,
 } from "./generation-merge";
 import type { Lesson } from "./lesson";
-import type { Slide } from "./slide";
+import type { Slide, SlideElement } from "./slide";
 
 /** A lesson mid-fill: slide 1 done (a picture placeholder and notes), slide 2 still writing. */
 function filling(): Lesson {
@@ -45,7 +46,13 @@ const el = (s: Slide, id: string) => s.elements.find((e) => e.id === id) as Reco
 const typed = (l: Lesson, value: string): Lesson => ({
   ...l,
   slides: l.slides.map((s) =>
-    s.id === "w1" ? { ...s, elements: [textElement("w1-t", value), ...s.elements.slice(1)] } : s,
+    s.id === "w1"
+      ? {
+          ...s,
+          teacherEdited: true,
+          elements: [textElement("w1-t", value), ...s.elements.slice(1)],
+        }
+      : s,
   ),
 });
 
@@ -116,7 +123,12 @@ describe("mergeJobLesson (ADR 0037, ruling 189)", () => {
       ...base,
       slides: base.slides.map((s) =>
         s.id === "w1"
-          ? { ...s, elements: s.elements.filter((e) => e.id !== "w1-pic"), notes: "My notes." }
+          ? {
+              ...s,
+              teacherEdited: true,
+              elements: s.elements.filter((e) => e.id !== "w1-pic"),
+              notes: "My notes.",
+            }
           : s,
       ),
     };
@@ -303,6 +315,7 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
         s.id === "w1"
           ? ({
               ...s,
+              teacherEdited: true,
               elements: [textElement("w1-t", "Puddles dry up."), s.elements[1]],
             } as Slide)
           : s,
@@ -321,6 +334,7 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
         s.id === "w1"
           ? ({
               ...s,
+              teacherEdited: true,
               elements: [s.elements[0], imageElement("w1-pic", { src: "/files/mine.png" })],
             } as Slide)
           : s,
@@ -328,5 +342,126 @@ describe("a picture slot the job took out never survives the merge (picq, 26 Oct
     };
     const merged = mergeJobLesson(base, mine, jobDropped(base));
     expect(ids(merged)).toEqual(["w1-t", "w1-pic"]);
+  });
+});
+
+describe("the teacher's mark adds certainty; its absence never discards an edit (TEACH-251 part p)", () => {
+  // Great Fire Y2 replay (26 Oct): the editor recoloured every job slide into the picked theme, so
+  // each counted as the teacher's; diagrams and pictures the job made late were dropped.
+  const styled = (color: string, size: number) =>
+    textElement("w1-t", "Water evaporates.", {
+      style: { preset: "body", color, fontSize: size },
+    } as Partial<SlideElement>);
+  const diagram = (id = "w1-fig") =>
+    imageElement(id, { src: "/files/flow.svg", diagram: { kind: "flow" } } as never);
+  const withW1 = (l: Lesson, elements: SlideElement[], extra: Partial<Slide> = {}): Lesson => ({
+    ...l,
+    slides: l.slides.map((s) => (s.id === "w1" ? ({ ...s, elements, ...extra } as Slide) : s)),
+  });
+  const mark = { teacherEdited: true } as const;
+  const w1 = (l: Lesson) => slide(l, "w1");
+  const ids = (l: Lesson) => w1(l).elements.map((e) => e.id);
+
+  test("an unmarked change is still the teacher's on the server (an older editor), and the diagram lands", () => {
+    const base = withW1(filling(), [styled("#111111", 32)]);
+    const mine = withW1(base, [styled("#c0392b", 28)]);
+    const theirs = withW1(base, [styled("#111111", 32), diagram()]);
+    const merged = w1(mergeJobLesson(base, mine, theirs));
+    expect(merged.elements.map((e) => e.id)).toEqual(["w1-t", "w1-fig"]);
+    expect(el(merged, "w1-t")).toEqual(el(w1(mine), "w1-t"));
+  });
+
+  test("the editor leaves its unmarked repaint out of the merge: the job's slide comes whole", () => {
+    const base = withW1(filling(), [styled("#111111", 32)]);
+    const mine = withW1(base, [styled("#c0392b", 28)]);
+    const theirs = withW1(base, [styled("#111111", 32), diagram()]);
+    const merged = mergeJobLesson(base, withoutEditorCopies(mine, base), theirs);
+    expect(w1(merged)).toEqual(w1(theirs));
+    // An unmarked slide whose words changed (a mark missed) is kept as the teacher's.
+    const typedUnmarked = withW1(base, [textElement("w1-t", "Puddles dry up.")]);
+    expect(withoutEditorCopies(typedUnmarked, base)).toBe(typedUnmarked);
+    const merged2 = mergeJobLesson(base, withoutEditorCopies(typedUnmarked, base), theirs);
+    expect(JSON.stringify(w1(merged2))).toContain("Puddles dry up.");
+    // An unmarked slide with an element added or notes changed is kept too.
+    const added = withW1(base, [styled("#111111", 32), textElement("extra", "Note")]);
+    expect(withoutEditorCopies(added, base)).toBe(added);
+    const noted = withW1(base, [styled("#111111", 32)], { notes: "Mine." });
+    expect(withoutEditorCopies(noted, base)).toBe(noted);
+    // A marked slide is never swapped for the reference copy.
+    const marked = withW1(base, [styled("#c0392b", 28)], mark);
+    expect(withoutEditorCopies(marked, base)).toBe(marked);
+  });
+
+  test("an unmarked recoloured placeholder the job swaps for a diagram: the job's slide, no placeholder", () => {
+    const ph = imageElement("w1-pic", { src: "" });
+    const base = withW1(filling(), [styled("#111111", 32), ph]);
+    const mine = withW1(base, [styled("#c0392b", 28), { ...ph, x: 600 }]);
+    const theirs = withW1(base, [styled("#111111", 32), diagram()]);
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(ids(merged)).toEqual(["w1-t", "w1-fig"]);
+    expect(JSON.stringify(w1(merged))).not.toContain('"src":""');
+  });
+
+  test("a teacher's move, resize, recolour and font size on a done slide survive a late picture", () => {
+    const ph = imageElement("w1-pic", { src: "" });
+    const base = withW1(filling(), [styled("#111111", 32), ph]);
+    const mineText = { ...styled("#c0392b", 40), x: 12, y: 300, w: 500, h: 120 };
+    const mine = withW1(base, [mineText, ph], mark);
+    const theirs = withW1(base, [
+      styled("#111111", 32),
+      imageElement("w1-photo", { src: "/files/puddle.jpg" }),
+    ]);
+    const merged = w1(mergeJobLesson(base, mine, theirs));
+    expect(el(merged, "w1-t")).toEqual(mineText as never);
+    expect(el(merged, "w1-photo")).toMatchObject({ src: "/files/puddle.jpg" });
+    expect(merged.teacherEdited).toBe(true);
+  });
+
+  test("a teacher who changed the words keeps them and still gets the late picture", () => {
+    const ph = imageElement("w1-pic", { src: "" });
+    const base = withW1(filling(), [styled("#111111", 32), ph]);
+    const mine = withW1(
+      base,
+      [textElement("w1-t", "Puddles dry up in the sun."), { ...ph, x: 40 }],
+      mark,
+    );
+    const theirs = withW1(base, [
+      styled("#111111", 32),
+      imageElement("w1-photo", { src: "/files/puddle.jpg" }),
+    ]);
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(ids(merged)).toEqual(["w1-t", "w1-photo"]);
+    expect(el(w1(merged), "w1-photo")).toMatchObject({ src: "/files/puddle.jpg", x: 40 });
+    expect(JSON.stringify(w1(merged))).toContain("Puddles dry up in the sun.");
+  });
+
+  test("a teacher who changed the words, on a slide with no slot left, still gets the diagram", () => {
+    const base = withW1(filling(), [styled("#111111", 32)]);
+    const mine = withW1(base, [textElement("w1-t", "Puddles dry up.")], mark);
+    const theirs = withW1(base, [styled("#111111", 32), diagram()]);
+    const merged = mergeJobLesson(base, mine, theirs);
+    expect(ids(merged)).toEqual(["w1-t", "w1-fig"]);
+    expect(JSON.stringify(w1(merged))).toContain("Puddles dry up.");
+  });
+
+  test("a teacher who deleted the picture box does not get it back", () => {
+    const ph = imageElement("w1-pic", { src: "" });
+    const base = withW1(filling(), [styled("#111111", 32), ph]);
+    const mine = withW1(base, [styled("#111111", 32)], mark);
+    const swapped = withW1(base, [styled("#111111", 32), diagram()]);
+    expect(ids(mergeJobLesson(base, mine, swapped))).toEqual(["w1-t"]);
+    const filled = withW1(base, [styled("#111111", 32), { ...ph, src: "/files/p.jpg" }]);
+    expect(ids(mergeJobLesson(base, mine, filled))).toEqual(["w1-t"]);
+  });
+
+  test("a teacher who added their own picture keeps the visual area: no second picture", () => {
+    const base = withW1(filling(), [styled("#111111", 32)]);
+    const mine = withW1(
+      base,
+      [styled("#111111", 32), imageElement("mine", { src: "/files/m.png" })],
+      mark,
+    );
+    const theirs = withW1(base, [styled("#111111", 32), diagram()]);
+    expect(ids(mergeJobLesson(base, mine, theirs))).toEqual(["w1-t", "mine"]);
   });
 });
