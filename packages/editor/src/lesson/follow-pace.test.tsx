@@ -139,19 +139,22 @@ describe("the follow paces itself", () => {
     expect(r.result.current.active).toBe(id(4));
   });
 
-  test("a change of the open slide the follow did not make does not stop it (P0 26 Oct)", () => {
-    // Opening Theme mid-generation moved the open slide (a preview dropped the slide for a moment)
-    // and the follow took it as the teacher leaving: the view sat on slide 2 while the writer
-    // reached 11.
-    const r = setup(3);
+  test("any change of the open slide the follow did not make stops it, earlier or later", () => {
+    // An earlier slide (undo, search, the toolbar's previous): the follow never walks the teacher
+    // forward again.
+    const back = setup(3);
     tick(10);
-    expect(r.result.current.active).toBe(id(3));
-    act(() => r.result.current.setActive(id(2)));
-    expect(r.result.current.following).toBe(true);
-    r.rerender({ lead: 5, typed: "open" });
+    expect(back.result.current.active).toBe(id(3));
+    act(() => back.result.current.setActive(id(2)));
+    expect(back.result.current.following).toBe(false);
+    back.rerender({ lead: 5, typed: "open" });
     for (let i = 0; i < 8; i++) tick(FOLLOW_PACE.minMs);
-    expect(r.result.current.active).toBe(id(5));
-    expect(r.result.current.following).toBe(true);
+    expect(back.result.current.active).toBe(id(2));
+    // A later one (the toolbar's next, a screen reader activating a thumbnail): stopped too.
+    const ahead = setup(3);
+    tick(10);
+    act(() => ahead.result.current.setActive(id(4)));
+    expect(ahead.result.current.following).toBe(false);
   });
 });
 
@@ -213,6 +216,10 @@ describe("isTeacherNavigation", () => {
     expect(on(chipEl, down())).toBe(false);
     expect(on(strip.inner, key("0", { metaKey: true }))).toBe(false);
     expect(on(strip.inner, key("Tab"))).toBe(false);
+    const toggle = document.createElement("button");
+    toggle.setAttribute("data-navigator-toggle", "");
+    strip.el.append(toggle);
+    expect(on(toggle, down())).toBe(false);
     for (const z of [bar, dialog, strip]) z.el.remove();
   });
 });

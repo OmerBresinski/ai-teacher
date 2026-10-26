@@ -10,22 +10,24 @@ import { useEffect, useRef, useState } from "react";
 export type PillPhase = "planning" | "writing" | "finishing" | "gone";
 export type PillState = {
   readonly phase: PillPhase;
-  /** The furthest slide (1-based) the writer has been seen writing. */
-  readonly slide: number;
-  /** The most slides the lesson has had. */
-  readonly of: number;
+  /**
+   * The furthest slide the writer has been seen writing, by id, so its number stays right when the
+   * teacher deletes or moves a slide before it.
+   */
+  readonly slideId: string | undefined;
 };
 export type PillInput = {
   /** A job is writing the lesson (`writingSlideIds` is set). */
   active: boolean;
   /** The writer has finished; the job adds pictures and checks. */
   done: boolean;
-  /** The slide streaming now (0-based), or -1 between drafts. */
-  writingIndex: number;
-  slideCount: number;
+  /** The slide streaming now, or undefined between drafts. */
+  writingId: string | undefined;
+  /** The lesson's slides in order, as they are now. */
+  slideIds: readonly string[];
 };
 
-export const PILL_START: PillState = { phase: "planning", slide: 0, of: 0 };
+export const PILL_START: PillState = { phase: "planning", slideId: undefined };
 const RANK: Record<PillPhase, number> = { planning: 0, writing: 1, finishing: 2, gone: 3 };
 
 /** Pure: the pill after one look at the writer. Returns `state` itself when nothing changed. */
@@ -33,31 +35,33 @@ export function nextPill(state: PillState, input: PillInput): PillState {
   if (!input.active) return state.phase === "gone" ? state : { ...state, phase: "gone" };
   // A new job after the last one ended starts over.
   const from = state.phase === "gone" ? PILL_START : state;
-  const seen: PillPhase = input.done
-    ? "finishing"
-    : input.writingIndex >= 0
-      ? "writing"
-      : "planning";
+  const writing = input.writingId !== undefined && input.slideIds.includes(input.writingId);
+  const seen: PillPhase = input.done ? "finishing" : writing ? "writing" : "planning";
   const phase = RANK[seen] < RANK[from.phase] ? from.phase : seen;
-  const slide =
-    phase === "writing" && input.writingIndex >= 0
-      ? Math.max(from.slide, input.writingIndex + 1)
-      : from.slide;
-  const of = Math.max(from.of, input.slideCount, slide);
-  if (phase === state.phase && slide === state.slide && of === state.of) return state;
-  return { phase, slide, of };
+  // The writer goes in deck order: a draft of a slide before the furthest one is a late one.
+  const at = (id: string | undefined) => (id === undefined ? -1 : input.slideIds.indexOf(id));
+  const slideId =
+    phase === "writing" && writing && at(input.writingId) >= at(from.slideId)
+      ? input.writingId
+      : from.slideId;
+  if (phase === state.phase && slideId === state.slideId) return state;
+  return { phase, slideId };
 }
 
 export const FINISHING_TEXT = "Adding pictures and final checks…";
 
-/** What the pill says, or `null` when it is gone. */
-export function pillText(state: PillState): string | null {
+/** What the pill says, or `null` when it is gone. Numbers are read from the deck as it is now. */
+export function pillText(state: PillState, slideIds: readonly string[]): string | null {
+  const of = slideIds.length;
   switch (state.phase) {
     case "planning":
       // The thumbnails fill in as the plan arrives: the pill counts with them.
-      return state.of > 2 ? `Planning slide ${state.of}…` : "Planning the slides…";
-    case "writing":
-      return `Writing slide ${state.slide} of ${state.of}…`;
+      return of > 2 ? `Planning slide ${of}…` : "Planning the slides…";
+    case "writing": {
+      const n = state.slideId === undefined ? -1 : slideIds.indexOf(state.slideId);
+      // The slide was deleted: say what the writer is doing without a number.
+      return n < 0 ? "Writing the slides…" : `Writing slide ${n + 1} of ${of}…`;
+    }
     case "finishing":
       return FINISHING_TEXT;
     case "gone":
@@ -99,13 +103,13 @@ export function useWritingPill(
   const next = nextPill(target, input);
   if (next !== target) setTarget(next);
   const [shown, setShown] = useState<{ text: string | null; visible: boolean }>(() => ({
-    text: pillText(next),
+    text: pillText(next, input.slideIds),
     visible: next.phase !== "gone",
   }));
   // The first text dwells from the moment it shows, like every other.
   const lastAt = useRef<number | null>(null);
   if (lastAt.current === null) lastAt.current = now();
-  const want = pillText(next);
+  const want = pillText(next, input.slideIds);
   useEffect(() => {
     if (want === null) {
       if (!shown.visible) {

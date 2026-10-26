@@ -15,51 +15,62 @@ import {
   useWritingPill,
 } from "./writing-pill";
 
+const ids = (n: number) => Array.from({ length: n }, (_, i) => `s${i + 1}`);
 const look = (over: Partial<PillInput>): PillInput => ({
   active: true,
   done: false,
-  writingIndex: -1,
-  slideCount: 11,
+  writingId: undefined,
+  slideIds: ids(11),
   ...over,
 });
+const w = (n: number) => ({ writingId: `s${n}` });
 const run = (inputs: Partial<PillInput>[], from: PillState = PILL_START) =>
   inputs.reduce((s, i) => nextPill(s, look(i)), from);
+const text = (s: PillState, slideIds = ids(11)) => pillText(s, slideIds);
 
 describe("nextPill", () => {
   test("planning counts the slides as the plan arrives", () => {
-    expect(pillText(run([{ slideCount: 2 }]))).toBe("Planning the slides…");
-    expect(pillText(run([{ slideCount: 2 }, { slideCount: 5 }]))).toBe("Planning slide 5…");
+    expect(pillText(run([{ slideIds: ids(2) }]), ids(2))).toBe("Planning the slides…");
+    expect(pillText(run([{ slideIds: ids(5) }]), ids(5))).toBe("Planning slide 5…");
   });
 
   test("writing never goes back to planning between drafts (audit: back to Planning at slide 4)", () => {
-    const s = run([{ writingIndex: 3 }, { writingIndex: -1 }]);
+    const s = run([w(4), { writingId: undefined }]);
     expect(s.phase).toBe("writing");
-    expect(pillText(s)).toBe("Writing slide 4 of 11…");
+    expect(text(s)).toBe("Writing slide 4 of 11…");
   });
 
   test("the slide number never goes back (a late draft of an earlier slide)", () => {
-    const s = run([{ writingIndex: 4 }, { writingIndex: 2 }]);
-    expect(pillText(s)).toBe("Writing slide 5 of 11…");
+    expect(text(run([w(5), w(3)]))).toBe("Writing slide 5 of 11…");
   });
 
-  test("the count never shrinks, and grows with a slide the job adds", () => {
-    expect(run([{ writingIndex: 4 }, { writingIndex: 5, slideCount: 10 }]).of).toBe(11);
-    expect(run([{ writingIndex: 4 }, { writingIndex: 5, slideCount: 13 }]).of).toBe(13);
+  test("the number follows the slide when the teacher deletes or moves one before it", () => {
+    const s = run([w(5)]);
+    const deleted = ids(11).filter((id) => id !== "s2");
+    expect(pillText(s, deleted)).toBe("Writing slide 4 of 10…");
+    const moved = ["s5", ...ids(11).filter((id) => id !== "s5")];
+    expect(pillText(s, moved)).toBe("Writing slide 1 of 11…");
+    expect(
+      pillText(
+        s,
+        ids(11).filter((id) => id !== "s5"),
+      ),
+    ).toBe("Writing the slides…");
   });
 
   test("finishing is final until the job ends; then gone; a new job starts over", () => {
-    const finishing = run([{ writingIndex: 9 }, { done: true }, { done: false, writingIndex: 3 }]);
-    expect(pillText(finishing)).toBe(FINISHING_TEXT);
+    const finishing = run([w(10), { done: true }, { done: false, ...w(3) }]);
+    expect(text(finishing)).toBe(FINISHING_TEXT);
     const gone = nextPill(finishing, look({ active: false }));
     expect(gone.phase).toBe("gone");
-    expect(pillText(gone)).toBeNull();
-    expect(nextPill(gone, look({ slideCount: 2 })).phase).toBe("planning");
+    expect(text(gone)).toBeNull();
+    expect(nextPill(gone, look({ slideIds: ids(2) })).phase).toBe("planning");
   });
 
   test("nothing new returns the same state (no re-render)", () => {
-    const s = run([{ writingIndex: 4 }]);
-    expect(nextPill(s, look({ writingIndex: 4 }))).toBe(s);
-    expect(nextPill(s, look({ writingIndex: -1 }))).toBe(s);
+    const s = run([w(5)]);
+    expect(nextPill(s, look(w(5)))).toBe(s);
+    expect(nextPill(s, look({ writingId: undefined }))).toBe(s);
   });
 });
 
@@ -94,7 +105,7 @@ describe("useWritingPill", () => {
   const setup = () => {
     const clock = manualClock();
     const r = renderHook((p: PillInput) => useWritingPill(p, clock), {
-      initialProps: look({ slideCount: 2 }),
+      initialProps: look({ slideIds: ids(2) }),
     });
     const tick = (ms: number) => act(() => clock.advance(ms));
     return { r, tick };
@@ -104,9 +115,9 @@ describe("useWritingPill", () => {
     const { r, tick } = setup();
     expect(r.result.current.text).toBe("Planning the slides…");
     tick(PILL_PACE.dwellMs);
-    r.rerender(look({ writingIndex: 0 }));
+    r.rerender(look(w(1)));
     tick(53);
-    r.rerender(look({ writingIndex: 2 }));
+    r.rerender(look(w(3)));
     expect(r.result.current.text).toBe("Planning the slides…");
     tick(PILL_PACE.settleMs);
     expect(r.result.current.text).toBe("Writing slide 3 of 11…");
@@ -114,12 +125,12 @@ describe("useWritingPill", () => {
 
   test("each text stays at least the dwell time", () => {
     const { r, tick } = setup();
-    r.rerender(look({ writingIndex: 2 }));
+    r.rerender(look(w(3)));
     tick(PILL_PACE.settleMs);
     // The first change waits for the planning text's dwell.
     tick(PILL_PACE.dwellMs);
     expect(r.result.current.text).toBe("Writing slide 3 of 11…");
-    r.rerender(look({ writingIndex: 3 }));
+    r.rerender(look(w(4)));
     tick(PILL_PACE.settleMs);
     expect(r.result.current.text).toBe("Writing slide 3 of 11…");
     tick(PILL_PACE.dwellMs);
@@ -128,9 +139,9 @@ describe("useWritingPill", () => {
 
   test("the pill stays up between slides and fades out at the hand-over", () => {
     const { r, tick } = setup();
-    r.rerender(look({ writingIndex: 4 }));
+    r.rerender(look(w(5)));
     tick(PILL_PACE.dwellMs * 2);
-    r.rerender(look({ writingIndex: -1 }));
+    r.rerender(look({ writingId: undefined }));
     tick(PILL_PACE.dwellMs * 2);
     expect(r.result.current).toMatchObject({ text: "Writing slide 5 of 11…", visible: true });
     r.rerender(look({ active: false }));

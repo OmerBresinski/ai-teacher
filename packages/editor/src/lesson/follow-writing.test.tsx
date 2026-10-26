@@ -111,24 +111,28 @@ describe("the editor follows the slide being written", () => {
     expect(chip()).not.toBeNull();
   });
 
-  test("only the teacher's navigation stops the follow: a key elsewhere or a dialog does not", () => {
+  test("opening the Theme dialog, or a key elsewhere, does not stop the follow (P0 26 Oct)", async () => {
     const lesson = worded(seededLesson());
     lesson.slides.push(fourth(lesson));
     const { write } = setup(lesson);
-    // P0 26 Oct: a key or click outside the slides (the top bar, the Theme dialog) is not the
-    // teacher leaving the slide being written.
     fireEvent.keyDown(document.body, { key: "Tab" });
-    fireEvent.pointerDown(document.body);
-    const dialog = document.createElement("div");
-    dialog.setAttribute("role", "dialog");
-    document.body.append(dialog);
-    fireEvent.pointerDown(dialog);
-    fireEvent.keyDown(dialog, { key: "ArrowDown" });
-    dialog.remove();
+    const theme = screen.getByRole("button", { name: /^Theme: / });
+    fireEvent.pointerDown(theme);
+    fireEvent.click(theme);
+    await screen.findByRole("dialog", { name: "Theme" });
+    write(2);
+    // The modal hides the rest of the page from the accessibility tree while it is open.
+    const third = screen.getByRole("option", { name: /^Slide 3\b/, hidden: true });
+    expect(third.getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Follow writing", hidden: true })).toBeNull();
+  });
+
+  test("a wheel in the strip stops the follow", () => {
+    const lesson = worded(seededLesson());
+    lesson.slides.push(fourth(lesson));
+    const { write } = setup(lesson);
     write(2);
     expect(open(3)).toBe("true");
-    expect(chip()).toBeNull();
-    // A wheel in the strip is: the follow stops there.
     fireEvent.wheel(screen.getByRole("listbox", { name: "Slides" }));
     write(3);
     expect(open(3)).toBe("true");

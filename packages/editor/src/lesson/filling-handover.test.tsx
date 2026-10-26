@@ -4,6 +4,9 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Id, Lesson, Slide } from "@tj/domain/documents";
 import { TooltipProvider } from "@tj/ui";
 import { SaveIndicator } from "../kit/SaveIndicator";
+import { inLessonTheme } from "../layout/retheme";
+import { loadLayoutKit } from "../model/layout-kit";
+import { renderTheme } from "../model/themes";
 import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
@@ -320,5 +323,58 @@ describe("the filling editor", () => {
     );
     // One format for the whole fill: the slide being written and how many there are.
     expect(pill()).toBe("Writing slide 3 of 3…");
+  });
+
+  test("a job write and a theme pick in the same tick: the job's slide is kept, in the new theme; the teacher's words are never overwritten", async () => {
+    await loadLayoutKit();
+    const lesson = seededLesson();
+    const ids = lesson.slides.map((s) => s.id);
+    const other = lesson.themeId === "exam-hall" ? "playground" : "exam-hall";
+    const ref: { current: LessonEditorHandle | null } = { current: null };
+    const saved: Lesson[] = [];
+    const onSave = (l: Lesson) => {
+      saved.push(l);
+      return Promise.resolve();
+    };
+    const { rerender, tree } = setup(lesson, { editorRef: ref, onSave });
+    act(() => rerender(tree(new Set([ids[2] as Id]))));
+    // The job, still in the opening theme: rewords slide 1 (the teacher's, once re-themed), adds
+    // notes to slide 3 and writes a new slide after it.
+    const first = lesson.slides[0] as Slide;
+    const jobWords = {
+      ...first,
+      elements: first.elements.map((e) =>
+        e.type === "text" ? { ...e, doc: doc("JOB WORDS") } : e,
+      ),
+    } as Slide;
+    // A slide the job drew with the opening theme's accent (a recipe palette colour).
+    const added = {
+      ...(lesson.slides[2] as Slide),
+      id: "job-new",
+      background: { color: renderTheme(lesson).colors.accent },
+    } as Slide;
+    const theirs: Lesson = {
+      ...lesson,
+      slides: [
+        jobWords,
+        lesson.slides[1] as Slide,
+        { ...(lesson.slides[2] as Slide), notes: "job" },
+        added,
+      ],
+    };
+    act(() => {
+      ref.current?.retheme(other);
+      ref.current?.receiveGenerated(lesson, theirs);
+    });
+    await waitFor(() => expect(saved.at(-1)?.slides.map((s) => s.id)).toContain("job-new"));
+    const last = saved.at(-1) as Lesson;
+    expect(last.themeId).toBe(other);
+    // Every slide wears the new theme's palette: nothing of the job's old theme is saved.
+    for (const slide of last.slides) expect(inLessonTheme(slide, last)).toBe(slide);
+    expect(last.slides.find((s) => s.id === ids[2])?.notes).toBe("job");
+    expect(last.slides.find((s) => s.id === "job-new")?.background?.color).toBe(
+      renderTheme(last).colors.accent,
+    );
+    expect(JSON.stringify(last.slides[0])).not.toContain("JOB WORDS");
   });
 });

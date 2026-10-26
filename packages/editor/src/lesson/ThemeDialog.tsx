@@ -2,7 +2,12 @@ import { type Lesson, type Slide, sameJson } from "@tj/domain/documents";
 import { Button, cn, Dialog, DialogContent, DialogHeader, DialogTitle } from "@tj/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearMeasureCache, createMeasurer, warmMeasurer } from "../layout/measure";
-import { recolourSlide, rethemeFromReducer, rethemeMeasureInputs } from "../layout/retheme";
+import {
+  inLessonTheme,
+  recolourSlide,
+  rethemeFromReducer,
+  rethemeMeasureInputs,
+} from "../layout/retheme";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
 import { boundAgeBand, getTheme, renderTheme } from "../model/themes";
 import {
@@ -77,14 +82,23 @@ function ThemePanel({
    * each preview started from the lesson as the picker found it). A slide the job changed since
    * the last look is taken from the lesson, put back into the opening theme's colours.
    */
-  const base = useRef(lesson);
-  const seen = useRef(lesson);
-  const own = useRef(false);
-  if (lesson !== seen.current) {
-    if (!own.current) base.current = withJobWrites(base.current, seen.current, lesson);
-    seen.current = lesson;
-    own.current = false;
-  }
+  /**
+   * The slides the last preview drew, by id (written only by the preview reducer). A slide the
+   * lesson holds that is not one of these as drawn is the job's write since (or new), and the
+   * next preview keeps it rather than re-theming the opening copy (`withJobWrites`).
+   */
+  const drawn = useRef<ReadonlyMap<string, Slide>>(new Map(lesson.slides.map((s) => [s.id, s])));
+  /** One preview step: the opening lesson plus the job's writes, re-themed and fitted. */
+  const themed = (current: Lesson, themeId: string, measure: ReturnType<typeof createMeasurer>) => {
+    const out = rethemeFromReducer(
+      current,
+      withJobWrites(opening, current, drawn.current),
+      themeId,
+      measure,
+    );
+    drawn.current = new Map(out.lesson.slides.map((s) => [s.id, s]));
+    return out;
+  };
   const tx = useRef<number | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -109,14 +123,13 @@ function ThemePanel({
     // Done is waiting for the chosen theme's faces: the choice is made.
     if (tx.current === null || applying) return;
     const theme = getTheme(themeId);
-    own.current = true;
-    historyRef.current.dispatch(rethemeFromReducer, base.current, themeId, createMeasurer(theme));
+    historyRef.current.dispatch(themed, themeId, createMeasurer(theme));
   };
 
   const commit = () => {
     if (tx.current === null) return;
     const themeId = lessonRef.current.themeId;
-    if (themeId === base.current.themeId || layoutKit()) return settle(themeId);
+    if (themeId === opening.themeId || layoutKit()) return settle(themeId);
     // The template code is still loading: the final re-fit waits for it, or a saved deck's Answers
     // slides and adaptive layouts keep the old theme's measurements (TEACH-191 part d).
     void loadLayoutKit().then(
@@ -126,13 +139,12 @@ function ThemePanel({
   };
   const settle = (themeId: string) => {
     if (tx.current === null) return;
-    if (themeId !== base.current.themeId) {
+    if (themeId !== opening.themeId) {
       // The faces are loaded now: measure again, from the opening lesson, with the real type.
       const theme = getTheme(themeId);
       clearMeasureCache();
-      warmMeasurer(rethemeMeasureInputs(base.current), theme);
-      own.current = true;
-      historyRef.current.dispatch(rethemeFromReducer, base.current, themeId, createMeasurer(theme));
+      warmMeasurer(rethemeMeasureInputs(lessonRef.current), theme);
+      historyRef.current.dispatch(themed, themeId, createMeasurer(theme));
     }
     historyRef.current.endTransaction(tx.current);
     tx.current = null;
@@ -141,7 +153,7 @@ function ThemePanel({
   const done = () => {
     if (tx.current === null || applying) return;
     const themeId = lessonRef.current.themeId;
-    const pending = themeId === base.current.themeId ? null : themeFacesPending(themeId);
+    const pending = themeId === opening.themeId ? null : themeFacesPending(themeId);
     if (!pending) return commit();
     setApplying(true);
     void pending.then(() => {
@@ -370,22 +382,30 @@ export function GeneratingThemeDialog({
 }
 
 /**
- * `base` (the lesson the picker re-themes) with what the job wrote between two looks at the
- * lesson (`before` -> `after`): a slide it added or changed comes from `after`, recoloured from
- * the preview's theme back into the base's; one it dropped goes.
+ * What a preview re-themes (P1 26 Oct, jank audit #6: a slide written while the picker was open
+ * dropped out of the strip, 5 -> 4 -> 5): the opening lesson, with every slide the lesson holds now
+ * in its place. A slide still as the last preview drew it (`drawn`, by id) is taken from `opening`;
+ * any other (the job wrote or added it since, whenever that landed) comes from `current`, in the
+ * opening theme's palette. A slide gone from `current` is gone. Pure, so a job write and a pick in
+ * the same tick cannot lose either.
  */
-export function withJobWrites(base: Lesson, before: Lesson, after: Lesson): Lesson {
-  const was = new Map(before.slides.map((s) => [s.id, s]));
-  const kept = new Map(base.slides.map((s) => [s.id, s]));
-  const from = renderTheme(after);
-  const to = renderTheme(base);
-  const slides = after.slides.map((slide) => {
+export function withJobWrites(
+  opening: Lesson,
+  current: Lesson,
+  drawn: ReadonlyMap<string, Slide>,
+): Lesson {
+  const kept = new Map(opening.slides.map((s) => [s.id, s]));
+  const slides = current.slides.map((slide) => {
     const prior = kept.get(slide.id);
-    const last = was.get(slide.id);
+    const last = drawn.get(slide.id);
     if (prior && last && (last === slide || sameJson(last, slide))) return prior;
-    return recolourSlide(slide, from, to);
+    return inLessonTheme(slide, opening);
   });
-  return { ...base, slides, ...(after.generation ? { generation: after.generation } : {}) };
+  return {
+    ...opening,
+    slides,
+    ...(current.generation ? { generation: current.generation } : {}),
+  };
 }
 
 /**

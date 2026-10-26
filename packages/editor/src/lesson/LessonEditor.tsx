@@ -26,7 +26,7 @@ import type { ImageSearchClient } from "../images/image-search";
 import { SaveFailedBar } from "../kit/SaveFailedBar";
 import { isFitStale } from "../layout/fit-plan";
 import { createMeasurer } from "../layout/measure";
-import { recolourSlide, rethemeFromReducer } from "../layout/retheme";
+import { inLessonTheme, rethemeFromReducer } from "../layout/retheme";
 import { type FitMigrationDeps, useFitMigration } from "../layout/use-fit-migration";
 import { makeLine, makeShape, makeText } from "../model/insert";
 import { layoutKit, loadLayoutKit } from "../model/layout-kit";
@@ -387,15 +387,6 @@ export function LessonEditor({
     ],
   );
   const [canvasFocused, setCanvasFocused] = useState(false);
-  /**
-   * The theme the job writes in (its row's), so a slide or draft it sends after the teacher picked
-   * another theme is drawn in the teacher's at once (P1 26 Oct: a theme picked mid-generation
-   * reached the writer's slides only at the hand-over, and the accent trailed the rest).
-   */
-  const jobTheme = useRef<string | undefined>(undefined);
-  if (jobTheme.current === undefined && lesson) jobTheme.current = lesson.themeId;
-  /** The follow's `stop`, for `goToSlide` (declared before the follow). */
-  const followStop = useRef<() => void>(() => {});
 
   // Canvas writes its measured scale here on every render of SlideScaler. A ref, not state: the
   // scale changes on every zoom frame and `stepZoom` only needs the latest value when ⌘± is pressed.
@@ -569,7 +560,6 @@ export function LessonEditor({
         return reducers.proposalSlideIds(current, incoming);
       },
       receiveGenerated: (base, theirs) => {
-        jobTheme.current = theirs.themeId;
         const merged = historyRef.current.rebase?.((mine) =>
           inTeachersTheme(mergeJobLesson(base, mine, theirs), theirs),
         );
@@ -594,8 +584,6 @@ export function LessonEditor({
       },
       undo: () => historyRef.current.undo(),
       goToSlide: (slideId) => {
-        // A slide opened from a side pane is the teacher's own move: the follow lets go.
-        followStop.current();
         session.actions.setActiveSlide(slideId);
       },
       retheme: (themeId) => {
@@ -635,19 +623,11 @@ export function LessonEditor({
     typedId,
     ...(followPace ? { pace: followPace } : {}),
   });
-  followStop.current = follow.stop;
   // One pill for the whole fill (jank audit #7): planning → writing N of M → finishing → gone,
   // never backwards, each text held long enough to read, at one place and one width.
+  const slideIds = useMemo(() => lesson?.slides.map((s) => s.id) ?? [], [lesson?.slides]);
   const pill = useWritingPill(
-    {
-      active: !!writingSlideIds,
-      done: writerDone,
-      writingIndex:
-        writingNowId === undefined
-          ? -1
-          : (lesson?.slides.findIndex((s) => s.id === writingNowId) ?? -1),
-      slideCount: lesson?.slides.length ?? 0,
-    },
+    { active: !!writingSlideIds, done: writerDone, writingId: writingNowId, slideIds },
     pillPace ? { pace: pillPace } : undefined,
   );
   // The chip goes at once when following resumes; at the hand-over it fades with the pill.
@@ -829,7 +809,7 @@ export function LessonEditor({
                                           data-writing-status
                                           className="sr-only"
                                         >
-                                          {pill.visible ? pill.text : ""}
+                                          {pill.text}
                                         </span>
                                       ) : null}
                                       {slide && writingSlideIds?.has(slide.id) ? (
@@ -877,13 +857,9 @@ export function LessonEditor({
                                               }
                                               controls={!quietControls}
                                               slide={
-                                                shown && jobTheme.current !== lesson.themeId
-                                                  ? recolourSlide(
-                                                      shown,
-                                                      renderTheme(lesson, jobTheme.current),
-                                                      theme,
-                                                    )
-                                                  : (shown ?? slide)
+                                                // A draft wears the job's palette until it is the
+                                                // lesson's own (a theme picked mid-fill).
+                                                shown ? inLessonTheme(shown, lesson) : slide
                                               }
                                               theme={theme}
                                               onFocusChange={setCanvasFocused}
@@ -1040,18 +1016,22 @@ function WritingPill({ text, visible, phase }: { text: string; visible: boolean;
 }
 
 /**
- * The job's slides in the teacher's theme: a slide the merge took from the job (`theirs`) whole,
- * written in the job's theme, recoloured into the one the teacher picked since.
+ * The job's slides in the teacher's theme (P1 26 Oct): a slide the merge took whole from the job
+ * (matched by id) is drawn in the lesson's theme when it still wears the job's palette. A slide the
+ * teacher changed keeps the teacher's copy as it is (ADR 0037: never overwritten). The result is
+ * what the history holds and the autosave sends, so the saved lesson never keeps old-theme slides.
  */
 function inTeachersTheme(merged: Lesson, theirs: Lesson): Lesson {
-  if (merged.themeId === theirs.themeId) return merged;
-  const from = renderTheme(theirs);
-  const to = renderTheme(merged);
-  const job = new Set(theirs.slides);
-  return {
-    ...merged,
-    slides: merged.slides.map((s) => (job.has(s) ? recolourSlide(s, from, to) : s)),
-  };
+  const job = new Map(theirs.slides.map((s) => [s.id, s]));
+  let changed = false;
+  const slides = merged.slides.map((s) => {
+    const copy = job.get(s.id);
+    if (copy === undefined || (copy !== s && !sameJson(copy, s))) return s;
+    const next = inLessonTheme(s, merged);
+    if (next !== s) changed = true;
+    return next;
+  });
+  return changed ? { ...merged, slides } : merged;
 }
 
 /** Whether two copies of a lesson differ only in the editor's stamps: `fitVersion`, `updatedAt`. */

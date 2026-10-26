@@ -33,12 +33,12 @@ export type FollowPace = typeof FOLLOW_PACE;
  * objectives slide stays `writing` until the job ends). The shell's pick arrives as
  * `startFollowing` (`initialSlideId` absent: the shell was following).
  *
- * Only the teacher's own navigation stops the follow (P0 26 Oct: opening Theme mid-generation
- * turned it off and the view sat on slide 2 while the writer reached 11): a click, tap or key on a
- * slide or a thumbnail (`isTeacherNavigation`), a wheel or touch scroll in the slide strip, focus
- * on a done slide's canvas, or `stop` (a slide opened from elsewhere in the editor). Opening a
- * dialog, a theme change, the top bar and re-renders leave it on; a change of the open slide the
- * follow did not make is taken as the new place to follow from, never as the teacher leaving.
+ * Any change of the open slide the follow did not make stops it for good: the strip, the toolbar,
+ * undo, search, Present, a screen reader's activation, focus onto a thumbnail. On top of that, the
+ * teacher's own gestures stop it before any move (`isTeacherNavigation`: a click or movement key on
+ * a slide, thumbnail or the canvas, a wheel or touch scroll in the strip), and so does focus on a
+ * done slide's canvas. Clicks and keys elsewhere (the top bar, the Theme dialog, P0 26 Oct: opening
+ * Theme mid-generation used to stop it through a document-wide pointer listener) do not.
  * Only the "Follow writing" chip (`resume`) starts it again. The follow sets the session's active slide and marks
  * it (`mark`, read by the strip through `FollowMarkContext`): the strip scrolls a followed row into
  * view without focusing it, and not at all while the teacher is busy.
@@ -147,9 +147,15 @@ export function useFollowWriting({
   useEffect(() => {
     const moved = activeSlideId !== previous.current;
     previous.current = activeSlideId;
-    // A move the follow did not make (a slide that vanished for a moment, the session settling)
-    // is not the teacher: their navigation stops the follow through its own events below.
-    if (moved && activeSlideId !== mark.current) mark.current = null;
+    if (moved) {
+      const own = activeSlideId !== null && activeSlideId === mark.current;
+      if (!own) {
+        // The teacher opened a slide, by whatever route: the follow stops until the chip.
+        mark.current = null;
+        setFollowing(false);
+        return;
+      }
+    }
     if (!following || !target || target === activeSlideId) {
       // Nothing to move to: a "Follow writing" press is spent, not saved for a later slide.
       jump.current = false;
@@ -245,7 +251,7 @@ const MOVE_KEYS = new Set([
 export function isTeacherNavigation(e: Event): boolean {
   const target = e.target;
   if (!(target instanceof Element)) return false;
-  if (target.closest("[data-follow-writing], [role=dialog]")) return false;
+  if (target.closest("[data-follow-writing], [data-navigator-toggle], [role=dialog]")) return false;
   const zone = target.closest(NAVIGATION);
   if (!zone) return false;
   switch (e.type) {
