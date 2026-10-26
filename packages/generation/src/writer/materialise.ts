@@ -293,12 +293,12 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
       const f = sideFigure((d as S)?.picture);
       if (f) out.push({ key: `side.${n}`, f });
     });
-  // Myth and fact (TEACH-247 part ae): the proof's one picture. It was never asked for, so it stayed
-  // an open slot for good (Great Fire Y2 s9).
+  // Myth and fact (TEACH-75 part ag): the proof's one picture is asked like any other (picq,
+  // greatfire 26 Oct: it was never asked, so its slot stayed open and shipped the placeholder).
   if (s.template === "myth") {
     const m = (s.myth && typeof s.myth === "object" ? s.myth : s) as S;
-    const p = (m.proof && typeof m.proof === "object" ? (m.proof as S).picture : null) as unknown;
-    if (isPic(p)) out.push({ key: "proof", f: p });
+    const p0 = (m.proof && typeof m.proof === "object" ? m.proof : null) as S | null;
+    if (p0 && isPic(p0.picture)) out.push({ key: "proof", f: p0.picture });
   }
   // Activity cards (TEACH-101 part b): one single-subject picture slot per card.
   (Array.isArray(s.cards) ? s.cards : []).forEach((c, n) => {

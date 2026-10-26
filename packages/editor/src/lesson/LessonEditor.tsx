@@ -567,7 +567,7 @@ export function LessonEditor({
       },
       receiveGenerated: (base, theirs) => {
         const merged = historyRef.current.rebase?.((mine) =>
-          inTeachersTheme(mergeJobLesson(base, mine, theirs), theirs),
+          inTeachersTheme(mergeJobLesson(base, mine, theirs), theirs, base),
         );
         // Nothing of the teacher's left to send: hold the job's very copy, so the next round sees
         // an untouched document and the autosave stays quiet.
@@ -1104,13 +1104,21 @@ function WritingPill({ text, visible, phase }: { text: string; visible: boolean;
  * teacher changed keeps the teacher's copy as it is (ADR 0037: never overwritten). The result is
  * what the history holds and the autosave sends, so the saved lesson never keeps old-theme slides.
  */
-function inTeachersTheme(merged: Lesson, theirs: Lesson): Lesson {
+function inTeachersTheme(merged: Lesson, theirs: Lesson, base?: Lesson): Lesson {
   const job = new Map(theirs.slides.map((s) => [s.id, s]));
   let changed = false;
+  let measure: ReturnType<typeof createMeasurer> | undefined;
+  // TEACH-247 part ag: only a slide still the job's (ADR 0037: `writing`, or finishing in this
+  // round) is fitted to the teacher's theme; a `done` slide is the teacher's and is recoloured only.
+  const jobs = (id: string) =>
+    theirs.generation?.slideStates?.[id] === "writing" ||
+    base?.generation?.slideStates?.[id] !== "done";
   const slides = merged.slides.map((s) => {
     const copy = job.get(s.id);
     if (copy === undefined || (copy !== s && !sameJson(copy, s))) return s;
-    const next = inLessonTheme(s, merged);
+    const fit = jobs(s.id);
+    if (fit) measure ??= createMeasurer(renderTheme(merged));
+    const next = inLessonTheme(s, merged, fit ? measure : undefined);
     if (next !== s) changed = true;
     return next;
   });
