@@ -245,12 +245,17 @@ describe("the lesson's title after the writer", () => {
 });
 
 // Ruling 261 (TEACH-110 part ae): the writer plans near a range's low end, so the schema's maximum
-// must leave room for a split to add one or two slides; an exact count stays exact.
+// must leave room for a split to add one or two slides; an exact count stays exact. Ruling 295
+// sets Quick at 7–8, so Quick leaves one slide of room and the others two.
 describe("the slide range leaves room for splits", () => {
-  for (const slideTier of ["quick", "standard", "detailed"] as const)
-    test(`${slideTier}: a plan at the minimum may add two slides`, () => {
+  for (const [slideTier, room] of [
+    ["quick", 1],
+    ["standard", 2],
+    ["detailed", 2],
+  ] as const)
+    test(`${slideTier}: a plan at the minimum may add ${room} slide(s)`, () => {
       const r = slideRange({ slideTier });
-      expect(r.min + 2).toBeLessThanOrEqual(r.max);
+      expect(r.min + room).toBeLessThanOrEqual(r.max);
     });
   test("an exact slide count is not a range", () => {
     expect(slideRange({ slideCount: 10 })).toEqual({ min: 10, max: 10 });

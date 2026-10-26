@@ -883,6 +883,53 @@ export function lookOf(
   return l ? { kind: l.kind, shows: l.shows ?? "" } : undefined;
 }
 
+/** Flow layouts whose slide template has another name (the flow plans `figure-slide`). */
+export const FLOW_LAYOUT_TEMPLATE: Readonly<Record<string, string>> = { "figure-slide": "figure" };
+/** The flow's layout name for a writer schema def (`visual-text~points-0-fig`). */
+export const flowLayoutOf = (defKey: string) => defKey.replace("~", " ");
+/** The template the writer writes for a flow layout (`visual-text points-0-fig` -> `visual-text`). */
+export function templateOfLayout(layout: string): string {
+  const head = layout.trim().split(/\s+/)[0] ?? "";
+  return FLOW_LAYOUT_TEMPLATE[head] ?? head;
+}
+/** How far past the next unmatched flow entry a written slide may find its own. */
+export const FLOW_LOOKAHEAD = 3;
+type FlowEntry = { slide: number; layout?: string };
+
+/**
+ * Matches each written slide to the flow entry that plans it, in order, by the template the
+ * writer wrote (before any activity, table or quick-check rewrite): the next unmatched entry
+ * whose layout names that template, at most `FLOW_LOOKAHEAD` entries on. When the writer writes
+ * fewer slides than its flow (the close moves up), an index would read another slide's plan and
+ * its picture would land where the layout has no room (genlab Y1 plants, 26 Oct: a practice
+ * slide's "seedling and flowering plant in rain" was generated for the exit ticket, 31 s and
+ * $0.0063, then never shown). A flow without layouts is read by index, as before. A slide is
+ * matched once; asking again returns the same entry. `flowNow` reads the flow when a slide opens
+ * (it streams in before the slides).
+ */
+export function flowMatcher<E extends FlowEntry>(flowNow: () => readonly E[] | undefined) {
+  const byIdx = new Map<number, E | undefined>();
+  let next = 0;
+  return (idx: number, written: string): E | undefined => {
+    if (byIdx.has(idx)) return byIdx.get(idx);
+    const list = flowNow() ?? [];
+    let got: E | undefined;
+    if (!list.some((f) => typeof f.layout === "string"))
+      got = list.find((f) => f.slide === idx + 1);
+    else
+      for (let j = next; j < Math.min(list.length, next + FLOW_LOOKAHEAD + 1); j++) {
+        const f = list[j] as E;
+        if (typeof f.layout === "string" && templateOfLayout(f.layout) === written) {
+          got = f;
+          next = j + 1;
+          break;
+        }
+      }
+    byIdx.set(idx, got);
+    return got;
+  };
+}
+
 /** The writer's user turn: the pinned `user.txt` filled with the brief and the approved objectives. */
 export function contextBlock(
   b: Brief,

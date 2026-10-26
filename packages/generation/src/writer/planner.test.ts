@@ -52,17 +52,19 @@ describe("writer planner", () => {
   });
   test("a lesson made before tiers keeps its exact count, title and objectives included (ADR 0036)", () => {
     // Lesson 01a12146 asked for 10 and got 12: the tier 9–12 let the writer pick the top.
-    for (const n of [6, 8, 10, 12])
+    for (const n of [7, 8, 10, 12])
       expect(slideRange({ slideCount: n })).toEqual({ min: n, max: n });
-    expect(slideRange({ slideCount: 3 })).toEqual({ min: 6, max: 6 });
+    expect(slideRange({ slideCount: 3 })).toEqual({ min: 7, max: 7 });
+    // Ruling 295: Quick starts at 7, so an older 6-slide lesson is held at 7.
+    expect(slideRange({ slideCount: 6 })).toEqual({ min: 7, max: 7 });
     expect(slideRange({ slideCount: 30 })).toEqual({ min: 16, max: 16 });
-    expect(slideRange(undefined)).toEqual({ min: 9, max: 12 });
-    expect(slideRange({})).toEqual({ min: 9, max: 12 });
+    expect(slideRange(undefined)).toEqual({ min: 10, max: 12 });
+    expect(slideRange({})).toEqual({ min: 10, max: 12 });
   });
 
   test("ruling 164: a tier gives its range and wins over an exact count", () => {
-    expect(slideRange({ slideTier: "quick" })).toEqual({ min: 6, max: 8 });
-    expect(slideRange({ slideTier: "standard" })).toEqual({ min: 9, max: 12 });
+    expect(slideRange({ slideTier: "quick" })).toEqual({ min: 7, max: 8 });
+    expect(slideRange({ slideTier: "standard" })).toEqual({ min: 10, max: 12 });
     expect(slideRange({ slideTier: "detailed" })).toEqual({ min: 13, max: 16 });
     expect(slideRange({ slideTier: "detailed", slideCount: 8 })).toEqual({ min: 13, max: 16 });
   });
