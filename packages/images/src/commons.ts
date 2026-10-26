@@ -134,6 +134,12 @@ export function licenceClass(shortName: string): CommonsLicence | undefined {
 /** Words in a file's title or description that mark it as a drawing, not a photograph. */
 const DRAWING = /\b(map|maps|logo|logos|flag|coat of arms|diagram|chart|icon|emblem|seal)\b/i;
 const PHOTO_MIME = new Set(["image/jpeg", "image/webp"]);
+/** TEACH-251 part v: a locator map may be a drawing (PNG, SVG) or a photograph's format. */
+const MAP_MIME = new Set(["image/jpeg", "image/webp", "image/png", "image/svg+xml"]);
+/** A map's title or name says it is a map. */
+const MAP_WORD = /\b(map|maps|karte|carte|mapa)\b/i;
+/** Never a map: logos, flags, arms and seals stay refused on a map search too. */
+const NOT_MAP = /\b(logo|logos|flag|coat of arms|emblem|seal|icon)\b/i;
 
 export type CommonsVerdict =
   | { ok: true; licence: CommonsLicence; credit: CommonsCredit }
@@ -146,7 +152,7 @@ export type CommonsVerdict =
  */
 export function judgeCommonsFile(
   page: CommonsPage,
-  opts: { allowDrawings?: boolean; diagrams?: boolean } = {},
+  opts: { allowDrawings?: boolean; diagrams?: boolean; maps?: boolean } = {},
 ): CommonsVerdict {
   const info = page.imageinfo?.[0];
   if (!info) return { ok: false, reason: "no image info" };
@@ -156,7 +162,15 @@ export function judgeCommonsFile(
     return { ok: false, reason: `not a diagram (${info.mime})` };
   const meta = info.extmetadata;
   const title = page.title.replace(/^File:/i, "");
-  if (!opts.allowDrawings) {
+  if (opts.maps) {
+    // TEACH-251 part v: a locator-map search (a "where" slide about a real place) keeps only
+    // files that say they are maps, in a picture format, never a logo, flag or seal; the licence
+    // and author rules below hold as for any file.
+    const described = `${title} ${metaText(meta, "ObjectName")}`;
+    if (!MAP_MIME.has(info.mime)) return { ok: false, reason: `not a map image (${info.mime})` };
+    if (!MAP_WORD.test(described)) return { ok: false, reason: "not a map" };
+    if (NOT_MAP.test(described)) return { ok: false, reason: "a logo or drawing, not a map" };
+  } else if (!opts.allowDrawings) {
     if (!PHOTO_MIME.has(info.mime)) return { ok: false, reason: `not a photograph (${info.mime})` };
     const described = `${title} ${metaText(meta, "ObjectName")}`;
     if (DRAWING.test(described)) return { ok: false, reason: "a map, logo or drawing" };
@@ -286,7 +300,7 @@ function toPhoto(
 /** The accepted, ranked photos of one API response (pure; the tests' fixtures go through here). */
 export function commonsPhotosOf(
   body: unknown,
-  opts: { allowDrawings?: boolean; diagrams?: boolean } = {},
+  opts: { allowDrawings?: boolean; diagrams?: boolean; maps?: boolean } = {},
 ): CommonsPhoto[] {
   const parsed = ResponseSchema.safeParse(body);
   if (!parsed.success) return [];
@@ -365,6 +379,8 @@ export interface CommonsSearchParams {
   query: string;
   perPage?: number;
   allowDrawings?: boolean;
+  /** TEACH-251 part v: map files only (locator maps), any picture format, same licence rules. */
+  maps?: boolean;
   /** Round H: drawings only (the File: namespace's SVG and PNG diagrams), same licence rules. */
   diagrams?: boolean;
   signal?: AbortSignal;
@@ -523,8 +539,8 @@ export function createCommonsClient(
   };
   return {
     fetchFile,
-    search: ({ query, perPage = 20, allowDrawings, diagrams, signal, inline = 8 }) => {
-      const key = JSON.stringify([query, perPage, !!allowDrawings, !!diagrams]);
+    search: ({ query, perPage = 20, allowDrawings, diagrams, maps, signal, inline = 8 }) => {
+      const key = JSON.stringify([query, perPage, !!allowDrawings, !!diagrams, !!maps]);
       return searchOnce(
         key,
         () =>
@@ -541,7 +557,7 @@ export function createCommonsClient(
               "gsrsearch",
               diagrams
                 ? `${query} filetype:drawing`
-                : allowDrawings
+                : allowDrawings || maps
                   ? query
                   : `${query} filetype:bitmap`,
             );
@@ -572,6 +588,7 @@ export function createCommonsClient(
                 return commonsPhotosOf(body, {
                   allowDrawings: allowDrawings || diagrams,
                   ...(diagrams ? { diagrams } : {}),
+                  ...(maps ? { maps } : {}),
                 });
               const wait = retryAfterMs(res.headers.get("Retry-After"));
               if (attempt >= COMMONS_BUSY_RETRIES || wait > COMMONS_MAX_RETRY_AFTER_MS)
@@ -612,9 +629,12 @@ export function commonsLicenceAllowed(
 export function commonsSearch(
   client: CommonsClient,
   licences: CommonsLicences = COMMONS_LICENCES,
-): (query: string, opts: { perPage: number; signal: AbortSignal }) => Promise<CommonsPhoto[]> {
-  return async (query, { perPage, signal }) =>
-    (await client.search({ query, perPage, signal })).filter((photo) =>
+): (
+  query: string,
+  opts: { perPage: number; signal: AbortSignal; maps?: boolean },
+) => Promise<CommonsPhoto[]> {
+  return async (query, { perPage, signal, maps }) =>
+    (await client.search({ query, perPage, signal, ...(maps ? { maps } : {}) })).filter((photo) =>
       commonsLicenceAllowed(photo, licences),
     );
 }

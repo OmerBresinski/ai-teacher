@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Writable } from "node:stream";
 import { createFakeAi } from "@tj/ai/testing";
+import type { ImageBrief } from "@tj/domain/documents";
 import type { PhotoResult, StoredPhoto } from "@tj/images";
 import pino from "pino";
 import { MADE_PICTURE_RULES } from "../prompts/pick-or-requery-photo-directed";
@@ -10,12 +11,15 @@ import {
   type DirectedPlacer,
   directedGatePasses,
   freeLicenceFirst,
+  type PlacedPhoto,
   pickDirectedPhoto,
 } from "./illustrate";
 import type { BankRequest, PictureBank } from "./photo-bank";
 import {
   findDirected,
+  LOCATOR_MAP_GRACE_MS,
   type PictureOutcome,
+  placeNameOf,
   placeWriterPicture,
   planPicture,
   type WriterPictureAsk,
@@ -743,5 +747,119 @@ describe("ruling 296 (placement)", () => {
     expect(await run).toBeUndefined();
     expect(made).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
+});
+
+describe("TEACH-251 part v: a 'where' slide about a real place tries a locator map", () => {
+  const stockPhoto = (src: string) =>
+    ({ src, alt: src, source: { provider: "commons", id: src } }) as unknown as PlacedPhoto;
+  const isMap = (b: ImageBrief) => !!b.queries?.some((q) => /locator map/.test(q));
+  const run = (o: {
+    locate?: boolean;
+    map?: "found" | "none" | "throws" | "hangs";
+    named?: PictureDirection["named"];
+    shows?: string;
+    heading?: string;
+    mapMs?: number;
+  }) => {
+    const briefs: ImageBrief[] = [];
+    const remembered: string[] = [];
+    const bank: PictureBank = {
+      lookup: async () => undefined,
+      remember: async (req) => {
+        remembered.push(req.text);
+      },
+      generate: async () => undefined,
+    };
+    const shows = o.shows ?? "A surviving stretch of Hadrian's Wall beside Housesteads Roman Fort";
+    const out = findDirected({
+      bank,
+      ask: { subject: shows, named: null },
+      brief: writerAskBrief(ask({ shows, named: true })),
+      slide: {
+        heading: o.heading ?? "Hadrian's wall across northern England",
+        ...(o.locate === false ? {} : { locate: true }),
+      },
+      lesson: { title: "Why the Romans built Hadrian's Wall" },
+      country: "UK",
+      index: 2,
+      mapMs: o.mapMs ?? 50,
+      stock: async (b, signal) => {
+        briefs.push(b);
+        if (!isMap(b)) return stockPhoto("/wall.jpg");
+        if (o.map === "throws") throw new Error("commons busy");
+        if (o.map === "hangs")
+          return new Promise((_, reject) =>
+            signal?.addEventListener("abort", () =>
+              reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+            ),
+          );
+        return o.map === "none" ? undefined : stockPhoto("/map.png");
+      },
+      judgeMade: async () => false,
+      deps: recordingDeps(createFakeAi({ script: [] })),
+      direct: async () =>
+        direction({
+          route: "commons",
+          named: o.named === undefined ? "place" : o.named,
+          pictures: [
+            {
+              shows,
+              mustShow: ["stone wall"],
+              queries: ["Hadrian's Wall Housesteads"],
+              imagePrompt: "The wall.",
+            },
+          ],
+        }),
+    });
+    return { out, briefs, remembered };
+  };
+  test("the map is searched beside the photo, placed, and stored in the library", async () => {
+    const { out, briefs, remembered } = run({ map: "found" });
+    expect((await out)?.src).toBe("/map.png");
+    const map = briefs.find(isMap);
+    expect(map?.queries).toEqual(["Hadrian's Wall locator map", "Hadrian's Wall location map"]);
+    expect(map?.request).toBe("A locator map showing where Hadrian's Wall is");
+    expect(briefs).toHaveLength(2);
+    expect(remembered).toContain("A locator map showing where Hadrian's Wall is");
+  });
+  test("no map, a failed map search or one past its cap: the photograph is placed", async () => {
+    for (const map of ["none", "throws", "hangs"] as const) {
+      const t0 = Date.now();
+      expect((await run({ map }).out)?.src).toBe("/wall.jpg");
+      expect(Date.now() - t0).toBeLessThan(2000);
+    }
+  });
+  test("a photo placed first waits only the short grace, not the map's whole cap", async () => {
+    const t0 = Date.now();
+    const { out } = run({ map: "hangs", mapMs: 60_000 });
+    expect((await out)?.src).toBe("/wall.jpg");
+    expect(Date.now() - t0).toBeLessThan(LOCATOR_MAP_GRACE_MS + 1000);
+  });
+  test("a slide that is not about where: no map search", async () => {
+    const { out, briefs } = run({ locate: false, map: "found" });
+    expect((await out)?.src).toBe("/wall.jpg");
+    expect(briefs.some(isMap)).toBe(false);
+  });
+  test("'Where does the story happen?' about no real place: no map search", async () => {
+    const { out, briefs } = run({
+      map: "found",
+      named: null,
+      heading: "Where does the story happen?",
+      shows: "A dark forest path where Little Red Riding Hood meets the wolf",
+    });
+    await out;
+    expect(briefs.some(isMap)).toBe(false);
+  });
+  test("the place is the name the director searches, else the longest proper name", () => {
+    expect(placeNameOf("Roman soldiers at Hadrian's Wall")).toBe("Hadrian's Wall");
+    expect(placeNameOf("A surviving stretch of Hadrian’s Wall beside Housesteads")).toBe(
+      "Hadrian's Wall",
+    );
+    expect(
+      placeNameOf("Housesteads Roman Fort on Hadrian's Wall", ["Hadrian's Wall map", "wall fort"]),
+    ).toBe("Hadrian's Wall");
+    expect(placeNameOf("Pudding Lane in the City of London")).toBe("City of London");
+    expect(placeNameOf("a stone wall on a hill")).toBeNull();
   });
 });

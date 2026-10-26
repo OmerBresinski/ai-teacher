@@ -453,3 +453,36 @@ describe("one job's Commons searches and thumbnails are sent once (picq, greatfi
     expect(calls).toBe(2);
   });
 });
+
+describe("TEACH-251 part v: a locator-map search keeps map files only", () => {
+  const map = (title: string, mime = "image/png", licence = "CC BY-SA 4.0") =>
+    judgeCommonsFile(page(1, licence, { title, mime }), { maps: true });
+  test("a locator map (PNG or SVG) is kept, under the same licence and author rules", () => {
+    expect(map("Hadrians Wall map.png").ok).toBe(true);
+    expect(map("Hadrian's Wall location map.svg", "image/svg+xml").ok).toBe(true);
+    expect(map("Hadrians Wall map.png", "image/png", "CC BY-NC 4.0").ok).toBe(false);
+  });
+  test("a photograph, a logo or a flag is not a map", () => {
+    expect(map("Hadrian's Wall 1.jpg", "image/jpeg").ok).toBe(false);
+    expect(map("English Heritage logo map.png").ok).toBe(false);
+    expect(map("Flag map of Northumberland.png").ok).toBe(false);
+  });
+  test("an SVG map is placed as Commons' PNG rendering and credited like a photograph", () => {
+    const pg = page(7, "CC BY-SA 3.0", { title: "Hadrians Wall map.svg", mime: "image/svg+xml" });
+    const info = pg.imageinfo[0] as { thumburl: string };
+    // Commons serves an SVG's thumbnail as a PNG ("1280px-<file>.svg.png").
+    info.thumburl = `${info.thumburl}.png`;
+    const [photo] = commonsPhotosOf({ query: { pages: [pg] } }, { maps: true });
+    expect(photo?.src.large.endsWith(".svg.png")).toBe(true);
+    expect(photo?.credit).toMatchObject({
+      author: "Ada",
+      licence: "CC BY-SA 3.0",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Hadrians_Wall_map.svg",
+    });
+  });
+  test("an ordinary search still refuses maps", () => {
+    expect(judgeCommonsFile(page(1, "CC BY-SA 4.0", { title: "Hadrians Wall map.jpg" })).ok).toBe(
+      false,
+    );
+  });
+});

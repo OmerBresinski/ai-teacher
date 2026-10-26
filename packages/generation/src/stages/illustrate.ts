@@ -655,8 +655,11 @@ async function store(
 /** A Commons search as the director's stock path calls it. */
 export type CommonsSearch = (
   query: string,
-  opts: { perPage: number; signal: AbortSignal },
+  opts: { perPage: number; signal: AbortSignal; maps?: boolean },
 ) => Promise<PhotoResult[]>;
+
+/** TEACH-251 part v: a locator-map query searches Commons map files (`maps`), nothing else. */
+export const LOCATOR_QUERY = /\b(locator|location) map\b/i;
 
 /** The photo placer with Commons beside Pexels (ruling 139). */
 export type DirectedPlacer = PhotoPlacer & { searchCommons?: CommonsSearch };
@@ -1009,7 +1012,12 @@ async function searchDirected(
   aspect?: number,
 ): Promise<PhotoResult[] | "busy"> {
   if (source === "commons" && images.searchCommons) {
-    const photos = await images.searchCommons(query, { perPage: COMMONS_PER_PAGE, signal });
+    const maps = LOCATOR_QUERY.test(query);
+    const photos = await images.searchCommons(query, {
+      perPage: COMMONS_PER_PAGE,
+      signal,
+      ...(maps ? { maps } : {}),
+    });
     // With the zone's shape known (ruling 158), a photo is kept when its crop keeps most of it.
     if (aspect !== undefined)
       return photos.filter((c) => cropToAspect(c.width, c.height, aspect).kept >= COMMONS_MIN_KEPT);
