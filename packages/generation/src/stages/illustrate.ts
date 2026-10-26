@@ -661,6 +661,19 @@ export type CommonsSearch = (
 /** TEACH-251 part v: a locator-map query searches Commons map files (`maps`), nothing else. */
 export const LOCATOR_QUERY = /\b(locator|location) map\b/i;
 
+/**
+ * TEACH-251 part aa (romans verify5 s4): the picture asked for is a map ("A map of Britain around
+ * AD 122 shows Hadrian's Wall..."). Its searches that name a map then look at Commons map files;
+ * the ordinary search refuses every map, so all 53 candidates were churches and stars.
+ */
+export const MAP_REQUEST = /^\s*(?:an?\s+|the\s+)?(?:[\w’'-]+\s+){0,2}maps?\b/i;
+export const MAP_QUERY = /\bmaps?\b/i;
+export const wantsMap = (brief: { request?: string; mustShow?: readonly string[] }): boolean =>
+  MAP_REQUEST.test(brief.request ?? "");
+/** Whether one search of a directed brief looks at Commons map files (`maps`). */
+export const mapsSearch = (query: string, brief: { request?: string }): boolean =>
+  LOCATOR_QUERY.test(query) || (wantsMap(brief) && MAP_QUERY.test(query));
+
 /** The photo placer with Commons beside Pexels (ruling 139). */
 export type DirectedPlacer = PhotoPlacer & { searchCommons?: CommonsSearch };
 
@@ -787,7 +800,7 @@ export async function pickDirectedPhoto(args: {
     ...queryCandidates(brief),
   ].filter((q, i, all) => all.indexOf(q) === i);
   const search = (query: string, source: PhotoSourceName) =>
-    searchDirected(images, query, deps.signal, source, brief.aspect);
+    searchDirected(images, query, deps.signal, source, brief.aspect, mapsSearch(query, brief));
   const gather = async (source: PhotoSourceName): Promise<"busy" | undefined> => {
     for (const query of queries) {
       if (candidates.length >= MAX_CANDIDATES) break;
@@ -1010,9 +1023,9 @@ async function searchDirected(
   signal: AbortSignal,
   source: PhotoSourceName,
   aspect?: number,
+  maps = LOCATOR_QUERY.test(query),
 ): Promise<PhotoResult[] | "busy"> {
   if (source === "commons" && images.searchCommons) {
-    const maps = LOCATOR_QUERY.test(query);
     const photos = await images.searchCommons(query, {
       perPage: COMMONS_PER_PAGE,
       signal,

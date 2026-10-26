@@ -42,6 +42,9 @@ import t123 from "./bundles/pilot-v4.12-menu/system-KS3.template.txt" with { typ
 import t131 from "./bundles/pilot-v4.13-menu/system-KS1.template.txt" with { type: "text" };
 import t132 from "./bundles/pilot-v4.13-menu/system-KS2.template.txt" with { type: "text" };
 import t133 from "./bundles/pilot-v4.13-menu/system-KS3.template.txt" with { type: "text" };
+import t141 from "./bundles/pilot-v4.14-menu/system-KS1.template.txt" with { type: "text" };
+import t142 from "./bundles/pilot-v4.14-menu/system-KS2.template.txt" with { type: "text" };
+import t143 from "./bundles/pilot-v4.14-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -324,10 +327,33 @@ export const PILOT_PACKS = {
     routedFits: WAVE_C_ROUTED_FITS,
     tierSlides: true,
   },
+  // v4.14 (TEACH-110 part av): v4.13 with taught answers and lighter KS1 slides. Every question's
+  // answer is stated in an earlier slide's text, not only in the notes or a picture; in Years 1
+  // and 2 a teaching slide's words are at most two short sentences. Schema and code as v4.13;
+  // templates differ in 1 line (KS2, KS3) or 2 (KS1).
+  "v4.14": {
+    id: "v4.14",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t141, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t142, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t143, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.13";
+export const PILOT_PACK_ID: PilotPackId = "v4.14";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
