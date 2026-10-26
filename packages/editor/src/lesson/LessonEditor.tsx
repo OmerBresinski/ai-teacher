@@ -525,6 +525,16 @@ export function LessonEditor({
   // change: no "slides tidied" toast over the filmstrip as the title types (judge 638).
   const jobWriting = useRef(writingSlideIds !== undefined);
   jobWriting.current = writingSlideIds !== undefined;
+  // The job's slides redrawn in the teacher's theme and not yet saved (`receiveGenerated`): saved
+  // once, quietly, when the job has ended.
+  const heldRepaint = useRef(false);
+  const jobRunning = writingSlideIds !== undefined;
+  useEffect(() => {
+    if (jobRunning || !heldRepaint.current) return;
+    heldRepaint.current = false;
+    const current = lessonRef.current;
+    if (current) autosave.onChange(current, { teacher: false, quiet: true });
+  }, [jobRunning, autosave]);
   useFitMigration({
     lessonId: lesson?.id,
     stale: lesson !== undefined && isFitStale(lesson),
@@ -566,9 +576,13 @@ export function LessonEditor({
         return reducers.proposalSlideIds(current, incoming);
       },
       receiveGenerated: (base, theirs) => {
-        const merged = historyRef.current.rebase?.((mine) =>
-          inTeachersTheme(mergeJobLesson(base, mine, theirs), theirs, base),
-        );
+        // The merge before the editor draws the job's slides in the teacher's theme: what of the
+        // teacher's the row does not have yet. The repaint itself is the editor's, not the teacher's.
+        let teachers: Lesson | undefined;
+        const merged = historyRef.current.rebase?.((mine) => {
+          teachers = mergeJobLesson(base, mine, theirs);
+          return inTeachersTheme(teachers, theirs, base);
+        });
         // Nothing of the teacher's left to send: hold the job's very copy, so the next round sees
         // an untouched document and the autosave stays quiet.
         if (merged && sameJson(merged, theirs)) {
@@ -584,7 +598,17 @@ export function LessonEditor({
         // the body's `updatedAt`) is written quietly, so the indicator does not flip to "Unsaved
         // changes" and back with every row (P0 25 Oct).
         if (merged) {
-          autosave.onChange(merged, { teacher: false, quiet: onlyStampsDiffer(merged, theirs) });
+          // TEACH-251 part p (ADR 0037, 0039): while the job runs, a copy that differs from the
+          // row only by the editor's own repaint, fit or stamps is not sent: one save per job
+          // round re-claimed every slide as the teacher's (60 saves in the Great Fire run) and
+          // dropped the job's late pictures. The repaint is saved once, when the job has ended.
+          const mechanical = teachers !== undefined && onlyStampsDiffer(teachers, theirs);
+          if (mechanical && jobWriting.current) heldRepaint.current = true;
+          else
+            autosave.onChange(merged, {
+              teacher: false,
+              quiet: mechanical || onlyStampsDiffer(merged, theirs),
+            });
         }
         return merged;
       },

@@ -7,6 +7,7 @@ import { SaveIndicator } from "../kit/SaveIndicator";
 import { inLessonTheme } from "../layout/retheme";
 import { loadLayoutKit } from "../model/layout-kit";
 import { renderTheme } from "../model/themes";
+import { AUTOSAVE_MS } from "../model/use-autosave";
 import { LessonEditor, type LessonEditorHandle, type LessonEditorProps } from "./LessonEditor";
 import { createDraftStore, type DraftStore } from "./live-draft";
 import { seededLesson } from "./test-harness";
@@ -241,7 +242,9 @@ describe("the filling editor", () => {
     expect(container.querySelector("[data-writing-status]")).toBe(region);
   });
 
-  test("a generator fold alone reaches the save path but never shows Unsaved changes", async () => {
+  // TEACH-251 part p: a fold with nothing of the teacher's in it (here only the editor's fit stamp)
+  // is not sent while the job writes; it is saved once, quietly, when the job has ended.
+  test("a generator fold alone is saved once the job ends and never shows Unsaved changes", async () => {
     const lesson = { ...seededLesson(), fitVersion: 5 };
     const ids = lesson.slides.map((s) => s.id);
     const ref: { current: LessonEditorHandle | null } = { current: null };
@@ -261,8 +264,14 @@ describe("the filling editor", () => {
     const el = container.querySelector("[data-save-state]");
     expect(el?.getAttribute("data-save-state")).toBe("saved");
     expect(el?.hasAttribute("data-save-quiet")).toBe(true);
+    await new Promise((r) => setTimeout(r, AUTOSAVE_MS + 300));
+    expect(saved.some((l) => l.title === "From the job")).toBe(false);
+    act(() => rerender(tree(undefined)));
     await waitFor(() => expect(saved.at(-1)?.title).toBe("From the job"));
     expect(saved.at(-1)?.fitVersion).toBe(5);
+    expect(container.querySelector("[data-save-state]")?.getAttribute("data-save-state")).not.toBe(
+      "unsaved",
+    );
   });
 
   // P0 25 Oct 2026: every row the job wrote flipped the indicator to "Unsaved changes" and back,
