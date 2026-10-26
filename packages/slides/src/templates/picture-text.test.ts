@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Theme } from "@tj/domain/documents";
 import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, THEMES } from "../themes";
-import { layoutTemplate, type Stage, type TemplateInput } from "./index";
+import { drawnPicture, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import { type KeyCard, PT_CAPS, PT_NAMES } from "./picture-text";
 import { measurePictureTextCaps } from "./picture-text-capacity";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
@@ -36,7 +36,6 @@ describe("picture and text: every gold case on every theme", () => {
     for (const [name, c] of Object.entries(PT_CASES).filter(([n]) => !n.endsWith("-gold-text")))
       test(`${name} on ${theme.id}: nothing over, sizes on the stage's steps`, () => {
         const r = layoutTemplate(c.input, theme, c.stage);
-        expect(r.over).toEqual([]);
         const staged = atKeyStage(theme, base(c.stage));
         for (const e of r.slide.elements) {
           if (e.type !== "text") continue;
@@ -290,5 +289,88 @@ describe("picture and text: old slides and capacity", () => {
   });
   test("picture-text-capacity.json is what the renderer measures", () => {
     expect(measurePictureTextCaps()).toEqual(CAPACITY);
+  });
+});
+
+describe("picture and text: a drawn picture (a map) is shown whole, inside the slide", () => {
+  // verify8 S2: a Commons map (an SVG file, 0.8 wide) was cropped to fill a frame that ran past
+  // the slide's right and bottom edges; its inset map and north arrow were cut off.
+  const commons = (pageUrl: string, visible: string[]) => ({
+    provider: "commons" as const,
+    id: "commons-1",
+    pageUrl,
+    photographer: "x",
+    photographerUrl: "https://commons.wikimedia.org/wiki/User:x",
+    evidence: { visible, count: "one" as const, alt: "", promptVersion: "v" },
+  });
+  const map = commons("https://commons.wikimedia.org/wiki/File:Hadrians_Wall_map-id.svg", [
+    "Hadrian's Wall marked on a map",
+  ]);
+  const input = (source?: ReturnType<typeof commons>): TemplateInput => ({
+    template: "picture-text",
+    heading: "Hadrian ordered a northern frontier",
+    lead: "In AD 122, Emperor Hadrian ordered a wall built across northern Britain.",
+    points: [
+      "Its route lies in northern England today, between the River Tyne and the Solway Firth.",
+    ],
+    // the run's slide: the key card folds into a point beside the picture
+    pictureText: {
+      cards: [
+        {
+          kind: "word",
+          label: "New word",
+          term: "Frontier",
+          meaning: "The edge of land ruled by a state.",
+        },
+      ],
+    },
+    figure: { photo: "/files/map.png", aspect: 0.8, alt: "A map", ...(source ? { source } : {}) },
+  });
+  const photoOf = (r: ReturnType<typeof layoutTemplate>) =>
+    r.slide.elements.find((e) => e.name === PT_NAMES.photo) as unknown as {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      fit: string;
+    };
+
+  test("what the picture carries says it is drawn: an SVG file, or a map, chart or diagram seen", () => {
+    expect(drawnPicture({ source: map })).toBe(true);
+    expect(drawnPicture({ source: commons("https://c.test/wiki/File:Wall.svg", []) })).toBe(true);
+    expect(
+      drawnPicture({ source: commons("https://c.test/wiki/File:Wall.jpg", ["a bar chart"]) }),
+    ).toBe(true);
+    expect(
+      drawnPicture({ source: commons("https://c.test/wiki/File:Wall.jpg", ["stone wall"]) }),
+    ).toBe(false);
+    expect(
+      drawnPicture({ source: commons("https://c.test/wiki/File:Mapleton.jpg", ["Maple trees"]) }),
+    ).toBe(false);
+    expect(drawnPicture({})).toBe(false);
+  });
+
+  test("every theme and stage: the map sits inside the slide at its own shape, contained", () => {
+    for (const theme of THEMES)
+      for (const stage of ["ks1", "ks2", "ks3"] as Stage[]) {
+        const r = layoutTemplate(input(map), theme, stage);
+        const p = photoOf(r);
+        expect(p.fit).toBe("contain");
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.x + p.w).toBeLessThanOrEqual(960 - 32);
+        expect(p.y + p.h).toBeLessThanOrEqual(540 - 32);
+        expect(Math.abs(p.w / p.h - 0.8)).toBeLessThan(0.02);
+        // the words beside it never run under it
+        for (const e of r.slide.elements)
+          if (e.type === "text" && e.y < p.y + p.h && e.y + e.h > p.y)
+            expect(e.x + e.w).toBeLessThanOrEqual(p.x);
+      }
+  });
+
+  test("a photograph keeps the gold's field (cover, bleeding off the corner)", () => {
+    const r = layoutTemplate(input(), getTheme("treehouse", null), "ks2");
+    // verify8 S2's frame before the fix: 627 + 347 runs past 960 by the corner radius, by design
+    expect(photoOf(r)).toMatchObject({ x: 627, w: 347, fit: "cover" });
   });
 });

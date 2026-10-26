@@ -1390,6 +1390,8 @@ export type WriterPictureState =
         request?: string;
         subjects?: { name: string; x: number; y: number; w: number; h: number }[];
         about?: string;
+        /** Where it came from and what the picker saw: a drawn map is laid out whole (verify8 S2). */
+        source?: PhotoSource;
       };
     };
 
@@ -1667,7 +1669,7 @@ export function createWriterPictures(opts: {
 
   /** A placed picture as the stage reads it: its OWN aspect (the ranged slots shape round it). */
   const photoState = (
-    p: { src: string; alt: string; about?: string; boxes?: Box[] },
+    p: { src: string; alt: string; about?: string; boxes?: Box[]; source?: PhotoSource },
     aspect: number,
     request: string,
   ): WriterPictureState => {
@@ -1681,6 +1683,7 @@ export function createWriterPictures(opts: {
         aspect,
         request,
         ...(p.about ? { about: p.about } : {}),
+        ...(p.source ? { source: p.source } : {}),
         ...(boxes?.length
           ? {
               subjects: boxes.map((b) => ({

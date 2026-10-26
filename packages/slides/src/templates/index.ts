@@ -829,6 +829,20 @@ export function rangeBox(
  * shape inside the box. An open slot (placeholder src, no aspect yet) takes the whole box. With a
  * `range`, the box first takes the picture's shape within the range (`rangeBox`).
  */
+/**
+ * A picture whose content is drawn (a map, diagram, chart or plan: words, an inset, a north arrow)
+ * is shown whole, never cropped to fill its frame. Read from what the picture already carries: a
+ * vector file on Commons (`File:*.svg`), or what the picker saw in it (verify8 S2: an inset map and
+ * a north arrow were cut off by a cover crop).
+ */
+const DRAWN_WORDS = /\b(maps?|diagrams?|charts?|graphs?|plans?|timelines?|time lines?)\b/i;
+export function drawnPicture(f: { alt?: string; source?: PhotoSource } | undefined): boolean {
+  const src = f?.source;
+  if (!src) return false;
+  if ([src.pageUrl, src.sourceUrl].some((u) => /\.svg(?:$|[?#])/i.test(u ?? ""))) return true;
+  return (src.evidence?.visible ?? []).some((v) => DRAWN_WORDS.test(v));
+}
+
 function photoBox(
   c: Ctx,
   f: {
@@ -845,6 +859,7 @@ function photoBox(
   align: "center" | "bottom" = "center",
 ) {
   const rect = range && f.photo && f.aspect ? rangeBox(box0, f.aspect, range, align) : box0;
+  if (drawnPicture(f)) cover = false;
   let r = rect;
   let crop: { x: number; y: number; w: number; h: number } | undefined;
   const contain = (inner: typeof rect) => {
@@ -878,7 +893,7 @@ function photoBox(
     ...(f.subjects ? { subjects: f.subjects } : {}),
     ...(f.source ? { source: f.source } : {}),
     ...(crop ? { crop } : {}),
-    fit: "cover",
+    fit: drawnPicture(f) ? "contain" : "cover",
     radius: c.t.radius,
   } as ImageElement);
 }
@@ -1042,7 +1057,7 @@ function figurePanel(
       src: f.photo,
       alt: f.alt ?? "",
       ...(f.request ? { request: f.request } : {}),
-      fit: "cover",
+      fit: drawnPicture(f) ? "contain" : "cover",
       radius: c.t.radius,
     } as ImageElement);
     return true;

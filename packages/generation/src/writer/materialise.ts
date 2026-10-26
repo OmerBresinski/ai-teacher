@@ -1,5 +1,5 @@
 import "../icons-ready";
-import type { Slide, Theme } from "@tj/domain/documents";
+import type { PhotoSource, Slide, Theme } from "@tj/domain/documents";
 // TEACH-75 part ad (C5).
 import { resolveIcon } from "@tj/slides/icons";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
@@ -47,6 +47,8 @@ export type PhotoResult = {
   request?: string;
   subjects?: { name: string; x: number; y: number; w: number; h: number }[];
   about?: string;
+  /** Where it came from and what the picker saw (a drawn map is laid out whole). */
+  source?: PhotoSource;
 };
 /** A visual a slide asks for, as read off the slide JSON. */
 export type VisualAsk =
@@ -353,6 +355,7 @@ function figureNow(
       aspect: v.photo.aspect,
       request: v.photo.request,
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
+      ...(v.photo.source ? { source: v.photo.source } : {}),
     } as Figure;
   if (v.status === "diagram") {
     const d = (
