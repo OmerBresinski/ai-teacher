@@ -54,7 +54,9 @@ export const BASE_KIND: Record<string, string> = {
 };
 /**
  * Models whose failure goes to a picture, never the drawer (TEACH-251 part ac): the drawer cannot
- * draw a real map (romans verify5 s4: two schema faults), and a Commons map of the place can.
+ * draw a real map (romans verify5 s4: two schema faults), and a Commons map of the place can. Every
+ * library fallback counts (a map that marks nothing, a refused fill, a failed draw); the stage's
+ * fallback then asks for a picture of what the model was to show.
  */
 export const PICTURE_FALLBACK = new Set(["hist_map"]);
 /** The drawer kind for a model with no base kind: a labelled drawing of the intent. */
