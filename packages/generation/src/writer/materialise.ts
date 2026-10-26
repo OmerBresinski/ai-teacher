@@ -47,8 +47,10 @@ export type PhotoResult = {
   request?: string;
   subjects?: { name: string; x: number; y: number; w: number; h: number }[];
   about?: string;
-  /** Where it came from and what the picker saw (a drawn map is laid out whole). */
+  /** Where it came from and what the picker saw (the credits). */
   source?: PhotoSource;
+  /** A map or diagram: laid out whole, never cropped. */
+  whole?: boolean;
 };
 /** A visual a slide asks for, as read off the slide JSON. */
 export type VisualAsk =
@@ -356,6 +358,7 @@ function figureNow(
       request: v.photo.request,
       ...(v.photo.subjects ? { subjects: v.photo.subjects } : {}),
       ...(v.photo.source ? { source: v.photo.source } : {}),
+      ...(v.photo.whole ? { whole: true } : {}),
     } as Figure;
   if (v.status === "diagram") {
     const d = (

@@ -335,17 +335,20 @@ describe("picture and text: a drawn picture (a map) is shown whole, inside the s
       fit: string;
     };
 
-  test("what the picture carries says it is drawn: an SVG file, or a map, chart or diagram seen", () => {
+  test("what the picture carries says it is drawn: an SVG file, or `whole` from where it was placed", () => {
     expect(drawnPicture({ source: map })).toBe(true);
     expect(drawnPicture({ source: commons("https://c.test/wiki/File:Wall.svg", []) })).toBe(true);
     expect(
-      drawnPicture({ source: commons("https://c.test/wiki/File:Wall.jpg", ["a bar chart"]) }),
+      drawnPicture({ source: commons("https://c.test/wiki/File:Wall.jpg", []), whole: true }),
     ).toBe(true);
+    // what the picker saw is read where the picture is placed (drawnAsk), never here
     expect(
-      drawnPicture({ source: commons("https://c.test/wiki/File:Wall.jpg", ["stone wall"]) }),
+      drawnPicture({
+        source: commons("https://c.test/wiki/File:Class.jpg", ["people reading a map"]),
+      }),
     ).toBe(false);
     expect(
-      drawnPicture({ source: commons("https://c.test/wiki/File:Mapleton.jpg", ["Maple trees"]) }),
+      drawnPicture({ source: commons("https://c.test/wiki/File:Wall.jpg", ["stone wall"]) }),
     ).toBe(false);
     expect(drawnPicture({})).toBe(false);
   });

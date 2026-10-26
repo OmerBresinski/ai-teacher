@@ -673,6 +673,16 @@ export const MAP_REQUEST =
 export const MAP_QUERY = /\bmaps?\b/i;
 export const wantsMap = (brief: { request?: string; mustShow?: readonly string[] }): boolean =>
   MAP_REQUEST.test(brief.request ?? "");
+/**
+ * TEACH-251 part an (verify8 S2): a thing the picker saw whose head noun is a drawn thing ("a map of
+ * Britain", "Roman Britain map"), never one that only holds it ("people reading a map", "a graph on
+ * a screen"): up to two words before the noun, none of them an article, and nothing it sits on.
+ */
+export const DRAWN_SUBJECT =
+  /^\s*(?:an?\s+|the\s+)?(?:(?!(?:an?|the)\s)[\w’'-]+\s+){0,2}(?:maps?|diagrams?|charts?|graphs?)\b(?!\s+(?:on|in|at|held|being)\b)/i;
+/** A placed picture to show whole (a map, a diagram): the ask was for a map, or its subject is drawn. */
+export const drawnAsk = (request: string, visible: readonly string[] = []): boolean =>
+  wantsMap({ request }) || visible.some((v) => DRAWN_SUBJECT.test(v));
 /** Whether one search of a directed brief looks at Commons map files (`maps`). */
 export const mapsSearch = (query: string, brief: { request?: string }): boolean =>
   LOCATOR_QUERY.test(query) || (wantsMap(brief) && MAP_QUERY.test(query));

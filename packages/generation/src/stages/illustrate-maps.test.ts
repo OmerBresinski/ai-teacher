@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mapsSearch, wantsMap } from "./illustrate";
+import { drawnAsk, mapsSearch, wantsMap } from "./illustrate";
 import { mapQueriesOf } from "./picture-director";
 
 // TEACH-251 part aa (romans verify5 s4): the director asked for a map; its map searches went to
@@ -52,5 +52,24 @@ describe("a library map's fallback ask searches map files by the places it names
       "Romans map",
       "Hadrian's Wall map",
     ]);
+  });
+});
+
+// TEACH-251 part an (verify8 S2): a placed map or diagram is laid out whole, never cropped; a photo
+// that only holds one (a map in someone's hands, a graph on a screen) keeps the photo's crop.
+describe("a placed picture is shown whole when it is a drawn thing", () => {
+  const photo = "Roman soldiers at a fort gate. soldiers";
+  test("the ask is for a map (verify8 S2's ask), or the picker saw a drawn thing as the subject", () => {
+    expect(drawnAsk("A map of Britain around AD 122 shows Hadrian’s Wall", [])).toBe(true);
+    expect(drawnAsk(photo, ["a map of Roman Britain"])).toBe(true);
+    expect(drawnAsk(photo, ["Roman Britain map"])).toBe(true);
+    expect(drawnAsk(photo, ["bar chart of rainfall"])).toBe(true);
+  });
+  test("a photo that only shows a drawn thing in use is not one", () => {
+    expect(drawnAsk(photo, ["people reading a map"])).toBe(false);
+    expect(drawnAsk(photo, ["a graph on a screen"])).toBe(false);
+    expect(drawnAsk(photo, ["a bar graph on a screen"])).toBe(false);
+    expect(drawnAsk(photo, ["a plan of the day"])).toBe(false);
+    expect(drawnAsk(photo, ["stone wall", "Hadrian's Wall marked on a map"])).toBe(false);
   });
 });

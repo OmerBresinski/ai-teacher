@@ -183,6 +183,8 @@ export type Figure =
       caption?: string;
       /** Where the photo came from (Pexels, Commons, generated), for the credits page. */
       source?: PhotoSource;
+      /** A drawn picture (a map, a diagram): laid out whole, never cropped (`drawnPicture`). */
+      whole?: boolean;
     }
   | { diagram: unknown }
   /** A diagram already drawn (an SVG `src` at its own `aspect`): offline re-layouts reuse it. */
@@ -830,17 +832,15 @@ export function rangeBox(
  * `range`, the box first takes the picture's shape within the range (`rangeBox`).
  */
 /**
- * A picture whose content is drawn (a map, diagram, chart or plan: words, an inset, a north arrow)
- * is shown whole, never cropped to fill its frame. Read from what the picture already carries: a
- * vector file on Commons (`File:*.svg`), or what the picker saw in it (verify8 S2: an inset map and
- * a north arrow were cut off by a cover crop).
+ * A picture whose content is drawn (a map, diagram or chart: words, an inset, a north arrow) is
+ * shown whole, never cropped to fill its frame (verify8 S2: an inset map and a north arrow were cut
+ * off). Read from what the picture carries: a vector file on Commons (`File:*.svg`), or `whole`,
+ * set where it was placed when the ask was for a map or the picker saw a drawn thing as its subject.
  */
-const DRAWN_WORDS = /\b(maps?|diagrams?|charts?|graphs?|plans?|timelines?|time lines?)\b/i;
-export function drawnPicture(f: { alt?: string; source?: PhotoSource } | undefined): boolean {
+export function drawnPicture(f: { source?: PhotoSource; whole?: boolean } | undefined): boolean {
+  if (f?.whole) return true;
   const src = f?.source;
-  if (!src) return false;
-  if ([src.pageUrl, src.sourceUrl].some((u) => /\.svg(?:$|[?#])/i.test(u ?? ""))) return true;
-  return (src.evidence?.visible ?? []).some((v) => DRAWN_WORDS.test(v));
+  return !!src && [src.pageUrl, src.sourceUrl].some((u) => /\.svg(?:$|[?#])/i.test(u ?? ""));
 }
 
 function photoBox(
