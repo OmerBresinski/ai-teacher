@@ -20,6 +20,7 @@
     "./styles/editor.css": "./src/styles/editor.css",
     "./present": "./src/present/index.ts",
     "./lesson": "./src/lesson/index.ts",
+    "./layout-kit": "./src/model/layout-kit.ts",
     "./live-draft": "./src/lesson/live-draft.tsx",
     "./images": "./src/images/index.ts",
     "./worksheet": "./src/worksheet/index.ts",
