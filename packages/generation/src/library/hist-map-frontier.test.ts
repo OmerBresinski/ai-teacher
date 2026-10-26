@@ -73,6 +73,23 @@ describe("hist_map walls and frontiers", () => {
     );
   });
 
+  test("a map of one year is drawn: items in the range's first or last year are inside it", async () => {
+    // romans verify7: the fill gave AD 122 to AD 122 for Hadrian's Wall and the map was refused
+    const m = await model();
+    const one = {
+      ...romanBritain,
+      dateRange: { from: "AD 122", to: "AD 122" },
+      events: [{ place: "York", date: "AD 122", label: "Hadrian visits Britain" }],
+    };
+    expect(m.validate(one).refusals).toEqual([]);
+    const ends = { ...romanBritain, dateRange: { from: "AD 71", to: "AD 122" } };
+    expect(m.validate(ends).refusals).toEqual([]);
+    // an end before the start is still refused
+    expect(refused(m, { ...romanBritain, dateRange: { from: "AD 200", to: "AD 40" } })).toContain(
+      "dateRange.to",
+    );
+  });
+
   test("a map marking only a wall is not blank", () => {
     const marks = MARKS.hist_map ?? (() => false);
     expect(marks({ region: "uk", frontiers: [{ line: "hadrians_wall" }] })).toBe(true);

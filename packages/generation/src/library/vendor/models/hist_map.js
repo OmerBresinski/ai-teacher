@@ -667,10 +667,12 @@ export function validate(raw) {
         reason: `${M.dl(v)} is in the future. This map shows history, so choose a year up to ${NOW}.`,
       });
   if (R.length) return result(R);
-  if (M.to.astro <= M.from.astro)
+  // a map of one year (Hadrian's Wall begun, AD 122 to AD 122) is a real span: only an end before
+  // the start is refused (TEACH-247 part az; romans verify7 lost its map to "AD 122 is not after AD 122")
+  if (M.to.astro < M.from.astro)
     R.push({
       path: "dateRange.to",
-      reason: `The map has to cover a span of years: ${M.dl(M.to)} is not after ${M.dl(M.from)}.`,
+      reason: `The map’s years end before they start: ${M.dl(M.to)} is before ${M.dl(M.from)}.`,
     });
   if (R.length) return result(R);
   const inR = (d) => d.astro >= M.from.astro && d.astro <= M.to.astro;
