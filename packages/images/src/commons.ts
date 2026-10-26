@@ -461,6 +461,8 @@ export function createCommonsClient(
     /** Waits (the request gap and busy retries); tests pass a fake clock. */
     sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
     now?: () => number;
+    /** The job's stop: a search or download still queued when it fires never starts. */
+    signal?: AbortSignal;
   } = {},
 ): CommonsClient {
   const fetchFn = opts.fetch ?? globalThis.fetch;
@@ -472,6 +474,7 @@ export function createCommonsClient(
   let last = 0;
   const politely = <T>(task: () => Promise<T>): Promise<T> => {
     const run = chain.then(async () => {
+      if (opts.signal?.aborted) throw opts.signal.reason ?? new Error("The job stopped.");
       const wait = last + MIN_GAP_MS - now();
       if (wait > 0) await sleep(wait);
       try {

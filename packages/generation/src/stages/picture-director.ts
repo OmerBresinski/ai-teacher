@@ -1272,12 +1272,23 @@ export function createWriterPictures(opts: {
   const watched = (slot: Slot, b: PictureBank): PictureBank => ({
     lookup: (req, signal) => b.lookup(req, signal),
     remember: (req, photo) => b.remember(req, photo),
-    generate: (req, faithful, signal, retry) =>
-      b.generate(req, faithful, signal, retry).then((made) => {
+    // Only a picture that is made and waiting on its judge earns the grace: a new generation in
+    // flight (a retry after a refusal) or a refused picture does not.
+    generate: (req, faithful, signal, retry) => {
+      slot.made = false;
+      return b.generate(req, faithful, signal, retry).then((made) => {
         if (made) slot.made = true;
         return made;
-      }),
-    ...(b.reject ? { reject: (photo: PlacedPhoto) => b.reject?.(photo) ?? Promise.resolve() } : {}),
+      });
+    },
+    ...(b.reject
+      ? {
+          reject: (photo: PlacedPhoto) => {
+            slot.made = false;
+            return b.reject?.(photo) ?? Promise.resolve();
+          },
+        }
+      : {}),
   });
   /** After a deadline: the slots among `list` still pending with a generated picture, waited for. */
   const graceForMade = async (list: Slot[]) => {
