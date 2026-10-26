@@ -164,19 +164,38 @@ describe("objectives flow with their length", () => {
         if (r.over.length) continue;
         const top = Math.min(...r.cards.map((c) => c.y));
         const bottom = Math.max(...r.cards.map((c) => c.y + c.h));
-        // Inside the band, centred a little above its middle (160 + 328 / 2 = 324); a heading
-        // that needs room moves the stack down a few points (`shiftBody`).
-        expect({ theme: theme.id, n, inBand: top >= 160 && bottom <= 488 }).toEqual({
+        // Centred in the space under the heading: the band's top (160) to the safe foot (497); a
+        // heading that needs room moves the stack down a few points (`shiftBody`).
+        expect({ theme: theme.id, n, inSpace: top >= 160 && bottom <= 497 }).toEqual({
           theme: theme.id,
           n,
-          inBand: true,
+          inSpace: true,
         });
-        expect(Math.abs((top + bottom) / 2 - (324 - 328 * 0.06))).toBeLessThanOrEqual(12);
+        expect(Math.abs((top + bottom) / 2 - (160 + 497) / 2)).toBeLessThanOrEqual(12);
       }
   });
 
-  test("lines too long for bodySmall are reported over, never cut", () => {
-    const r = lay(TEACHER.concat(TEACHER[1] as string));
-    expect(r.over.join(" ")).toMatch(/^objectives \d+\/328pt$/);
+  test("four teacher-length objectives fit under bodySmall with tight cards, above the floor", () => {
+    const r = lay(
+      TEACHER.concat("Explain why a plant needs water, light and warmth to grow well."),
+    );
+    expect(r.over).toEqual([]);
+    expect(r.sizes[0] as number).toBeGreaterThanOrEqual(22);
+    expect(r.sizes[0] as number).toBeLessThan(28);
+  });
+
+  test("past the floor it still holds on the slide, reported so the writer shortens", () => {
+    const long = `${TEACHER[1]} ${TEACHER[2]}`;
+    const r = lay([long, long, long, long]);
+    expect(r.over).toEqual(["objectives under the floor"]);
+    expect(Math.max(...r.cards.map((c) => c.y + c.h))).toBeLessThanOrEqual(497);
+  });
+
+  test("4 long objectives may sit as a 2x2 grid once the stack would go under bodySmall", () => {
+    const long = `${TEACHER[1]} ${TEACHER[2]}`;
+    const r = lay([long, long, long, long]);
+    const xs = new Set(r.cards.map((c) => c.x));
+    expect(xs.size === 1 || xs.size === 2).toBe(true);
+    expect(r.cards).toHaveLength(4);
   });
 });

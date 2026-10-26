@@ -147,6 +147,22 @@ export const ADAPTIVE_SPECS = {
     noun: "tasks",
     paths: workPaths,
   },
+  // TEACH-110 part an: the objectives slide is one group, so typing an objective re-flows the
+  // cards (one size, one height) and nothing runs off the slide.
+  objectives: {
+    items: "points",
+    min: 1,
+    max: () => 4,
+    blank: () => "Add an objective here.",
+    continuation: false,
+    noun: "objectives",
+    paths: (els: SlideElement[]) => {
+      let k = 0;
+      return els.map((e) =>
+        e.name === "Heading" ? "heading" : e.name === "Item" ? `points.${k++}` : undefined,
+      );
+    },
+  },
   "exit-ticket": {
     items: "questions",
     min: 1,
