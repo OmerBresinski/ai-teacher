@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
 import { withClose } from "./close";
-import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
 import { writerMaxTokens } from "./services";
 
@@ -18,7 +18,8 @@ const dir = (v: string) => new URL(`./bundles/pilot-${v}-menu/`, import.meta.url
 const read = (v: string, name: string) => readFileSync(new URL(name, dir(v)), "utf8");
 
 describe("pilot pack v4.9", () => {
-  test("production runs v4.9", () => expect(PILOT_PACK_ID).toBe("v4.9"));
+  test("v4.9 stays registered for comparison (production runs v4.10)", () =>
+    expect(PILOT_PACKS["v4.9"].id).toBe("v4.9"));
 
   for (const stage of STAGES) {
     const ks = KS[stage];

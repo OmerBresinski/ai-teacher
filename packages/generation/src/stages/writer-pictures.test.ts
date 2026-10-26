@@ -1493,3 +1493,74 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
     expect(real.states.map((x) => x.status)).toEqual(["photo", "failed"]);
   });
 });
+
+describe("a generated picture waiting on its judge outlives the deadline (picq, greatfire 26 Oct)", () => {
+  // The judge, then storing the picture, finish after the deadline: `remember` stands in for the
+  // slow end of a generated picture's placement (the judge's verdict comes just before it).
+  const okAi = () =>
+    createFakeAi({
+      script: [
+        verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: ["a ship"] }),
+      ],
+    });
+  const made = (onGenerate: () => void) => ({
+    lookup: async () => undefined,
+    remember: () => new Promise<void>((r) => setTimeout(r, 120)),
+    generate: async () => {
+      onGenerate();
+      return {
+        src: "/files/b1.png",
+        alt: "A leather bucket",
+        source: { provider: "generated", id: "b1" },
+        style: "photo",
+        aspect: 1.5,
+        dataUrl: "data:image/png;base64,AAAA",
+      } as never;
+    },
+  });
+  const bucket = ask({ key: "card.0", shows: "A ship", mustSee: ["a ship"], named: false });
+  const directGenerate = async () =>
+    direction({
+      route: "library-or-generate",
+      pictures: [
+        {
+          shows: "A cartoon ship",
+          mustShow: ["a ship"],
+          queries: ["ship"],
+          imagePrompt: "A ship.",
+        },
+      ],
+    });
+
+  test("settle: the paid picture is judged and placed, not thrown away at the deadline", async () => {
+    let generated = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "History" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(okAi()),
+      bank: made(() => {
+        generated += 1;
+      }),
+      direct: directGenerate,
+    });
+    pictures.start(4, bucket, slide);
+    await pictures.settle(20);
+    expect(generated).toBe(1);
+    expect(pictures.state(4, "card.0").status).toBe("photo");
+  });
+
+  test("settleSlide (the retry round) waits the same grace", async () => {
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "History" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(okAi()),
+      bank: made(() => undefined),
+      direct: directGenerate,
+    });
+    pictures.start(4, bucket, slide);
+    await pictures.settleSlide(4, 20);
+    expect(pictures.state(4, "card.0").status).toBe("photo");
+  });
+});
