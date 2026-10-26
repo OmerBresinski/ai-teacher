@@ -21,6 +21,8 @@
 
 import {
   type Id,
+  type RichDoc,
+  type RichNode,
   SLIDE_H,
   SLIDE_W,
   type Slide,
@@ -41,7 +43,7 @@ import {
   type Measurer,
   textPartsOf,
 } from "./reflow";
-import { countLines, lineWidth } from "./text-measure";
+import { measureHeadless } from "./text-measure";
 import { resolveTextStyle } from "./text-style";
 
 /** A pair of ids whose boxes intersect. Always ordered by draw order. */
@@ -332,37 +334,39 @@ export function answersFaults(slide: Slide, measure?: Measurer): string[] {
  * Words on words, measured in the theme the slide is drawn in (TEACH-247 part ap). For every text
  * box: a word wider than the box (the browser breaks it inside, "Firebreak/s"), and a box whose
  * words take more lines than its height holds where the next text box below it starts (a
- * question's second line running into the next question). The slide's own boxes are trusted for
- * position; the line count is measured with the theme's real font advances. Answers slides have
- * their own rules (`answersFaults`) and are skipped.
+ * question's second line running into the next question). The boxes are trusted for position;
+ * lines are counted by the headless ruler (`measureHeadless`), the theme's real font advances with
+ * each box's own style. Answers slides have their own rules (`answersFaults`) and are skipped.
  */
 export function textFaults(slide: Slide, theme: Theme): string[] {
   if (slide.answersRole) return [];
+  const measure = measureHeadless(theme);
   const texts = slide.elements.filter(
     (e): e is TextElement => e.type === "text" && e.w > EPS && e.h > EPS,
   );
   const out: string[] = [];
-  const wordsOf = (e: TextElement) =>
-    JSON.stringify(e.doc)
-      .match(/"text":"((?:[^"\\]|\\.)*)"/g)
-      ?.map((m) => JSON.parse(m.slice(7)) as string)
-      .join("") ?? "";
+  const para = (text: string): RichDoc => ({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+  });
   for (const e of texts) {
-    const text = wordsOf(e);
+    const words: string[] = [];
+    const walk = (n: RichNode) => {
+      if (n.type === "text") words.push(n.text ?? "");
+      for (const c of n.content ?? []) walk(c);
+    };
+    for (const c of e.doc.content ?? []) walk(c);
+    const text = words.join(" ");
     if (!text.trim()) continue;
-    const r = resolveTextStyle(e.style, theme);
     const preset = e.style.preset ?? "body";
-    const weight = e.style.fontWeight ?? r.fontWeight;
-    const size = e.style.fontSize ?? r.fontSize;
-    const base = resolveTextStyle({ preset }, theme).fontSize || size;
-    const inner = e.w - 2 * (e.style.padding ?? 0);
-    const wide = text
-      .split(/\s+/)
-      .filter(Boolean)
-      .find((w) => (lineWidth(w, preset, theme, weight) * size) / base > inner + 0.5);
+    const r = resolveTextStyle(e.style, theme, preset);
+    const inset = 2 * r.padding;
+    const at = (doc: RichDoc) =>
+      measure({ doc, width: e.w, style: e.style, preset, inset, chrome: 0 });
+    const one = r.fontSize * r.lineHeight;
+    const wide = [...new Set(text.split(/\s+/))].find((w) => w && at(para(w)) > one + 0.5);
     if (wide) out.push(`clipped: "${wide}" is wider than its box ${e.id}`);
-    const lines = countLines(text, preset, theme, inner, weight, size);
-    const h = lines * size * (e.style.lineHeight ?? r.lineHeight);
+    const h = at(e.doc) + inset;
     const below = texts
       .filter((o) => o !== e && o.y >= e.y + e.h - EPS && o.x < e.x + e.w && o.x + o.w > e.x)
       .sort((a, b) => a.y - b.y)[0];
