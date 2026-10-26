@@ -137,13 +137,24 @@ describe("Answers slides drawn in another theme are laid again every pass (TEACH
   // type steps allow; words may then reach the foot, but never another answer or a stray disc.
   // The job builds the Answers slides in the row's theme now (`themeNow`), so that is the rare
   // pick between the job's last write and its end.
+  // One test per stage and drawn-in theme (a single sweep of every pair ran past bun's 5 s on
+  // CI), with each job deck built once per stage and theme it was laid in.
+  const decks = new Map<string, Slide[]>();
+  const deckOf = (from: string, band: string) => {
+    const key = `${from}|${band}`;
+    const had = decks.get(key);
+    if (had) return had;
+    const d = jobDeck(from, band);
+    decks.set(key, d);
+    return d;
+  };
   for (const band of ["ks1", "ks2"])
-    test(`laid in any theme, drawn in any other at ${band}`, () => {
-      const bad: string[] = [];
-      for (const from of THEMES)
-        for (const to of THEMES) {
+    for (const to of THEMES)
+      test(`laid in any other theme, drawn in ${to.id} at ${band}`, () => {
+        const bad: string[] = [];
+        for (const from of THEMES) {
           if (from.id === to.id) continue;
-          const deck = jobDeck(from.id, band);
+          const deck = deckOf(from.id, band);
           const lesson = lessonIn(to.id, band, deck);
           const t = renderTheme(lesson);
           const fresh = kit.buildEndAnswers(deck, t, kit.stageOf(t, band)).length;
@@ -156,6 +167,6 @@ describe("Answers slides drawn in another theme are laid again every pass (TEACH
             if (f.length) bad.push(`${from.id}->${to.id} ${s.answersRole}: ${f[0]}`);
           }
         }
-      expect(bad).toEqual([]);
-    });
+        expect(bad).toEqual([]);
+      });
 });
