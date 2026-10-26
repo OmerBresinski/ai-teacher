@@ -88,9 +88,27 @@ describe.each(BUNDLES.map((b) => [b.id, b] as const))("writer bundle %s", (_id, 
 });
 
 describe("the shipped bundle", () => {
-  test("is base4f-p125, p123's writer hash (8a0f9b4f6dde) with the objectives text changed", () => {
-    expect(WRITER_BUNDLE_ID).toBe("base4f-p125");
+  test("is base4f-p126, p123's writer hash (8a0f9b4f6dde) with the objectives text changed", () => {
+    expect(WRITER_BUNDLE_ID).toBe("base4f-p126");
     expect(writerBundle().tHash).toBe("8a0f9b4f6dde");
+  });
+
+  // TEACH-110 part aw: only the objectives system text differs from p125, by one added sentence
+  // that picks the larger number of a range when the topic's core has that many parts.
+  test("p126 differs from p125 only by one sentence in the objectives system text", () => {
+    const a = writerBundle("base4f-p125") as unknown as Record<string, unknown>;
+    const b = writerBundle("base4f-p126") as unknown as Record<string, unknown>;
+    for (const k of Object.keys(a)) {
+      if (k === "id" || k === "pins") continue;
+      if (k === "objectives") expect(b[k]).not.toEqual(a[k]);
+      else expect(b[k]).toEqual(a[k]);
+    }
+    const added =
+      " When the context gives a range, write the larger number when the core has that many distinct parts pupils of this age learn, and the smaller only when it has fewer; never split or pad a part to reach it.";
+    expect(b.objectives as string).toContain(added);
+    expect((b.objectives as string).replace(added, "")).toBe(a.objectives as string);
+    // No topic is named: the Romans brief that prompted it is not in it.
+    expect(added).not.toMatch(/fire|London|Roman|Hadrian|soldier/i);
   });
 
   // TEACH-110 part as: only the objectives system text differs from p124. It gains the paragraph
