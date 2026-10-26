@@ -59,6 +59,11 @@ export const R2_KINDS = [
   "carroll",
   "equal-groups",
   "fraction-shapes",
+  // TEACH-247 part bb: the code-drawn templates the writer filled itself in the early-Oct lab runs
+  // (R3, DIAGRAM-AUDIT). A pack offers their defs with `writerTemplates` (`withWriterTemplates`);
+  // a freeform `{kind, shows, labels}` figure of either kind still goes to the drawer.
+  "river",
+  "hydrograph",
 ] as const;
 export type R2Kind = (typeof R2_KINDS)[number];
 const isR2 = (k: unknown): k is R2Kind => (R2_KINDS as readonly unknown[]).includes(k);
@@ -195,6 +200,51 @@ export function r2Def(kind: R2Kind, stage: StageGroup, slot: DiagramSlot): J | u
   return out;
 }
 
+/** The templates a pack's `writerTemplates` lets the writer spec itself (R2_KINDS' last two). */
+export const WRITER_TEMPLATES = ["river", "hydrograph"] as const satisfies readonly R2Kind[];
+
+/**
+ * The writer's schema with the templates' own defs (`r2Def`) offered in each diagram slot, before
+ * the freeform branch, and the freeform branch no longer naming them. A kind whose side and full
+ * defs are equal (a hydrograph has no list to cap) is one shared `dg-<kind>` def, which keeps the
+ * request small. A schema with no diagram slots is returned as it is. Returns a new schema.
+ */
+export function withWriterTemplates(schema: J, stage: StageGroup): J {
+  const out = structuredClone(schema);
+  const defs = out.$defs as Record<string, J> | undefined;
+  if (!defs) return out;
+  const FREE = "#/$defs/diagram-freeform";
+  const slots = (["side", "full"] as const).filter((s) =>
+    Array.isArray(defs[`diagram-${s}`]?.anyOf),
+  );
+  for (const k of WRITER_TEMPLATES) {
+    const by = Object.fromEntries(slots.map((s) => [s, r2Def(k, stage, s)])) as Record<
+      string,
+      J | undefined
+    >;
+    const shared =
+      slots.length === 2 &&
+      by.side !== undefined &&
+      JSON.stringify(by.side) === JSON.stringify(by.full);
+    if (shared) defs[`dg-${k}`] = by.side as J;
+    for (const s of slots) {
+      const d = by[s];
+      if (!d) continue;
+      const name = shared ? `dg-${k}` : `dg-${k}-${s}`;
+      if (!shared) defs[name] = d;
+      const refs = defs[`diagram-${s}`]?.anyOf as J[];
+      const at = refs.findIndex((r) => r.$ref === FREE);
+      refs.splice(at < 0 ? refs.length : at, 0, { $ref: `#/$defs/${name}` });
+    }
+  }
+  const kind = ((defs["diagram-freeform"]?.properties as J | undefined)?.kind ?? {}) as J;
+  if (Array.isArray(kind.enum))
+    kind.enum = (kind.enum as string[]).filter(
+      (k) => !(WRITER_TEMPLATES as readonly string[]).includes(k),
+    );
+  return out;
+}
+
 /** The writer's spec on a diagram figure, or undefined for a freeform `{kind, shows, labels}` figure. */
 export function writerSpecOf(f: J): J | undefined {
   if (!isR2(f.kind)) return undefined;
@@ -207,14 +257,24 @@ export function writerSpecOf(f: J): J | undefined {
   return spec;
 }
 
+/** A template's fields that name a part of its own drawing (an enum), never words on the slide. */
+const TEMPLATE_KEYS: Record<string, string[]> = {
+  river: ["view", "part"],
+  hydrograph: ["shape", "marks"],
+};
+
 /** A spec's words, as the labels a drawer fallback, the checks and the slide's words read. */
 export function labelsOf(spec: unknown): string[] {
   const out: string[] = [];
+  const own = TEMPLATE_KEYS[String((spec as J | undefined)?.kind)] ?? [];
   const walk = (v: unknown, key = "") => {
     // Numbers are words too (a bar-model whole, a number line's marks); link indices are not.
     if (typeof v === "number" && !["from", "to", "in"].includes(key)) out.push(String(v));
     else if (typeof v === "string") {
-      if (!["kind", "alt", "shows", "style", "unknown", "show_count"].includes(key) && v.trim())
+      if (
+        ![...own, "kind", "alt", "shows", "style", "unknown", "show_count"].includes(key) &&
+        v.trim()
+      )
         out.push(v.trim());
     } else if (Array.isArray(v)) for (const x of v) walk(x, key);
     else if (v && typeof v === "object")

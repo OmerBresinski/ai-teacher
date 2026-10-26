@@ -135,7 +135,9 @@ describe("R2: spec round trip per kind (writer spec -> code draws, no call)", ()
           const f = { ...sample, shows: `A ${k}` };
           const spec = writerSpecOf(f);
           expect(spec).toBeDefined();
-          if (k !== "equal-groups") expect(labelsOf(spec).length).toBeGreaterThan(0);
+          // A hydrograph with no numbers and no title has no words: its marks name its own parts.
+          if (k !== "equal-groups" && k !== "hydrograph")
+            expect(labelsOf(spec).length).toBeGreaterThan(0);
           const r = await drawWriterDiagram(ask(k, slot, "ks3", spec), {
             callDrawer: noCall,
             drawerSystem: "",

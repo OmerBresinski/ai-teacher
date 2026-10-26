@@ -51,6 +51,7 @@ import t153 from "./bundles/pilot-v4.15-menu/system-KS3.template.txt" with { typ
 import t161 from "./bundles/pilot-v4.16-menu/system-KS1.template.txt" with { type: "text" };
 import t162 from "./bundles/pilot-v4.16-menu/system-KS2.template.txt" with { type: "text" };
 import t163 from "./bundles/pilot-v4.16-menu/system-KS3.template.txt" with { type: "text" };
+import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -123,6 +124,12 @@ export type PilotPack = {
    * Detailed plan of 13 had to close early and its flow entries stopped matching its slides.
    */
   tierSlides?: boolean;
+  /**
+   * The writer specs the river and hydrograph templates itself (`withWriterTemplates`), as it
+   * did in the early-Oct lab runs, instead of naming them `{kind, shows, labels}` for the drawer.
+   * A spec that does not parse or fit still goes to the drawer (TEACH-247 part bb).
+   */
+  writerTemplates?: boolean;
 };
 
 /** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
@@ -537,6 +544,7 @@ export function pilotRequest(
     const at = req.indexOf(size ? "size" : "teaches");
     fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
   }
+  if (pack.writerTemplates) Object.assign(schema, withWriterTemplates(schema, writerStageOf(ks)));
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
   for (const k of [...replaced, ...pack.layouts.retired, ...floored])
@@ -561,6 +569,8 @@ export function pilotRequest(
           },
         }
       : undefined;
+    if (caps && pack.writerTemplates)
+      Object.assign(caps, withWriterTemplates(caps, writerStageOf(ks)));
     return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
   }
   return { schema, system: pack.system[ks] };
