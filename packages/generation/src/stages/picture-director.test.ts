@@ -131,6 +131,20 @@ describe("planPicture", () => {
     expect(fallbackOf(real("A traveller approaching the gateway as Roman guards watch"))).toBe(
       "illustration",
     );
+    // TEACH-251 part u (romans verify4 s7): the director's passive wording is the same scene.
+    expect(
+      fallbackOf(
+        real(
+          "A reconstruction of a trader being checked by Roman soldiers at a narrow gateway in Hadrian's Wall.",
+        ),
+      ),
+    ).toBe("illustration");
+    expect(fallbackOf(real("Soldiers stopping a cart at the gate of Hadrian's Wall"))).toBe(
+      "illustration",
+    );
+    // Still the monument: a gate "guarded by" soldiers, or soldiers merely standing there.
+    expect(fallbackOf(real("A gateway in Hadrian's Wall guarded by soldiers"))).toBe("none");
+    expect(fallbackOf(real("Roman soldiers at Hadrian's Wall"))).toBe("none");
   });
 
   // SOL-SIMPLE (6 Oct), ruling 163 strict: a period on any route makes the request historical:

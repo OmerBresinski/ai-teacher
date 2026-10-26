@@ -955,11 +955,13 @@ export function locatorBrief(brief: ImageBrief, place: string): ImageBrief {
 const SCENE_PEOPLE =
   /\b(soldiers?|guards?|sentr(y|ies)|legionar(y|ies)|troops|travell?ers?|traders?|merchants?|visitors?)\b/i;
 /**
- * What they are doing: movement, watch and trade, never building or simply being there ("the
- * Great Wall built by workers", "the Colosseum with crowds" stay pictures of the monument).
+ * What they are doing: movement, watch and trade, active or passive ("soldiers checking a
+ * trader", "a trader being checked by soldiers", TEACH-251 part u, romans verify4 s7), never
+ * building or simply being there ("the Great Wall built by workers", "the Colosseum with crowds"
+ * stay pictures of the monument).
  */
 const SCENE_DOING =
-  /\b(patroll?ing|patrols?|walking|marching|guarding|keeping watch|standing guard|approaching|crossing|carrying|trading|waiting|checking)\b/i;
+  /\b(patroll?(ing|ed)|patrols?|walking|marching|guarding|keeping watch|standing guard|approaching|crossing|carrying|trading|waiting|(check|stopp|search|question|inspect)(ing|ed))\b/i;
 
 /** A picture of people doing something at a past place: a scene there (ruling 210). */
 export function isPastScene(shows: string): boolean {
