@@ -179,28 +179,54 @@ export function writtenTitle(lesson: Lesson, heading: string | undefined): strin
  * while it is `writing`: blank but for one muted line saying what it will do (the flow's `does`),
  * named "Planned" so the editor knows it for a placeholder. Its laid copy replaces it at close.
  */
-export function plannedSlide(id: string, does?: string, look?: string) {
+/**
+ * Where a layout puts its one visual (960 x 540), so a planned slide's outline holds the box the
+ * written slide will have (judge 638: the box jumped at the swap). Measured from the laid
+ * templates (`lay-draft-figure.test.ts` checks them); a layout not listed keeps the generic column.
+ */
+export const PLANNED_VISUAL_BOX: Record<string, { x: number; y: number; w: number; h: number }> = {
+  "visual-text": { x: 504, y: 160, w: 392, h: 328 },
+  "figure-slide": { x: 264, y: 125, w: 432, h: 324 },
+};
+
+/**
+ * The box a flow item's layout puts its visual in: `visual-text …` and any layout with the `fig`
+ * variant (`discussion fig`, `visual-text points-0-fig`) lay the visual-text column, `figure-slide`
+ * its centred figure. Any other layout gets no box: an outline box in the wrong place jumps at the
+ * swap, worse than none.
+ */
+export function plannedVisualBox(layout: string | undefined) {
+  const words = (layout ?? "").trim().split(/\s+/);
+  if (words[0] === "figure-slide") return PLANNED_VISUAL_BOX["figure-slide"];
+  if (words[0] === "visual-text" || words.some((w) => w === "fig" || w.endsWith("-fig")))
+    return PLANNED_VISUAL_BOX["visual-text"];
+  return undefined;
+}
+
+export function plannedSlide(id: string, does?: string, look?: string, layout?: string) {
   const text = (does ?? "").trim().slice(0, 140);
   // The flow says whether the slide shows a picture or a diagram: its skeleton holds the visual
   // column where the slide's layout will put it (live writing, TEACH-202 part f), so the slide's
   // shape is there before its words and never changes when they arrive.
-  const visual =
+  const at =
     look === "picture" || look === "diagram" || look === "picture-sequence"
-      ? [
-          {
-            id: `${id}-planned-visual`,
-            type: "shape",
-            name: "Planned visual",
-            shape: "rounded",
-            x: 504,
-            y: 136,
-            w: 392,
-            h: 300,
-            radius: 16,
-            fill: "rgba(128, 128, 128, 0.10)",
-          },
-        ]
-      : [];
+      ? layout === undefined
+        ? { x: 504, y: 136, w: 392, h: 300 }
+        : plannedVisualBox(layout)
+      : undefined;
+  const visual = at
+    ? [
+        {
+          id: `${id}-planned-visual`,
+          type: "shape",
+          name: "Planned visual",
+          shape: "rounded",
+          ...at,
+          radius: 16,
+          fill: "rgba(128, 128, 128, 0.10)",
+        },
+      ]
+    : [];
   return {
     id,
     kind: "content",
@@ -451,10 +477,16 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     }
   };
   /** Live writing (ADR 0039): a blank `writing` slide for index i, until its words close. */
-  const blank = (i: number, id: string, does?: string, look?: string) => {
+  const blank = (i: number, id: string, does?: string, look?: string, layout?: string) => {
     const was = progressive.patches().get(i);
     if (latest.has(i) || (was && (!does || plannedOf(was.slide)))) return;
-    patchKept(progressive, dropped, i, plannedSlide(id, does, look) as unknown as Laid, "writing");
+    patchKept(
+      progressive,
+      dropped,
+      i,
+      plannedSlide(id, does, look, layout) as unknown as Laid,
+      "writing",
+    );
   };
   // Live writing: the deck is saved as the job's at once (title and objectives still `writing`),
   // so the editor opens on it while the writer thinks; each later slide joins as a blank.
@@ -550,16 +582,23 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
             // The flow names every slide: each joins the deck as a blank at once, so the strip
             // shows the whole lesson before its first words.
             onFlow: (
-              flow: { slide?: number; does?: string; look_at?: { kind: string } }[] | undefined,
+              flow:
+                | { slide?: number; does?: string; look_at?: { kind: string }; layout?: string }[]
+                | undefined,
             ) => {
               for (const f of flow ?? [])
                 if (typeof f.slide === "number" && f.slide >= 3)
-                  blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind);
+                  blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind, f.layout);
             },
             // Each planned slide joins as its flow entry closes, labelled with what it does.
-            onFlowItem: (f: { slide?: number; does?: string; look_at?: { kind: string } }) => {
+            onFlowItem: (f: {
+              slide?: number;
+              does?: string;
+              look_at?: { kind: string };
+              layout?: string;
+            }) => {
               if (typeof f.slide === "number" && f.slide >= 3)
-                blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind);
+                blank(f.slide - 1, `s${f.slide}`, f.does, f.look_at?.kind, f.layout);
             },
             onDraftSlide: (i: number, slide: Laid) => {
               // The slide joins the deck as soon as it is being written, as a blank `writing` slide

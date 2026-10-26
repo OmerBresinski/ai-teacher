@@ -116,12 +116,17 @@ export function pictureMaker(
   };
 }
 
-function imagePlacer(deps: WorkerDeps, workspaceId: WorkspaceId): PipelineDeps["images"] {
+function imagePlacer(
+  deps: WorkerDeps,
+  workspaceId: WorkspaceId,
+  signal?: AbortSignal,
+): PipelineDeps["images"] {
   const images = deps.images;
   if (!images) return undefined;
   // One Commons client per job (TEACH-251): its searches and file downloads share one polite
   // queue. Only the writer planner's picture director searches Commons; objectives-first never does.
-  const commons = createCommonsClient();
+  // The job's stop also stops the searches still queued behind the polite gap.
+  const commons = createCommonsClient(signal ? { signal } : {});
   return {
     search: (query, opts) =>
       images.client.search({ query, ...opts, locale: "en-GB" }).then((page) => page.photos),
@@ -229,7 +234,7 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       // Live writing (ADR 0039): drafts ride the job's events, never the lesson row.
       ...(ctx.draft ? { onDraft: ctx.draft } : {}),
       worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),
-      images: imagePlacer(deps, workspaceId),
+      images: imagePlacer(deps, workspaceId, runSignal),
       ...pictureMaker(deps, workspaceId, logger),
       ...(recorder ? { debug: recorder.sink } : {}),
     };
