@@ -15,6 +15,7 @@ import {
   createWriterPictures,
   HOUSE_PHOTO_LINE,
   ILLUSTRATION_LINE,
+  SLIDE_REFUSALS_MAX,
   STOCK_ONLY_BANK,
   setLookOf,
   type WriterPhotoAsk,
@@ -603,6 +604,84 @@ test("a generated single picture is shown to the judge on its own bytes, and pla
   const s = pictures.state(1, "picture");
   expect(s.status).toBe("photo");
   if (s.status === "photo") expect(s.photo.aspect).toBe(1.5);
+});
+
+describe("writer pictures: a later round does not repaint a slide the judge kept refusing (TEACH-202 part x)", () => {
+  const refuse = () =>
+    verdict({ pick: null, onSubject: false, clear: true, fits: false, why: "Wrong period." });
+  const accept = () =>
+    verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: ["a hen"] });
+  const setup = (script: string[]) => {
+    const made: number[] = [];
+    let n = 0;
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(createFakeAi({ script })),
+      bank: {
+        lookup: async () => undefined,
+        remember: async () => undefined,
+        reject: async () => undefined,
+        generate: async (req) => {
+          n += 1;
+          made.push(n);
+          return {
+            src: `/files/m${n}.png`,
+            alt: req.text,
+            source: { provider: "generated", id: `m${n}` },
+            style: "photo",
+            aspect: 1.5,
+            dataUrl: "data:image/png;base64,AAAA",
+          } as never;
+        },
+      },
+      direct: async () =>
+        direction({
+          route: "library-or-generate",
+          pictures: [
+            {
+              shows: "A cartoon hen",
+              mustShow: ["a hen"],
+              queries: ["hen"],
+              imagePrompt: "A hen.",
+            },
+          ],
+        }),
+    });
+    return { pictures, made };
+  };
+  const hen = ask({ key: "picture", shows: "A hen", mustSee: ["a hen"], named: false });
+
+  test("a round keeps its own retries; the next round for that slide paints nothing", async () => {
+    const { pictures, made } = setup(Array.from({ length: 12 }, refuse));
+    pictures.start(3, hen, slide);
+    await pictures.settle(5_000);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+    expect(made.length).toBe(3);
+    // The lost-picture round asks the slide again: its search runs, nothing is generated.
+    pictures.start(3, hen, slide);
+    await pictures.settleSlide(3, 5_000);
+    expect(pictures.state(3, "picture").status).toBe("failed");
+    expect(made.length).toBe(3);
+    // Another slide is still painted.
+    pictures.start(4, hen, slide);
+    await pictures.settleSlide(4, 5_000);
+    expect(made.length).toBe(6);
+  });
+
+  test("new words for the slide (forget) let it be painted again", async () => {
+    const { pictures, made } = setup([refuse(), refuse(), refuse(), accept()]);
+    pictures.start(3, hen, slide);
+    await pictures.settle(5_000);
+    expect(made.length).toBe(3);
+    expect(SLIDE_REFUSALS_MAX).toBeLessThanOrEqual(3);
+    pictures.forget(3);
+    pictures.start(3, hen, slide);
+    await pictures.settleSlide(3, 5_000);
+    expect(pictures.state(3, "picture").status).toBe("photo");
+    expect(made.length).toBe(4);
+  });
 });
 
 describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", () => {

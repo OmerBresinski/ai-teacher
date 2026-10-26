@@ -1,5 +1,6 @@
 import { safeErrorWhere } from "@tj/domain";
 import { MAX_CONFIRMED_OBJECTIVES, type Slide, type Theme } from "@tj/domain/documents";
+import { textFaults } from "@tj/slides";
 import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
@@ -204,6 +205,11 @@ export class WriterIncompleteError extends Error {
 }
 
 export type WriterRun = {
+  /**
+   * The theme the lesson row holds now (TEACH-247 part ap): read once before the checks, and when
+   * the teacher picked another theme while the job wrote, every slide is laid again in it.
+   */
+  themeNow?: () => Promise<string | undefined>;
   brief: Brief;
   /** The approved objectives, teacher wording (the plan screen's). */
   objectives: string[];
@@ -410,7 +416,7 @@ export type WriterRun = {
    */
   onDesign?: (design: Plan["design"]) => void;
   /** Called as soon as every slide is laid out (the editable deck), before repair and notes. */
-  onEditable?: (slides: WriterSlide[]) => Promise<void> | void;
+  onEditable?: (slides: WriterSlide[], unheld: WriterSlide[]) => Promise<void> | void;
   /**
    * A slide's visuals as soon as it is parsed, with the words a picture is chosen for (TEACH-251:
    * the picture director starts placing them off the writing clock).
@@ -620,12 +626,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const override = new Map<string, VisualState>();
   /** `restore` puts a slide's override and drawn states back as they were when it was swapped. */
   const states = slideStates<VisualState>([override, drawnDiagrams]);
-  const holdsPlaceholder = (i: number) =>
-    (laid.get(i)?.slide.elements ?? []).some(
+  /** The open picture slots (placeholders) among a slide's elements. */
+  const openSlots = (elements: readonly unknown[]) =>
+    elements.filter(
       (e) =>
         (e as { type?: string; src?: string }).type === "image" &&
         (e as { src?: string }).src === PLACEHOLDER_IMAGE,
-    );
+    ).length;
+  const holdsPlaceholder = (i: number) => openSlots(laid.get(i)?.slide.elements ?? []) > 0;
   /** Every slide is written and asked for: a slot with no ask now will never get one. */
   let streamOver = false;
   const visualState = (i: number) => (key: string) => {
@@ -644,15 +652,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   // Slides whose diagram ships with warnings (no room drew it cleanly): every later relay keeps it.
   const warned = new Set<number>();
-  const relay = (i: number, diagramWarnings = warned.has(i)) => {
+  /** Slide i laid out with the visual states `visual` gives (relay lays it with the real ones). */
+  const layWith = (
+    i: number,
+    visual: (key: string) => VisualState,
+    diagramWarnings = warned.has(i),
+  ): Materialised | undefined => {
     const s = plan.slides[i];
-    if (!s) return;
+    if (!s) return undefined;
     const lay = () =>
       materialise(s, {
         ...base,
         index: i,
         plan,
-        visual: visualState(i),
+        visual,
         ...(diagramWarnings ? { diagramWarnings } : {}),
       });
     // A drawn diagram carries its builds (Present shows its parts one per Next).
@@ -664,9 +677,42 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       run.onDraftSlide && !isStableGroupSlide(x.slide, i)
         ? { ...x, slide: stableIds(x.slide, `s${i + 1}`) }
         : x;
-    if (!run.drawDiagrams) return void laid.set(i, keep(lay()));
+    if (!run.drawDiagrams) return keep(lay());
     const m = withBuilds(lay);
-    laid.set(i, keep({ ...m, slide: withBuildCounts(m.slide) }));
+    return keep({ ...m, slide: withBuildCounts(m.slide) });
+  };
+  const relay = (i: number, diagramWarnings = warned.has(i)) => {
+    const m = layWith(i, visualState(i), diagramWarnings);
+    if (m) laid.set(i, m);
+  };
+  /** Open picture slots in the copy of each slide last handed over while the job runs. */
+  const shownOpen = new Map<number, number>();
+  /** Slides in a lost picture's attempt (a split or a library drawing): never handed over mid-try. */
+  const trying = new Set<number>();
+  /**
+   * One layout per slide after its words (genux review, 26 Oct: GF s7/s8, Romans s6 lost their
+   * frames at the hand-over and got a picture back at the end). A picture frame the teacher has
+   * seen holds until the job's last save: a photo the director failed is still shown as its open
+   * slot in every copy handed over before then (the drafts and the editable deck), because the
+   * tail (the retry, the director's drawing, the reroute, keepPic) may still fill it. Only the
+   * job's final deck decides: the picture, or the slide laid once without it. `laid` keeps the
+   * real states, so no check, repair or note reads the held copy. Not the title (its retry runs
+   * before editable and is final there).
+   */
+  const heldLaid = (i: number): Materialised | undefined => {
+    const open = shownOpen.get(i) ?? 0;
+    const m = laid.get(i);
+    if (i < 2 || !open || !m || openSlots(m.slide.elements) >= open) return undefined;
+    const v = visualState(i);
+    const photos = new Set((asks.get(i) ?? []).filter((a) => a.type === "photo").map((a) => a.key));
+    const held = layWith(i, (key) => {
+      const st = v(key);
+      return st.status === "failed" && photos.has(key)
+        ? ({ status: "pending" } as VisualState)
+        : st;
+    });
+    const k = held ? openSlots(held.slide.elements) : 0;
+    return held && k > 0 && k <= open ? held : undefined;
   };
   /**
    * LAYOUT-SEL Egypt s1: a title picture that failed is searched once more for the lesson's topic
@@ -871,8 +917,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     };
   };
   /** One slide as the deck shows it (no continuation slides), or undefined before it is laid. */
-  const slideAt = (i: number): WriterSlide | undefined => {
-    const m = laid.get(i) ?? (i === 0 ? title : undefined);
+  const slideAt = (i: number, held = false): WriterSlide | undefined => {
+    const m = (held ? heldLaid(i) : undefined) ?? laid.get(i) ?? (i === 0 ? title : undefined);
     if (!m) return undefined;
     const own = notes.get(i)?.notes ?? "";
     const moved = modelPoints(plan.slides[i] as S | undefined).filter((p) => p && !own.includes(p));
@@ -900,9 +946,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** True once the editable deck is out: no more read-only slides are handed over. */
   let editable = false;
   const shown = (i: number) => {
-    if (editable || !run.onSlide) return;
-    const slide = slideAt(i);
-    if (slide) run.onSlide(i, slide);
+    if (editable || !run.onSlide || trying.has(i)) return;
+    const slide = slideAt(i, true);
+    if (!slide) return;
+    shownOpen.set(i, openSlots(slide.elements));
+    run.onSlide(i, slide);
   };
   /** Diagram jobs (TEACH-247, R2), started as each slide opens (C10) and awaited before editable. */
   const diagramJobs = new Map<string, Promise<void>>();
@@ -1547,12 +1595,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const q = answers ? listQuestion(parts[k], { answers: answers.slice(before) }) : undefined;
     return { ...c.slide, ...(q ? { question: q } : {}) };
   };
-  const deck = (): WriterSlide[] => {
+  /** `held`: the editable hand-over's copy, each seen picture frame still open (`heldLaid`). */
+  const deck = (held = false): WriterSlide[] => {
     const slides: WriterSlide[] = [];
     /** Plan slide number (1-based) to its number in the deck, once continuations sit between. */
     const at = new Map<number, number>();
     for (let i = 0; i < Math.max(n, 2); i++) {
-      const own = slideAt(i);
+      const own = slideAt(i, held);
       if (!own) continue;
       slides.push(own);
       at.set(i + 1, slides.length);
@@ -1724,9 +1773,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
   /**
    * lostPic's attempt for one lost picture: swap in `next` (a library drawing or a split), place or
-   * draw its new visuals, and keep it only when they land; otherwise the slide is restored.
+   * draw its new visuals, and keep it only when they land; otherwise the slide is restored. A
+   * picture landing mid-try never hands the half-tried slide over (`trying`).
    */
   const attemptLost =
+    (i: number, s0: S, n0: ReturnType<typeof notes.get>, lost: PhotoAsk) =>
+    async (next: S, kind: "split" | "library"): Promise<boolean> => {
+      trying.add(i);
+      try {
+        return await attemptLostBody(i, s0, n0, lost)(next, kind);
+      } finally {
+        trying.delete(i);
+      }
+    };
+  /** attemptLost's body: the swap, its visuals, and keep or restore. */
+  const attemptLostBody =
     (i: number, s0: S, n0: ReturnType<typeof notes.get>, lost: PhotoAsk) =>
     async (next: S, kind: "split" | "library"): Promise<boolean> => {
       const oldAsks = asks.get(i) ?? [];
@@ -1921,7 +1982,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   } else for (let i = 0; i < n; i++) if (holdsPlaceholder(i)) relay(i);
   // Editable never waits for an early retry: one still running is waited for in its slide's tail.
   editable = true;
-  await run.onEditable?.(deck());
+  // `unheld`: the same deck with every held frame laid without its failed photo, for a job that
+  // stops before its final deck (the caller saves it then, so no held frame is left behind).
+  await run.onEditable?.(deck(true), deck());
 
   // ── notes off the tail: one call on the deck as shown now, beside the repairs ──
   // The notes need each slide's final words and placed visuals, not the repairs. So the one call
@@ -2032,8 +2095,32 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const gasTexts = () =>
     Array.from({ length: n }, (_, i) => (deckSlide(i) ? wordsOf(deckSlide(i)) : ""));
+  // TEACH-247 part ap: the theme the lesson row holds now. A teacher who picks another theme while
+  // the job writes gets every slide laid again in it before the checks, so geometry and checks are
+  // both in the faces the slides are drawn in (Great Fire Y2 verify6: laid in Splash, drawn in
+  // Crayon Box, a question's second line ran into the next and a sort card broke "Firebreak/s").
+  const themeNow = await nonFatal(
+    () => run.themeNow?.(),
+    () => undefined,
+  );
+  if (themeNow && themeNow !== base.theme.id) {
+    const from = base.theme.id;
+    base.theme = getTheme(themeNow, brief.keyStage);
+    for (let i = 0; i < n; i++)
+      if (i === 1) laid.set(1, codeObjectives({ ...base, index: 1, plan }));
+      else relay(i);
+    log({ ev: "theme-now", from, to: base.theme.id });
+  }
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
+  // TEACH-247 part ap: words on words and words broken inside, measured in the deck's theme. Log
+  // only for now: never a check fault, so it cannot drop a visual or start a repair until its
+  // false-positive rate is known (stacked or grouped boxes, long hyphenated words, URLs).
+  for (let i = 0; i < n; i++) {
+    const sl = laid.get(i)?.slide;
+    const faults = sl ? textFaults(sl as Slide, base.theme) : [];
+    if (faults.length) log({ ev: "text-faults", slide: i + 1, faults });
+  }
   // Each slide's check in the debug record: the fault lines and the measured overflows (which
   // element, by how much), failing or not.
   if (run.services.debug)
