@@ -27,6 +27,9 @@ import {
   withDefaults,
 } from "../kit/index.js";
 import {
+  FRONTIER_KEYS,
+  FRONTIER_LABELS,
+  FRONTIERS,
   inView,
   kmBetween,
   landOf,
@@ -72,6 +75,7 @@ const TEXT = Object.assign({}, TEXT_PARAM, {
   patternProperties: Object.assign(
     {
       "^label:place:": NAME("Place name", "label"),
+      "^label:line:": NAME("Wall name", "label"),
       "^label:north$": NAME("North arrow word", "label"),
       "^label:today$": NAME("Borders key", "phrase"),
     },
@@ -246,6 +250,47 @@ export const params = {
         },
       },
     },
+    // The fill call reads title and descriptions (x- keys are stripped): the line's description is
+    // the only place the filler learns what each key is, and the array's says when to draw one.
+    frontiers: {
+      type: "array",
+      title: "Walls and frontiers",
+      description:
+        "A wall or border drawn along its real course. Draw one only when the slide is about that line itself (such as why, when or by whom it was built or agreed, or what it divided), never as a landmark on a map about something else.",
+      "x-item": "a wall or frontier",
+      maxItems: 2,
+      default: [],
+      items: {
+        type: "object",
+        required: ["line"],
+        default: { line: "hadrians_wall", label: "", colour: "auto" },
+        properties: {
+          line: {
+            type: "string",
+            title: "Line",
+            description:
+              "hadrians_wall: Hadrian’s Wall (AD 122). antonine_wall: the Antonine Wall (AD 142). alfred_guthrum: the border between Alfred’s lands and the Danelaw (c. AD 886).",
+            enum: FRONTIER_KEYS,
+            "x-labels": FRONTIER_LABELS,
+            default: "hadrians_wall",
+          },
+          label: {
+            type: "string",
+            title: "Name on the map",
+            description: "Leave empty to use ours.",
+            maxLength: 40,
+            default: "",
+          },
+          colour: {
+            type: "string",
+            title: "Colour",
+            enum: COLOURS,
+            "x-labels": COLOUR_LABELS,
+            default: "auto",
+          },
+        },
+      },
+    },
     todayBorders: {
       type: "boolean",
       title: "End with today’s borders, faint (maps of Britain only)",
@@ -399,6 +444,19 @@ export const presets = [
       todayBorders: true,
     },
   },
+  {
+    id: "y4-roman-walls",
+    name: "Year 4: Hadrian’s Wall and the Antonine Wall",
+    params: {
+      title: "The edge of Roman Britain",
+      region: "uk",
+      dates: "bc-ad",
+      dateRange: { from: "AD 40", to: "AD 200" },
+      events: [{ place: "York", date: "AD 71", label: "The Romans build a fortress at York" }],
+      territories: [{ area: "roman_britain_122", colour: "2" }],
+      frontiers: [{ line: "hadrians_wall" }, { line: "antonine_wall" }],
+    },
+  },
 ];
 
 /* ------------------------------------------------------------------ the map's geometry (no DOM) */
@@ -423,17 +481,22 @@ function projFor(region) {
 // a map narrow enough gets a callout column on its right (cards never sit on the map)
 const COLUMN_MIN = 340;
 // f < 1 draws a column map smaller (same region, same shape), to give a crowded key more room
-const mapBox = (region, f = 1) => {
+// `top` < MAPBOX.y draws a column map taller (TEACH-247): with no title (every slide's drawing; the
+// slide's heading is the title) there is no band to keep clear, and the years head the card column.
+// A tall map is height-bound in a wide slot, so the band's height went straight off the map's size.
+export const LIFT_TOP = 40;
+const mapBox = (region, f = 1, top = MAPBOX.y) => {
   const w = projFor(region).w;
-  return w < MAPBOX.w - COLUMN_MIN
-    ? {
-        x: GRID.left,
-        y: MAPBOX.y + (MAPBOX.h * (1 - f)) / 2,
-        w: w * f,
-        h: MAPBOX.h * f,
-        column: true,
-      }
-    : MAPBOX;
+  if (w >= MAPBOX.w - COLUMN_MIN) return MAPBOX;
+  const H = GRID.bottom - top;
+  const wt = (w * H) / MAPBOX.h;
+  return {
+    x: GRID.left,
+    y: top + (H * (1 - f)) / 2,
+    w: wt * f,
+    h: H * f,
+    column: true,
+  };
 };
 const FIRST_SPACEFLIGHT = 1961;
 const splitList = (s) =>
@@ -442,7 +505,7 @@ const splitList = (s) =>
     .map((x) => x.trim())
     .filter(Boolean);
 const NUM = ["no", "one", "two", "three", "four", "five", "six"];
-const plural = (n, w) => `${NUM[n] || n} ${w}${n === 1 ? "" : "s"}`;
+const plural = (n, w, many) => `${NUM[n] || n} ${n === 1 ? w : many || `${w}s`}`;
 
 function model(P) {
   const st = P.dates || "bc-ad",
@@ -514,6 +577,19 @@ function model(P) {
         (!String(t.date || "").trim() || !String(t.source || "").trim() || poly.length < 3),
     };
   });
+  const fronts = (P.frontiers || []).map((f, i) => {
+    const L = FRONTIERS[f.line];
+    return {
+      ...f,
+      i,
+      L,
+      name: f.label || L.name,
+      d: parseDate(L.date),
+      line: L.line,
+      // brown for the first line, purple for a second: two walls in one key never share a colour
+      col: f.colour && f.colour !== "auto" ? +f.colour : i === 0 ? 1 : 6,
+    };
+  });
   const borders = !!P.todayBorders && ["uk", "south", "northsea"].includes(P.region);
   const range = P.dateRange || {};
   const from = parseDate(range.from),
@@ -527,6 +603,7 @@ function model(P) {
     events,
     terrs: terrs.filter((t) => !t.incomplete),
     allTerrs: terrs,
+    fronts,
     borders,
     from,
     to,
@@ -593,10 +670,12 @@ export function validate(raw) {
         reason: `${M.dl(v)} is in the future. This map shows history, so choose a year up to ${NOW}.`,
       });
   if (R.length) return result(R);
-  if (M.to.astro <= M.from.astro)
+  // a map of one year (Hadrian's Wall begun, AD 122 to AD 122) is a real span: only an end before
+  // the start is refused (TEACH-247 part az; romans verify7 lost its map to "AD 122 is not after AD 122")
+  if (M.to.astro < M.from.astro)
     R.push({
       path: "dateRange.to",
-      reason: `The map has to cover a span of years: ${M.dl(M.to)} is not after ${M.dl(M.from)}.`,
+      reason: `The map’s years end before they start: ${M.dl(M.to)} is before ${M.dl(M.from)}.`,
     });
   if (R.length) return result(R);
   const inR = (d) => d.astro >= M.from.astro && d.astro <= M.to.astro;
@@ -708,6 +787,31 @@ export function validate(raw) {
         });
     }
   });
+  // a wall or border is drawn whole, in its own years, or not at all: no part of a line is guessed
+  M.fronts.forEach((fr) => {
+    const path = `frontiers.${fr.i}.line`;
+    if (!inR(fr.d))
+      R.push({
+        path,
+        reason: `${fr.name} was built in ${M.dl(fr.d)}, outside the years this map covers (${span}). Widen “Years the map covers” or take it out.`,
+      });
+    if (!fr.line.every((q) => inView(M.V, q)))
+      return R.push({
+        path,
+        reason: `${fr.name} is not wholly on a map of ${where}. Choose a map that shows all of it, such as Britain and Ireland.`,
+      });
+    let len = 0;
+    for (let j = 1; j < fr.line.length; j++) {
+      const [x1, y1] = proj(...fr.line[j - 1]),
+        [x2, y2] = proj(...fr.line[j]);
+      len += Math.hypot(x2 - x1, y2 - y1);
+    }
+    if (len < 24)
+      R.push({
+        path,
+        reason: `${fr.name} is too short to see on a map of ${where}. Choose a closer map, such as Britain and Ireland.`,
+      });
+  });
   if (P.todayBorders && !M.borders)
     W.push("Today’s borders are only drawn on maps of Britain, so that step is left out.");
   return result(R, W);
@@ -742,6 +846,15 @@ function plan(P) {
       caption: `${dl(e.d)}, ${e.p.name}: ${e.label}.`,
     }),
   );
+  M.fronts.forEach((fr) =>
+    items.push({
+      key: `line:${fr.i}`,
+      t: fr.d.astro,
+      o: 3,
+      fr,
+      caption: `${dl(fr.d)}: ${fr.name}, from ${fr.L.from} to ${fr.L.to}.`,
+    }),
+  );
   items.sort((a, b) => a.t - b.t || a.o - b.o);
   [...M.terrs]
     .sort((a, b) => a.d.astro - b.d.astro)
@@ -759,6 +872,7 @@ function plan(P) {
     M.routes.length ? plural(M.routes.length, "journey") : null,
     M.events.length ? plural(M.events.length, "event") : null,
     M.terrs.length ? plural(M.terrs.length, "area") : null,
+    M.fronts.length ? plural(M.fronts.length, "wall or border", "walls or borders") : null,
   ].filter(Boolean);
   const list =
     bits.length > 1
@@ -791,6 +905,12 @@ export function notes(P) {
       const km = kmBetween(r.a.ll, r.b.ll);
       const via = splitList(r.via);
       return `${r.a.name} to ${r.b.name} is about ${fmtKm(km).toLocaleString("en-GB")} km in a straight line${via.length ? `; the route went by ${via.join(", ")}` : ""}. The line shows the way they went, not every turn.${r.d.approx ? " “c.” means about: the date comes from evidence, not a record." : ""}`;
+    }
+    if (it.fr) {
+      const fr = it.fr;
+      let km = 0;
+      for (let j = 1; j < fr.line.length; j++) km += kmBetween(fr.line[j - 1], fr.line[j]);
+      return `${fr.L.name} ran about ${fmtKm(km).toLocaleString("en-GB")} km, from ${fr.L.from} to ${fr.L.to}. The line is drawn after ${fr.L.source}. Ask: why would people build a line across the land here?`;
     }
     if (it.e) return `Point to ${it.e.p.name} on the map. Ask: why might this have happened here?`;
     if (it.tr) {
@@ -996,6 +1116,7 @@ function placer(bounds, obstacles, onLand, frame, routeSegs = [], leaders0 = [])
         skip = false,
         inner = null,
         dists = [14, 28, 44, 64, 90, 120, 160, 200, 250, 300, 360, 430, 510, 600],
+        oneGround = null,
       } = {},
     ) {
       let best = null;
@@ -1033,8 +1154,20 @@ function placer(bounds, obstacles, onLand, frame, routeSegs = [], leaders0 = [])
         )
           return;
         const onMap = overlaps(b, frame, -6);
+        // oneGround: a label that straddles a coast hides it (a wall's name over Ireland's shore)
+        const ground = [];
+        // sampled on a grid (corners alone miss a cape poking into the box)
+        if (oneGround)
+          for (let i = 0; i <= 6; i++)
+            for (let j = 0; j <= 3; j++)
+              ground.push(oneGround(b.x + (b.w * i) / 6, b.y + (b.h * j) / 3));
+        // the fewer samples off the label's main ground, the less coast it hides
+        const onL = ground.filter(Boolean).length;
+        const minority = Math.min(onL, ground.length - onL);
         const cost =
-          d + (onMap ? (offMap ? 70 : 0) + (onLand(b.x + b.w / 2, b.y + b.h / 2) ? 40 : 0) : 0);
+          d +
+          (minority ? 60 + 6 * minority : 0) +
+          (onMap ? (offMap ? 70 : 0) + (onLand(b.x + b.w / 2, b.y + b.h / 2) ? 40 : 0) : 0);
         if (!best || cost < best.cost) best = { cost, b, lead };
       };
       if (centre) tryBox({ x: ax - w / 2, y: ay - hh / 2, w, h: hh }, 0);
@@ -1087,7 +1220,9 @@ function thinRing(ring) {
       dmax = THIN;
     for (let i = a + 1; i < b; i++) {
       const [px, py] = ring[i];
-      const dd = L ? Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / L : Math.hypot(px - ax, py - ay);
+      const dd = L
+        ? Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / L
+        : Math.hypot(px - ax, py - ay);
       if (dd > dmax) {
         dmax = dd;
         far = i;
@@ -1178,7 +1313,9 @@ function renderAt(root, P, ctx, f, last, narrow) {
     N = ctx.N;
   const bi = (k) => b[k] ?? 0;
   const V = M.V;
-  const box = mapBox(P.region, f);
+  // no title: a column map takes the band above it, and the years head the card column
+  const lift = !P.title && !!mapBox(P.region).column;
+  const box = mapBox(P.region, f, lift ? LIFT_TOP : MAPBOX.y);
   let column = !!box.column;
   const columnMap = column;
   const map = basemap(root, V.kit, { box, view: V.view || undefined, a: { s: bi("map") } });
@@ -1187,6 +1324,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
   // one calm land colour; in Night the land is lifted off the dark sea
   const landFill =
     ctx.name === "night" ? "color-mix(in oklab,var(--paper) 72%,var(--ink) 28%)" : "var(--paper)";
+  let landRings = [];
   {
     const R = { x: F.x - 24, y: F.y - 24, w: F.w + 48, h: F.h + 48 };
     let landD = map.land.getAttribute("d");
@@ -1195,6 +1333,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
       landD = landD.replace(fx(proj(kit)), fine.map((q) => fx(proj(q))).join(" L"));
     // Thinned to what the slide can show (TEACH-247 part x): the world view drew 2.3 MB of coast.
     const rings = clipRings(landD, R).map(thinRing).filter(Boolean);
+    landRings = rings;
     const dAll = rings.map(smoothD).join(" ");
     // one element per ring: drawn as a single path, the browser left holes in the zoomed-in continent
     for (const r of rings)
@@ -1215,12 +1354,28 @@ function renderAt(root, P, ctx, f, last, narrow) {
         e.tagName === "path" &&
         e !== map.land &&
         /sky-top/.test(e.getAttribute("fill") || e.getAttribute("style") || ""),
-    ))
-      lk.setAttribute("d", clipRings(lk.getAttribute("d"), R).map(straightD).join(" ") || "M0 0");
+    )) {
+      // a lake off this view is taken out: an empty "M0 0" stood at the slide's corner and the crop
+      // kept the whole top-left margin for it (TEACH-247)
+      const d = clipRings(lk.getAttribute("d"), R).map(straightD).join(" ");
+      if (d) lk.setAttribute("d", d);
+      else lk.remove();
+    }
     const cp = map.g.querySelector('clipPath[id$="-land"] path');
     if (cp) cp.setAttribute("d", dAll);
   }
   let onLand = () => false;
+  // land by the drawn rings (even-odd), for a wall's name: the hit test above needs a browser
+  const inLand = (x, y) => {
+    let n = 0;
+    for (const r of landRings)
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        const [xi, yi] = r[i],
+          [xj, yj] = r[j];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) n++;
+      }
+    return n % 2 === 1;
+  };
   try {
     const pt = new DOMPoint(0, 0);
     onLand = (x, y) => {
@@ -1248,6 +1403,30 @@ function renderAt(root, P, ctx, f, last, narrow) {
   const routeInfo = [],
     lineBoxes = [],
     routeSegs = [];
+  /* walls and frontiers: a strong line on a paper halo, over the areas and under the journeys */
+  const frontInfo = [];
+  for (const fr of M.fronts) {
+    const k = bi(`line:${fr.i}`);
+    const pts = fr.line.map(proj);
+    const d = "M" + pts.map(fx).join(" L");
+    const g = h("g", { s: k }, terrG);
+    const stroke = { fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" };
+    h("path", { d, stroke: "var(--paper)", "stroke-width": 11, ...stroke }, g);
+    h("path", { d, stroke: `var(--era-${fr.col}-text)`, "stroke-width": 6, ...stroke }, g);
+    for (let j = 1; j < pts.length; j++) {
+      const [x1, y1] = pts[j - 1],
+        [x2, y2] = pts[j];
+      routeSegs.push([x1, y1, x2, y2]);
+      const n = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8));
+      for (let q = 0; q <= n; q++) {
+        const x = x1 + ((x2 - x1) * q) / n,
+          y = y1 + ((y2 - y1) * q) / n;
+        lineBoxes.push({ x: x - 6, y: y - 6, w: 12, h: 12, soft: true });
+      }
+    }
+    const at = (u) => pts[Math.round(u * (pts.length - 1))];
+    frontInfo.push({ fr, k, anchors: [0.5, 0.35, 0.65, 0.2, 0.8, 0, 1].map(at) });
+  }
   for (const r of M.routes) {
     const k = bi(`route:${r.i}`);
     const col = `var(--era-${r.col}-text)`;
@@ -1316,10 +1495,10 @@ function renderAt(root, P, ctx, f, last, narrow) {
   const spanX = columnMap ? F.x + F.w + 76 : GRID.right - spanW;
   if (columnMap && !P.title) {
     computed(
-      T(root, spanX, GRID.titleY, spanText, "ts-small", { cls: "strong", s: bi("map") }),
+      T(root, spanX, F.y + 26, spanText, "ts-small", { cls: "strong", s: bi("map") }),
       "dateRange.from",
     );
-    obstacles.push({ x: spanX, y: 50, w: spanW, h: 40 });
+    obstacles.push({ x: spanX, y: F.y - 2, w: spanW, h: 40 });
   } else if (GRID.left + titleW + 48 + spanW <= GRID.right) {
     computed(
       T(root, GRID.right, GRID.titleY, spanText, "ts-small", {
@@ -1345,6 +1524,8 @@ function renderAt(root, P, ctx, f, last, narrow) {
       `The title is too long to leave room for the years “${spanText}”. They are still in the caption.`,
     );
   const sideR = GRID.right - (F.x + F.w);
+  // the card column starts under the years when they head it
+  const colTop = columnMap && !P.title ? F.y + 44 : F.y;
   /* pins: every place a journey starts or ends at, or an event happens at */
   const pins = new Map();
   // places that share a spot at this scale (London and the River Thames) share one dot and one label
@@ -1449,7 +1630,10 @@ function renderAt(root, P, ctx, f, last, narrow) {
     );
     const w = km / map.kmPerUnit;
     // the bar takes the first map corner clear of every pin, route line and the north arrow
-    const bx = (sx, sy) => ({ x: sx - 24, y: sy - 18, w: w + 48 + 90, h: 66 });
+    // the length is set in the card face (ts-cap, larger than the kit's axis face): the corner held
+    // for it measures those words, so no dot sits under them (TEACH-247 part az: Winchester)
+    const lw = measure(root, `${km} km`, "ts-cap");
+    const bx = (sx, sy) => ({ x: sx - 24, y: sy - 18, w: w + 48 + Math.max(90, lw + 36), h: 66 });
     const spots = [
       [F.x + 32, F.y + F.h - 48],
       [F.x + F.w - w - 120, F.y + F.h - 48],
@@ -1458,7 +1642,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     ];
     const spot = spots.find(([sx, sy]) => {
       const q = bx(sx, sy);
-      return !obstacles.some((o) => overlaps(q, o, 0));
+      return !obstacles.some((o) => overlaps(q, o, o.dot ? 6 : 0));
     });
     // the corner is held while labels are placed; it is checked again against every label and leader before drawing
     scale = { km, bx, spots, spot, box: spot ? bx(...spot) : null };
@@ -1483,7 +1667,9 @@ function renderAt(root, P, ctx, f, last, narrow) {
      and again in the summary. Beside a narrow map they sit in a column, joined by a leader line only. */
   const colX = F.x + F.w + 76,
     // a narrower column (cards wrap to a second line) leaves the map more of the drawing's width
-    MW0 = column ? Math.min(narrow ? 400 : 520, GRID.right - colX - 34) : 340,
+    // a taller map pushes the column right (TEACH-247 part az): without a title the cards may use the
+    // slide's side margin, so they keep their width (the crop ends at the drawn marks)
+    MW0 = column ? Math.min(narrow ? 400 : 520, GRID.right + (lift ? 40 : 0) - colX - 34) : 340,
     maxW = MW0;
   // a size may carry its own width (the two-column key)
   // every wording in a card is a measured text block: it wraps, then shrinks, and the card grows to hold it.
@@ -1604,43 +1790,69 @@ function renderAt(root, P, ctx, f, last, narrow) {
       ),
     );
   }
+  // a name in its colour and a date: an area's card, and a wall's
+  const nameDate = (z, name, date, tcol, namePath, onDate) => {
+    const maxW = z.maxW || MW0;
+    const nb = probe(name, { maxLines: 2, a: { cls: "strong" } }, z),
+      dw = measure(root, date, z.cls);
+    const nl = nb.lines.length,
+      nh = nl * nb.lh;
+    const nw = nb.w;
+    const one = nl === 1 && nw + 12 + dw <= maxW;
+    return {
+      w: (one ? nw + 12 + dw : Math.max(nw, dw)) + 34,
+      h: z.pad + nh + (one ? 0 : z.lh),
+      body: (g, pl) => {
+        textBlock(g, pl.x + 20, pl.y + z.base, name, {
+          cls: z.cls,
+          maxW,
+          maxLines: 2,
+          lh: z.lh,
+          a: { fill: tcol, cls: "strong" },
+          edit: namePath,
+        });
+        const dEl = T(
+          g,
+          one ? pl.x + 32 + nw : pl.x + 20,
+          one ? pl.y + z.base : pl.y + z.base + nh,
+          date,
+          z.cls,
+          { fill: "var(--ink-2)" },
+        );
+        onDate(dEl);
+      },
+    };
+  };
+  for (const fi of frontInfo) {
+    const fr = fi.fr;
+    const tcol = `var(--era-${fr.col}-text)`;
+    const mk = (z) =>
+      nameDate(z, fr.name, M.dl(fr.d), tcol, `frontiers.${fr.i}.label`, (el) =>
+        computed(el, `frontiers.${fr.i}.line`),
+      );
+    cards.push(
+      Object.assign(
+        {
+          what: `the line “${fr.name}”`,
+          k: fi.k,
+          bar: tcol,
+          anchors: fi.anchors,
+          tiny: mk(TINY),
+          make: mk,
+        },
+        mk(SZ),
+      ),
+    );
+  }
   for (const t of M.terrs) {
     if (!t.at) continue;
-    const date = M.dl(t.d);
     const tcol = `var(--era-${t.col}-text)`;
-    const mk = (z) => {
-      const maxW = z.maxW || MW0;
-      const nb = probe(t.name, { maxLines: 2, a: { cls: "strong" } }, z),
-        dw = measure(root, date, z.cls);
-      const nl = nb.lines.length,
-        nh = nl * nb.lh;
-      const nw = nb.w;
-      const one = nl === 1 && nw + 12 + dw <= maxW;
-      return {
-        w: (one ? nw + 12 + dw : Math.max(nw, dw)) + 34,
-        h: z.pad + nh + (one ? 0 : z.lh),
-        body: (g, pl) => {
-          textBlock(g, pl.x + 20, pl.y + z.base, t.name, {
-            cls: z.cls,
-            maxW,
-            maxLines: 2,
-            lh: z.lh,
-            a: { fill: tcol, cls: "strong" },
-            edit: `territories.${t.i}.label`,
-          });
-          const dEl = T(
-            g,
-            one ? pl.x + 32 + nw : pl.x + 20,
-            one ? pl.y + z.base : pl.y + z.base + nh,
-            date,
-            z.cls,
-            { fill: "var(--ink-2)" },
-          );
-          if (t.custom) editable(dEl, `territories.${t.i}.date`);
-          else computed(dEl, `territories.${t.i}.area`);
-        },
-      };
-    };
+    const mk = (z) =>
+      nameDate(z, t.name, M.dl(t.d), tcol, `territories.${t.i}.label`, (el) =>
+        t.custom
+          ? editable(el, `territories.${t.i}.date`)
+          : computed(el, `territories.${t.i}.area`),
+      );
     const near = column
       ? [proj(t.at)]
       : [
@@ -2053,12 +2265,63 @@ function renderAt(root, P, ctx, f, last, narrow) {
     ctx.warn(
       `At this map size the line to ${crowdedNames.map((n) => `“${n}”`).join(", ")} has to cross another line. Try a closer map.`,
     );
+  // each wall is named beside its own line, on the map, as a place is (TEACH-247 part az)
+  for (const fi of frontInfo) {
+    const fr = fi.fr;
+    const z = SHAPES[0];
+    const label = txt(P, `label:line:${fr.i}`, fr.name);
+    const pb = probe(label, { maxW: z.maxW, maxLines: 2, lh: z.lh }, { cls: z.cls, lh: z.lh });
+    const w = pb.w + 18,
+      hh = 38 + (pb.lines.length - 1) * z.lh;
+    // from the east end first: both walls and the border end at an open sea or estuary there
+    const pl = PL.place([fi.anchors[5], fi.anchors[0], fi.anchors[6]], null, w, hh, {
+      inner: { x: F.x + 4, y: F.y + 4, w: F.w - 8, h: F.h - 8 },
+      offMap: false,
+      oneGround: inLand,
+      modes: [
+        [false, true],
+        [true, true],
+      ],
+      dists: [14, 22, 30, 40, 56, 72, 90],
+    });
+    if (!pl) {
+      fail(`the name of ${fr.name}`);
+      continue;
+    }
+    if (pl.lead) {
+      leads.push(pl.lead);
+      h(
+        "line",
+        {
+          x1: pl.lead[0],
+          y1: pl.lead[1],
+          x2: pl.lead[2],
+          y2: pl.lead[3],
+          stroke: "var(--ink-3)",
+          "stroke-width": "var(--sw-rule)",
+          s: fi.k,
+          cls: "rise",
+        },
+        leadG,
+      );
+    }
+    const g = h("g", { s: fi.k, cls: "rise" }, labG);
+    labelGround(g, { x: pl.x, y: pl.y, w: pl.w, h: pl.h });
+    textBlock(g, pl.x + 9, pl.y + 27, label, {
+      cls: z.cls,
+      maxW: z.maxW,
+      maxLines: 2,
+      lh: z.lh,
+      a: { fill: `var(--era-${fr.col}-text)`, cls: "strong" },
+      edit: `text.label:line:${fr.i}`,
+    });
+  }
   let tier = 0,
     legend = null,
     named = false;
   if (column) {
     // stack the cards beside the map, each as close as it can be to the height of what it points at
-    const top = F.y,
+    const top = colTop,
       bot = F.y + F.h,
       gap = 14;
     // each card points from the rightmost anchor whose leader to the column passes no label or the north arrow
@@ -2138,7 +2401,16 @@ function renderAt(root, P, ctx, f, last, narrow) {
     if (tier != null && fans()) {
       named = true;
       order.sort((p, q) => p.k - q.k || p.ay - q.ay);
-      tier = [0, 2].find(stack);
+      // with no lines to keep level, the key stands together under the years (TEACH-247 part az)
+      const stackTop = (t) => {
+        let y = top;
+        for (const c of order) {
+          c.sy = y;
+          y += V2(c, t).h + gap;
+        }
+        return y - gap <= bot;
+      };
+      tier = [0, 2].find(lift ? stackTop : stack);
     } // without leaders the column reads in date order
     if (narrow && tier !== 0) return RETRY;
     if (tier != null) for (const c of cards) c.S = V2(c, tier);
@@ -2148,8 +2420,8 @@ function renderAt(root, P, ctx, f, last, narrow) {
       named = true;
       for (const c of cards) if (c.named) c.tiny = c.named.tiny;
       const byK = cards.slice().sort((p, q) => p.k - q.k);
-      const kTop = MAPBOX.y,
-        avail = MAPBOX.h;
+      const kTop = lift ? colTop : MAPBOX.y,
+        avail = lift ? GRID.bottom - colTop : MAPBOX.h;
       const rowsOf = (z) =>
         byK.map((c) => {
           const v = z ? c.make(z) : c.tiny;
@@ -2159,7 +2431,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
       const H1 = 10 + r1.reduce((a, r) => a + r.hh, 0);
       if (H1 <= avail)
         legend = {
-          y: kTop + (avail - H1) / 2,
+          y: lift ? kTop : kTop + (avail - H1) / 2,
           w: Math.max(...r1.map((r) => r.v.w)),
           h: H1,
           cols: [r1],
@@ -2183,7 +2455,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
         }
         if (best && best.h <= avail)
           legend = {
-            y: kTop + (avail - best.h) / 2,
+            y: lift ? kTop : kTop + (avail - best.h) / 2,
             w: cw + 16 + Math.max(...best.cols[1].map((r) => r.v.w)),
             h: best.h,
             cols: best.cols,
@@ -2197,7 +2469,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     }
   }
   if (column) {
-    const top = F.y,
+    const top = colTop,
       bot = F.y + F.h;
     const lead = (c, y, hh) => {
       const l = [c.ax, c.ay, colX, clamp(c.ay, y + 14, y + hh - 14)];
@@ -2272,7 +2544,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
     ].filter((q) => q !== scale.box);
     if (legend) held.push({ x: colX, y: legend.y, w: legend.w, h: legend.h });
     const clear = (q) =>
-      !held.some((o) => overlaps(q, o, 0)) &&
+      !held.some((o) => overlaps(q, o, o.dot ? 6 : 0)) &&
       !leads.some((l) => segHits(l[0], l[1], l[2], l[3], q));
     const spot = [scale.spot, ...scale.spots].filter(Boolean).find((sp) => clear(scale.bx(...sp)));
     if (spot) {

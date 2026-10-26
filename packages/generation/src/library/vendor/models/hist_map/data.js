@@ -64,6 +64,33 @@ export const TERRITORIES = {
 export const TERRITORY_KEYS = Object.keys(TERRITORIES);
 export const TERRITORY_LABELS = ['Roman Britain, AD 122', 'Anglo-Saxon kingdoms, c. AD 600', 'The Danelaw, c. AD 886', 'The Roman Empire at its largest, AD 117'];
 
+/** Walls and frontiers: named lines across the land, drawn through real points (forts on the
+ *  walls, the treaty's landmarks for the border), east or south end first. Only lines whose course
+ *  is known are listed: a line not here is not drawn. [lon, lat] throughout. */
+export const FRONTIERS = {
+  hadrians_wall: {
+    name: 'Hadrian’s Wall', date: 'AD 122', from: 'Wallsend', to: 'Bowness-on-Solway',
+    source: 'Historic England, Hadrian’s Wall (scheduled monument): the forts along the wall from Segedunum to Maia',
+    // Segedunum (Wallsend), Pons Aelius (Newcastle), Vindobala (Rudchester), Cilurnum (Chesters), Vercovicium
+    // (Housesteads), Aesica (Great Chesters), Banna (Birdoswald), Uxelodunum (Stanwix), Aballava (Burgh by Sands), Maia (Bowness)
+    line: [[-1.533, 54.988], [-1.611, 54.969], [-1.835, 54.995], [-2.141, 55.026], [-2.331, 55.013], [-2.464, 54.996], [-2.602, 54.989], [-2.937, 54.9], [-3.05, 54.922], [-3.215, 54.953]],
+  },
+  antonine_wall: {
+    name: 'The Antonine Wall', date: 'AD 142', from: 'Carriden', to: 'Old Kilpatrick',
+    source: 'Historic Environment Scotland, the Antonine Wall (World Heritage Site): the forts along the wall from Carriden to Old Kilpatrick',
+    // Carriden, Falkirk, Rough Castle, Castlecary, Bar Hill, Kirkintilloch, Bearsden, Old Kilpatrick
+    line: [[-3.558, 56.012], [-3.785, 56.001], [-3.851, 55.998], [-3.958, 55.981], [-4.073, 55.96], [-4.153, 55.94], [-4.333, 55.918], [-4.457, 55.927]],
+  },
+  alfred_guthrum: {
+    name: 'The border with the Danelaw', date: 'c. AD 886', from: 'the Thames estuary', to: 'Watling Street',
+    source: 'The treaty of Alfred and Guthrum (about AD 886): up the Thames, up the River Lea, straight to Bedford, up the Ouse to Watling Street',
+    // the same landmarks as the edge of the Danelaw area above: the Thames, the Lea, Bedford, the Ouse, Watling Street
+    line: [[0.7, 51.56], [-0.02, 51.5], [-0.05, 51.8], [-0.42, 51.88], [-0.47, 52.14], [-0.85, 52.06], [-1.4, 52.45], [-1.85, 52.66]],
+  },
+};
+export const FRONTIER_KEYS = Object.keys(FRONTIERS);
+export const FRONTIER_LABELS = ['Hadrian’s Wall, AD 122', 'The Antonine Wall, AD 142', 'The border of the Danelaw, c. AD 886'];
+
 /** Straight-line (great-circle) distance in km, for notes. */
 export function kmBetween(a, b) {
   const R = 6371, r = Math.PI / 180; const dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
