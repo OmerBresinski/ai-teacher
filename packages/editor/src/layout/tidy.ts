@@ -715,7 +715,6 @@ function fitAndSplit(
       }
     }
 
-    // A card grows with the text laid on it, as generation's fit does (TEACH-247 part ag).
     // A card grows with the words laid on it, a template's surface card too (TEACH-247 part ag).
     slides.push({
       ...current,
