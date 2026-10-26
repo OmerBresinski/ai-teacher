@@ -1066,6 +1066,9 @@ export function pictureShows(f: Pic | Dia, slide: S): string {
   return "";
 }
 
+/** Templates whose pictures are asked for only where the laid slide has a slot for them. */
+const SLOT_ASKED = new Set(["myth", "panel-list"]);
+
 /** The visuals one finished slide asks for (keys unique within the slide). */
 export function visualsOf(
   raw: S,
@@ -1088,8 +1091,11 @@ export function visualsOf(
         : undefined;
   // A myth's proof picture the template gave way (the fact needs its room, TEACH-247 part ae) has
   // no slot: it is never asked for, so no picture is searched for or lands without a place.
-  const laid =
-    str(s.template) === "myth" ? figs.filter(({ key, f }) => isDia(f) || slots[key]) : figs;
+  // Likewise a panel list's row picture the template leaves off (TEACH-247 part aj: pictures on
+  // some rows go to the one title panel, any after the first are `droppedPictures`) has no slot.
+  const laid = SLOT_ASKED.has(str(s.template))
+    ? figs.filter(({ key, f }) => isDia(f) || slots[key])
+    : figs;
   return laid.map(
     ({ key, f }): VisualAsk =>
       isDia(f)
