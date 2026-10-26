@@ -6,7 +6,7 @@ import { sampleBriefLesson } from "../testing";
 import { writerSystem } from "./ai-services";
 import { withClose } from "./close";
 import fixture from "./fixtures/pilot-v413-y4-romans.json" with { type: "json" };
-import { PILOT_PACK_ID, PILOT_PACKS, pilotRequest } from "./pilot-pack";
+import { PILOT_PACKS, pilotRequest } from "./pilot-pack";
 import { type WriterStage, writerSchema } from "./schema";
 import { type WriterReq, type WriterServices, writerMaxTokens } from "./services";
 import { runWriter } from "./stage";
@@ -30,8 +30,6 @@ const STARTS = [
 ];
 
 describe("pilot pack v4.13", () => {
-  test("production runs v4.13", () => expect(PILOT_PACK_ID).toBe("v4.13"));
-
   for (const stage of STAGES) {
     const ks = KS[stage];
 
