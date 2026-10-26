@@ -4,7 +4,7 @@ import type { FactId, LessonFacts } from "./lesson-facts";
 import { QUALITY_CHECKS, qualityChecks } from "./quality-checks";
 import { richDocToPlainText } from "./rich-text";
 import { answersOffSlide, hasRevealableAnswer, type Slide } from "./slide";
-import { walkElements } from "./text";
+import { blockText, slideText, walkElements } from "./text";
 import type { Worksheet, WorksheetBlock } from "./worksheet";
 
 export * from "./finding";
@@ -116,21 +116,37 @@ function blockAnswerProblem(block: WorksheetBlock): string | undefined {
  * `o1` when `q1` is linked to `o1` — by the question's own `objectiveRefs`, or by an outline entry
  * that lists both. Worksheet blocks reference questions, not objectives, so the literal check
  * reported "not covered by the worksheet" on every production lesson (Generation quality, Problem 6).
+ *
+ * A side whose slides (or blocks) carry no `generatedFrom.factRefs` at all has no provenance to
+ * resolve, so it is matched by wording instead (TEACH-247 part ak): the writer pipeline stamps no
+ * provenance, and reading "no refs" as "not covered" flagged every objective of every fresh lesson.
+ * One element with refs puts the whole side back on the id path, where a missing ref is a gap.
  */
 function checkObjectiveCoverage(lesson: Lesson, worksheet?: Worksheet): Finding[] {
   const facts = lesson.facts;
   if (!facts) return [];
   const covers = objectivesCoveredBy(facts);
-  const onSlides = new Set<string>();
-  for (const slide of lesson.slides) {
-    walkElements(slide.elements, (element) => {
-      for (const ref of element.generatedFrom?.factRefs ?? []) addCovered(onSlides, ref, covers);
-    });
-  }
-  const onWorksheet = new Set<string>();
-  for (const block of worksheet?.blocks ?? []) {
-    for (const ref of block.generatedFrom?.factRefs ?? []) addCovered(onWorksheet, ref, covers);
-  }
+  const slideRefs = lesson.slides.map((slide) => {
+    const refs: string[] = [];
+    walkElements(slide.elements, (element) =>
+      refs.push(...(element.generatedFrom?.factRefs ?? [])),
+    );
+    return refs;
+  });
+  const onSlides = slideRefs.some((refs) => refs.length > 0)
+    ? coveredByRefs(slideRefs.flat(), covers)
+    : coveredByWording(
+        facts,
+        lesson.slides
+          .filter((s) => !UNTAUGHT_SLIDE_KINDS.has(s.kind) && !s.answersRole)
+          .map(slideText),
+      );
+  const blocks = worksheet?.blocks ?? [];
+  const blockRefs = blocks.flatMap((block) => block.generatedFrom?.factRefs ?? []);
+  const onWorksheet =
+    blockRefs.length > 0 || blocks.length === 0
+      ? coveredByRefs(blockRefs, covers)
+      : coveredByWording(facts, blocks.map(blockText));
   const findings: Finding[] = [];
   for (const objective of facts.objectives) {
     const missing: string[] = [];
@@ -146,6 +162,82 @@ function checkObjectiveCoverage(lesson: Lesson, worksheet?: Worksheet): Finding[
     });
   }
   return findings;
+}
+
+/** Slides that state objectives without teaching or practising them: the title and the list itself. */
+const UNTAUGHT_SLIDE_KINDS: ReadonlySet<string> = new Set(["title", "objectives"]);
+
+function coveredByRefs(refs: readonly string[], covers: Map<FactId, Set<FactId>>): Set<string> {
+  const into = new Set<string>();
+  for (const ref of refs) addCovered(into, ref, covers);
+  return into;
+}
+
+/**
+ * Objectives whose wording one text carries: at least half of the objective's content words (its
+ * command verb and closed-class words dropped, each word reduced to a crude stem). One text must
+ * carry them, so a word the lesson repeats everywhere ("fire") cannot cover an objective alone.
+ */
+function coveredByWording(facts: LessonFacts, texts: readonly string[]): Set<string> {
+  const stemsOf = texts.map((t) => new Set(contentStems(t)));
+  const covered = new Set<string>();
+  for (const objective of facts.objectives) {
+    const wanted = [...new Set(contentStems(objective.text))];
+    if (wanted.length === 0) {
+      covered.add(objective.id);
+      continue;
+    }
+    const need = Math.ceil(wanted.length / 2);
+    if (stemsOf.some((have) => wanted.filter((w) => have.has(w)).length >= need)) {
+      covered.add(objective.id);
+    }
+  }
+  return covered;
+}
+
+/**
+ * Words that say nothing about what an objective covers: closed-class words and the command verbs
+ * an objective opens with ("Describe how people used …").
+ */
+const NON_CONTENT_WORDS: ReadonlySet<string> = new Set(
+  (
+    "a an the and or but nor so yet of in on at by for from with without into onto to as than " +
+    "that this these those it its their there they them he she his her we our you your i my " +
+    "is are was were be been being do does did has have had can could should would will may " +
+    "might must shall how why what which when where who whom whose whether if not no all some " +
+    "any each every both more most many much few one ad bc " +
+    "describe explain locate identify tell say state name list give know understand recognise " +
+    "recognize recall define outline compare use used using show learn"
+  ).split(" "),
+);
+
+/**
+ * A word's crude stem, so an objective's "cities" or "stopped" meets a slide's "city" or "stop":
+ * "-ies"/"-ied" become "y"; else a plural, past or "-ing" ending and a final "e" drop; then a
+ * doubled final consonant is undoubled ("stopp" → "stop").
+ */
+function stem(word: string): string {
+  if (/i(?:es|ed)$/.test(word) && word.length > 4) return `${word.slice(0, -3)}y`;
+  let out = word;
+  for (const suffix of ["ing", "ed", "es", "s", "e"]) {
+    if (word.endsWith(suffix) && word.length - suffix.length >= 3) {
+      out = word.slice(0, -suffix.length);
+      break;
+    }
+  }
+  return out.length > 3 && /([b-df-hj-np-tv-z])\1$/.test(out) ? out.slice(0, -1) : out;
+}
+
+/** The content words of a text, stemmed; numbers count ("AD 122"). */
+function contentStems(text: string): string[] {
+  return (
+    text
+      .toLowerCase()
+      .replace(/[’']s\b/g, "")
+      .match(/[\p{L}\p{N}]+/gu) ?? []
+  )
+    .filter((w) => !NON_CONTENT_WORDS.has(w) && (w.length >= 3 || /^\p{N}+$/u.test(w)))
+    .map(stem);
 }
 
 /**

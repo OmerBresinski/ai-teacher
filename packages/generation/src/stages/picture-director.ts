@@ -480,7 +480,15 @@ export function planPicture(
   // Only the director's own kind counts. An unclassified ask stays null, which is real-only, even
   // a depicting past scene: it could be a portrait, a place or a monument (rulings 163, 296). Only
   // an explicit `event` is painted, whether or not the writer named it (rulings 163, 210).
-  const kind = d.named ?? null;
+  // TEACH-251 part r (ruling 210): people doing something at a real place in its own time (Roman
+  // soldiers patrolling Hadrian's Wall, a traveller approaching its gateway) is a past scene, not
+  // the place: when the search misses it is painted, as an event is. The director files these
+  // under `place` (romans verify3 s6 and s8 went bare as real-only). Only the director's own
+  // `shows` is read, it needs people and what they are doing, and a writer-named subject is
+  // never reclassified: the place or monument itself, with people in it or not, a reconstruction
+  // or its building included, stays real-only (rulings 210 and 296).
+  const pastScene = !!period && d.named === "place" && !ask.named && isPastScene(first.shows);
+  const kind = pastScene ? "event" : (d.named ?? null);
   // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
   // ruling 209 never puts a generated panel beside real ones.
   const ruledFallback = !ruled
@@ -813,6 +821,21 @@ export async function findDirected(args: {
 /** Round 7: words that make a historical picture show people or an event (not wheat or ore). */
 const DEPICTS =
   /\b(people|person|man|men|woman|women|child|children|crowd|soldiers?|army|armies|legion(ary|aries)?|troops|king|queen|emperor|ruler|leader|workers?|shoppers?|families|family|villagers|battle|landing|invasion|invad\w*|march\w*|riot|protest|meeting|ceremony|siege|fight\w*|attack\w*|parade|queue)\b/i;
+
+/** People in a past scene (who), for `isPastScene`. */
+const SCENE_PEOPLE =
+  /\b(soldiers?|guards?|sentr(y|ies)|legionar(y|ies)|troops|travell?ers?|traders?|merchants?|visitors?)\b/i;
+/**
+ * What they are doing: movement, watch and trade, never building or simply being there ("the
+ * Great Wall built by workers", "the Colosseum with crowds" stay pictures of the monument).
+ */
+const SCENE_DOING =
+  /\b(patroll?ing|patrols?|walking|marching|guarding|keeping watch|standing guard|approaching|crossing|carrying|trading|waiting|checking)\b/i;
+
+/** A picture of people doing something at a past place: a scene there (ruling 210). */
+export function isPastScene(shows: string): boolean {
+  return SCENE_PEOPLE.test(shows) && SCENE_DOING.test(shows);
+}
 
 /** Round 7: the artefact request for a past event or person whose scene has no real picture. */
 export function artefactRequest(shows: string, period?: string): string {

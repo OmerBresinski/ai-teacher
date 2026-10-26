@@ -156,8 +156,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.11", () => {
-    expect(PILOT_PACK_ID).toBe("v4.11");
+  test("production runs v4.12", () => {
+    expect(PILOT_PACK_ID).toBe("v4.12");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
@@ -229,14 +229,18 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         // Wave C (TEACH-110 part v) is new teaching layouts, not the question layouts: left out.
         const st = ks === "KS3" ? "KS3-5" : ks;
         const waveLines = new Set(Object.values(waveCMenu(st)));
-        // v4.11 lengthened the pupil-line rule (wording, not a question layout): v4.10's line stands
-        // in for it here, so only that delta is left out; its own cap is the test below.
-        const pupil = (v: "v4.10" | "v4.11") =>
-          PILOT_PACKS[v].system[ks].split("\n").find((l) => l.startsWith(PUPIL_LINE)) as string;
+        // v4.11 and v4.12 lengthened prose rules (wording, not a question layout): each changed
+        // line is replaced by v4.10's line with the same opening, so only that delta is left out;
+        // its own caps are the tests below.
+        const old = PILOT_PACKS["v4.10"].system[ks].split("\n");
+        const was = (l: string) =>
+          id === "v4.6" || old.includes(l)
+            ? l
+            : (old.find((o) => o.slice(0, 24) === l.slice(0, 24)) ?? l);
         const lines = r.system
           .split("\n")
           .filter((l) => !waveLines.has(l))
-          .map((l) => (id === "v4.11" && l.startsWith(PUPIL_LINE) ? pupil("v4.10") : l));
+          .map(was);
         const kept = lines.filter((l) =>
           id !== "v4.6" ? l !== line : !l.startsWith("- panel-list: "),
         );
@@ -254,6 +258,13 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
         PILOT_PACKS[v].system[ks].split("\n").find((l) => l.startsWith(PUPIL_LINE)) as string;
       expect(pupil("v4.11").length - pupil("v4.10").length).toBeGreaterThan(0);
       expect(pupil("v4.11").length - pupil("v4.10").length).toBeLessThanOrEqual(900);
+    }
+  });
+  test("v4.12's wording grows v4.11's by at most 2,300 characters at each key stage", () => {
+    for (const ks of ["KS1", "KS2", "KS3"] as const) {
+      const grow = PILOT_PACKS["v4.12"].system[ks].length - PILOT_PACKS["v4.11"].system[ks].length;
+      expect(grow).toBeGreaterThan(0);
+      expect(grow).toBeLessThanOrEqual(2300);
     }
   });
   test("every flowShapeRoutes shape is a flow shape, and each routed layout's line names its shapes", () => {
