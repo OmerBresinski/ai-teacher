@@ -84,7 +84,17 @@ export const lessonEditorRoute = createRoute({
   getParentRoute: () => guestLayoutRoute,
   path: "/l/$lessonId",
   validateSearch: (search) => lessonEditorSearchSchema.parse(search),
-  loader: ({ context, params }) => loadDocument(context.queryClient, params.lessonId),
+  loader: async ({ context, params }) => {
+    const document = await loadDocument(context.queryClient, params.lessonId);
+    // A lesson still being written (a reload, a pasted link) needs the companion and its motion:
+    // fetched beside the editor's chunk so the character is there with the editor's first frame.
+    const meta = context.queryClient.getQueryData<{ generatingJobId?: string | null }>(
+      libraryQueries.documentMeta(params.lessonId).queryKey,
+    );
+    if (meta?.generatingJobId)
+      void import("@/lib/lesson-editor-preload").then((m) => m.preloadLessonEditor());
+    return document;
+  },
   head: titleFrom,
   component: lazyRouteComponent(() => import("./lesson-editor.page"), "LessonEditorPage"),
   // The editor's own frame, never the generic card, while the lesson or the chunk loads. Arriving

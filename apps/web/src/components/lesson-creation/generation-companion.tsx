@@ -186,6 +186,10 @@ export function GenerationCompanion({
       };
     } else {
       const immediate = first.current || reduced.matches;
+      // Opening on a lesson already being written (a reload): the character fades into its slot
+      // once, rather than appearing in one frame.
+      if (first.current && skipIntro && !reduced.matches)
+        gsap.fromTo(actor, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35, ease: "power1.out" });
       first.current = false;
       // A flight in the air is never cut: it lands, then eases onto this slot (its onComplete).
       const flying = !immediate && flight.current?.isActive();

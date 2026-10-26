@@ -392,14 +392,17 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     },
     [lessonId],
   );
-  const editing = !!data && isFullDocument(data) && !!meta && !meta.generatingJobId;
-  // A layout effect, so the editor's first paint is already in the picked theme.
+  // A theme picked before the editor opened (the generating view's dialog) goes on as soon as the
+  // editor mounts, the filling editor included, and is then forgotten: held back to the end it
+  // used to overwrite a theme the teacher picked in the editor since. A layout effect, so the
+  // editor's first paint is already in the picked theme; it runs on every commit because the
+  // editor's handle is only there once the editor has mounted.
   useLayoutEffect(() => {
-    if (!editing || (stoppedJobId && !keepEditing) || !pickedTheme || !editorRef.current) return;
+    if ((stoppedJobId && !keepEditing) || !pickedTheme || !editorRef.current) return;
     editorRef.current.retheme(pickedTheme);
     writePickedTheme(lessonId, null);
     setPickedTheme(null);
-  }, [editing, stoppedJobId, keepEditing, pickedTheme, lessonId]);
+  });
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   // Try again (UX-A): a new job writes the rest. The row it starts from is read first, so the next

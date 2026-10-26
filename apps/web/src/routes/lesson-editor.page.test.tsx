@@ -316,6 +316,18 @@ describe("LessonEditorPage", () => {
     expect(document.querySelector('[data-canvas] [contenteditable="true"]')).toBeNull();
   });
 
+  it("a theme picked before the editor opened goes on when the filling editor mounts, then is forgotten", async () => {
+    seedStarting();
+    window.sessionStorage.setItem("tj:generating-theme:demo-water-cycle", "exam-hall");
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
+    // Applied on mount while the lesson still fills, not held back to the end, where it would
+    // overwrite a theme the teacher picks in the editor meanwhile.
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem("tj:generating-theme:demo-water-cycle")).toBeNull(),
+    );
+    expect(screen.getByRole("button", { name: /Theme.*Exam Hall/i })).toBeVisible();
+  });
   it("polish 1: when the editor takes over, focus lands once on the hidden line naming the lesson", async () => {
     seedStarting();
     renderPage();
