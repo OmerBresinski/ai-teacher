@@ -745,7 +745,11 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     : credited(out.slides);
   // TEACH-191 part b: the practice and exit answers on Answers slides behind a guard, at the end.
   const keyStage = stageOf(lesson.ageBand, lesson.yearGroup);
-  const answersTheme = atKeyStage(getTheme(lesson.themeId, null), keyStage);
+  // TEACH-247 part am: in the theme the row holds now, not the one the job started in. Built in
+  // Splash and drawn in the Crayon Box the teacher had picked, an answer wrapped a line more in the
+  // wider face and ran into the next (Great Fire Y2 verify4 s15).
+  const themeNow = await deps.themeNow?.().catch(() => undefined);
+  const answersTheme = atKeyStage(getTheme(themeNow ?? lesson.themeId, null), keyStage);
   const shipped = withEndAnswers(deck as unknown as Slide[], {
     theme: answersTheme,
     stage: keyStage,

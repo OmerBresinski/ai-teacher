@@ -152,6 +152,12 @@ export interface PipelineDeps {
    */
   persist: (lesson: Lesson, worksheet?: Worksheet) => Promise<{ updatedAt: string }>;
   /**
+   * The theme the lesson row holds now (TEACH-247 part am). A teacher may pick another theme while
+   * the job writes; the Answers slides are built last, in this theme, so the editor never has to
+   * draw rows measured in the job's starting faces. Absent (tests, lab), the job's own theme.
+   */
+  themeNow?: () => Promise<string | undefined>;
+  /**
    * One progress event. `stage` is the pipeline stage emitting it (ADR 0029 item 14): the worker
    * writes it as `progress.stage` so the client no longer has to read the stage off the percent.
    */
