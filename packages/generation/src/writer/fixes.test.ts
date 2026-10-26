@@ -78,6 +78,20 @@ describe("K3: an incomplete writer output (row 5)", () => {
     }
     expect(countMiss(8, 10)).toBeUndefined();
   });
+  test("a tier's range holds at its minimum: Detailed 13 to 16 does not ship 12 (TEACH-110 part ao)", () => {
+    const text = (deck: number) => JSON.stringify({ slides: Array.from({ length: deck - 2 }) });
+    expect(writerIncomplete({ text: text(12), minSlides: 13, maxSlides: 16 })).toBe(
+      "12 slides with title and objectives, under the tier's 13",
+    );
+    expect(writerIncomplete({ text: text(11), minSlides: 13, maxSlides: 16 })).toMatch(
+      /under the tier/,
+    );
+    for (const deck of [13, 16, 17])
+      expect(writerIncomplete({ text: text(deck), minSlides: 13, maxSlides: 16 })).toBeUndefined();
+    // The close slide counts: 11 slides plus the close is 13 with title and objectives.
+    const closed = JSON.stringify({ slides: Array.from({ length: 10 }), close: {} });
+    expect(writerIncomplete({ text: closed, minSlides: 13, maxSlides: 16 })).toBeUndefined();
+  });
 });
 
 describe("seeded hinge shuffle (row 6)", () => {

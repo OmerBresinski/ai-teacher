@@ -1299,6 +1299,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     finishReason: main.finishReason ?? null,
     text: main.text,
     minSlides: brief.slides.min,
+    maxSlides: brief.slides.max,
   });
   if (incomplete) {
     log({ ev: "main-incomplete", why: incomplete, chars: main.text.length });

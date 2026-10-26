@@ -13,7 +13,14 @@ import fixture from "../writer/fixtures/activities/y1-animals.json" with { type:
 import type { ChatReq, WriterReq, WriterServices } from "../writer/services";
 import { runWriter } from "../writer/stage";
 import { writerObjectivesCall } from "./objectives";
-import { slideRange, stageOf, withQueuedWorksheet, writerBrief, writtenTitle } from "./write";
+import {
+  slideRange,
+  stageOf,
+  withQueuedWorksheet,
+  writerBrief,
+  writerMinutes,
+  writtenTitle,
+} from "./write";
 
 /*
  * Sixth-form lessons carry `ageBand: "post16"` (`deriveAgeBand`, Years 12–13). The writer used
@@ -254,5 +261,27 @@ describe("the slide range leaves room for splits", () => {
     });
   test("an exact slide count is not a range", () => {
     expect(slideRange({ slideCount: 10 })).toEqual({ min: 10, max: 10 });
+  });
+});
+
+describe("writerMinutes: the time budget scales with the tier (TEACH-110 part ao)", () => {
+  const lesson = (brief: Partial<NonNullable<Lesson["brief"]>>, yearGroup = "Year 2") =>
+    ({
+      ...sampleBriefLesson({ yearGroup }),
+      ageBand: deriveAgeBand(yearGroup),
+      brief: { topic: "Plants", ...brief },
+    }) as unknown as Lesson;
+  test("a KS1 default of 45 minutes is the tier's budget", () => {
+    expect(writerMinutes(lesson({ durationMin: 45, slideTier: "detailed" }))).toBe(60);
+    expect(writerMinutes(lesson({ durationMin: 45, slideTier: "standard" }))).toBe(45);
+    expect(writerMinutes(lesson({ durationMin: 45, slideTier: "quick" }))).toBe(30);
+    expect(writerBrief(lesson({ durationMin: 45, slideTier: "detailed" })).durationMin).toBe(60);
+  });
+  test("typed minutes and an older exact count keep their minutes", () => {
+    expect(writerMinutes(lesson({ durationMin: 50, slideTier: "detailed" }))).toBe(50);
+    expect(writerMinutes(lesson({ durationMin: 45, slideCount: 12 }))).toBe(45);
+  });
+  test("the brief carries no stray tier field", () => {
+    expect("tier" in writerBrief(lesson({ durationMin: 45, slideTier: "detailed" }))).toBe(false);
   });
 });
