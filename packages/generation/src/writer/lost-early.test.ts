@@ -23,6 +23,8 @@ type Opts = {
   gate?: Promise<void>;
   throws?: boolean;
   atEditable?: () => void;
+  /** Slide 5's picture is still pending when its own wait ends, and fails only at the deadline. */
+  pendingAtWait?: boolean;
 };
 async function run(early: boolean, o: Opts = {}) {
   const lostSlides = new Set(o.lost ?? [4]);
@@ -34,9 +36,11 @@ async function run(early: boolean, o: Opts = {}) {
     const k = `${i}:${key}`;
     if (placed.has(k))
       return { status: "photo", photo: { src: src(k), alt: key, aspect: 1.5, request: key } };
-    if (lostSlides.has(i) && a.type === "photo") return { status: "failed" };
+    if (lostSlides.has(i) && a.type === "photo")
+      return o.pendingAtWait && !deadlinePassed ? { status: "pending" } : { status: "failed" };
     return rec(i, key, a);
   };
+  let deadlinePassed = false;
   const events: { ev?: string; slide?: number }[] = [];
   const diagramSlides = new Set<number>();
   const out = await runWriter({
@@ -59,6 +63,10 @@ async function run(early: boolean, o: Opts = {}) {
     retryable: (i) => lostSlides.has(i),
     ...(early ? { slideDone: async () => {} } : {}),
     beforeEditable: async () => {
+      // The round's settle: what was still pending is now failed (miss "deadline"), after the
+      // slide's own wait has ended and its early job has looked.
+      if (o.pendingAtWait) await new Promise((r) => setTimeout(r, 20));
+      deadlinePassed = true;
       order.push("pictures settled");
     },
     placeMore: async (i, more) => {
@@ -135,5 +143,15 @@ describe("an early retry never holds editable back", () => {
     expect(JSON.stringify(out.slides)).toContain(src);
     // cardRetry and fallback had nothing to do on this slide (the only slides retried early).
     expect(events.some((e) => e.ev === "card-retry" && e.slide === 5)).toBe(false);
+  });
+});
+
+describe("a picture still pending when its early wait ends", () => {
+  test("the early job does not retry it; the tail does, after editable, once", async () => {
+    const { out, order, events, src } = await run(true, { pendingAtWait: true });
+    expect(events.some((e) => e.ev === "lost-early")).toBe(false);
+    expect(order.filter((x) => x.startsWith("retry"))).toEqual(["retry 4:picture"]);
+    expect(order.indexOf("retry 4:picture")).toBeGreaterThan(order.indexOf("editable"));
+    expect(JSON.stringify(out.slides)).toContain(src);
   });
 });

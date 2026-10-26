@@ -151,3 +151,55 @@ describe("whenSlideDone and the early re-ask (the lost picture retried before ed
     expect(pictures.vetoed(3, "picture")).toContain("No real photograph");
   });
 });
+
+describe("whenSlideDone: its deadline, a cancel, and the re-ask after it", () => {
+  const never = new Promise<PictureDirection>(() => {});
+  const build = (direct: () => Promise<PictureDirection | undefined>, signal?: AbortSignal) =>
+    createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: {
+        ...recordingDeps(createFakeAi({ script: [] })),
+        ...(signal ? { signal } : {}),
+      },
+      direct,
+    });
+
+  test("the deadline ends the wait; the slot stays pending (never marked failed) and is not re-asked", async () => {
+    let calls = 0;
+    const pictures = build(async () => {
+      calls++;
+      return never;
+    });
+    pictures.start(3, ask, slide);
+    const t = Date.now();
+    await pictures.whenSlideDone(3, 30);
+    expect(Date.now() - t).toBeLessThan(1_000);
+    expect(pictures.state(3, "picture").status).toBe("pending");
+    // Its placement is not over: no early re-ask.
+    expect(pictures.canReask(3, "picture")).toBe(false);
+    pictures.start(3, ask, slide);
+    expect(calls).toBe(1);
+  });
+
+  test("a cancel ends the wait at once", async () => {
+    const ac = new AbortController();
+    const pictures = build(async () => never, ac.signal);
+    pictures.start(3, ask, slide);
+    const waiting = pictures.whenSlideDone(3, 60_000);
+    ac.abort();
+    const t = Date.now();
+    await waiting;
+    expect(Date.now() - t).toBeLessThan(1_000);
+  });
+
+  test("a cancel before the wait: it returns at once", async () => {
+    const ac = new AbortController();
+    ac.abort();
+    const pictures = build(async () => never, ac.signal);
+    const t = Date.now();
+    await pictures.whenSlideDone(3, 60_000);
+    expect(Date.now() - t).toBeLessThan(1_000);
+  });
+});

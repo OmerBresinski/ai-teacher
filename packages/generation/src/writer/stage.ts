@@ -1779,6 +1779,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // still running at editable goes on exactly as the tail's would (the same swap and placement,
   // merged under the same per-slide ownership, ADR 0037/0039).
   const earlyLost = new Map<number, Promise<void>>();
+  /** Slides whose early job actually ran retryLost (the tail runs it for every other slide). */
+  const retriedEarly = new Set<number>();
   if (run.slideDone)
     for (let i = 2; i < n; i++) {
       const a0 = asks.get(i) ?? [];
@@ -1805,6 +1807,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           const now = plan.slides[i] as S;
           kept = { s: now, n: notes.get(i), a: asks.get(i) ?? [], p: path.get(i) };
           log({ ev: "lost-early", slide: i + 1 });
+          retriedEarly.add(i);
           await retryLost(i);
         },
         (e) => {
@@ -2730,7 +2733,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (early) await early;
     await cardRetry(i);
     await fallback(i);
-    if (!early) await retryLost(i);
+    // A slide whose early job did not retry (its pictures were still pending at the wait's
+    // deadline, or the wait was cut short) gets the tail's retry, as on master.
+    if (!retriedEarly.has(i)) await retryLost(i);
     const beforeLost = plan.slides[i] as S | undefined;
     const asksBeforeLost = asks.get(i) ?? [];
     await pictureLost(i);
