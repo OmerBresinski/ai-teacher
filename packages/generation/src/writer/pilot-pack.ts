@@ -27,6 +27,9 @@ import s73 from "./bundles/pilot-v4.7/system-KS3.txt" with { type: "text" };
 import t81 from "./bundles/pilot-v4.8-menu/system-KS1.template.txt" with { type: "text" };
 import t82 from "./bundles/pilot-v4.8-menu/system-KS2.template.txt" with { type: "text" };
 import t83 from "./bundles/pilot-v4.8-menu/system-KS3.template.txt" with { type: "text" };
+import t91 from "./bundles/pilot-v4.9-menu/system-KS1.template.txt" with { type: "text" };
+import t92 from "./bundles/pilot-v4.9-menu/system-KS2.template.txt" with { type: "text" };
+import t93 from "./bundles/pilot-v4.9-menu/system-KS3.template.txt" with { type: "text" };
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
@@ -92,6 +95,12 @@ export type PilotPack = {
    * chosen and the idea counted against it while a split is still possible (loop 1b, v4.8).
    */
   flowLayout?: boolean;
+  /**
+   * `slides` takes the production schema's bounds, as `flow` does (v4.9, TEACH-110 part aq). The
+   * pack bases fix slides at 7..10 (Standard), so with `close` every tier wrote 9 to 12 slides: a
+   * Detailed plan of 13 had to close early and its flow entries stopped matching its slides.
+   */
+  tierSlides?: boolean;
 };
 
 /** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
@@ -182,10 +191,34 @@ export const PILOT_PACKS = {
     waveC: true,
     routedFits: WAVE_C_ROUTED_FITS,
   },
+  // v4.9 (TEACH-110 part aq): v4.8 with the slides its plan lists. Each tier's slide bounds reach
+  // `slides` (`tierSlides`), and step 3 writes one slide per flow entry, in order, ending at its
+  // last; the count line counts the close. A picture's named vs generic subject gains examples
+  // (ruling 296: an ordinary object of a period is generic). Templates differ from v4.8 in those
+  // three lines only.
+  "v4.9": {
+    id: "v4.9",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(assembleWriterSystem(t91, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(assembleWriterSystem(t92, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(assembleWriterSystem(t93, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.8";
+export const PILOT_PACK_ID: PilotPackId = "v4.9";
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
@@ -248,6 +281,11 @@ export function pilotRequest(
     fp.minItems = pf.minItems;
     fp.maxItems = pf.maxItems;
     fp.items.properties.teaches = pf.items.properties.teaches;
+  }
+  const ps = prod.properties?.slides;
+  if (pack.tierSlides && ps) {
+    schema.properties.slides.minItems = ps.minItems;
+    schema.properties.slides.maxItems = ps.maxItems;
   }
   fp.items.properties.shape.enum = [...pack.layouts.flowShapes];
   if (pack.layouts.flowSize) {
