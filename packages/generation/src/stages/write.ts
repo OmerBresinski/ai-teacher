@@ -503,6 +503,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     const services = aiWriterServices(deps);
     out = await runWriter({
       brief: writerBrief(lesson),
+      ...(deps.themeNow ? { themeNow: deps.themeNow } : {}),
       objectives,
       bundle: writerBundleOf(lesson),
       // The pilot layouts (TEACH-110 part s): the writer runs the pilot pack, its system text

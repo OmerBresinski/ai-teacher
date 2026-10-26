@@ -25,6 +25,7 @@ import {
   SLIDE_W,
   type Slide,
   type SlideElement,
+  type TextElement,
   type Theme,
 } from "@tj/domain/documents";
 import { explanationReserve, owesExplanationLane, RESERVED_LINES } from "./explanation-metrics";
@@ -40,6 +41,8 @@ import {
   type Measurer,
   textPartsOf,
 } from "./reflow";
+import { countLines, lineWidth } from "./text-measure";
+import { resolveTextStyle } from "./text-style";
 
 /** A pair of ids whose boxes intersect. Always ordered by draw order. */
 export type OverlapPair = [Id, Id];
@@ -321,6 +324,49 @@ export function answersFaults(slide: Slide, measure?: Measurer): string[] {
   for (const el of drawn.elements) {
     if (isBackdrop(el) || isBleed(el)) continue;
     if (el.y + el.h > SLIDE_H + EPS) out.push(`clipped: ${el.id} runs past the slide's foot`);
+  }
+  return out;
+}
+
+/**
+ * Words on words, measured in the theme the slide is drawn in (TEACH-247 part ap). For every text
+ * box: a word wider than the box (the browser breaks it inside, "Firebreak/s"), and a box whose
+ * words take more lines than its height holds where the next text box below it starts (a
+ * question's second line running into the next question). The slide's own boxes are trusted for
+ * position; the line count is measured with the theme's real font advances. Answers slides have
+ * their own rules (`answersFaults`) and are skipped.
+ */
+export function textFaults(slide: Slide, theme: Theme): string[] {
+  if (slide.answersRole) return [];
+  const texts = slide.elements.filter(
+    (e): e is TextElement => e.type === "text" && e.w > EPS && e.h > EPS,
+  );
+  const out: string[] = [];
+  const wordsOf = (e: TextElement) =>
+    JSON.stringify(e.doc)
+      .match(/"text":"((?:[^"\\]|\\.)*)"/g)
+      ?.map((m) => JSON.parse(m.slice(7)) as string)
+      .join("") ?? "";
+  for (const e of texts) {
+    const text = wordsOf(e);
+    if (!text.trim()) continue;
+    const r = resolveTextStyle(e.style, theme);
+    const preset = e.style.preset ?? "body";
+    const weight = e.style.fontWeight ?? r.fontWeight;
+    const size = e.style.fontSize ?? r.fontSize;
+    const base = resolveTextStyle({ preset }, theme).fontSize || size;
+    const inner = e.w - 2 * (e.style.padding ?? 0);
+    const wide = text
+      .split(/\s+/)
+      .filter(Boolean)
+      .find((w) => (lineWidth(w, preset, theme, weight) * size) / base > inner + 0.5);
+    if (wide) out.push(`clipped: "${wide}" is wider than its box ${e.id}`);
+    const lines = countLines(text, preset, theme, inner, weight, size);
+    const h = lines * size * (e.style.lineHeight ?? r.lineHeight);
+    const below = texts
+      .filter((o) => o !== e && o.y >= e.y + e.h - EPS && o.x < e.x + e.w && o.x + o.w > e.x)
+      .sort((a, b) => a.y - b.y)[0];
+    if (below && e.y + h > below.y + 1) out.push(`overlap: ${e.id} runs into ${below.id}`);
   }
   return out;
 }
