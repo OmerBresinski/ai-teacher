@@ -38,6 +38,7 @@ export type LayoutKit = Pick<
   | "canSplit"
   | "splitItems"
   | "relayEndAnswers"
+  | "relayAnswersSlide"
   | "buildEndAnswers"
   | "endAnswersUntouched"
   | "withIds"

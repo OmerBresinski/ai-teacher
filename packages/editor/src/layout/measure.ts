@@ -182,15 +182,23 @@ function plain(doc: RichDoc): string {
  */
 export function measureMany(inputs: MeasureInput[], theme: Theme): number[] {
   const results = new Array<number>(inputs.length);
-  const pending: { i: number; cell: HTMLDivElement; key: string; doc: RichDoc; chrome: number }[] =
-    [];
+  const pending: {
+    i: number;
+    cell: HTMLDivElement;
+    key: string;
+    doc: RichDoc;
+    chrome: number;
+    fixed: boolean;
+  }[] = [];
 
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i];
     if (!input) continue;
     const r = resolveTextStyle(input.style, theme, input.preset, input.role);
     const size = input.fontSize ?? r.fontSize;
-    const key = cacheKey(input, size, r);
+    // A fixed box is judged on its laid-out lines, an auto-height one on what it grows to.
+    const fixed = !r.autoHeight;
+    const key = `${cacheKey(input, size, r)}${fixed ? "|fixed" : ""}`;
     const hit = cache.get(input.doc)?.get(key);
     if (hit) {
       results[i] = hit.height;
@@ -200,7 +208,14 @@ export function measureMany(inputs: MeasureInput[], theme: Theme): number[] {
       results[i] = estimate(input, size, r.lineHeight);
       continue;
     }
-    pending.push({ i, cell: buildCell(input, theme), key, doc: input.doc, chrome: input.chrome });
+    pending.push({
+      i,
+      cell: buildCell(input, theme),
+      key,
+      doc: input.doc,
+      chrome: input.chrome,
+      fixed,
+    });
   }
 
   if (pending.length === 0) return results;
@@ -212,8 +227,10 @@ export function measureMany(inputs: MeasureInput[], theme: Theme): number[] {
   void node.offsetHeight;
   for (const p of pending) {
     // `Math.round`, matching `use-auto-height` exactly: the two must agree to the point, or the
-    // renderer will rewrite every height the engine just stored.
-    const height = Math.round(p.cell.scrollHeight + p.chrome);
+    // renderer will rewrite every height the engine just stored. A fixed box reads its line boxes
+    // (`offsetHeight`), as `use-auto-height` does for its overflow mark: a tall face's glyphs past
+    // a tight line height are not an overflow (TEACH-247 part ai).
+    const height = Math.round((p.fixed ? p.cell.offsetHeight : p.cell.scrollHeight) + p.chrome);
     results[p.i] = height;
     let bucket = cache.get(p.doc);
     if (!bucket) {

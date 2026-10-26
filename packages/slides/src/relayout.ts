@@ -13,6 +13,7 @@
 import type {
   AdaptiveTemplateId,
   GroupElement,
+  Id,
   LayoutFrame,
   LayoutRef,
   Slide,
@@ -420,6 +421,85 @@ export function relayEndAnswers(
  */
 export function buildEndAnswers(slides: readonly Slide[], theme: Theme, stage: Stage): Slide[] {
   return endAnswerSlides(answerGroupsOf(slides.filter((s) => !s.answersRole)), theme, stage);
+}
+
+/**
+ * One guard or Answers slide of `slides` laid out again by its template in `theme`, keeping its
+ * id, its page of the stored split and every slide field but its elements; null when it is not one
+ * or its answers no longer read back as the deck's (then it is the teacher's, or out of date).
+ *
+ * A job slide that arrives in the job's starting theme after the teacher picked another one is
+ * fitted to the teacher's theme (TEACH-247 part ag). A generic Tidy reflowed this template's rows
+ * and left each hidden "?" disc behind its moved cover and answer, and pushed the last answer off
+ * the slide (TEACH-247 part ai, Great Fire Y2 s15/s16); the template lays them again instead.
+ */
+export function relayAnswersSlide(
+  slide: Slide,
+  slides: readonly Slide[],
+  theme: Theme,
+  stage: Stage,
+): Slide | null {
+  if (slide.answersRole === "guard")
+    return relaidIfSameWords(slide, layoutAnswersGuard(theme, stage));
+  if (slide.answersRole !== "answers") return null;
+  const stored = slides.filter((s) => s.answersRole === "answers");
+  const k = stored.findIndex((s) => s.id === slide.id);
+  if (k < 0) return null;
+  // The page split is read from names and counts alone (kickers, badges) and the answers from the
+  // lesson's questions, so the other pages may still be in the old theme's places and faces.
+  const pages = storedPages(stored, answerGroupsOf(slides.filter((s) => !s.answersRole)));
+  const page = pages?.[k];
+  if (!page) return null;
+  return relaidIfSameWords(slide, layoutAnswersPage(page, theme, stage));
+}
+
+/**
+ * `slide` with the template's new elements, or null when its words are not the template's (a
+ * teacher's wording edit is theirs: the caller only recolours it).
+ */
+function relaidIfSameWords(slide: Slide, built: { slide: Slide }): Slide | null {
+  if (wordsOf(built.slide) !== wordsOf(slide)) return null;
+  return { ...slide, elements: keepIds(built.slide, slide) };
+}
+
+/** Every word on the slide, element by element (text boxes and shape labels), order aside. */
+function wordsOf(slide: Slide): string {
+  return slide.elements
+    .map((e) => {
+      const doc = (e as { doc?: unknown }).doc;
+      if (!doc) return "";
+      const out: string[] = [];
+      const walk = (n: unknown) => {
+        if (!n || typeof n !== "object") return;
+        const node = n as { text?: unknown; content?: unknown[] };
+        if (typeof node.text === "string") out.push(node.text);
+        for (const c of node.content ?? []) walk(c);
+      };
+      walk(doc);
+      return out.join("");
+    })
+    .filter(Boolean)
+    .sort()
+    .join("\n");
+}
+
+/**
+ * The built elements, each keeping the id of the old element of the same type and name at the same
+ * occurrence (the second badge keeps the second badge's id), so a template that reorders or adds an
+ * element still keeps every id it can. An element with no counterpart gets a fresh id.
+ */
+function keepIds(built: Slide, old: Slide): Slide["elements"] {
+  const key = (e: SlideElement) => `${e.type}\u0000${e.name ?? ""}`;
+  const pool = new Map<string, Id[]>();
+  for (const e of old.elements) pool.set(key(e), [...(pool.get(key(e)) ?? []), e.id]);
+  const seen = new Map<string, number>();
+  return built.elements.map((e) => {
+    const k = key(e);
+    const n = seen.get(k) ?? 0;
+    seen.set(k, n + 1);
+    const id = pool.get(k)?.[n];
+    return id ? { ...e, id } : e;
+  });
 }
 
 /**
