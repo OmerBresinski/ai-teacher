@@ -460,6 +460,8 @@ const FIGURE_FIELD: Record<string, string> = {
   "exit-ticket": "figure",
   discussion: "picture",
   title: "picture",
+  // TEACH-247 part ba: the question picture at the foot of the reasons panel.
+  reasons: "picture",
 };
 /**
  * A slide the flow's `look` says shows a picture, but which asks for none, gets that picture from

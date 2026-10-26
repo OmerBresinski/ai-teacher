@@ -47,6 +47,7 @@ const slides: Record<string, any> = {
       { head: "Money", line: "Taxes were too high", icon: null },
       { head: "Army", line: "Soldiers were paid late", icon: null },
     ],
+    picture: null,
   },
   source: {
     template: "source",
