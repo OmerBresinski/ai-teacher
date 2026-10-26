@@ -7,9 +7,10 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { Lesson, Slide, SlideElement } from "@tj/domain/documents";
-import { measureHeadless } from "@tj/slides";
+import { measureHeadless, SAFE, SPACE } from "@tj/slides";
 import { layoutTemplate, type TemplateInput } from "@tj/slides/templates";
 import { inLessonTheme } from "../layout/retheme";
+import { tidySlide } from "../layout/tidy";
 import { renderTheme } from "../model/themes";
 import { seededLesson } from "./test-harness";
 
@@ -52,5 +53,14 @@ describe("a job slide laid in the starting theme is fitted to the teacher's (TEA
     const card = els(fitted).find((e) => e.name === "surface:card") as Box;
     for (const t of els(fitted).filter((e) => e.name === "Task"))
       expect(t.y + t.h).toBeLessThanOrEqual(card.y + card.h);
+  });
+
+  test("an ordinary Tidy never grows a card past the recipe's foot", () => {
+    const slide = { ...laidIn("crayon", "exit-ticket", EXIT), id: "own" } as Slide;
+    const browser = ((a: { doc?: unknown }) =>
+      ruler(a as never) * (textOf(a).includes("Explain spread") ? 1.4 : 1)) as typeof ruler;
+    const out = tidySlide({ ...lesson, slides: [slide] }, "own", browser).lesson.slides[0] as Slide;
+    const card = els(out).find((e) => e.name === "surface:card") as Box;
+    expect(card.y + card.h).toBeLessThanOrEqual(SAFE.y + SAFE.h - SPACE[1] + 0.5);
   });
 });

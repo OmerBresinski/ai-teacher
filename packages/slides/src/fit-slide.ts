@@ -272,13 +272,15 @@ function changed(slide: Slide, result: ReflowResult): boolean {
 export function growCards(
   before: SlideElement[],
   after: SlideElement[],
-  /** How low a card may grow; Tidy, which never splits a generated slide, lets it reach further. */
+  /** How low a card may grow (a re-theme's Tidy lets it reach a little further). */
   foot = SAFE_BOTTOM - SPACE[1],
+  /** Grow a template's locked `surface:` cards too (the editor's Tidy; generation's fit leaves them). */
+  surfaces = false,
 ): SlideElement[] {
   return after.map((card, i) => {
     const card0 = before[i];
     // A template's card is a locked `surface:` shape: it still grows with its words.
-    const surface = (card.name ?? "").startsWith("surface:") && !isBackdrop(card);
+    const surface = surfaces && (card.name ?? "").startsWith("surface:") && !isBackdrop(card);
     if (!card0 || card.type !== "shape" || !isLayerBelow(card) || (isFrozen(card) && !surface))
       return card;
     let bottom = card.y + card.h;

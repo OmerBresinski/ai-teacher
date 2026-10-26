@@ -1,4 +1,5 @@
 import type { GroupElement, Id, Lesson, Slide, Theme } from "@tj/domain/documents";
+import { SAFE, SPACE } from "@tj/slides";
 import { layoutKit } from "../model/layout-kit";
 import * as reducers from "../model/reducers";
 import { type LayoutKit, placeInto, tryRelayout } from "../model/reducers/layout";
@@ -200,7 +201,11 @@ export function inLessonTheme(slide: Slide, lesson: Lesson, measure?: Measurer):
   // it does not see a divider a grown task runs through.
   if (!measure) return recoloured;
   const one = { ...lesson, slides: [recoloured] };
-  return tidySlide(one, recoloured.id, measure, { split: false }).lesson.slides[0] ?? recoloured;
+  const cardFoot = SAFE.y + SAFE.h + SPACE[2];
+  return (
+    tidySlide(one, recoloured.id, measure, { split: false, cardFoot }).lesson.slides[0] ??
+    recoloured
+  );
 }
 
 /** Pure: the lesson in `themeId`, fitted to it. Choosing the theme it already has is a no-op. */

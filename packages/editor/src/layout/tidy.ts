@@ -686,6 +686,7 @@ function fitAndSplit(
   theme: Theme,
   measure: Measurer,
   split = true,
+  cardFoot?: number,
 ): { slides: Slide[]; results: ReflowResult[] } {
   const slides: Slide[] = [];
   const results: ReflowResult[] = [];
@@ -715,10 +716,11 @@ function fitAndSplit(
     }
 
     // A card grows with the text laid on it, as generation's fit does (TEACH-247 part ag).
-    // Text at its floor that still outgrows its card takes the card down to just past the safe
-    // area's foot (above the look's foot band) rather than running through its border.
-    const cardFoot = split ? undefined : SAFE.y + SAFE.h + SPACE[2];
-    slides.push({ ...current, elements: growCards(current.elements, result.elements, cardFoot) });
+    // A card grows with the words laid on it, a template's surface card too (TEACH-247 part ag).
+    slides.push({
+      ...current,
+      elements: growCards(current.elements, result.elements, cardFoot, true),
+    });
     results.push(result);
     if (!next) break;
     current = next;
@@ -756,6 +758,11 @@ export type TidyOptions = {
    * first edit or insert makes the slide theirs, and Tidy may split it again.
    */
   split?: boolean;
+  /**
+   * How low a card may grow with its words. A re-theme passes the safe area's foot plus a stop
+   * (above the look's foot band): text at its floor in the new faces then stays on its card.
+   */
+  cardFoot?: number;
 };
 
 /**
@@ -773,7 +780,7 @@ export function tidySlide(
 
   const theme = renderTheme(lesson);
   const split = options.split ?? !isGeneratedSlide(slide);
-  const { slides, results } = fitAndSplit(slide, theme, measure, split);
+  const { slides, results } = fitAndSplit(slide, theme, measure, split, options.cardFoot);
 
   const head = results[0];
   const tidied = slides[0];
