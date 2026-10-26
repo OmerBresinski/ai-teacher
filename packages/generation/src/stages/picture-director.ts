@@ -480,15 +480,13 @@ export function planPicture(
   // A historical scene with no named kind is read as an event; any other missing kind stays null,
   // which is real-only (ruling 296 never generates a real thing it cannot classify).
   const kind = d.named ?? (depicts ? "event" : null);
-  const ruledFallback = ruled
-    ? realFallbackFor(
-        kind,
-        period ? historyPolicy() : "present",
-        // A forced-real slot (a named set's panel, a named history card) is real-only: ruling 209
-        // never puts a generated panel beside real ones.
-        !!ask.named || opts.real === true,
-      )
-    : undefined;
+  // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
+  // ruling 209 never puts a generated panel beside real ones.
+  const ruledFallback = !ruled
+    ? undefined
+    : opts.real === true
+      ? "none"
+      : realFallbackFor(kind, period ? historyPolicy() : "present", !!ask.named);
   // Ruling 296: a present-day generic object the director sent to Commons is searched like a real
   // thing (Commons, then stock), then made as any generic picture is: the generic route, the
   // lesson's look. A past one stays on the real route with the painted illustration (ruling 163).
