@@ -25,8 +25,9 @@ describe("picture prompt pins", () => {
     expect(sha(system)).toBe(DIRECTOR_SYSTEM_SHA);
   });
 
-  test("the photo judge is v17 and its system prompt is pinned", () => {
-    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v17");
+  // v18 = v17's pinned system text plus the painted-picture rules in the user turn (TEACH-251 part x).
+  test("the photo judge is v18 and its system prompt is still v17's pinned text", () => {
+    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v18");
     expect(sha(pickOrRequeryPrompt.system)).toBe(JUDGE_SYSTEM_SHA);
   });
 });

@@ -192,18 +192,15 @@ export function inLessonTheme(slide: Slide, lesson: Lesson, measure?: Measurer):
       top = n;
     }
   }
-  if (best === own) return slide;
-  const recoloured = recolourSlide(slide, best, own);
-  // TEACH-247 part ag: the job laid the slide out in its starting theme's type ladder and faces,
-  // so a recolour alone left its words overrunning their boxes in the teacher's theme (Great Fire
-  // Y2: a divider through a task, an exit ticket's task through its card). It is fitted to the
-  // lesson's theme: tidied (a no-op on a slide that already fits). Lint alone is not the trigger:
-  // it does not see a divider a grown task runs through.
-  if (!measure) return recoloured;
-  // TEACH-247 part ai: a guard or Answers slide is its template's, never Tidy's. Tidy reflowed its
-  // rows and left each hidden "?" disc behind its moved cover, over the answer above, and pushed
-  // the last answer off the slide (Great Fire Y2 s15/s16). The template lays it again in the
-  // lesson's theme; without the template code loaded it keeps the job's places, recoloured.
+  const recoloured = best === own ? slide : recolourSlide(slide, best, own);
+  // TEACH-247 part ai: a guard or Answers slide is its template's, never Tidy's (Tidy left each
+  // hidden "?" disc behind its moved cover). TEACH-247 part am: and it is laid again in the
+  // lesson's theme on every pass, not only on the round the job first sends it with `measure`, and
+  // even once its palette is already the lesson's. The merge hands back the job's copy each round
+  // (part p: a re-themed job slide is not the teacher's), and a later round recoloured it only, so
+  // the Splash rows were drawn in Crayon's wider face and an answer's third line landed on the next
+  // (Great Fire Y2 verify4 s15). The re-lay is pure and keeps ids, so a slide already laid in the
+  // lesson's theme comes back as it is; a teacher's words keep theirs (`relayAnswersSlide` null).
   if (slide.answersRole) {
     const kit = layoutKit();
     const relaid = kit?.relayAnswersSlide(
@@ -212,8 +209,16 @@ export function inLessonTheme(slide: Slide, lesson: Lesson, measure?: Measurer):
       own,
       kit.stageOf(own, lesson.ageBand),
     );
-    return relaid ?? recoloured;
+    if (!relaid) return recoloured;
+    return JSON.stringify(relaid) === JSON.stringify(slide) ? slide : relaid;
   }
+  if (best === own) return slide;
+  // TEACH-247 part ag: the job laid the slide out in its starting theme's type ladder and faces,
+  // so a recolour alone left its words overrunning their boxes in the teacher's theme (Great Fire
+  // Y2: a divider through a task, an exit ticket's task through its card). It is fitted to the
+  // lesson's theme: tidied (a no-op on a slide that already fits). Lint alone is not the trigger:
+  // it does not see a divider a grown task runs through.
+  if (!measure) return recoloured;
   const one = { ...lesson, slides: [recoloured] };
   const cardFoot = SAFE.y + SAFE.h + SPACE[2];
   return (

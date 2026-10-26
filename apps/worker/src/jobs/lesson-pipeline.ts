@@ -221,6 +221,10 @@ export async function runLessonJob<K extends LessonPipelineJob>(
       ids: uid,
       sources: storageSourceLoader(deps.storage, workspaceId, logger),
       persist: makePersist(ws, lessonId, jobId, stored),
+      themeNow: async () => {
+        const row = await getDocument(ws, lessonId);
+        return row?.kind === "lesson" ? parseLesson(row.body).themeId : undefined;
+      },
       onProgress: (percent, message, stage, documentUpdatedAt) =>
         ctx.progress(percent, message, { documentUpdatedAt, stage }),
       context: { lessonId, jobId },
