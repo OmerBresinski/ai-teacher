@@ -33,7 +33,7 @@ const SourceIdsSchema = z.array(z.uuid()).max(3);
  * message (F01 item 1).
  */
 export const CreateLessonSchema = z.strictObject({
-  brief: BriefSchema.omit({ durationMin: true }).extend({
+  brief: BriefSchema.omit({ durationMin: true, durationDefaulted: true }).extend({
     durationMin: DurationMinSchema.optional(),
   }),
   subject: SubjectSchema.optional(),
@@ -192,6 +192,7 @@ export function defaultDurationMin(ageBand: AgeBand | undefined, tier?: SlideTie
  */
 export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date): Lesson {
   const ageBand = input.ageBand ?? deriveAgeBand(input.yearGroup);
+  const defaulted = input.brief.durationMin === undefined;
   const durationMin =
     input.brief.durationMin ??
     defaultDurationMin(
@@ -219,6 +220,7 @@ export function lessonFromBrief(input: CreateLesson, lessonId: string, now: Date
     brief: {
       ...input.brief,
       durationMin,
+      ...(defaulted ? { durationDefaulted: true } : {}),
       ...(input.brief.slideCount === undefined
         ? { slideTier: input.brief.slideTier ?? DEFAULT_SLIDE_TIER }
         : {}),

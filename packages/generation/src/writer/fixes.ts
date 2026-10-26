@@ -50,23 +50,15 @@ export function objectiveCount(b: Brief): string {
 
 /**
  * K3: why a writer output is incomplete, or undefined when it is whole. A stream cut at the token
- * limit, JSON that does not close, or a deck far under its count fails the attempt (the job
- * retries once, then fails) instead of saving the flow's placeholders as a headings-only deck.
- *
- * A tier's range (ruling 164: "code enforces the range") holds at its minimum on the first try: a
- * Detailed deck of 12 is asked for again (the job's one retry, TEACH-110 part ao). On the retry
- * (`retried`) a short deck ships and is logged (`count-miss`): a teacher with a lesson one slide
- * short is better off than one with an error. An older lesson's exact count (`maxSlides` absent or
- * equal to `minSlides`, ADR 0036) keeps its allowance: up to 2 under ships as written.
+ * limit, JSON that does not close, or a deck more than 2 under the count fails the job instead of
+ * saving the flow's placeholders as a headings-only deck. A tier's deck 1 or 2 under its minimum
+ * ships and is logged (`count-miss` in stage.ts, TEACH-110 part ao): never a retry, which would
+ * double the cost and splice two attempts' slides.
  */
 export function writerIncomplete(o: {
   finishReason?: string | null;
   text: string;
   minSlides: number;
-  /** The range's top; absent or equal to `minSlides` is an exact count. */
-  maxSlides?: number;
-  /** This is the job's retry: a deck under the tier's minimum ships. */
-  retried?: boolean;
 }): string | undefined {
   if (o.finishReason === "length") return "finish_reason length (token limit)";
   if (o.finishReason === "content-filter" || o.finishReason === "content_filter")
@@ -80,12 +72,9 @@ export function writerIncomplete(o: {
   // `slides` holds slide 3 onwards (title and objectives are their own keys).
   // `close` is the lesson's last slide, its own field (TEACH-110 part ab).
   const n = (Array.isArray(out?.slides) ? out.slides.length : 0) + (out?.close ? 1 : 0);
-  const tier = o.maxSlides !== undefined && o.maxSlides > o.minSlides;
-  if (tier && !o.retried && n + 2 < o.minSlides)
-    return `${n + 2} slides with title and objectives, under the tier's ${o.minSlides}`;
-  // An exact count: a small miss (up to 2 under, or any over) ships as written and is logged
-  // (count.ts, ADR 0036); more than 2 under the count is incomplete. A tier on its retry ships.
-  if (!(tier && o.retried) && n + 2 < o.minSlides - 2)
+  // A small count miss (up to 2 under, or any over) ships as written and is logged (count.ts,
+  // ADR 0036); more than 2 under the count, title and objectives included, is incomplete.
+  if (n + 2 < o.minSlides - 2)
     return `${n + 2} slides with title and objectives, more than 2 under ${o.minSlides}`;
   return undefined;
 }

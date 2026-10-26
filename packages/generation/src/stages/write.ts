@@ -2,7 +2,6 @@ import { safeError } from "@tj/domain";
 import {
   type AgeBand,
   DEFAULT_SLIDE_TIER,
-  defaultDurationMin,
   deriveAgeBand,
   LESSON_TITLE_MAX,
   type Lesson,
@@ -11,7 +10,6 @@ import {
   type SlideGenerationState,
   SlideSchema,
   type SlideTier,
-  slideTierOf,
 } from "@tj/domain/documents";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
@@ -88,20 +86,6 @@ export function stageOf(ageBand: string | undefined, yearGroup?: string): Stage 
   return STAGE_OF_BAND[band as AgeBand];
 }
 
-/**
- * The lesson's time budget for the writer. A lesson whose minutes are its key stage's Standard
- * default (nobody typed them) is budgeted for its tier, so a KS1 Detailed lesson is 60 minutes, not
- * 45 (TEACH-110 part ao; the tier can change on confirm, after the default was stored). Minutes
- * the teacher typed are kept as they are.
- */
-export function writerMinutes(lesson: Lesson): number {
-  const b = lesson.brief;
-  const minutes = b?.durationMin ?? lesson.facts?.durationMin ?? 60;
-  const band = lesson.ageBand ?? deriveAgeBand(lesson.yearGroup);
-  if (b?.slideCount !== undefined || minutes !== defaultDurationMin(band)) return minutes;
-  return defaultDurationMin(band, slideTierOf(b));
-}
-
 /** The writer's brief, read off the lesson. */
 export function writerBrief(lesson: Lesson): Brief {
   const year = Number(/\d+/.exec(lesson.yearGroup ?? "")?.[0] ?? 7);
@@ -120,7 +104,7 @@ export function writerBrief(lesson: Lesson): Brief {
     theme: lesson.themeId,
     readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
     language: lesson.language ?? "en-GB",
-    durationMin: writerMinutes(lesson),
+    durationMin: b?.durationMin ?? lesson.facts?.durationMin ?? 60,
     // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
     // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
     exitTicketOnSlides: b?.worksheet !== true,
@@ -430,8 +414,6 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     const services = aiWriterServices(deps);
     out = await runWriter({
       brief: writerBrief(lesson),
-      // The job's retry: a deck under the tier's minimum ships, logged (TEACH-110 part ao).
-      ...(offScreen ? { retried: true } : {}),
       objectives,
       bundle: writerBundleOf(lesson),
       // The pilot layouts (TEACH-110 part s): the writer runs the pilot pack, its system text
