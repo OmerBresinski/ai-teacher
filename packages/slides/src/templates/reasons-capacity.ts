@@ -8,6 +8,8 @@
  * with lines of at most `CHAIN_SHORT_LINE` characters (the only four-link chain allowed).
  * Measured like panel-list's table: each list field is the smaller of every reason long and one
  * reason long beside short siblings, the rest at their short sample.
+ * The same cells with a question picture (TEACH-247 part ba) go to `reasons-picture-capacity.json`:
+ * the picture takes the panel's foot, so the question (and lead) has less room.
  * Regenerate: `bun packages/slides/src/templates/reasons-capacity.ts`.
  */
 import { writeFileSync } from "node:fs";
@@ -50,6 +52,9 @@ const SHORT: ReasonItem[] = [
 ];
 const QUESTION = "Why did Rome fall?";
 const LEAD = "Rome ruled the west for centuries.";
+/** A stand-in landscape photo for the picture cells (its shape is all the layout reads). */
+const PICTURE = { photo: "/capacity/reasons.jpg", aspect: 1.5, alt: "" };
+let withPicture = false;
 
 const inputOf = (
   items: ReasonItem[],
@@ -62,6 +67,7 @@ const inputOf = (
   lead,
   chain,
   reasons: items,
+  ...(withPicture ? { figure: PICTURE } : {}),
 });
 
 function longest(ok: (chars: number) => boolean, max = 240): number {
@@ -101,7 +107,9 @@ export function measureReasonsCaps(
   chain: boolean,
   n: number,
   themes: readonly Theme[] = THEMES,
+  picture = false,
 ): ReasonsCaps {
+  withPicture = picture;
   const stage = REASONS_AGES[age];
   const g = GOLD_CAPS[age];
   const allowed = chain ? n === 3 || (n === 4 && age !== "early") : n <= REASONS_MAX[age];
@@ -140,24 +148,25 @@ export function measureReasonsCaps(
   };
 }
 
-if (import.meta.main) {
-  const out: Record<string, Record<string, ReasonsCaps>> = {};
-  for (const age of ["early", "primary", "secondary"] as const) {
-    out[age] = {};
-    for (const [chain, n] of [
-      [false, 2],
-      [false, 3],
-      [false, 4],
-      [true, 3],
-      [true, 4],
-    ] as const) {
-      const caps = measureReasonsCaps(age, chain, n);
-      (out[age] as Record<string, ReasonsCaps>)[capsKey(chain, n)] = caps;
-      console.log(age, capsKey(chain, n), JSON.stringify(caps));
+if (import.meta.main)
+  for (const [picture, file] of [
+    [false, "./reasons-capacity.json"],
+    [true, "./reasons-picture-capacity.json"],
+  ] as const) {
+    const out: Record<string, Record<string, ReasonsCaps>> = {};
+    for (const age of ["early", "primary", "secondary"] as const) {
+      out[age] = {};
+      for (const [chain, n] of [
+        [false, 2],
+        [false, 3],
+        [false, 4],
+        [true, 3],
+        [true, 4],
+      ] as const) {
+        const caps = measureReasonsCaps(age, chain, n, THEMES, picture);
+        (out[age] as Record<string, ReasonsCaps>)[capsKey(chain, n)] = caps;
+        console.log(picture ? "picture" : "", age, capsKey(chain, n), JSON.stringify(caps));
+      }
     }
+    writeFileSync(new URL(file, import.meta.url), `${JSON.stringify(out, null, 2)}\n`);
   }
-  writeFileSync(
-    new URL("./reasons-capacity.json", import.meta.url),
-    `${JSON.stringify(out, null, 2)}\n`,
-  );
-}

@@ -1,0 +1,278 @@
+{
+  "early": {
+    "reasons-2": {
+      "question": {
+        "cap": 34,
+        "hardMax": 34
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 22,
+        "hardMax": 42
+      },
+      "line": {
+        "cap": 45,
+        "hardMax": 52
+      }
+    },
+    "reasons-3": {
+      "question": {
+        "cap": 34,
+        "hardMax": 34
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 22,
+        "hardMax": 42
+      },
+      "line": {
+        "cap": 45,
+        "hardMax": 52
+      }
+    },
+    "reasons-4": {
+      "question": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "head": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "line": {
+        "cap": 0,
+        "hardMax": 0
+      }
+    },
+    "chain-3": {
+      "question": {
+        "cap": 34,
+        "hardMax": 34
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 21,
+        "hardMax": 21
+      },
+      "line": {
+        "cap": 30,
+        "hardMax": 48
+      }
+    },
+    "chain-4": {
+      "question": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "head": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "line": {
+        "cap": 0,
+        "hardMax": 0
+      }
+    }
+  },
+  "primary": {
+    "reasons-2": {
+      "question": {
+        "cap": 40,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 52
+      },
+      "line": {
+        "cap": 58,
+        "hardMax": 58
+      }
+    },
+    "reasons-3": {
+      "question": {
+        "cap": 40,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 52
+      },
+      "line": {
+        "cap": 58,
+        "hardMax": 58
+      }
+    },
+    "reasons-4": {
+      "question": {
+        "cap": 40,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 30,
+        "hardMax": 30
+      },
+      "line": {
+        "cap": 30,
+        "hardMax": 30
+      }
+    },
+    "chain-3": {
+      "question": {
+        "cap": 40,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 48
+      },
+      "line": {
+        "cap": 52,
+        "hardMax": 52
+      }
+    },
+    "chain-4": {
+      "question": {
+        "cap": 40,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 60
+      },
+      "head": {
+        "cap": 21,
+        "hardMax": 21
+      },
+      "line": {
+        "cap": 30,
+        "hardMax": 30
+      }
+    }
+  },
+  "secondary": {
+    "reasons-2": {
+      "question": {
+        "cap": 46,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 73
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 58
+      },
+      "line": {
+        "cap": 95,
+        "hardMax": 108
+      }
+    },
+    "reasons-3": {
+      "question": {
+        "cap": 46,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 73
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 58
+      },
+      "line": {
+        "cap": 95,
+        "hardMax": 108
+      }
+    },
+    "reasons-4": {
+      "question": {
+        "cap": 46,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 73
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 58
+      },
+      "line": {
+        "cap": 65,
+        "hardMax": 76
+      }
+    },
+    "chain-3": {
+      "question": {
+        "cap": 46,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 73
+      },
+      "head": {
+        "cap": 34,
+        "hardMax": 48
+      },
+      "line": {
+        "cap": 70,
+        "hardMax": 76
+      }
+    },
+    "chain-4": {
+      "question": {
+        "cap": 46,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 60,
+        "hardMax": 73
+      },
+      "head": {
+        "cap": 30,
+        "hardMax": 30
+      },
+      "line": {
+        "cap": 35,
+        "hardMax": 35
+      }
+    }
+  }
+}

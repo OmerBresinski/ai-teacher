@@ -975,6 +975,12 @@ export function toInput(
         heading,
         ...(lead ? { lead } : {}),
         chain: s.kind === "chain" || s.chain === true,
+        // TEACH-247 part ba: the question picture, asked under the key `picture`; a draft holds its
+        // slot while it is still to come, and one that failed leaves the words alone.
+        ...((): { figure?: Figure } => {
+          const f = fig("picture");
+          return f && "photo" in f ? { figure: f } : {};
+        })(),
         reasons: items.map((i0) => {
           const i = (i0 ?? {}) as S;
           const own = iconOf(i);

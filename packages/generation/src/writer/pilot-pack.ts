@@ -125,6 +125,11 @@ export type PilotPack = {
    */
   tierSlides?: boolean;
   /**
+   * The reasons slide offers one optional question picture (`picture`, TEACH-247 part ba), checked
+   * against the picture cells (reasons-picture-capacity.json). Only with menu wording that offers it.
+   */
+  reasonsPicture?: boolean;
+  /**
    * The writer specs the river and hydrograph templates itself (`withWriterTemplates`), as it
    * did in the early-Oct lab runs, instead of naming them `{kind, shows, labels}` for the drawer.
    * A spec that does not parse or fit still goes to the drawer (TEACH-247 part bb).
@@ -501,7 +506,9 @@ export function pilotRequest(
     ...(pack.layouts.stages[ks === "KS3" ? "KS3-5" : ks]?.$defs ?? {}),
     ...(pack.questionDefs ? questionDefs(writerStageOf(ks)) : {}),
     ...(pack.catalogueIcons ? { "layout-icon": layoutIconDef() } : {}),
-    ...(pack.waveC ? waveCDefs(writerStageOf(ks), !!schema.$defs["dg-model-full"]) : {}),
+    ...(pack.waveC
+      ? waveCDefs(writerStageOf(ks), !!schema.$defs["dg-model-full"], !!pack.reasonsPicture)
+      : {}),
   };
   const refs = (schema.properties.slides.items.anyOf as J[]).filter(
     (r) => !replaced.has(String(r.$ref).split("/").pop() ?? ""),
