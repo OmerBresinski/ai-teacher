@@ -46,14 +46,14 @@ const ask = (shows: string, labels = ["Part one", "Part two"]): WriterDiagramAsk
   };
 };
 
-async function draw(shows: string, subject: string) {
+async function draw(shows: string, subject: string, labels?: string[]) {
   const schemas: S[] = [];
   const events: S[] = [];
   const callDrawer: DrawerCall = async (req) => {
     schemas.push(req.schema as S);
     return { out: drawn(subject, ["Part one", "Part two"]) };
   };
-  const r = await drawWriterDiagram(ask(shows), {
+  const r = await drawWriterDiagram(ask(shows, labels), {
     callDrawer,
     drawerSystem: "system",
     fitActs: true,
@@ -64,7 +64,16 @@ async function draw(shows: string, subject: string) {
   return { r, schemas, events };
 }
 
-/** PR #514's review probes, and the lessons STICKFIG found, with the subject the drawer gives. */
+/**
+ * PR #514's review probes, and the lessons STICKFIG found, with the subject the drawer gives. Part
+ * ay re-decided three: a tree's rings, a seed, and an eye and ear are a plant part and organs, so
+ * a picture shows them (`freehandBan`'s living words), whatever the drawer's tag.
+ */
+const BY_WORD = new Set([
+  "A tree ring cross-section",
+  "A kidney bean seed",
+  "An eye and an ear receiving separate inputs, leading to separate visual and auditory sensory stores",
+]);
 const PROBES: [string, string][] = [
   // Not bodies: a word list rerouted these.
   ["A factor tree of 60", "abstract_or_process"],
@@ -106,7 +115,7 @@ describe("labelled drawings route on the drawer's subject (TEACH-247 part ad)", 
       // One drawer call, asked to name the subject.
       expect(schemas.length).toBe(1);
       expect(schemas[0]?.required).toContain("subject");
-      if (subject === "living_body") {
+      if (subject === "living_body" || BY_WORD.has(shows)) {
         expect(r).toMatchObject({ via: "none", body: true });
         expect(r.spec).toBeUndefined();
         expect(events.some((e) => e.ev === "body-figure")).toBe(true);
@@ -117,12 +126,12 @@ describe("labelled drawings route on the drawer's subject (TEACH-247 part ad)", 
       }
     });
 
-  test("a stored spec with no subject still draws (lessons made before the field)", async () => {
+  test("part ay: a drawer spec with no subject is not drawn (the tag is the drawer's to give)", async () => {
     const { r } = await draw("A volcano", undefined as never);
-    expect(r.via).toBe("drawer");
+    expect(r).toMatchObject({ via: "none", body: true });
   });
 
-  test("the lab corpus: only drawings named living_body are withheld", async () => {
+  test("the lab corpus: every body is withheld, and the living words add only organisms", async () => {
     const corpus = JSON.parse(
       readFileSync(join(import.meta.dir, "fixtures/labelled-corpus.json"), "utf8"),
     ) as { shows: string; labels: string[] }[];
@@ -133,16 +142,27 @@ describe("labelled drawings route on the drawer's subject (TEACH-247 part ad)", 
       0, 1, 2, 3, 4, 5, 6, 8, 56, 57, 64, 80, 82, 91, 92, 99, 100, 103, 111, 127, 128, 136, 137,
       140, 144, 165, 169, 179, 187, 188, 191, 192,
     ]);
+    // Part ay: the living words also withhold these, each naming people, organs, cells or plants
+    // (the drawer had tagged them as objects): capillary exchange, the eye and ear, a park's
+    // trees, family members, a cleared slope's roots, a testudo of soldiers.
+    const BY_WORDS = [7, 19, 42, 93, 101, 171, 186, 189, 190];
     let withheld = 0;
     let drew = 0;
+    const missed: number[] = [];
     for (const [i, f] of corpus.entries()) {
-      const { r } = await draw(f.shows, BODIES.has(i) ? "living_body" : "object_or_machine");
+      const { r } = await draw(
+        f.shows,
+        BODIES.has(i) ? "living_body" : "object_or_machine",
+        f.labels,
+      );
       if (r.body) withheld++;
       else if (r.spec) drew++;
+      if (!!r.body !== (BODIES.has(i) || BY_WORDS.includes(i))) missed.push(i);
     }
     expect(corpus.length).toBe(193);
-    expect(withheld).toBe(32);
-    expect(drew).toBe(161);
+    expect(missed).toEqual([]);
+    expect(withheld).toBe(41);
+    expect(drew).toBe(152);
   });
 });
 

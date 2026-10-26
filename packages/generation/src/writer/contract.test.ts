@@ -104,11 +104,19 @@ describe("drawer output goes through mendSpec, and nothing is cut to fit (lesson
 
   test("a spec past a limit goes back to the drawer with that limit, and its repaired answer draws", async () => {
     const over = prod.cases[3] as (typeof prod.cases)[number]; // 8 labels
-    const fixed = { ...over.spec, labels: over.spec.labels?.slice(0, 6) };
+    // The drawer tags its subject (TEACH-247 part ay: an untagged labelled drawing is not drawn).
+    // Its plant cell would be withheld too (a living word), so the parts are a machine's here.
+    const tagged = {
+      ...over.spec,
+      subject: "object_or_machine",
+      alt: "A machine with its parts labelled.",
+      labels: over.spec.labels?.map((l, k) => ({ ...l, text: `Part ${k + 1}` })),
+    };
+    const fixed = { ...tagged, labels: tagged.labels?.slice(0, 6) };
     const calls: string[] = [];
     const r = await drawWriterDiagram(
       { ...(ask as object), kind: "labelled-diagram" } as never,
-      drawer([over.spec, fixed], calls) as never,
+      drawer([tagged, fixed], calls) as never,
     );
     expect(calls).toHaveLength(2);
     expect(calls[1]).toContain("labels: Too big: expected array to have <=6 items");

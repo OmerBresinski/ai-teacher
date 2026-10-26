@@ -39,6 +39,7 @@ import {
 } from "@tj/slides/diagrams";
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage } from "@tj/slides/themes";
+import { freehandBan } from "./body-figure";
 import { nonFatal, nonFatalSync } from "./services";
 
 type J = Record<string, unknown>;
@@ -446,6 +447,8 @@ export type DrawnWriterDiagram = {
    * stage shows the lesson's library model on a full slide, else a picture of the same thing.
    */
   body?: true;
+  /** TEACH-247 part ay: the library models to try for a banned drawing, in order, before a picture. */
+  models?: string[];
 };
 
 /**
@@ -459,11 +462,6 @@ export function withRequiredSubject(schema: J, kind: string): J {
   if (out.properties && !req.includes("subject")) out.required = [...req, "subject"];
   return out;
 }
-
-/** True for a drawer spec that names its subject a living body (never drawn from primitives). */
-export const isLivingBodySpec = (spec: unknown): boolean =>
-  (spec as { kind?: unknown; subject?: unknown } | undefined)?.kind === "labelled-diagram" &&
-  (spec as { subject?: unknown }).subject === "living_body";
 
 /**
  * base4's drawer fallback (`services.ts` specCallsRound5): the wire schema, the request with the
@@ -586,10 +584,18 @@ export async function drawWriterDiagram(
         };
       }
       const r = await drawerCall(ask, deps);
-      // TEACH-247 part ad: one drawer call names the subject; a living body is never rendered.
-      if (r.spec && isLivingBodySpec(r.spec)) {
-        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind });
-        return { via: "none", fault: "a living body is not drawn from shapes", body: true };
+      // TEACH-247 parts ad, ay: a freehand drawing of a living body or a science process is never
+      // rendered: the drawer's tag `living_body`, a missing tag, or a living word or process in
+      // the ask or the spec (`freehandBan`).
+      const ban = r.spec ? freehandBan(ask, r.spec) : undefined;
+      if (ban) {
+        deps.log?.({ ev: "body-figure", key: ask.key, kind: ask.kind, ...ban });
+        return {
+          via: "none",
+          fault: "a living body or a process is not drawn from shapes",
+          body: true,
+          models: ban.models,
+        };
       }
       if (r.spec) {
         // On an asking slide the drawer's spec (a retry or a library fallback included) is held to
