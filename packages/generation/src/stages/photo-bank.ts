@@ -524,6 +524,9 @@ export async function findPicture(
         return rethrowAbort(error);
       },
     );
+    // A search that throws (a job abort) leaves the generation unawaited: its own rejection is
+    // marked handled here, never an unhandled rejection that would crash the worker.
+    void genP.then(undefined, () => undefined);
     const fetched = await stockP;
     if (fetched) {
       genStop.abort();

@@ -327,6 +327,32 @@ describe("TEACH-251 part q: a real thing with a generated fallback overlaps sear
     expect(log.remembered).toEqual(["/p.jpg"]);
   });
 
+  test("a job abort during the search rejects once; the pending generation is never unhandled", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (e: unknown) => void unhandled.push(e);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const job = new AbortController();
+      const { bank } = fakeBank((s) => after(200, madePhoto("/g.png"), s));
+      const out = findPicture(
+        realReq,
+        bank,
+        (s) => after(200, undefined, s),
+        job.signal,
+        async () => true,
+        Date.now,
+        undefined,
+        10,
+      );
+      setTimeout(() => job.abort(abortError()), 30);
+      await expect(out).rejects.toThrow();
+      await sleep(50);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
   test("a real-only thing (no fallback) never generates, however slow its search", async () => {
     const { bank, log } = fakeBank((s) => after(5, madePhoto("/g.png"), s));
     const out = await findPicture(
