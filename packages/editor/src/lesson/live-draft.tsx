@@ -242,60 +242,115 @@ function cutWords(text: string, n: number): { text: string; used: number } {
   return { text, used };
 }
 
+type Box = { x: number; y: number; w: number; h: number };
+const boxOf = (e: El, dx = 0, dy = 0): Box => {
+  const g = e as unknown as Partial<Box>;
+  return { x: (g.x ?? 0) + dx, y: (g.y ?? 0) + dy, w: g.w ?? 0, h: g.h ?? 0 };
+};
+const holds = (outer: Box, inner: Box) => {
+  const cx = inner.x + inner.w / 2;
+  const cy = inner.y + inner.h / 2;
+  return cx >= outer.x && cx <= outer.x + outer.w && cy >= outer.y && cy <= outer.y + outer.h;
+};
+/** The slide's title: its heading box (types first, whatever its place in the element list). */
+const isTitle = (e: El) =>
+  e.type === "text" && /^(heading|title)$/i.test(((e as { name?: string }).name ?? "").trim());
+
 /**
- * The slide with only its first `words` words of text showing, in reading order. A box, card or
- * line shows with the words that follow it (the first word of the next text in reading order), so
- * the layout fills in as its words arrive rather than standing empty first (TEACH-202 part o, Greg
- * 25 Oct: "the layouts seem to update before text comes in"); a picture slot shows from the start,
- * as it says a picture is on its way. Returns the slide and the id of the text element the last
- * shown word is in (where the caret goes), if any text is cut.
+ * The slide with only its first `words` words of text showing, and each region shown only once its
+ * own content starts arriving (Greg 26 Oct: "the layouts seem to update before text comes in"):
+ * - the title types first, wherever it sits in the element list; nothing shows before its first
+ *   word (a draft with no words yet is a blank slide, never an empty layout);
+ * - a text box shows with its first word;
+ * - a box, card or answer area that holds text shows with the first word of the text inside it;
+ * - a shape that holds no text (a rule, an accent) shows with the first word of the next text in
+ *   reading order;
+ * - a picture or diagram box shows with the slide's first word (the title), never before it.
+ * Returns the slide and the id of the text element the last shown word is in (where the caret
+ * goes), if any text is cut.
  */
 export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: string } {
-  // Words before each element's next text in reading order (pre-order, as the walk below goes).
-  const order: El[] = [];
-  const flatten = (els: readonly El[]) => {
+  // Boxes in slide coordinates: a group lays its children relative to itself.
+  type Item = { e: El; box: Box; texts: number };
+  const order: Item[] = [];
+  const flatten = (els: readonly El[], dx = 0, dy = 0) => {
     for (const e of els) {
-      order.push(e);
+      const box = boxOf(e, dx, dy);
+      order.push({ e, box, texts: wordCount({ elements: [e] }) });
       const kids = (e as { children?: El[] }).children;
-      if (kids) flatten(kids);
+      if (kids) flatten(kids, box.x, box.y);
     }
   };
   flatten(slide.elements);
   const total = wordCount(slide);
+  // Typing order: the title first, then every other text in reading order.
+  const texts = order.filter((i) => i.e.type === "text");
+  const title = texts.find((i) => isTitle(i.e));
+  const typing = title ? [title, ...texts.filter((i) => i !== title)] : texts;
+  const startOf = new Map<El, number>();
+  let n = 0;
+  for (const i of typing) {
+    startOf.set(i.e, n);
+    n += i.texts;
+  }
+  const shownOf = (e: El) =>
+    Math.max(0, Math.min(words - (startOf.get(e) ?? 0), wordCount({ elements: [e] })));
+  const all = total > 0 && words >= total;
+  const inside = (outer: Item, inner: Item) => inner !== outer && holds(outer.box, inner.box);
+  // Words before each element's next text in reading order (pre-order), for a shape with none in it.
   const reach = new Map<El, number>();
   let next = Number.POSITIVE_INFINITY;
-  let after = total;
-  for (let i = order.length - 1; i >= 0; i--) {
-    const e = order[i] as El;
-    if (e.type === "text") {
-      after -= wordCount({ elements: [e] });
-      next = after;
-    }
-    reach.set(e, next);
+  for (let k = order.length - 1; k >= 0; k--) {
+    const item = order[k] as Item;
+    if (item.e.type === "text") next = startOf.get(item.e) ?? next;
+    reach.set(item.e, next);
   }
-  // A box with no words after it shows once every word is out.
-  const shows = (e: El) =>
-    e.type === "image" || words >= total || words > (reach.get(e) ?? Number.POSITIVE_INFINITY);
-  let left = words;
-  let at: string | undefined;
-  const cutNode = (node: Node): Node | undefined => {
-    if (node.type === "text") {
-      if (left <= 0) return undefined;
-      const c = cutWords(node.text ?? "", left);
-      left -= c.used;
-      return c.text ? { ...node, text: c.text } : undefined;
+  const started = words > 0;
+  const showsItem = (item: Item): boolean => {
+    const e = item.e;
+    if (all) return true;
+    if (!started) return false;
+    if (e.type === "text") return shownOf(e) > 0;
+    if (e.type === "image") return true;
+    if (e.type === "shape") {
+      const held = texts.filter((t) => t.texts > 0 && inside(item, t));
+      if (held.length) return held.some((t) => shownOf(t.e) > 0);
+      return words > (reach.get(e) ?? Number.POSITIVE_INFINITY);
     }
-    if (!node.content) return node;
-    const content = node.content.map(cutNode).filter((x): x is Node => x !== undefined);
-    return { ...node, content };
+    // Anything else (a table, a diagram, a chart) is a visual: it comes with the title.
+    if (!(e as { children?: El[] }).children) return true;
+    return false;
+  };
+  const itemOf = new Map(order.map((i) => [i.e, i]));
+  const shows = (e: El) => showsItem(itemOf.get(e) as Item);
+  let at: string | undefined;
+  let atStart = -1;
+  const cutDoc = (e: El): Node => {
+    let left = shownOf(e);
+    const cutNode = (node: Node): Node | undefined => {
+      if (node.type === "text") {
+        if (left <= 0) return undefined;
+        const c = cutWords(node.text ?? "", left);
+        left -= c.used;
+        return c.text ? { ...node, text: c.text } : undefined;
+      }
+      if (!node.content) return node;
+      const content = node.content.map(cutNode).filter((x): x is Node => x !== undefined);
+      return { ...node, content };
+    };
+    return cutNode((e as { doc?: unknown }).doc as Node) as Node;
   };
   const walk = (els: readonly El[]): El[] =>
     els.flatMap((e) => {
       if (e.type === "text") {
-        const before = left;
-        const doc = cutNode(e.doc as Node);
-        if (left < before || (before > 0 && left === 0)) at = e.id;
-        return shows(e) ? [{ ...e, doc } as El] : [];
+        const shown = shownOf(e);
+        const start = startOf.get(e) ?? 0;
+        // The caret sits after the last word typed: in the box typed latest.
+        if (shown > 0 && start > atStart) {
+          at = e.id;
+          atStart = start;
+        }
+        return shows(e) ? [{ ...e, doc: cutDoc(e) } as El] : [];
       }
       const kids = (e as { children?: El[] }).children;
       if (kids) {
@@ -305,8 +360,19 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
       return shows(e) ? [e] : [];
     });
   const elements = walk(slide.elements);
-  return { slide: { ...slide, elements }, ...(at && words < wordCount(slide) ? { at } : {}) };
+  return { slide: { ...slide, elements }, ...(at && words < total ? { at } : {}) };
 }
+
+/**
+ * Words to type out on a slide that is new to the view with all its words already there (the
+ * writer finished it before the view arrived): a short catch-up typing animation, so a slide never
+ * appears fully formed (Greg 26 Oct). Steps of `CATCH_UP_STEP_MS`, at most `CATCH_UP_STEPS` of them.
+ */
+export function catchUpStep(total: number): number {
+  return Math.max(1, Math.ceil(total / CATCH_UP_STEPS));
+}
+export const CATCH_UP_STEPS = 18;
+export const CATCH_UP_STEP_MS = 35;
 
 function useReducedMotion(): boolean {
   const query = "(prefers-reduced-motion: reduce)";
@@ -328,6 +394,11 @@ function useReducedMotion(): boolean {
 const STEP_MS = 70;
 /** A step while a done slide's typing catches up before its saved copy shows. */
 const RUSH_MS = 30;
+/** A step while the view is two or more slides behind the writer: the typing speeds up to catch up. */
+const HURRY_MS = 40;
+
+/** How the typewriter goes: its steady pace, faster when behind, or a short catch-up animation. */
+export type TypePace = "type" | "hurry" | "catch-up";
 
 /**
  * Types a draft's new words out at a steady pace (`STEP_MS` a step), a word a step, never more than
@@ -340,6 +411,7 @@ function useTypewriter(
   rush = false,
   /** Words already on screen for a slide new to the typewriter (the first-slides reveal's count). */
   start?: number,
+  pace: TypePace = "type",
 ): number {
   const [shown, setShown] = useState(target);
   const ref = useRef({ shown: target, key });
@@ -366,9 +438,18 @@ function useTypewriter(
     // rather than all at once; two or three words a step only when far behind, and the view moves
     // on with the next slide, so the typing is never more than a slide behind.
     // Rushing (the slide is done and its saved copy waits): three words a fast step to the end.
+    // Catching up (a slide written whole before the view reached it): the same number of steps
+    // whatever its length, so it types in well under a second.
     const backlog = target - s.shown;
-    const per = rush || backlog > 40 ? 3 : backlog > 20 ? 2 : 1;
-    const step = rush ? RUSH_MS : STEP_MS;
+    const catchUp = !rush && pace === "catch-up";
+    const per = catchUp ? catchUpStep(target) : rush || backlog > 40 ? 3 : backlog > 20 ? 2 : 1;
+    const step = rush
+      ? RUSH_MS
+      : catchUp
+        ? CATCH_UP_STEP_MS
+        : pace === "hurry"
+          ? HURRY_MS
+          : STEP_MS;
     let last = performance.now();
     let raf = 0;
     const tick = (now: number) => {
@@ -382,7 +463,7 @@ function useTypewriter(
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, key, reduced, rush]);
+  }, [target, key, reduced, rush, pace]);
   // On the render where the slide changes the effect has not run yet: never show the last slide's
   // count for the new one (that flashed the new slide's whole text for a frame).
   if (ref.current.key !== key)
@@ -396,31 +477,58 @@ const CATCH_UP_MS = 1500;
 /** The caret remounts on every step, so its blink restarts: solid while typing, blinking at rest. */
 const word = (n: number) => `w${n}`;
 
+/** Where the caret goes: just after the last visible character of box `at`, in viewport pixels. */
+function caretBox(
+  host: HTMLElement | null,
+  at: string,
+): { x: number; y: number; h: number; c: string } | null {
+  const el = host?.querySelector(`[data-element-id="${CSS.escape(at)}"]`);
+  if (!el) return null;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let lastText: Text | null = null;
+  for (let n = walker.nextNode(); n; n = walker.nextNode())
+    if ((n.textContent ?? "").trim()) lastText = n as Text;
+  if (!lastText) return null;
+  const range = document.createRange();
+  const len = (lastText.textContent ?? "").replace(/\s+$/, "").length;
+  range.setStart(lastText, Math.max(0, len - 1));
+  range.setEnd(lastText, len);
+  const rects = range.getClientRects();
+  const r = rects[rects.length - 1];
+  if (!r) return null;
+  return {
+    x: r.right + 1,
+    y: r.top,
+    h: r.height,
+    c: getComputedStyle(lastText.parentElement ?? el).color,
+  };
+}
+
 /** A thin caret after the last shown word, over the slide (fixed to the viewport, no layout). */
 function Caret({ host, at, word }: { host: HTMLElement | null; at: string; word: number }) {
   const [box, setBox] = useState<{ x: number; y: number; h: number; c: string } | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `word` re-measures as the text grows.
   useLayoutEffect(() => {
-    const el = host?.querySelector(`[data-element-id="${CSS.escape(at)}"]`);
-    if (!el) return setBox(null);
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    let lastText: Text | null = null;
-    for (let n = walker.nextNode(); n; n = walker.nextNode())
-      if ((n.textContent ?? "").trim()) lastText = n as Text;
-    if (!lastText) return setBox(null);
-    const range = document.createRange();
-    const len = (lastText.textContent ?? "").replace(/\s+$/, "").length;
-    range.setStart(lastText, Math.max(0, len - 1));
-    range.setEnd(lastText, len);
-    const rects = range.getClientRects();
-    const r = rects[rects.length - 1];
-    if (!r) return setBox(null);
-    setBox({
-      x: r.right + 1,
-      y: r.top,
-      h: r.height,
-      c: getComputedStyle(lastText.parentElement ?? el).color,
-    });
+    // Measured before paint, then every frame while it is up: a box that glides into place (a
+    // re-laid draft) carries its caret with it, so the caret never stands where the word was a
+    // moment ago and then jumps (Greg 26 Oct: the caret started indented, then jumped left).
+    let raf = 0;
+    let last = "";
+    const measure = () => {
+      const next = caretBox(host, at);
+      const key = next ? `${next.x},${next.y},${next.h},${next.c}` : "";
+      if (key !== last) {
+        last = key;
+        setBox(next);
+      }
+    };
+    measure();
+    const loop = () => {
+      measure();
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, [host, at, word]);
   const blink = useRef<HTMLSpanElement | null>(null);
   // Solid while words arrive (each step remounts it); after half a second at rest it blinks.
@@ -472,6 +580,8 @@ export function LiveSlide({
   reveal,
   render,
   onTyped,
+  typeIn = false,
+  hurry = false,
 }: {
   store: DraftStore | undefined;
   slideId: string | undefined;
@@ -484,6 +594,13 @@ export function LiveSlide({
   render: (slide: Slide | undefined, live: boolean) => ReactNode;
   /** The slide, once every word it has so far is on screen; undefined while words wait to type. */
   onTyped?: (slideId: string | undefined) => void;
+  /**
+   * The view is following the writer: a slide it opens with all its words already written types
+   * them in (a short catch-up), so no slide appears fully formed (Greg 26 Oct).
+   */
+  typeIn?: boolean;
+  /** The view is behind the writer: the typing goes faster so it keeps up. */
+  hurry?: boolean;
 }) {
   const [, bump] = useState(0);
   useEffect(() => store?.subscribe(() => bump((n) => n + 1)), [store]);
@@ -530,7 +647,26 @@ export function LiveSlide({
   const pacedWas = useRef<{ id?: string; words: number }>({ words: 0 });
   if (paced !== undefined) pacedWas.current = { id: slideId, words: paced };
   const start = pacedWas.current.id === slideId ? pacedWas.current.words : undefined;
-  const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced, holding, start);
+  // A done slide the follow opened that this view never typed: it types in, from its title.
+  const seen = useRef(new Set<string>());
+  const catchUp =
+    typeIn &&
+    !reduced &&
+    !draft &&
+    paced === undefined &&
+    slideId !== undefined &&
+    slide !== undefined &&
+    savedWords > 0 &&
+    !isPlannedBlank(slide) &&
+    !seen.current.has(slideId);
+  const words = useTypewriter(
+    draft ? target : catchUp ? savedWords : 0,
+    draft ? (slideId ?? "") : catchUp ? `in:${slideId}` : "",
+    reduced,
+    holding,
+    catchUp ? 1 : start,
+    catchUp ? "catch-up" : hurry ? "hurry" : "type",
+  );
   // Kept while the draft is off screen, so a released hold never flips back on.
   if (draft) typedNow.current = words;
   // The render where the slide stops writing comes before its hold is set (the layout effect
@@ -540,7 +676,17 @@ export function LiveSlide({
     !writing &&
     was.current.id === slideId &&
     was.current.words > Math.min(savedWords, typedNow.current);
-  const typed = !handing && (draft ? words >= target : paced === undefined || paced >= savedWords);
+  const typed =
+    !handing &&
+    (draft
+      ? words >= target
+      : catchUp
+        ? words >= savedWords
+        : paced === undefined || paced >= savedWords);
+  // Every slide this view has shown whole is never typed in again (a hand-over, a revisit).
+  if (typed && slideId && (draft ? words >= wordCount(draft.slide) : true) && !writing)
+    seen.current.add(slideId);
+  if (draft && slideId) seen.current.add(slideId);
   useEffect(() => onTyped?.(typed ? slideId : undefined), [typed, slideId, onTyped]);
   const host = useRef<HTMLDivElement | null>(null);
   // A writing slide with nothing on it yet and no draft: its outline, until its layout arrives.
@@ -550,12 +696,15 @@ export function LiveSlide({
       ? { slide: skeletonSlide(slide) }
       : paced !== undefined && slide
         ? revealSlide(slide, paced)
-        : { slide }
+        : catchUp && slide
+          ? revealSlide(slide, words)
+          : { slide }
     : reduced
       ? { slide: draft.slide }
       : revealSlide(draft.slide, words);
-  const at = (draft || paced !== undefined) && !reduced && "at" in shown ? shown.at : undefined;
-  // A card or line that joins a slide already on screen slides in gently; a slide's first draft
+  const at =
+    (draft || paced !== undefined || catchUp) && !reduced && "at" in shown ? shown.at : undefined;
+  // A card or picture box that joins a slide already on screen fades in; a slide's first draft
   // shows at once (fading it in would read as a blank canvas when the view moves on).
   // A box the next draft moves glides from where it stood by a transform (FLIP), never by animating
   // its left/top/size, so the settling is not a layout shift (UX audit, 20 Oct: CLS at 1440).
@@ -585,17 +734,14 @@ export function LiveSlide({
         );
       if (seen.ids.has(id)) continue;
       seen.ids.add(id);
-      if (!first && !reduced)
-        el.animate?.(
-          [
-            { opacity: 0, translate: "0 6px" },
-            { opacity: 1, translate: "0 0" },
-          ],
-          { duration: 240, easing: "ease-out" },
-        );
+      // A text box types in (its words are the reveal): fading it too drew its first word as a faint
+      // ghost under a solid caret (Greg 26 Oct). A card, answer area or picture box fades in, in
+      // place, as its first words arrive.
+      if (!first && !reduced && el.dataset.elementType !== "text")
+        el.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
     }
   });
-  const caretWord = draft ? words : (paced ?? 0);
+  const caretWord = draft || catchUp ? words : (paced ?? 0);
   // One tree whatever is shown, so the canvas never remounts when the saved slide takes over.
   return (
     <div ref={host} data-live-slide={draft ? slideId : undefined} className="contents">

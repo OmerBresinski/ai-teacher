@@ -118,11 +118,44 @@ describe("the follow paces itself", () => {
     expect(r.result.current.active).toBe(id(4));
   });
 
-  test("five slides behind it goes straight to the slide being written", () => {
+  test("five slides behind it goes straight to the slide being written, once the open one is read", () => {
     const r = setup(3);
     r.rerender({ lead: 8, typed: "open" });
     tick(0);
+    // Greg 26 Oct: never less than ~800 ms after a slide visibly finishes, however far behind.
+    expect(r.result.current.active).toBe(id(3));
+    tick(FOLLOW_PACE.catchUpReadMs - 1);
+    expect(r.result.current.active).toBe(id(3));
+    tick(FOLLOW_PACE.catchUpMinMs);
     expect(r.result.current.active).toBe(id(8));
+  });
+
+  test("a slide is never left less than the read time after its words finish, however long it was open", () => {
+    // Greg 26 Oct: one slide was left 0.1 s after its last word (it had been open past the give-up).
+    const r = setup(3, null);
+    r.rerender({ lead: 3, typed: id(3) });
+    tick(10);
+    // Still typing (more words came): it no longer reports its words out.
+    r.rerender({ lead: 4, typed: null });
+    tick(FOLLOW_PACE.maxOpenMs + FOLLOW_PACE.maxAfterTextMs);
+    expect(r.result.current.active).toBe(id(3));
+    // Its last word is out: it stands the read time, then the follow moves on.
+    r.rerender({ lead: 4, typed: id(3) });
+    tick(FOLLOW_PACE.readMs - 1);
+    expect(r.result.current.active).toBe(id(3));
+    tick(1);
+    expect(r.result.current.active).toBe(id(4));
+  });
+
+  test("behind the writer, the dwell after a slide's last word is still at least 800 ms", () => {
+    const r = setup(3);
+    r.rerender({ lead: 7, typed: "open" });
+    tick(FOLLOW_PACE.catchUpMinMs);
+    expect(r.result.current.active).toBe(id(4));
+    expect(r.result.current.behind).toBe(3);
+    tick(FOLLOW_PACE.catchUpMinMs - 1);
+    expect(r.result.current.active).toBe(id(4));
+    expect(FOLLOW_PACE.catchUpReadMs).toBeGreaterThanOrEqual(800);
   });
 
   test("Follow writing with nothing to move to is spent, not kept for the next slide", () => {

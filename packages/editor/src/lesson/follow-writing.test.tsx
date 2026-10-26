@@ -167,20 +167,18 @@ describe("the editor follows the slide being written", () => {
     expect(open(3)).toBe("true");
   });
 
-  test("before the writer's first content words, the next planned slide opens as an outline", () => {
+  test("before the writer's first content words, the view stays on the last finished slide", () => {
     const lesson = worded(seededLesson());
     // Planning: slides 3 and 4 are planned blanks (no words of their own yet).
     (lesson.slides[2] as Slide).elements = [];
     lesson.slides.push({ id: "s4", kind: "content", elements: [] });
     const { write, container } = setup(lesson);
+    // Slide 3 is planned and writing, with no words yet.
     write(2);
-    expect(open(3)).toBe("true");
-    // No draft has words yet: the view moves on to slide 4's outline (TEACH-202 part f, amended).
-    write(3);
-    expect(open(4)).toBe("true");
-    expect(
-      container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]'),
-    ).not.toBeNull();
+    // Greg 26 Oct (amending part f): never an empty outline while the writer plans; the objectives
+    // stay up until the first content slide has words.
+    expect(open(2)).toBe("true");
+    expect(container.querySelector('[data-slide-clip] [data-element-id^="skeleton-"]')).toBeNull();
   });
 
   test("slide 3 written and no draft streaming (lead undefined): the next outline does not open", () => {

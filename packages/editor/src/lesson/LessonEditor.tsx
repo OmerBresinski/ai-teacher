@@ -852,6 +852,8 @@ export function LessonEditor({
                                           writing={!!slide && !!writingSlideIds?.has(slide.id)}
                                           reveal={reveal}
                                           onTyped={setTypedId}
+                                          typeIn={follow.following && !!writingSlideIds}
+                                          hurry={follow.behind >= 2}
                                           render={(shown, live) => (
                                             <Canvas
                                               readOnly={
@@ -989,6 +991,9 @@ function WritingBlocker() {
   );
 }
 
+/** How long the pill's old text stays to fade out under the new one (the fade's `--duration-fast`). */
+const PILL_CROSSFADE_MS = 200;
+
 /**
  * The writing pill (jank audit #7): one element from the first slide to the hand-over, at the
  * bottom centre between the "Follow writing" chip and the zoom, at one width whatever it says, so
@@ -997,6 +1002,21 @@ function WritingBlocker() {
  * announces it.
  */
 function WritingPill({ text, visible, phase }: { text: string; visible: boolean; phase: string }) {
+  // A new text crossfades with the one before, in the same place: the pill never shows only its dot
+  // between two texts (Greg 26 Oct: one blank frame between "Planning 11" and "13").
+  const [shownText, setShownText] = useState(text);
+  const [leaving, setLeaving] = useState<{ text: string; n: number } | null>(null);
+  const [n, setN] = useState(0);
+  if (shownText !== text) {
+    setLeaving({ text: shownText, n });
+    setN(n + 1);
+    setShownText(text);
+  }
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(() => setLeaving(null), PILL_CROSSFADE_MS);
+    return () => clearTimeout(t);
+  }, [leaving]);
   return (
     <div
       data-writing-pill={phase}
@@ -1011,8 +1031,24 @@ function WritingPill({ text, visible, phase }: { text: string; visible: boolean;
           aria-hidden
           className="block size-2 shrink-0 rounded-full bg-primary motion-safe:animate-pulse"
         />
-        <span key={text} className="motion-safe:animate-fade-in">
-          {text}
+        <span className="grid justify-items-center">
+          {leaving ? (
+            <span
+              key={`out-${leaving.n}`}
+              aria-hidden
+              className="[grid-area:1/1] motion-safe:animate-fade-out"
+            >
+              {leaving.text}
+            </span>
+          ) : null}
+          <span
+            key={`in-${n}`}
+            data-pill-text
+            // The first text comes with the pill itself (no dot-only frame as it mounts).
+            className={n === 0 ? "[grid-area:1/1]" : "[grid-area:1/1] motion-safe:animate-fade-in"}
+          >
+            {text}
+          </span>
         </span>
       </span>
     </div>
