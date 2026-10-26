@@ -63,3 +63,27 @@ describe("resolveOpenSlots", () => {
     expect(r.slides).toBe(plain);
   });
 });
+
+describe("healOpenSlots (a lesson whose worker died hard: the api heals it on read)", () => {
+  const lessonWith = (slides: Slide[]) =>
+    ({ id: "l1", themeId: "paper", ageBand: "primary", yearGroup: "Year 1", slides }) as never;
+
+  test("an open job slot is laid away; the words stay", async () => {
+    const { healOpenSlots } = await import("./heal-open-slots");
+    const healed = await healOpenSlots(
+      lessonWith([slide("s3", [text("t3", "Roots take in water."), frame("p3", "Roots")])]),
+    );
+    expect(healed).toBeDefined();
+    const els = (healed as { slides: Slide[] }).slides[0]?.elements ?? [];
+    expect(els.some((e) => e.id === "p3")).toBe(false);
+    expect(els.some((e) => e.id === "t3")).toBe(true);
+  });
+
+  test("a lesson with no open slot (or only a teacher's blank box) is left alone", async () => {
+    const { healOpenSlots } = await import("./heal-open-slots");
+    expect(await healOpenSlots(lessonWith([slide("s3", [text("t3", "Roots.")])]))).toBeUndefined();
+    expect(
+      await healOpenSlots(lessonWith([slide("s5", [frame("b5", "Describe this image…")])])),
+    ).toBeUndefined();
+  });
+});
