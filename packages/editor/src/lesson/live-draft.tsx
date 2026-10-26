@@ -740,6 +740,8 @@ export function LiveSlide({
   // Kept per draft store (one per editor), not per mount: a canvas that remounts its slide when it
   // turns done must not forget the slide was already typed.
   const seen = useRef(seenFor(store));
+  /** When the last staggered item of this slide finishes fading in. */
+  const joinedAt = useRef(0);
   // A slide the first-slides reveal typed was typed here: when the reveal ends it stays whole,
   // never typed in again (judge 638b: the objectives cleared to "By the end" and retyped).
   if (paced !== undefined && slideId) seen.current.add(slideId);
@@ -786,7 +788,21 @@ export function LiveSlide({
     if (!blank) seen.current.add(slideId);
   }
   if (draft && slideId) seen.current.add(slideId);
-  useEffect(() => onTyped?.(typed ? slideId : undefined), [typed, slideId, onTyped]);
+  // Typed means seen: a row whose items still fade in, staggered, reports once the last has landed,
+  // so the read time starts from what the teacher sees (judge 638b: the quiz left 0.5 s after).
+  useEffect(() => {
+    if (!typed) {
+      onTyped?.(undefined);
+      return;
+    }
+    const left = joinedAt.current - performance.now();
+    if (left <= 0) {
+      onTyped?.(slideId);
+      return;
+    }
+    const t = setTimeout(() => onTyped?.(slideId), left);
+    return () => clearTimeout(t);
+  }, [typed, slideId, onTyped]);
   const host = useRef<HTMLDivElement | null>(null);
   // A writing slide with nothing on it yet and no draft: its outline, until its layout arrives.
   const waiting = writing && !draft && slide !== undefined && isPlannedBlank(slide);
@@ -865,6 +881,7 @@ export function LiveSlide({
       if (big(b.r)) continue;
       b.delay = Math.max(0, seen.lastJoin + JOIN_STAGGER_MS - now);
       seen.lastJoin = now + b.delay;
+      joinedAt.current = seen.lastJoin + 180;
     }
     const around = (r: DOMRect) =>
       boxes.find(({ r: c }) => {
