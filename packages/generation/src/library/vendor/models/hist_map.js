@@ -75,6 +75,7 @@ const TEXT = Object.assign({}, TEXT_PARAM, {
   patternProperties: Object.assign(
     {
       "^label:place:": NAME("Place name", "label"),
+      "^label:line:": NAME("Wall name", "label"),
       "^label:north$": NAME("North arrow word", "label"),
       "^label:today$": NAME("Borders key", "phrase"),
     },
@@ -2228,6 +2229,55 @@ function renderAt(root, P, ctx, f, last, narrow) {
     ctx.warn(
       `At this map size the line to ${crowdedNames.map((n) => `“${n}”`).join(", ")} has to cross another line. Try a closer map.`,
     );
+  // each wall is named beside its own line, on the map, as a place is (TEACH-247 part az)
+  for (const fi of frontInfo) {
+    const fr = fi.fr;
+    const z = SHAPES[0];
+    const label = txt(P, `label:line:${fr.i}`, fr.name);
+    const pb = probe(label, { maxW: z.maxW, maxLines: 2, lh: z.lh }, { cls: z.cls, lh: z.lh });
+    const w = pb.w + 18,
+      hh = 38 + (pb.lines.length - 1) * z.lh;
+    const pl = PL.place(fi.anchors.slice(0, 5), null, w, hh, {
+      inner: { x: F.x + 4, y: F.y + 4, w: F.w - 8, h: F.h - 8 },
+      offMap: false,
+      modes: [
+        [false, true],
+        [true, true],
+      ],
+      dists: [14, 22, 30, 40, 56, 72],
+    });
+    if (!pl) {
+      fail(`the name of ${fr.name}`);
+      continue;
+    }
+    if (pl.lead) {
+      leads.push(pl.lead);
+      h(
+        "line",
+        {
+          x1: pl.lead[0],
+          y1: pl.lead[1],
+          x2: pl.lead[2],
+          y2: pl.lead[3],
+          stroke: "var(--ink-3)",
+          "stroke-width": "var(--sw-rule)",
+          s: fi.k,
+          cls: "rise",
+        },
+        leadG,
+      );
+    }
+    const g = h("g", { s: fi.k, cls: "rise" }, labG);
+    labelGround(g, { x: pl.x, y: pl.y, w: pl.w, h: pl.h });
+    textBlock(g, pl.x + 9, pl.y + 27, label, {
+      cls: z.cls,
+      maxW: z.maxW,
+      maxLines: 2,
+      lh: z.lh,
+      a: { fill: `var(--era-${fr.col}-text)`, cls: "strong" },
+      edit: `text.label:line:${fr.i}`,
+    });
+  }
   let tier = 0,
     legend = null,
     named = false;
@@ -2313,7 +2363,16 @@ function renderAt(root, P, ctx, f, last, narrow) {
     if (tier != null && fans()) {
       named = true;
       order.sort((p, q) => p.k - q.k || p.ay - q.ay);
-      tier = [0, 2].find(stack);
+      // with no lines to keep level, the key stands together under the years (TEACH-247 part az)
+      const stackTop = (t) => {
+        let y = top;
+        for (const c of order) {
+          c.sy = y;
+          y += V2(c, t).h + gap;
+        }
+        return y - gap <= bot;
+      };
+      tier = [0, 2].find(lift ? stackTop : stack);
     } // without leaders the column reads in date order
     if (narrow && tier !== 0) return RETRY;
     if (tier != null) for (const c of cards) c.S = V2(c, tier);
@@ -2334,7 +2393,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
       const H1 = 10 + r1.reduce((a, r) => a + r.hh, 0);
       if (H1 <= avail)
         legend = {
-          y: kTop + (avail - H1) / 2,
+          y: lift ? kTop : kTop + (avail - H1) / 2,
           w: Math.max(...r1.map((r) => r.v.w)),
           h: H1,
           cols: [r1],
@@ -2358,7 +2417,7 @@ function renderAt(root, P, ctx, f, last, narrow) {
         }
         if (best && best.h <= avail)
           legend = {
-            y: kTop + (avail - best.h) / 2,
+            y: lift ? kTop : kTop + (avail - best.h) / 2,
             w: cw + 16 + Math.max(...best.cols[1].map((r) => r.v.w)),
             h: best.h,
             cols: best.cols,

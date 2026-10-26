@@ -87,7 +87,9 @@ describe("hist_map walls and frontiers", () => {
 
   test("the wall is drawn and named on the map", async () => {
     const d = await renderLibraryModel("hist_map", romanBritain);
-    expect(d.svg).toContain("Hadrian’s Wall");
+    // named beside the line on the map, and on its card in the key
+    expect(d.svg.split("Hadrian’s Wall").length - 1).toBeGreaterThanOrEqual(2);
+    expect(d.svg).toContain("text.label:line:0");
     expect(d.svg).toContain("stroke: var(--era-1-text)");
   }, 30_000);
 });
