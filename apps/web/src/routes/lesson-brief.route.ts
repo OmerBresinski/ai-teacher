@@ -55,11 +55,16 @@ export const lessonBriefRoute = createRoute({
   },
   // The character's motion loads beside the page's chunk, so the intake opens with its character
   // drawn rather than adding it a moment later (jank audit F10). Never held for more than 400 ms.
-  loader: () =>
-    Promise.race([
+  loader: async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
       loadCreationMotion().catch(() => undefined),
-      new Promise((resolve) => setTimeout(resolve, 400)),
-    ]).then(() => undefined),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, 400);
+      }),
+    ]);
+    clearTimeout(timer);
+  },
   head: () => pageTitle("New lesson"),
   component: lazyRouteComponent(() => import("./lesson-brief.page"), "LessonBriefPage"),
   pendingComponent: CreationShellPending,

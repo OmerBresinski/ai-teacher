@@ -10,6 +10,7 @@ import { ThemeProvider, Toaster, TooltipProvider } from "@tj/ui";
 import type { ReactNode } from "react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { env } from "@/env";
+import { appLoad } from "@/lib/app-load";
 import { rememberShell } from "@/lib/last-shell";
 import { queryClient } from "@/lib/query";
 import { authLayoutRoute } from "@/routes/auth.route";
@@ -117,6 +118,7 @@ export const router = createRouter({
 // A series page whose loader resolved `null` (deleted or never existed) is not a place to return
 // to — its own "Back to the library" would otherwise point at itself.
 router.subscribe("onResolved", ({ toLocation }) => {
+  appLoad.resolved = true;
   const missingSeries = router.state.matches.some(
     (match) => match.routeId === seriesDetailRoute.id && match.loaderData === null,
   );

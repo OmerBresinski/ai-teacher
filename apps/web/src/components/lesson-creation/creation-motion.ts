@@ -30,9 +30,8 @@ export function loadCreationMotion(): Promise<CreationMotion> {
   return loading;
 }
 
-/** The motion if it has already loaded, else `null` (and the load is started). */
+/** The motion if it has already loaded, else `null`. Pure: safe to read during render. */
 export function creationMotionNow(): CreationMotion | null {
-  if (!loaded) void loadCreationMotion().catch(() => undefined);
   return loaded;
 }
 

@@ -316,8 +316,22 @@ describe("LessonEditorPage", () => {
     expect(document.querySelector('[data-canvas] [contenteditable="true"]')).toBeNull();
   });
 
-  it("a theme picked before the editor opened goes on when the filling editor mounts, then is forgotten", async () => {
+  it("a theme picked before the editor opened goes on once when the filling editor mounts, and is saved", async () => {
     seedStarting();
+    // Slide 1 is done and the rest are still being written: the teacher's edits are saved now.
+    const stored = fakeApi.get("demo-water-cycle");
+    if (!stored) throw new Error("fake api has no demo lesson");
+    const body = stored.body as Lesson;
+    const generation = body.generation ?? ({} as never);
+    stored.body = {
+      ...body,
+      generation: {
+        ...generation,
+        slideStates: Object.fromEntries(
+          body.slides.map((slide, i) => [slide.id, i === 0 ? "done" : "writing"]),
+        ),
+      },
+    } as Lesson;
     window.sessionStorage.setItem("tj:generating-theme:demo-water-cycle", "exam-hall");
     renderPage();
     expect(await screen.findByRole("button", { name: "Rename lesson" })).toBeVisible();
@@ -327,6 +341,28 @@ describe("LessonEditorPage", () => {
       expect(window.sessionStorage.getItem("tj:generating-theme:demo-water-cycle")).toBeNull(),
     );
     expect(screen.getByRole("button", { name: /Theme.*Exam Hall/i })).toBeVisible();
+    // Saved on the lesson like any edit, not only shown.
+    await waitFor(
+      () => {
+        const puts = fakeApi.requests.filter((r) => r.method === "PUT");
+        const themes = puts.map(
+          (r) => (r.body as { document?: { themeId?: string } }).document?.themeId,
+        );
+        expect(themes).toContain("exam-hall");
+      },
+      { timeout: 4000 },
+    );
+    // The fake api refuses every write under the lock; once the job lets go the held save lands.
+    fakeApi.setGenerating("demo-water-cycle", null);
+    FakeEventSource.latest.open();
+    FakeEventSource.latest.emit("completed", jobEvent("completed", {}), "9");
+    await waitFor(
+      () =>
+        expect((fakeApi.get("demo-water-cycle")?.body as Lesson | undefined)?.themeId).toBe(
+          "exam-hall",
+        ),
+      { timeout: 6000 },
+    );
   });
   it("polish 1: when the editor takes over, focus lands once on the hidden line naming the lesson", async () => {
     seedStarting();

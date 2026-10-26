@@ -54,6 +54,12 @@ const NewDocumentDialog = lazy(() =>
 
 /** How often the plan screen re-reads a running job's lesson in case the stream missed its end. */
 const JOB_POLL_MS = 3000;
+/**
+ * The longest a skipped plan waits on the planning stage for its first slides (jank audit F1);
+ * after it the editor opens anyway and shows the lesson being made. An object so a test can
+ * shorten it.
+ */
+export const skipPlanningWait = { ms: 60_000 };
 // The sign-in sheet (TEACH-245) loads only when a signed-out visitor hits a limit.
 const SignInSheet = lazy(() =>
   import("@/components/sign-in/SignInSheet").then((m) => ({ default: m.SignInSheet })),
@@ -160,6 +166,8 @@ function LessonIntake({
   // transition rather than landing on the objectives directly).
   const watched = useRef(false);
   if (jobId) watched.current = true;
+  // The wait for a skipped plan's first slides is bounded (`skipPlanningWait`).
+  const [waitedOut, setWaitedOut] = useState(false);
   const refresh = async () => {
     await document.refetch();
     await meta.refetch();
@@ -177,8 +185,11 @@ function LessonIntake({
   const running = !!lessonId && !!jobId && !terminal;
   useEffect(() => {
     if (!running) return;
-    const recheck = () =>
+    // The meta too: a missed terminal event is seen as the lock gone from the row state.
+    const recheck = () => {
       void client.invalidateQueries({ queryKey: ["library", "document", lessonId] });
+      void client.invalidateQueries({ queryKey: ["library", "document-meta", lessonId] });
+    };
     if (stream.status === "open") recheck();
     const timer = setInterval(recheck, JOB_POLL_MS);
     return () => clearInterval(timer);
@@ -190,7 +201,9 @@ function LessonIntake({
       // Skip planning (jank audit F1): the plan is confirmed up front but the job still has to plan
       // it. Plan reads the brief here until the job has put slides on the lesson (or ended), then the
       // editor takes over with them, the character flying across as it does after Continue.
-      if (!leaving && jobId && lesson.slides.length === 0) return;
+      // It never waits past `skipPlanningWait`, and a job that ended with no slides stays here
+      // with the failed state (`skipFailed`) rather than opening an empty editor.
+      if (!leaving && lesson.slides.length === 0 && (jobId ? !waitedOut : watched.current)) return;
       preloadLessonEditor();
       if (!leaving)
         rememberGenerationOrigin(client, lesson.id, character.current?.capture() ?? null);
@@ -205,10 +218,16 @@ function LessonIntake({
     // greets the objectives step with a nod there.
     if (watched.current) leaveStage(() => land(lesson));
     else land(lesson);
-  }, [lesson, jobId, meta.isSuccess, navigate]);
+  }, [lesson, jobId, meta.isSuccess, navigate, waitedOut]);
   // While a skip-planning job plans, re-read the lesson whenever the job says it changed, so the
   // editor opens as soon as the first slides are stored (the poll above is only a backup).
   const confirmedRunning = lesson?.plan?.state === "confirmed" && !!jobId;
+  const waitingForSlides = confirmedRunning && lesson?.slides.length === 0;
+  useEffect(() => {
+    if (!waitingForSlides) return;
+    const timer = setTimeout(() => setWaitedOut(true), skipPlanningWait.ms);
+    return () => clearTimeout(timer);
+  }, [waitingForSlides]);
   const changedAt = confirmedRunning ? lastDocumentUpdatedAt(stream.events) : undefined;
   useEffect(() => {
     if (!changedAt || !lessonId) return;
@@ -374,7 +393,15 @@ function LessonIntake({
   const planning =
     !leaving &&
     ((entering && !initialized.current) || (!!lessonId && (!!jobId || !initialized.current)));
-  const failed = terminal?.type === "failed" || terminal?.type === "cancelled";
+  // A skipped plan whose job ended (its terminal event, or the lock gone on a re-read) with no
+  // slides: the planning stage says so, as for a failed plan, instead of opening an empty editor.
+  const skipFailed =
+    lesson?.plan?.state === "confirmed" &&
+    watched.current &&
+    !jobId &&
+    meta.isSuccess &&
+    lesson.slides.length === 0;
+  const failed = terminal?.type === "failed" || terminal?.type === "cancelled" || skipFailed;
   const loadingError = document.isError || meta.isError;
   const title = planning
     ? "Planning your lesson"
@@ -427,7 +454,14 @@ function LessonIntake({
           {failed || loadingError || (!jobId && document.isSuccess && !lesson?.facts) ? (
             <Button
               onClick={() => {
-                if (lesson) {
+                if (lesson?.plan?.state === "confirmed") {
+                  // A confirmed plan cannot be planned again: a fresh brief with the same topic.
+                  void navigate({
+                    to: "/lessons/new",
+                    search: { topic: lesson.brief?.topic ?? lesson.title },
+                    replace: true,
+                  });
+                } else if (lesson) {
                   initialized.current = true;
                   setBrief({
                     topic: lesson.brief?.topic ?? lesson.title,
@@ -441,7 +475,7 @@ function LessonIntake({
               }}
             >
               {" "}
-              {lesson ? "Review the brief" : "Try again"}{" "}
+              {lesson && lesson.plan?.state !== "confirmed" ? "Review the brief" : "Try again"}{" "}
             </Button>
           ) : null}
           {jobId && !failed ? (

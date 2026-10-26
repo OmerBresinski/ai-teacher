@@ -252,13 +252,14 @@ export function Canvas({
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
+    // The first report is committed before the browser paints (jank audit F3): the observer
+    // reports after layout and before paint, but a plain state update would render a frame later,
+    // so the slide would paint once at 100% and then jump to its fit. Later resizes update as usual.
+    let first = true;
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
       const { width, height } = entry.contentRect;
-      // Committed before the browser paints (jank audit F3): the observer reports after layout and
-      // before paint, but a plain state update would render a frame later, so the slide would
-      // paint once at 100% and then jump to its fit.
-      flushSync(() => {
+      const apply = () => {
         setViewW(width);
         setFitScale(
           Math.max(
@@ -266,7 +267,11 @@ export function Canvas({
             Math.min((width - fitInset - gutterX * 2) / SLIDE_W, (height - gutterY * 2) / SLIDE_H),
           ),
         );
-      });
+      };
+      if (first) {
+        first = false;
+        flushSync(apply);
+      } else apply();
     });
     ro.observe(el);
     return () => ro.disconnect();

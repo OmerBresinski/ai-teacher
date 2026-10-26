@@ -392,17 +392,23 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
     },
     [lessonId],
   );
-  // A theme picked before the editor opened (the generating view's dialog) goes on as soon as the
-  // editor mounts, the filling editor included, and is then forgotten: held back to the end it
-  // used to overwrite a theme the teacher picked in the editor since. A layout effect, so the
-  // editor's first paint is already in the picked theme; it runs on every commit because the
-  // editor's handle is only there once the editor has mounted.
+  // A theme picked before the editor opened (the generating view's dialog) goes on once, when the
+  // editor mounts (the filling editor included), and is then forgotten: held back to the end it
+  // used to overwrite a theme the teacher picked in the editor since. It goes through the
+  // editor's own re-theme, the same path as a pick in its Theme dialog, so it is one undo step,
+  // saved like any edit, and the job's later slides are drawn in it. A layout effect, so the
+  // editor's first paint is already in the picked theme.
+  const [editorHandle, setEditorHandle] = useState<LessonEditorHandle | null>(null);
+  const attachEditor = useCallback((handle: LessonEditorHandle | null) => {
+    editorRef.current = handle;
+    setEditorHandle(handle);
+  }, []);
   useLayoutEffect(() => {
-    if ((stoppedJobId && !keepEditing) || !pickedTheme || !editorRef.current) return;
-    editorRef.current.retheme(pickedTheme);
+    if (!editorHandle || (stoppedJobId && !keepEditing) || !pickedTheme) return;
+    editorHandle.retheme(pickedTheme);
     writePickedTheme(lessonId, null);
     setPickedTheme(null);
-  });
+  }, [editorHandle, stoppedJobId, keepEditing, pickedTheme, lessonId]);
 
   const onBack = useCallback(() => void navigate({ to: shellReturn }), [navigate, shellReturn]);
   // Try again (UX-A): a new job writes the rest. The row it starts from is read first, so the next
@@ -684,7 +690,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
         worksheet={worksheet}
         onOpenWorksheet={onOpenWorksheet}
         onNewWorksheet={onNewWorksheet}
-        editorRef={editorRef}
+        editorRef={attachEditor}
         initialSlideId={viewedSlideId ?? undefined}
         onFactsChanged={proposals.onFactsChanged}
         onRegenerate={proposals.onRegenerate}
