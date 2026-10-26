@@ -916,5 +916,11 @@ describe("a past scene at a named monument is never painted", () => {
     expect(monumentInView("crowds outside Old St Paul's Cathedral")).toBe(false);
     expect(monumentInView("crowds at Old St Paul's Cathedral")).toBe(true);
     expect(monumentInView("soldiers at Housesteads", "Life at Housesteads Roman Fort")).toBe(true);
+    // TEACH-251 part aj: a kind word opening a sentence is not a name; real names still are.
+    expect(monumentInView("Castle servants carrying water to the kitchens")).toBe(false);
+    expect(monumentInView("A busy market. Church bells ringing over traders")).toBe(false);
+    expect(monumentInView("Hadrian's Wall with soldiers patrolling")).toBe(true);
+    expect(monumentInView("Housesteads Roman Fort with soldiers marching")).toBe(true);
+    expect(monumentInView("St Paul's with crowds waiting")).toBe(true);
   });
 });

@@ -1008,6 +1008,10 @@ function monumentNames(text: string): string[] {
   const out: string[] = [];
   for (const m of text.matchAll(PROPER)) {
     const name = m[0].replace(/’/g, "'");
+    // TEACH-251 part aj: one kind word opening a sentence is capitalised by grammar, not a name
+    // ("Castle servants carrying water", "Church bells ringing").
+    const opening = /(^|[.!?:;]\s*)$/.test(text.slice(0, m.index));
+    if (opening && !/\s/.test(name) && STRUCTURE.test(name)) continue;
     const saint = /^(St\.?|Saint)\s/.test(name) && name.split(/\s+/).length > 1;
     const kind = STRUCTURE.exec(name);
     if (!kind && !saint) continue;
