@@ -1926,6 +1926,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const deckNotes = notesCall();
   /** Notes written again for a slide that changed after the deck-wide call saw it. */
   const notesRedone = new Map<number, Promise<Map<number, SlideNotes>>>();
+  /**
+   * Writes slide i's note again when the slide differs from what the last notes call for it saw
+   * (the deck-wide call or an earlier redo). One call per change: a redo for a slide as already
+   * seen is skipped, never paid twice; a later change replaces a redo that saw an older slide.
+   */
+  const redoNotes = (i: number, why?: string) => {
+    const shown = asShown(i);
+    if (i < 2 || shown === seenByNotes.get(i)) return;
+    seenByNotes.set(i, shown);
+    log({ ev: "notes-redo", slide: i + 1, ...(why ? { why } : {}) });
+    notesRedone.set(i, notesCall(i + 1));
+  };
 
   // ── code checks ──
   const baseCheck = () =>
@@ -2804,10 +2816,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     keepPic(i, beforeLost, asksBeforeLost);
     pointGuard(i);
     // The slide is final: its note is written again only when what the notes call saw changed.
-    if (i >= 2 && asShown(i) !== seenByNotes.get(i)) {
-      log({ ev: "notes-redo", slide: i + 1 });
-      notesRedone.set(i, notesCall(i + 1));
-    }
+    redoNotes(i);
   };
   // One slide's tail that throws (a bug, a malformed ask) never fails the lesson: that slide is
   // kept exactly as it was at editable. A stop (cancel, budget) still ends the run.
@@ -2917,6 +2926,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         relay(i);
       },
     });
+    // TEACH-251 part t: the note was written for the slide with its visual. A gate that drops it
+    // before the notes are in writes that slide's note again, so no note sends pupils to a map
+    // or picture that is not there (romans verify3 s3: "locate it on a map", the map dropped).
+    if (gate.outcome === "dropped-visual" && mayAddSlides) redoNotes(i, "layout-gate");
     if (gate.outcome !== "clean")
       log({
         ev: "layout-gate",

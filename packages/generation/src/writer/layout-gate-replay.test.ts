@@ -34,6 +34,17 @@ describe.each(LESSONS)("layout gate on replay %s (TEACH-247 part af)", (b) => {
     const continued = out.slides.filter((s) => s.notes === CONTINUED_NOTE).length;
     expect(continued).toBeGreaterThanOrEqual(splits);
     expect(out.slides.length).toBeLessThanOrEqual(out.plan.slides.length + 2 * splits + continued);
+    // TEACH-251 part t: a teaching slide whose visual the gate dropped has its note written again
+    // from the slide as shown, so the note never points at a visual that is not there.
+    const redone = new Set(
+      events.filter((e) => e.ev === "notes-redo" && e.why === "layout-gate").map((e) => e.slide),
+    );
+    for (const e of gate)
+      if (e.outcome === "dropped-visual" && Number(e.slide) >= 3)
+        expect({ slide: e.slide, redone: redone.has(e.slide) }).toEqual({
+          slide: e.slide,
+          redone: true,
+        });
   });
 });
 
