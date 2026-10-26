@@ -372,8 +372,8 @@ scopes and dashboard-only steps: [`infra/README.md` → "Vercel (web)"](infra/RE
 [`Dockerfile`](Dockerfile) (multi-stage, `oven/bun:1.3.6-alpine`, ~155 MB) and run on Railway in
 EU-West (Amsterdam) next to a `pgvector/pgvector:pg16` Postgres (ADR
 [0010](docs/adr/0010-hosting-vercel-railway.md)) — project `teaching-journey`, provisioned
-2026-09-04 by `infra/railway/provision.sh`; api at `https://api.bresinski.org`,
-every PR gets an `ai-teacher-pr-<n>` environment. The image's entrypoint takes one word:
+2026-09-04 by `infra/railway/provision.sh`; api at `https://api.bresinski.org`.
+PR environments are off since 2026-10-26 (ADR 0010 amendment). The image's entrypoint takes one word:
 `api`, `worker` or `migrate`; Railway runs `migrate` as the api's pre-deploy command (ADR 0006:
 never on boot). The Railway project is declared in [`.railway/railway.ts`](.railway/railway.ts)
 (infrastructure-as-code, `railway config plan|apply`), the full runbook

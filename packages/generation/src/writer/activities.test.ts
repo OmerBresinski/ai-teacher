@@ -525,21 +525,22 @@ describe("the writer stage on a fake model", () => {
   // Schemas repinned for the writer's cached prefix: `flow[].teaches` runs to the most objectives a
   // teacher can confirm (4), not the lesson's count (was 53148fca, c4b100f0, f21aebc3).
   // KS1 schema repinned for TEACH-68 part b: the items-row lead is measured (was 2360cda4).
+  // System texts repinned for TEACH-247 part ay: the labelled-diagram line is objects and apparatus only.
   const MASTER = {
     ks1: [
-      "ee117f26e928c9bee11ce45e418e6ada139c3789fafd7736fed5debfe6d4d9de",
-      "009a2867f6cd6fff012e736ef79915825dec147d8bb051e94e248c490805dbf1",
+      "05ec2f3d24e5cb94e8f6ec30b7f96374eb0fe45ff4573433776d9297016f90c4",
+      "d6832355aa0a501345c9e9fe0337986743033aa051ff0721527fa2dfaf5dcfcb",
       // TEACH-215 part c: KS1 items-row lead 30 -> 26 chars on the round 5 themes (was 91d913cd).
       "6d59a7f3c8b8c28ecd91e95e5f9e552aa34d5cb28dc42a4864560832d707adc0",
     ],
     ks2: [
-      "c1f30ffd083653c37ef1403083b6e3fd3bfd18a8ac9444441393e490851bf2af",
-      "039d00abcdf890722c81fe1fe49497627837af90433f5ae941bf96e2b6503d9b",
+      "04cbcd398ab65539b6478970b8589000973fd0b4e2ea38f2f0f728f2b7d744a5",
+      "600aa877a6fc30f00a83fbf811f57bb38fe7f3b3084c1cb81ade2f2cf3ccec05",
       "49b2a401827fba8b0db3d96afbad73c3b29061ed2cf1d3cb199c386b4bd5195f",
     ],
     ks4: [
-      "facae247b8aaf45a57a655639eac3e9e5ca5e698479015b8f44eda4edadc1384",
-      "3356aab2aa28b79288afc5925c853ed3302d92d06f4e361061508a28072fd430",
+      "ca2ff7b2f9a87ce235127ed437ff13c1a2e0d01f1d3d6289512b911aa536de2a",
+      "dd091651ef0984a4cda31a54ef51321a2d982315a7ef19e97e1997a620b2c4ef",
       "4282ee3783bda2f4c14f08d5931568a79a40f8ebfd10c00c3d50403c8c3e28ac",
     ],
   } as const;
