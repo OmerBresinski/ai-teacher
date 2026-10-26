@@ -29,7 +29,8 @@ const YOUNG =
   "In Years 1 and 2, a teaching slide's lead, or the text of a slide with no items, is at most two short sentences and the picture shows the rest; a layout of several items, such as steps, a comparison or cards, keeps its own fits, one short sentence or phrase per item. A further fact goes in the notes or on a slide of its own.";
 
 describe("pilot pack v4.14", () => {
-  test("production runs v4.14", () => expect(PILOT_PACK_ID).toBe("v4.14"));
+  test("v4.14 was production until v4.15 (TEACH-251 part aj)", () =>
+    expect(PILOT_PACK_ID).toBe("v4.15"));
 
   for (const stage of STAGES) {
     const ks = KS[stage];

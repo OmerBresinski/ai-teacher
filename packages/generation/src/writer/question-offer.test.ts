@@ -156,8 +156,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.14", () => {
-    expect(PILOT_PACK_ID).toBe("v4.14");
+  test("production runs v4.15", () => {
+    expect(PILOT_PACK_ID).toBe("v4.15");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
