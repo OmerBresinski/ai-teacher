@@ -513,6 +513,10 @@ export function LessonEditor({
   // latest lesson/history/session at run time.
   const lessonRef = useRef(lesson);
   lessonRef.current = lesson;
+  // The copy a teacher's step is marked against starts as the lesson the editor loaded (and again
+  // for another lesson), never empty: a job's first fold during the first edit marks that edit
+  // against it (TEACH-247 part an).
+  if (lesson && (!lastDoc.current || lastDoc.current.id !== lesson.id)) lastDoc.current = lesson;
   const restoreRef = useRef(restore);
   const onRestoredRef = useRef(onRestored);
   onRestoredRef.current = onRestored;
@@ -617,7 +621,8 @@ export function LessonEditor({
         // would find nothing new to mark, and the page would hold the unmarked slide as the
         // editor's repaint until the job ended (TEACH-247 part an).
         const open = h.isTransactionInFlight() ? h.rebase?.((d) => d) : undefined;
-        const marked = open && lastDoc.current && markTeacherEdited(lastDoc.current, open);
+        const marked =
+          open && lastDoc.current ? markTeacherEdited(lastDoc.current, open) : undefined;
         const merged = h.rebase?.((doc) => {
           const mine = doc === open && marked ? marked : doc;
           // Its own repaint and fit of slides the teacher has not marked are the editor's, not

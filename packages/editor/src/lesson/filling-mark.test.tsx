@@ -48,48 +48,51 @@ function fillingLesson(): Lesson {
   };
 }
 
+async function foldMidEdit(lesson: Lesson) {
+  const ref: { current: LessonEditorHandle | null } = { current: null };
+  const saved: Lesson[] = [];
+  const { container, read } = renderEditor(lesson, {
+    editorRef: ref,
+    onSave: (l: Lesson) => {
+      saved.push(l);
+      return Promise.resolve();
+    },
+  });
+  fireEvent.pointerDown(catcher(container), pointer(150, 150));
+  fireEvent.pointerUp(window, pointer(150, 150));
+  fireEvent.doubleClick(catcher(container), { clientX: 150, clientY: 150 });
+  await waitFor(() => expect(container.querySelector(".ProseMirror")).not.toBeNull(), {
+    timeout: 5_000,
+  });
+  const pm = container.querySelector<HTMLElement>(".ProseMirror") as HTMLElement;
+  // The teacher types: ProseMirror reads the change from its DOM.
+  const p = pm.querySelector("p") as HTMLElement;
+  (p.firstChild as Text).data = "Hello and where rain goes";
+  // The keystrokes are in the document, inside the edit's open step: not yet marked.
+  await waitFor(() => expect(JSON.stringify(read().slides[0])).toContain("where rain goes"));
+  expect(read().slides[0]?.teacherEdited).toBeUndefined();
+  // The job writes a later slide; the editor folds its row in before the edit has ended.
+  const theirs: Lesson = {
+    ...lesson,
+    slides: lesson.slides.map((s, i) => (i === 1 ? ({ ...s, notes: "job" } as Slide) : s)),
+  };
+  act(() => {
+    ref.current?.receiveGenerated(lesson, theirs);
+  });
+  fireEvent.keyDown(pm, { key: "Escape" });
+  await waitFor(
+    () => {
+      const last = saved.at(-1);
+      expect(JSON.stringify(last?.slides[0])).toContain("where rain goes");
+      expect(last?.slides[1]?.notes).toBe("job");
+    },
+    { timeout: 3_000 },
+  );
+  expect(saved.at(-1)?.slides[0]?.teacherEdited).toBe(true);
+}
+
 describe("marking the teacher's slide while the job writes", () => {
   test("a fold between the last keystroke and the end of the edit still marks the edited slide", async () => {
-    const lesson = fillingLesson();
-    const ref: { current: LessonEditorHandle | null } = { current: null };
-    const saved: Lesson[] = [];
-    const { container, read } = renderEditor(lesson, {
-      editorRef: ref,
-      onSave: (l: Lesson) => {
-        saved.push(l);
-        return Promise.resolve();
-      },
-    });
-    fireEvent.pointerDown(catcher(container), pointer(150, 150));
-    fireEvent.pointerUp(window, pointer(150, 150));
-    fireEvent.doubleClick(catcher(container), { clientX: 150, clientY: 150 });
-    await waitFor(() => expect(container.querySelector(".ProseMirror")).not.toBeNull(), {
-      timeout: 5_000,
-    });
-    const pm = container.querySelector<HTMLElement>(".ProseMirror") as HTMLElement;
-    // The teacher types: ProseMirror reads the change from its DOM.
-    const p = pm.querySelector("p") as HTMLElement;
-    (p.firstChild as Text).data = "Hello and where rain goes";
-    // The keystrokes are in the document, inside the edit's open step: not yet marked.
-    await waitFor(() => expect(JSON.stringify(read().slides[0])).toContain("where rain goes"));
-    expect(read().slides[0]?.teacherEdited).toBeUndefined();
-    // The job writes a later slide; the editor folds its row in before the edit has ended.
-    const theirs: Lesson = {
-      ...lesson,
-      slides: lesson.slides.map((s, i) => (i === 1 ? ({ ...s, notes: "job" } as Slide) : s)),
-    };
-    act(() => {
-      ref.current?.receiveGenerated(lesson, theirs);
-    });
-    fireEvent.keyDown(pm, { key: "Escape" });
-    await waitFor(
-      () => {
-        const last = saved.at(-1);
-        expect(JSON.stringify(last?.slides[0])).toContain("where rain goes");
-        expect(last?.slides[1]?.notes).toBe("job");
-      },
-      { timeout: 3_000 },
-    );
-    expect(saved.at(-1)?.slides[0]?.teacherEdited).toBe(true);
+    await foldMidEdit(fillingLesson());
   });
 });
