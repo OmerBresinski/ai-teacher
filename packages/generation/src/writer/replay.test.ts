@@ -31,6 +31,10 @@ import { slideRoles } from "./role";
  *  - y11 slide 9's heading wraps to two lines, so its body moves down by the extra line, 49 pt
  *    (ruling 198, register layout-06).
  *
+ * One since (TEACH-110 part an): slide 2 is the objectives as numbered cards that flow with their
+ * length (one size a slide, one card height, full width), so it is checked for its cards and its
+ * words, not compared element by element with the lab's 720-point numbered list.
+ *
  * One since (TEACH-230 part b): practice and exit-ticket slides are the "work alone" layouts, a
  * grid or a ticket of badged tasks, so they keep their heading and kind and are not compared
  * element by element with the lab's numbered list.
@@ -157,6 +161,16 @@ describe.each(LESSONS)("replay %s", (b) => {
         expect(got.some((e) => e.type === "image" && e.name === "Diagram")).toBe(false);
         expect(new Set(photos.map((e) => e.src)).size).toBe(4);
         expect(photos).toHaveLength(4);
+        return;
+      }
+      if (i === 1) {
+        // TEACH-110 part an: one card per objective, every card one height, nothing over.
+        const cards = got.filter((e) => e.name === "Objective card");
+        const items = got.filter((e) => e.name === "Item");
+        const wantItems = want.elements.filter((e) => e.name === "Item");
+        expect(cards.length).toBe(wantItems.length);
+        expect(new Set(cards.map((e) => e.h)).size).toBe(1);
+        expect(items.length).toBe(wantItems.length);
         return;
       }
       // TEACH-256 part b: the hinge is re-laid to the v13 gold (question as title, cards on a sand

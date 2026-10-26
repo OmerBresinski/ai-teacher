@@ -95,11 +95,88 @@ describe("objectives as numbered disc cards", () => {
       }
   });
 
-  test("off by default: the objectives stay the numbered list and a figure is not drawn", () => {
+  test("the figure stays behind the option; the cards are on by default and take the full width", () => {
     for (const theme of THEMES) {
       const els = layoutTemplate({ ...objectives(3), figure: flow }, theme, "ks2").slide
-        .elements as El[];
-      expect(els.some((e) => e.name === "Objective card" || e.name === "Diagram")).toBe(false);
+        .elements as (El & { x?: number; w?: number })[];
+      expect(els.some((e) => e.name === "Diagram")).toBe(false);
+      const cards = els.filter((e) => e.name === "Objective card");
+      expect(cards).toHaveLength(3);
+      for (const c of cards) expect({ x: c.x, w: c.w }).toEqual({ x: 64, w: 832 });
     }
+  });
+});
+
+/*
+ * The objectives slide flows with the objectives' length (Greg, 25 Oct 2026, TEACH-110 part an):
+ * one size for the slide from the longest objective, the largest step of the type scale that
+ * holds; every card the tallest card's height; the stack centred in the band.
+ */
+type Laid = {
+  name?: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  style?: { fontSize?: number };
+};
+const lay = (points: string[], themeId = "crayon", stage: Stage = "ks1") => {
+  const theme = THEMES.find((t) => t.id === themeId) as (typeof THEMES)[number];
+  const r = layoutTemplate(
+    { template: "objectives", heading: "Today we are learning to", points },
+    theme,
+    stage,
+  );
+  const els = r.slide.elements as Laid[];
+  return {
+    over: r.over,
+    cards: els.filter((e) => e.name === "Objective card"),
+    sizes: [...new Set(els.filter((e) => e.name === "Item").map((e) => e.style?.fontSize))],
+  };
+};
+const TEACHER = [
+  "Identify and name the roots, stem, leaves and flowers of a flowering plant.",
+  "Describe how roots take in water and hold the plant in place, and how the stem holds it up and carries water.",
+  "Describe how leaves use sunlight to help the plant make food and how flowers help the plant make seeds.",
+];
+
+describe("objectives flow with their length", () => {
+  test("short objectives take a larger step than long ones; one size a slide", () => {
+    const short = lay(["Name the parts of a plant.", "Say what roots do."]);
+    const long = lay(TEACHER);
+    expect(short.sizes).toHaveLength(1);
+    expect(long.sizes).toHaveLength(1);
+    expect(short.sizes[0] as number).toBeGreaterThan(long.sizes[0] as number);
+    expect(long.over).toEqual([]);
+  });
+
+  test("cards share one height and centre in the band, on every theme", () => {
+    for (const theme of THEMES)
+      for (const n of [2, 3, 4]) {
+        const r = lay(TEACHER.concat("Say what a plant needs.").slice(0, n), theme.id);
+        const hs = new Set(r.cards.map((c) => c.h));
+        expect({ theme: theme.id, n, heights: hs.size }).toEqual({
+          theme: theme.id,
+          n,
+          heights: 1,
+        });
+        if (r.over.length) continue;
+        const top = Math.min(...r.cards.map((c) => c.y));
+        const bottom = Math.max(...r.cards.map((c) => c.y + c.h));
+        // Inside the band, centred a little above its middle (160 + 328 / 2 = 324); a heading
+        // that needs room moves the stack down a few points (`shiftBody`).
+        expect({ theme: theme.id, n, inBand: top >= 160 && bottom <= 488 }).toEqual({
+          theme: theme.id,
+          n,
+          inBand: true,
+        });
+        expect(Math.abs((top + bottom) / 2 - (324 - 328 * 0.06))).toBeLessThanOrEqual(12);
+      }
+  });
+
+  test("lines too long for bodySmall are reported over, never cut", () => {
+    const r = lay(TEACHER.concat(TEACHER[1] as string));
+    expect(r.over.join(" ")).toMatch(/^objectives \d+\/328pt$/);
   });
 });

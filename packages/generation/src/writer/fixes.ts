@@ -46,7 +46,8 @@ export const promptStage = (k: Stage) => (k === "ks1" ? "KS1" : k === "ks2" ? "K
 /** `objectiveCount` at the middle of the brief's slide range. */
 export function objectiveCount(b: Brief): string {
   const n = Math.round((b.slides.min + b.slides.max) / 2);
-  return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three or four";
+  // Detailed asks for three, not four: a fourth objective at KS1 leaves 44 characters a line.
+  return n <= 7 ? "one or two" : n <= 11 ? "two or three" : "three";
 }
 
 /**
@@ -681,12 +682,92 @@ export function applyRepair(
   }
 }
 
+/**
+ * The objectives slide's measured room, in characters a line, for `n` objectives at `stage`
+ * (`objectives-room.gen.json`, from `scripts/objectives-room.ts`): the longest line at which `n`
+ * objectives stay at the body size or larger in every theme.
+ */
+export function pupilCharLimit(stage: Stage, n: number): number {
+  const room = (objectivesRoom as Record<string, Record<string, number>>)[promptStage(stage)];
+  const chars = room?.[`${n} objectives`] ?? room?.["4 objectives"];
+  return chars ?? (stage === "ks1" ? 48 : stage === "ks2" ? 60 : 72);
+}
+
 /** The pupil line's word limit: the objectives slide's measured room for this many objectives. */
 export function pupilWordLimit(stage: Stage, n: number): number {
-  const room = (objectivesRoom as Record<string, Record<string, number>>)[promptStage(stage)];
-  const chars = room?.[`${n} objectives`];
-  if (chars) return Math.max(6, Math.floor(chars / 6));
-  return stage === "ks1" ? 8 : stage === "ks2" ? 10 : 12;
+  return Math.max(6, Math.floor(pupilCharLimit(stage, n) / 6));
+}
+
+/**
+ * What is wrong with the pupil-wording call's lines for `n` objectives, or undefined when they
+ * can be shown: exactly `n` lines (a line is matched to its objective by position, so a sixth line
+ * or a split objective puts one objective's words beside another's number), each a non-empty
+ * string within the slide's measured room in characters and words.
+ */
+export function pupilLinesProblem(lines: unknown, n: number, stage: Stage): string | undefined {
+  if (!Array.isArray(lines)) return "no lines";
+  if (lines.length !== n) return `${lines.length} lines for ${n} objectives`;
+  const chars = pupilCharLimit(stage, n);
+  const words = pupilWordLimit(stage, n);
+  for (const [k, line] of lines.entries()) {
+    if (typeof line !== "string" || !line.trim()) return `line ${k + 1} is empty`;
+    const t = line.trim();
+    if (t.length > chars) return `line ${k + 1} is ${t.length} characters, room ${chars}`;
+    const w = t.split(/\s+/).length;
+    if (w > words) return `line ${k + 1} is ${w} words, limit ${words}`;
+  }
+  return undefined;
+}
+
+/** Words a shortened objective must not end on: it would read as cut off. */
+const DANGLING =
+  /\s+(?:and|or|but|so|the|a|an|of|to|in|on|at|for|with|by|from|how|that|which|why|what|when|its|their|is|are|can)$/i;
+
+/**
+ * A teacher's objective shortened to at most `max` characters, deterministically and without
+ * rewording: whole clauses first (cut at "; ", ", and ", ", but ", ", so ", ", which ", then at
+ * any ", " or " and "), else whole words with no dangling joiner at the end. The approved wording
+ * is kept as far as the room allows; the cut text ends with a full stop.
+ */
+export function shortenObjective(text: string, max: number): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const stop = (x: string) => `${x.replace(/[\s,;:.]+$/, "")}.`;
+  const tries = [/;\s+|,\s+(?:and|but|so|which|then)\s+/g, /,\s+/g, /\s+and\s+/g];
+  for (const re of tries) {
+    let best = "";
+    for (const m of t.matchAll(re)) {
+      const head = t.slice(0, m.index);
+      if (stop(head).length <= max && head.split(" ").length >= 3) best = head;
+    }
+    if (best) return stop(best);
+  }
+  const words = t.split(" ");
+  let out = "";
+  for (const w of words) {
+    if (stop(out ? `${out} ${w}` : w).length > max) break;
+    out = out ? `${out} ${w}` : w;
+  }
+  while (DANGLING.test(out)) out = out.replace(DANGLING, "");
+  return stop(out || (words[0] ?? t));
+}
+
+/**
+ * The lines shortened until the slide holds them (`fits`: the objectives slide laid with these
+ * lines reports nothing over). The longest line is shortened first, ten characters at a time, so
+ * the cut falls where it costs least. Gives up (returns the shortest it reached) at 24 characters.
+ */
+export function fitObjectives(lines: string[], fits: (lines: string[]) => boolean): string[] {
+  let out = [...lines];
+  for (let guard = 0; guard < 60 && !fits(out); guard++) {
+    const longest = out.reduce((a, l, k) => (l.length > (out[a] ?? "").length ? k : a), 0);
+    const line = out[longest] ?? "";
+    if (line.length <= 24) break;
+    const next = shortenObjective(line, line.length - 10);
+    if (next.length >= line.length) break;
+    out = out.map((l, k) => (k === longest ? next : l));
+  }
+  return out;
 }
 
 export type FillExtras = {
@@ -710,7 +791,11 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     const t = expr.match(/^([\w.]+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
     if (t) return get(t[1] as string) ? (t[2] as string) : (t[3] as string);
     const d = expr.match(/^([\w.]+)\s*\?\?\s*"([^"]*)"$/);
-    if (d) return String(get(d[1] as string) ?? d[2]);
+    // An extra (`maxChars` on the pupil call) wins over the brief's field of the same name.
+    if (d) {
+      const k = d[1] as string;
+      return String((Object.hasOwn(x, k) ? x[k] : undefined) ?? get(k) ?? d[2]);
+    }
     if (expr.startsWith("count:") && expr.includes("objectiveCount")) return objectiveCount(b);
     if (expr.startsWith("for each objective") && expr.includes("teacher wording only"))
       return (x.objectives ?? []).map((o, k) => `${k + 1}. ${o.teacher}`).join("\n");

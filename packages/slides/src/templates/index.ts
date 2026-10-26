@@ -1357,50 +1357,78 @@ function processLine(c: Ctx, items: TemplatePoint[]): boolean {
 }
 
 /**
- * The objectives as Chalkie's numbered cards (UX ruling 203, P12): one card per objective with an
- * accent outline, a filled numbered disc and the objective beside it, stacked. On the fit ladder;
- * when no rung holds them it returns false and the caller lays the numbered list, so the measured
- * objectives capacity never drops.
+ * The objectives slide (UX ruling 203, P12; Greg, 25 Oct 2026: "the objectives slide needs to flow
+ * properly based on objective length"): one numbered card per objective, an accent outline and a
+ * filled disc. The slide picks one type size from the longest objective: the largest step of the
+ * theme's type scale (its heading stop, body, then bodySmall, ruling 162's floor) at which every
+ * card, all given the tallest card's height, stacks inside the band, roomy spacing before tight.
+ * The stack centres in the band. Words are never cut (ruling 203, P6): objectives too long for
+ * bodySmall at tight spacing are laid at that size from the band's top and reported over, and the
+ * writer shortens them before they ship (`fitObjectives` in `@tj/generation`).
  */
-function objectiveCards(c: Ctx, items: string[], x: number, w: number): boolean {
-  if (!items.length) return false;
+function objectiveCards(c: Ctx, items: string[], x: number, w: number): void {
+  if (!items.length) return;
   const full = c.s;
-  const rungs = c.fullSize ? RUNGS.slice(0, 1) : RUNGS;
-  for (const r of rungs) {
-    c.s = r.small ? { ...full, body: full.small, lead: full.small } : full;
-    const d = Math.round(c.s.body * 1.5);
-    const pad = Math.round(c.s.body * 0.55 * r.space);
-    const gap = Math.round(c.s.body * 0.5 * r.space);
-    const tx = pad + d + Math.round(c.s.body * 0.6);
+  const big = typeScale(c.t)?.heading ?? 0;
+  const sizes = c.fullSize
+    ? [full.body]
+    : [...new Set([big > full.body ? big : full.body, full.body, full.small])];
+  const spaces = c.fullSize ? [1] : [1, 0.6];
+  type Lay = {
+    size: number;
+    d: number;
+    pad: number;
+    gap: number;
+    tx: number;
+    tw: number;
+    h: number;
+    total: number;
+  };
+  const plan = (size: number, space: number): Lay => {
+    c.s = { ...full, body: size, lead: size };
+    const d = Math.round(size * 1.5);
+    const pad = Math.round(size * 0.55 * space);
+    const gap = Math.round(size * 0.5 * space);
+    const tx = pad + d + Math.round(size * 0.6);
     const tw = w - tx - pad;
-    const hs = items.map((q) => Math.max(d, measure(c, q, "body", tw)) + 2 * pad);
-    const total = hs.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
-    if (total > G.band.h) continue;
-    let y = Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - total / 2));
-    items.forEach((q, k) => {
-      const h = hs[k] ?? 0;
-      box(c, { x, y, w, h }, c.t.colors.surface, {
-        stroke: c.t.colors.accent,
-        strokeWidth: 2,
-        radius: Math.min(c.t.radius, 14),
-        name: "Objective card",
-      });
-      disc(c, String(k + 1), x + pad, y + Math.round((h - d) / 2), d);
-      const th = measure(c, q, "body", tw);
-      text(
-        c,
-        q,
-        "body",
-        { x: x + tx, y: y + Math.round((h - th) / 2), w: tw },
-        { color: c.t.colors.ink, name: "Item" },
-      );
-      y += h + gap;
-    });
-    c.s = full;
-    return true;
+    const h = Math.max(d, ...items.map((q) => measure(c, q, "body", tw))) + 2 * pad;
+    return { size, d, pad, gap, tx, tw, h, total: h * items.length + gap * (items.length - 1) };
+  };
+  let lay: Lay | undefined;
+  let last: Lay | undefined;
+  for (const size of sizes) {
+    for (const space of spaces) {
+      last = plan(size, space);
+      if (last.total <= G.band.h) {
+        lay = last;
+        break;
+      }
+    }
+    if (lay) break;
   }
+  const at = lay ?? (last as Lay);
+  c.s = { ...full, body: at.size, lead: at.size };
+  if (!lay) c.over.push(`objectives ${at.total}/${G.band.h}pt`);
+  let y = lay ? Math.max(G.band.y, Math.round(bandMid - G.band.h * 0.06 - at.total / 2)) : G.band.y;
+  items.forEach((q, k) => {
+    box(c, { x, y, w, h: at.h }, c.t.colors.surface, {
+      stroke: c.t.colors.accent,
+      strokeWidth: 2,
+      radius: Math.min(c.t.radius, 14),
+      name: "Objective card",
+    });
+    disc(c, String(k + 1), x + at.pad, y + Math.round((at.h - at.d) / 2), at.d);
+    const th = measure(c, q, "body", at.tw);
+    text(
+      c,
+      q,
+      "body",
+      { x: x + at.tx, y: y + Math.round((at.h - th) / 2), w: at.tw },
+      { color: c.t.colors.ink, name: "Item" },
+    );
+    y += at.h + at.gap;
+  });
   c.s = full;
-  return false;
 }
 
 /* ------------------------------------------------------------------ */
@@ -2114,9 +2142,8 @@ function layoutOnce(
       // Ruling 203, P12: numbered disc cards, with the figure beside them when one is given.
       const fig =
         !!c.objectiveCards && !!input.figure && figureDraws(c, input.figure, undefined, c.fails);
-      const x = G.margin;
-      const w = fig ? G.left.w : 720;
-      if (!(c.objectiveCards && objectiveCards(c, pts, x, w))) numbered(c, pts, x, w, "objectives");
+      // No figure: the cards take the slide's full width.
+      objectiveCards(c, pts, G.margin, fig ? G.left.w : G.width);
       if (fig) figurePanel(c, input.figure);
       break;
     }
