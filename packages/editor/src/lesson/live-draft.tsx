@@ -243,11 +243,39 @@ function cutWords(text: string, n: number): { text: string; used: number } {
 }
 
 /**
- * The slide with only its first `words` words of text showing, in reading order; boxes, shapes and
- * picture placeholders all show (the layout comes first). Returns the slide and the id of the text
- * element the last shown word is in (where the caret goes), if any text is cut.
+ * The slide with only its first `words` words of text showing, in reading order. A box, card or
+ * line shows with the words that follow it (the first word of the next text in reading order), so
+ * the layout fills in as its words arrive rather than standing empty first (TEACH-202 part o, Greg
+ * 25 Oct: "the layouts seem to update before text comes in"); a picture slot shows from the start,
+ * as it says a picture is on its way. Returns the slide and the id of the text element the last
+ * shown word is in (where the caret goes), if any text is cut.
  */
 export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: string } {
+  // Words before each element's next text in reading order (pre-order, as the walk below goes).
+  const order: El[] = [];
+  const flatten = (els: readonly El[]) => {
+    for (const e of els) {
+      order.push(e);
+      const kids = (e as { children?: El[] }).children;
+      if (kids) flatten(kids);
+    }
+  };
+  flatten(slide.elements);
+  const total = wordCount(slide);
+  const reach = new Map<El, number>();
+  let next = Number.POSITIVE_INFINITY;
+  let after = total;
+  for (let i = order.length - 1; i >= 0; i--) {
+    const e = order[i] as El;
+    if (e.type === "text") {
+      after -= wordCount({ elements: [e] });
+      next = after;
+    }
+    reach.set(e, next);
+  }
+  // A box with no words after it shows once every word is out.
+  const shows = (e: El) =>
+    e.type === "image" || words >= total || words > (reach.get(e) ?? Number.POSITIVE_INFINITY);
   let left = words;
   let at: string | undefined;
   const cutNode = (node: Node): Node | undefined => {
@@ -262,15 +290,19 @@ export function revealSlide(slide: Slide, words: number): { slide: Slide; at?: s
     return { ...node, content };
   };
   const walk = (els: readonly El[]): El[] =>
-    els.map((e) => {
+    els.flatMap((e) => {
       if (e.type === "text") {
         const before = left;
         const doc = cutNode(e.doc as Node);
         if (left < before || (before > 0 && left === 0)) at = e.id;
-        return { ...e, doc } as El;
+        return shows(e) ? [{ ...e, doc } as El] : [];
       }
       const kids = (e as { children?: El[] }).children;
-      return kids ? ({ ...e, children: walk(kids) } as El) : e;
+      if (kids) {
+        const shown = walk(kids);
+        return shown.length || shows(e) ? [{ ...e, children: shown } as El] : [];
+      }
+      return shows(e) ? [e] : [];
     });
   const elements = walk(slide.elements);
   return { slide: { ...slide, elements }, ...(at && words < wordCount(slide) ? { at } : {}) };
@@ -439,6 +471,7 @@ export function LiveSlide({
   writing,
   reveal,
   render,
+  onTyped,
 }: {
   store: DraftStore | undefined;
   slideId: string | undefined;
@@ -449,6 +482,8 @@ export function LiveSlide({
   /** A new lesson's title and objectives typing out (presentation only, never the document). */
   reveal?: FirstSlidesReveal;
   render: (slide: Slide | undefined, live: boolean) => ReactNode;
+  /** The slide, once every word it has so far is on screen; undefined while words wait to type. */
+  onTyped?: (slideId: string | undefined) => void;
 }) {
   const [, bump] = useState(0);
   useEffect(() => store?.subscribe(() => bump((n) => n + 1)), [store]);
@@ -498,6 +533,15 @@ export function LiveSlide({
   const words = useTypewriter(target, draft ? (slideId ?? "") : "", reduced, holding, start);
   // Kept while the draft is off screen, so a released hold never flips back on.
   if (draft) typedNow.current = words;
+  // The render where the slide stops writing comes before its hold is set (the layout effect
+  // above): its words are not all shown yet, so it is not typed out.
+  const handing =
+    was.current.writing &&
+    !writing &&
+    was.current.id === slideId &&
+    was.current.words > Math.min(savedWords, typedNow.current);
+  const typed = !handing && (draft ? words >= target : paced === undefined || paced >= savedWords);
+  useEffect(() => onTyped?.(typed ? slideId : undefined), [typed, slideId, onTyped]);
   const host = useRef<HTMLDivElement | null>(null);
   // A writing slide with nothing on it yet and no draft: its outline, until its layout arrives.
   const waiting = writing && !draft && slide !== undefined && isPlannedBlank(slide);

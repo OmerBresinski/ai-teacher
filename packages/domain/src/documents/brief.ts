@@ -34,6 +34,12 @@ export type Brief = {
   /** Topic or objective, free text. */
   topic: string;
   durationMin: number;
+  /**
+   * True when nobody typed `durationMin`: it is the default for the key stage and tier
+   * (`defaultDurationMin`), and a tier changed on confirm moves it with the tier (TEACH-110 part
+   * ao). Absent on typed minutes and on lessons made before the field: their minutes stay.
+   */
+  durationDefaulted?: boolean;
   classContext?: ClassContext;
   /** How many slides the deck should have; absent on lessons created before the field existed. */
   slideCount?: SlideCount;
@@ -55,6 +61,7 @@ export type Brief = {
 export const BriefSchema = z.strictObject({
   topic: guarded(z.string().min(1).max(BRIEF_TOPIC_MAX)),
   durationMin: z.number().int().min(BRIEF_DURATION_MIN).max(BRIEF_DURATION_MAX),
+  durationDefaulted: z.boolean().optional(),
   classContext: ClassContextSchema.optional(),
   slideCount: z.union(SLIDE_COUNTS.map((n) => z.literal(n))).optional(),
   slideTier: z.enum(SLIDE_TIERS).optional(),

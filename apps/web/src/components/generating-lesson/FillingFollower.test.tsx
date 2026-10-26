@@ -4,7 +4,7 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { installFakeApi } from "@/test/fake-api";
 import { FakeEventSource, installFakeEventSource } from "@/test/fake-event-source";
 import { generationRun } from "@/test/play-run";
-import { FillingFollower, opensFillingEditor } from "./FillingFollower";
+import { FillingFollower, opensFillingEditor, SLIDES_DRAFTED } from "./FillingFollower";
 
 afterEach(() => cleanup());
 
@@ -69,4 +69,42 @@ describe("FillingFollower at the job's end", () => {
       }
     });
   }
+});
+
+describe("FillingFollower when the writer's stream ends (TEACH-202 part o)", () => {
+  it("tells the page once the job reports the slides drafted, not before", async () => {
+    const { restore } = installFakeApi();
+    installFakeEventSource();
+    const jobId = generationRun.jobId;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const drafted: string[] = [];
+    const progress = (percent: number, message: string) => ({
+      type: "progress",
+      jobId,
+      workspaceId: generationRun.workspaceId,
+      at: "2026-10-26T10:00:00.000Z",
+      progress: { percent, message, stage: "generate" },
+    });
+    try {
+      render(
+        <QueryClientProvider client={client}>
+          <FillingFollower
+            jobId={jobId}
+            fold={async () => undefined}
+            onDrafted={(id) => drafted.push(id)}
+          />
+        </QueryClientProvider>,
+      );
+      const source = FakeEventSource.latest;
+      act(() => {
+        source.open();
+        source.emit("progress", progress(40, "Writing slide 4 of 10"), "1");
+      });
+      expect(drafted).toEqual([]);
+      act(() => source.emit("progress", progress(66, SLIDES_DRAFTED), "2"));
+      await waitFor(() => expect(drafted).toEqual([jobId]));
+    } finally {
+      restore();
+    }
+  });
 });

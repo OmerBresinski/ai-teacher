@@ -19,6 +19,8 @@ export interface SlidePatch<T> {
 export interface ProgressiveDeck<T> {
   /** Patch one slide (by its index in the deck) and schedule a write. */
   patch(index: number, slide: T, state?: SlideGenerationState): void;
+  /** Take one slide's patch back out (a slide that will not be written) and schedule a write. */
+  drop(index: number): void;
   /** The patches so far, by index. */
   patches(): ReadonlyMap<number, SlidePatch<T>>;
   /** No more writes; resolves once a write in flight has finished. */
@@ -63,6 +65,11 @@ export function createProgressiveDeck<T>(opts: {
     patch(index, slide, state = "writing") {
       if (closed) return;
       patches.set(index, { slide, state });
+      dirty = true;
+      schedule();
+    },
+    drop(index) {
+      if (closed || !patches.delete(index)) return;
       dirty = true;
       schedule();
     },

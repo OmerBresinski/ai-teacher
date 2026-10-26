@@ -1,6 +1,9 @@
 import type { Theme } from "@tj/domain/documents";
-import { accentTint } from "@tj/slides";
+import { accentTint, PLACEHOLDER_IMAGE } from "@tj/slides";
 import { Camera, Shapes } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useProposals } from "../../lesson/proposals-context";
+import { useReducedMotion } from "../../present/use-fullscreen";
 
 /**
  * Where a photograph or a diagram goes, and what the model asked for (look/image-slot): a tinted
@@ -46,20 +49,7 @@ export function SlotPlaceholder({
         textAlign: "center",
       }}
     >
-      {kind === "photo" ? (
-        // Live writing P2 (TEACH-202 part e): a soft pulsing sheen says the picture is on its way.
-        // (Not named for the effect's usual word: it contains "immer", which the thumb test bans.)
-        <div
-          aria-hidden
-          data-slot-sheen
-          className="pointer-events-none absolute inset-0 motion-safe:animate-pulse"
-          style={{
-            borderRadius: radius || undefined,
-            background:
-              "linear-gradient(100deg, transparent 15%, rgba(255,255,255,0.35) 50%, transparent 85%)",
-          }}
-        />
-      ) : null}
+      {kind === "photo" ? <PendingSheen radius={radius} /> : null}
       <Icon
         aria-hidden
         size={22}
@@ -83,6 +73,85 @@ export function SlotPlaceholder({
       >
         {text}
       </span>
+    </div>
+  );
+}
+
+/**
+ * A picture slot the generating job will fill: it still holds the placeholder picture, and it is
+ * not a blank picture box the teacher added (the layouts' blanks ask the teacher to "Describe this
+ * image…", the job's slots carry what the picture shows).
+ */
+export function isJobPictureSlot(el: { src: string; alt?: string | undefined }): boolean {
+  return el.src === PLACEHOLDER_IMAGE && !(el.alt ?? "").startsWith("Describe this");
+}
+
+/**
+ * A picture still on its way (TEACH-202 part o; Greg 25 Oct: "no animation on image placeholders
+ * to show they're loading"): while the lesson's job runs, a soft band of light sweeps across the
+ * slot every 2.4 s. The document cannot tell a picture that failed from one still coming (a failed
+ * slot is laid away only when the lesson turns editable), so the sweep stops when the job ends.
+ * With reduced motion nothing moves: the slot takes a soft tint and says "Adding picture…". (Not
+ * named for the effect's usual word: it contains
+ * "immer", which the thumb test bans.)
+ */
+export function PendingSheen({ radius }: { radius?: number | undefined }) {
+  const { writingSlideIds } = useProposals();
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const coming = writingSlideIds !== undefined;
+  useEffect(() => {
+    if (!coming || reduced) return;
+    const a = ref.current?.animate?.(
+      [
+        { transform: "translateX(-100%)", offset: 0 },
+        { transform: "translateX(100%)", offset: 0.6 },
+        { transform: "translateX(100%)", offset: 1 },
+      ],
+      { duration: 2400, easing: "ease-in-out", iterations: Number.POSITIVE_INFINITY },
+    );
+    return () => a?.cancel();
+  }, [coming, reduced]);
+  if (!coming) return null;
+  if (reduced)
+    return (
+      <div
+        data-slot-sheen="still"
+        className="pointer-events-none absolute inset-0 flex items-end justify-start"
+        style={{ borderRadius: radius || undefined, background: "rgba(255,255,255,0.3)" }}
+      >
+        <span
+          style={{
+            margin: 12,
+            padding: "4px 12px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.85)",
+            color: "rgba(0,0,0,0.6)",
+            fontSize: 18,
+            lineHeight: 1.3,
+          }}
+        >
+          Adding picture…
+        </span>
+      </div>
+    );
+  return (
+    <div
+      aria-hidden
+      data-slot-sheen
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ borderRadius: radius || undefined }}
+    >
+      <div
+        ref={ref}
+        style={{
+          position: "absolute",
+          inset: 0,
+          transform: "translateX(-100%)",
+          background:
+            "linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.55) 50%, transparent 80%)",
+        }}
+      />
     </div>
   );
 }

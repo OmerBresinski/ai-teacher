@@ -27,7 +27,7 @@ import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
 import { isWriterStamp, writerBundleOf } from "./objectives-first";
 import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
-import { createProgressiveDeck } from "./progressive";
+import { createProgressiveDeck, type ProgressiveDeck } from "./progressive";
 
 /*
  * The writer planner's generate step (TEACH-110 part b): the base4 lesson writer, with the
@@ -108,7 +108,6 @@ export function writerBrief(lesson: Lesson): Brief {
     // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
     // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
     exitTicketOnSlides: b?.worksheet !== true,
-    tier: "standard",
     slides: slideRange(b),
   };
 }
@@ -229,6 +228,58 @@ export function plannedSlide(id: string, does?: string, look?: string) {
     ],
   };
 }
+/**
+ * The progress the job reports when the writer's stream ends (TEACH-202 part o): every slide's
+ * words are written; pictures, checks and notes still run. The web reads the message
+ * (`stageOf().written`).
+ */
+export const SLIDES_DRAFTED = "Slides drafted";
+const WRITTEN_PERCENT = 66;
+
+/**
+ * TEACH-202 part o: when the writer's stream ends, the planned blanks it never wrote (a flow entry
+ * or a draft the final deck does not hold) are taken out, so none waits as a "Writing" skeleton
+ * until the deck is editable. Only a true blank goes: an index outside the final deck (`kept`)
+ * with no laid copy (`latest`) whose slide holds nothing but its planned placeholders. Any slide
+ * with streamed content stays. A resumed run (`offScreen`) changes nothing. Returns the indices
+ * dropped, which the caller records so no later patch brings them back (`patchKept`).
+ */
+export function dropUnwrittenBlanks<T>(
+  deck: Pick<ProgressiveDeck<T>, "patches" | "drop">,
+  o: {
+    offScreen: boolean;
+    latest: ReadonlyMap<number, unknown>;
+    kept: ReadonlySet<number>;
+    dropped: Set<number>;
+  },
+): number[] {
+  if (o.offScreen) return [];
+  const out: number[] = [];
+  for (const [i, p] of [...deck.patches()])
+    if (i >= 2 && !o.kept.has(i) && !o.latest.has(i) && plannedOnly(p.slide)) {
+      deck.drop(i);
+      o.dropped.add(i);
+      out.push(i);
+    }
+  return out;
+}
+
+/** A progressive patch, unless the slide was dropped as an unwritten blank (it never comes back). */
+export function patchKept<T>(
+  deck: Pick<ProgressiveDeck<T>, "patch">,
+  dropped: ReadonlySet<number>,
+  i: number,
+  slide: T,
+  state: SlideGenerationState,
+): void {
+  if (!dropped.has(i)) deck.patch(i, slide, state);
+}
+
+const plannedOnly = (slide: unknown) => {
+  const els = (slide as { elements?: { name?: string }[] }).elements ?? [];
+  return els.every((e) => e.name === "Planned" || e.name === "Planned visual");
+};
+
 const plannedOf = (slide: unknown) =>
   ((slide as { elements?: { name?: string }[] }).elements ?? []).some(
     (e) => e.name === "Planned" || e.name === "Planned visual",
@@ -361,6 +412,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   /** Each streamed slide's latest copy, the newest index, and the slides whose words are done. */
   const latest = new Map<number, Laid>();
   const closed = new Set<number>();
+  /** Planned blanks taken out at the stream's end: never patched back in. */
+  const dropped = new Set<number>();
+  /** The writer's stream has ended: from here no slide turns `done` before the deck is editable. */
+  let streamEnded = false;
   let newest = -1;
   const progressive = createProgressiveDeck<Laid>({
     onError: (err) =>
@@ -399,7 +454,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   const blank = (i: number, id: string, does?: string, look?: string) => {
     const was = progressive.patches().get(i);
     if (latest.has(i) || (was && (!does || plannedOf(was.slide)))) return;
-    progressive.patch(i, plannedSlide(id, does, look) as unknown as Laid, "writing");
+    patchKept(progressive, dropped, i, plannedSlide(id, does, look) as unknown as Laid, "writing");
   };
   // Live writing: the deck is saved as the job's at once (title and objectives still `writing`),
   // so the editor opens on it while the writer thinks; each later slide joins as a blank.
@@ -456,18 +511,39 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       onSlide: (i, slide) => {
         latest.set(i, slide);
         if (i > newest) {
-          for (const [j, earlier] of latest)
-            if (j < i && !closed.has(j)) {
-              closed.add(j);
-              if (!offScreen) progressive.patch(j, earlier, "done");
-            }
+          // After the stream's end a later slide (an overflow split) closes nothing: every slide
+          // the job still holds stays its own until the deck is editable (TEACH-202 part o).
+          if (!streamEnded)
+            for (const [j, earlier] of latest)
+              if (j < i && !closed.has(j)) {
+                closed.add(j);
+                if (!offScreen) progressive.patch(j, earlier, "done");
+              }
           newest = i;
         }
         // Off-screen (a resumed run): nothing streams onto the slides the teacher already has.
-        if (!offScreen) progressive.patch(i, slide, closed.has(i) ? "done" : "writing");
+        if (!offScreen)
+          patchKept(progressive, dropped, i, slide, closed.has(i) ? "done" : "writing");
         // Live writing (ADR 0039): the slide still being written ends its drafts with itself, as
         // the next save will carry it, so the client hands over with nothing left to swap.
         if (!offScreen && !closed.has(i)) draft(i, slide, true);
+      },
+      // The stream has ended (TEACH-202 part o). Slides stay the job's until the deck is editable
+      // (a split, a lost picture or a late note may still rewrite them), but the job says the
+      // writing is over, so the editor stops showing "Writing this slide…" through the minute or
+      // more of pictures and checks. Blanks the writer never wrote are taken out.
+      onWritten: (indices) => {
+        streamEnded = true;
+        if (offScreen) return;
+        dropUnwrittenBlanks(progressive, { offScreen, latest, kept: new Set(indices), dropped });
+        deps
+          .onProgress(WRITTEN_PERCENT, SLIDES_DRAFTED, "generate")
+          .catch((err: unknown) =>
+            deps.logger.warn(
+              { stage: "generate", err: String(err).slice(0, 200) },
+              "progress failed",
+            ),
+          );
       },
       ...(live
         ? {
