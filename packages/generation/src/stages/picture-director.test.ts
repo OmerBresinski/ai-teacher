@@ -95,10 +95,10 @@ describe("planPicture", () => {
         });
         expect(p.request.route).toBe("real");
         expect(p.request.period).toBe("Germany, 1923");
-        // A depicted past scene is an event: painted when no real picture is found (163, 210).
-        expect(p.request.realFallback).toBe("illustration");
+        // The director gave no kind: real-only, never painted (it could be a portrait or a place).
+        expect(p.request.realFallback).toBe("none");
         expect(p.request.depicts).toBe(true);
-        expect(p.request.style).toBe("illustration");
+        expect(p.request.style).toBeUndefined();
       }
       const person = photoPlan(dir({ route: "commons", named: "person", period: "1920s" }));
       expect(person.request.realFallback).toBe("none");
@@ -720,6 +720,21 @@ describe("ruling 296: which real things may fall back to a generated picture", (
     } as never);
     expect(p.request.realFallback).toBe("none");
     expect(p.request.style).toBeUndefined();
+  });
+  test("a past ask the director did not classify is real-only, never painted", () => {
+    for (const text of ["The Great Fire spreading across London", "A portrait of Charles II"]) {
+      const p = hist(null, text, null);
+      expect(p.request.realFallback).toBe("none");
+      expect(p.request.style).toBeUndefined();
+    }
+  });
+  test("an explicit event the writer named is painted (rulings 163, 210)", () => {
+    const p = hist("event", "The Great Fire spreading across London", "The Great Fire of London");
+    expect(p.request.realFallback).toBe("illustration");
+    expect(p.request.style).toBe("illustration");
+  });
+  test("a past person stays real-only", () => {
+    expect(hist("person", "Charles II", null).request.realFallback).toBe("none");
   });
   test("a past event, named or not, falls back to the painted illustration (rulings 163, 210)", () => {
     for (const named of ["The Great Fire of London", null])

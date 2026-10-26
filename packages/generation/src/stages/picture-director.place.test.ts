@@ -672,4 +672,72 @@ describe("ruling 296 (placement)", () => {
     expect(made).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
   });
+  test("order for a past event: the scene search, then the painting, then the artefact backup", async () => {
+    const shows = "The Great Fire spreading across London";
+    const go = async (paints: boolean) => {
+      const log: string[] = [];
+      const { images } = placer({
+        commons: async (q) => {
+          log.push(`commons:${q}`);
+          return [];
+        },
+        pexels: async () => [],
+      });
+      const bank: PictureBank = {
+        lookup: async () => undefined,
+        remember: async () => undefined,
+        generate: async () => {
+          log.push("paint");
+          return paints
+            ? ({
+                src: "/files/g1.png",
+                width: 800,
+                height: 600,
+                alt: "x",
+                source: { provider: "generated" },
+                dataUrl: `data:image/png;base64,${PNG}`,
+                style: "illustration",
+              } as never)
+            : undefined;
+        },
+      };
+      const ai = createFakeAi({
+        fallback: () =>
+          verdict({ pick: "made", onSubject: true, kindMatches: true, clear: true, fits: true }),
+      });
+      const got = await placeWriterPicture({
+        ask: ask({ shows, mustSee: [], named: true }),
+        lesson: sampleBriefLesson(),
+        country: "UK",
+        images,
+        deps: recordingDeps(ai),
+        bank,
+        direct: async () =>
+          direction({
+            named: "event",
+            period: "London, 1666",
+            pictures: [{ shows, mustShow: [], queries: [shows], imagePrompt: `${shows}.` }],
+          }),
+      });
+      return { got, log };
+    };
+    const isBackup = (l: string) => / (coin|map|museum|site)/i.test(l) && l.startsWith("commons:");
+    // The painting lands: the artefact backup never runs.
+    const painted = await go(true);
+    expect(painted.got?.src).toBe("/files/g1.png");
+    expect(painted.log[0]?.startsWith("commons:")).toBe(true);
+    expect(painted.log.some(isBackup)).toBe(false);
+    // The painting fails: the artefact backup runs after it.
+    const failed = await go(false);
+    const paint = failed.log.indexOf("paint");
+    const backup = failed.log.findIndex(isBackup);
+    expect(paint).toBeGreaterThan(0);
+    expect(backup).toBeGreaterThan(paint);
+  });
+  test("a past ask the director did not classify is never painted", async () => {
+    const { run, made, outcomes } = fire(null, "A portrait of Charles II", false);
+    expect(await run).toBeUndefined();
+    expect(made).toHaveLength(0);
+    expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
+  });
 });

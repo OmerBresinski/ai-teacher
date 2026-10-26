@@ -477,9 +477,10 @@ export function planPicture(
     .filter((p) => p.shows && p.imagePrompt);
   const first = pictures[0];
   if (!first) return keep();
-  // A historical scene with no named kind is read as an event; any other missing kind stays null,
-  // which is real-only (ruling 296 never generates a real thing it cannot classify).
-  const kind = d.named ?? (depicts ? "event" : null);
+  // Only the director's own kind counts. An unclassified ask stays null, which is real-only, even
+  // a depicting past scene: it could be a portrait, a place or a monument (rulings 163, 296). Only
+  // an explicit `event` is painted, whether or not the writer named it (rulings 163, 210).
+  const kind = d.named ?? null;
   // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
   // ruling 209 never puts a generated panel beside real ones.
   const ruledFallback = !ruled
