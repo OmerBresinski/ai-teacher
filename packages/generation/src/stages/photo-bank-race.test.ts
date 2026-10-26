@@ -380,6 +380,83 @@ describe("TEACH-251 part q: a real thing with a generated fallback overlaps sear
     }
   });
 
+  test("a real picture found inside the threshold: no painting ever starts", async () => {
+    const { bank, log } = fakeBank((s) => after(5, madePhoto("/g.png"), s));
+    const out = await findPicture(
+      realReq,
+      bank,
+      (s) => after(5, stockPhoto("/p.jpg"), s),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      40,
+    );
+    expect(out.via).toBe("fetched");
+    // Well past the threshold: the clock was stopped by the win, so nothing starts late either.
+    await sleep(80);
+    expect(log.generated).toBe(0);
+    expect(log.rejected).toEqual([]);
+  });
+
+  test("the painting starts at the threshold, measured from the ladder's start", async () => {
+    const started: number[] = [];
+    const { bank } = fakeBank((s) => {
+      started.push(Date.now());
+      return after(5, madePhoto("/g.png"), s);
+    });
+    const t0 = Date.now();
+    await findPicture(
+      realReq,
+      bank,
+      (s) => after(90, undefined, s),
+      new AbortController().signal,
+      async () => true,
+      Date.now,
+      undefined,
+      40,
+    );
+    expect(started.length).toBe(1);
+    const wait = (started[0] ?? 0) - t0;
+    expect(wait).toBeGreaterThanOrEqual(38);
+    expect(wait).toBeLessThan(85);
+  });
+
+  test("a real picture wins while a refused painting is judged: no second painting starts", async () => {
+    const { bank, log } = fakeBank(async () => madePhoto("/g.png"));
+    const out = await findPicture(
+      realReq,
+      bank,
+      (s) => after(30, stockPhoto("/p.jpg"), s),
+      new AbortController().signal,
+      // The judge refuses the first painting, but only after the real picture has won.
+      () => after(70, false),
+      Date.now,
+      undefined,
+      5,
+    );
+    expect(out.via).toBe("fetched");
+    await sleep(100);
+    expect(log.generated).toBe(1);
+  });
+
+  test("a stock win while a refused picture is judged: no second generation starts (race)", async () => {
+    const { bank, log } = fakeBank(async () => madePhoto("/g.png"));
+    const out = await findPicture(
+      req,
+      bank,
+      (s) => after(30, stockPhoto("/p.jpg"), s),
+      new AbortController().signal,
+      () => after(70, false),
+      Date.now,
+      undefined,
+      5,
+    );
+    expect(out.via).toBe("fetched");
+    await sleep(100);
+    expect(log.generated).toBe(1);
+  });
+
   test("a real-only thing (no fallback) never generates, however slow its search", async () => {
     const { bank, log } = fakeBank((s) => after(5, madePhoto("/g.png"), s));
     const out = await findPicture(
