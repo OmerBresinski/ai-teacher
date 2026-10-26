@@ -252,10 +252,21 @@ describe("picture and text: the key card look", () => {
       )
         faults.push(`${where}: no picture`);
       if (named(r, PT_NAMES.card).length) faults.push(`${where}: a card drawn`);
-      if (!JSON.stringify(els).includes("Frontier: the edge of land an empire controls."))
+      if (!JSON.stringify(els).includes("Frontier: The edge of land an empire controls."))
         faults.push(`${where}: the card's words lost`);
     }
     expect(faults).toEqual([]);
+  });
+  test("a folded card keeps its meaning's case: proper nouns and acronyms stay", () => {
+    for (const meaning of ["DNA carries the code for a living thing.", "Roman soldiers kept it."]) {
+      const r = layoutTemplate(
+        romans([{ kind: "word", label: "Meaning", term: "Gene", meaning }]),
+        paper,
+        "ks2",
+      );
+      expect(r.over).toEqual([]);
+      expect(JSON.stringify(r.slide.elements)).toContain(`Gene: ${meaning}`);
+    }
   });
   test("a fold that does not fit, or a card that is not one line, leaves the slide flagged", () => {
     // KS1 holds two points and fewer words: the fold is over, so the slide stays as it was.

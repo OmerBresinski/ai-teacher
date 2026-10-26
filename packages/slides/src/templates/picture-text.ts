@@ -268,7 +268,8 @@ function cardAsPoint(k: KeyCard): string | null {
   const head = (k.term?.trim() || [k.num?.trim(), k.unit?.trim()].filter(Boolean).join(" ")).trim();
   const meaning = k.meaning?.trim() ?? "";
   if (k.examples?.length || !meaning) return null;
-  return head ? `${head}: ${meaning.charAt(0).toLowerCase()}${meaning.slice(1)}` : meaning;
+  // The meaning keeps its case as written: a proper noun or an acronym ("Roman", "DNA") stays.
+  return head ? `${head}: ${meaning}` : meaning;
 }
 
 /**
@@ -296,7 +297,7 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
   // flagged, and the generator dropped its placed picture for a text-only slide (TEACH-247 part
   // ao: Romans Y4 verify5 s5, a real photo of the gateway lost). The picture is worth more than
   // the card's look: before giving the slide up, its cards fold into the plain look as further
-  // points ("Frontier: the edge of land an empire controls."), every word kept, beside the
+  // points ("Frontier: The edge of land an empire controls."), every word kept, beside the
   // picture. Used only when that fits with nothing over; otherwise the slide stays flagged.
   const folded = withPicture(input, pt);
   if (folded) {

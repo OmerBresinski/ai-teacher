@@ -59,7 +59,7 @@ describe("Romans s5: a placed photo is kept over the key card's look (TEACH-247 
           "defend their frontier",
           "groups living north of it",
           "goods crossing the frontier",
-          "Frontier: the edge of land an empire controls.",
+          "Frontier: The edge of land an empire controls.",
         ])
           expect(json).toContain(w);
       }
@@ -107,7 +107,7 @@ describe("Romans s3: the points a later question asks about are never dropped fo
         "/files/gateway.jpg",
         "from Wallsend in the east to Bowness-on-Solway in the west",
         "Roman soldiers built and guarded the wall.",
-        "AD 122: this was nearly 2,000 years ago, during Roman rule.",
+        "AD 122: This was nearly 2,000 years ago, during Roman rule.",
       ])
         expect(json).toContain(w);
     });
