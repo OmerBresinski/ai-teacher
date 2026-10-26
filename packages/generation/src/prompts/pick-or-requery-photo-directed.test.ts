@@ -49,6 +49,10 @@ describe("pick-or-requery v18: painted pictures (TEACH-251 part x)", () => {
     expect(MADE_PICTURE_RULES).toContain("frightening for pupils of this age");
     expect(MADE_PICTURE_RULES).toContain("clearly not the age the slide asks for");
     expect(MADE_PICTURE_RULES).toContain("something untrue about the subject");
+    // v20: the notice-at-slide-size bar never softens the safety refusals (distress, age).
+    expect(MADE_PICTURE_RULES).toContain(
+      "A distressing, violent or frightening scene and people clearly not the age the slide asks for are always reasons to refuse, whatever their size. Each other reason counts only",
+    );
     expect(MADE_PICTURE_RULES).toContain("composition and style never count");
   });
 });
