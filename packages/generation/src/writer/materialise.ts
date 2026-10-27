@@ -17,7 +17,8 @@ import {
 import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
 // TEACH-239 part b (C7): the figure slide's writer rules (a leaf: no drawing code).
 import {
-  FIGURE_CAPTION_CAP,
+  FIGURE_CAPTION_TWO_LINE_FITS,
+  FIGURE_TOO_SMALL,
   FIGURE_WIDE_ASPECT,
   figureSlideAllowed,
 } from "@tj/slides/templates/figure-rules";
@@ -937,13 +938,24 @@ export function toInput(
       // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
       // TEACH-251 part ae (romans verify6 s4): the figure slide's caption is one line, and the
       // template cuts a longer one with "…" ("Bowness-on-Solway: 73…"). A caption over the age's
-      // one-line cap is never cut: the slide takes the big layout, whose lead wraps under the figure.
+      // caption room is never cut: the slide takes the big layout, whose lead wraps under the figure.
       const capAge = /ks1/i.test(String(ctx.stage))
         ? "early"
         : /ks2/i.test(String(ctx.stage))
           ? "primary"
           : "secondary";
-      const longCaption = caption.length > FIGURE_CAPTION_CAP[capAge];
+      // TEACH-247 part bi: the figure slide now holds two caption lines; past them, the big layout.
+      const fits = caption.length <= FIGURE_CAPTION_TWO_LINE_FITS[capAge];
+      // A second caption line never takes the figure under its least height (FIGURE_MIN_H).
+      const roomy =
+        !caption ||
+        !f ||
+        !layoutTemplate(
+          { template, heading, ...accent, lead: caption, figure: f },
+          ctx.theme,
+          ctx.stage,
+        ).over.includes(FIGURE_TOO_SMALL);
+      const longCaption = !fits || !roomy;
       if (longCaption || !figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
         return f
           ? {
