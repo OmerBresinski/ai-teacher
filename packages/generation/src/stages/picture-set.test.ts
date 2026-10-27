@@ -16,6 +16,7 @@ import {
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
+  namesRealThing,
   type PictureSetDeps,
   panelBrief,
   type SetAsk,
@@ -365,12 +366,52 @@ describe("the set flow", () => {
     ).toBe(true);
     expect(
       setIsGenerated(
-        asks(2).map((a, k) => (k === 0 ? { ...a, named: true } : a)),
+        asks(2).map((a, k) =>
+          k === 0 ? { ...a, shows: "Tutankhamun's golden mask", named: true } : a,
+        ),
         { subject: "science" },
       ),
     ).toBe(false);
     expect(setLookFor({ subject: "history" }, ["A chick"])?.style).toBe("illustration");
     expect(setLookFor({ subject: "science" }, ["A chick"])).toBeUndefined();
+  });
+});
+
+// TEACH-251 part ax (ruling 296): the writer marked a plain description `named` (greatfire verify6
+// s9), and the whole set went real-only and empty. Only a panel that names a specific real thing
+// keeps a set off the generated path.
+describe("a set is real-only only when a panel names a specific real thing", () => {
+  const gap = "A wide cleared gap where houses have been pulled down";
+  const greatfire = (named: string, mustSee: string[] = [named]): SetAsk[] => [
+    { key: "a", index: 9, shows: "Small flames and smoke rising upwards", mustSee: [] },
+    { key: "b", index: 9, shows: `${named} to make a firebreak.`, mustSee, named: true },
+  ];
+  test("a described scene the writer marked named is generated as one set", () => {
+    expect(setIsGenerated(greatfire(gap), { subject: "history" })).toBe(true);
+    expect(setIsGenerated(greatfire(gap, []), { subject: "history" })).toBe(true);
+  });
+  test("a named place, monument, person or artefact keeps the set on the real ladder", () => {
+    for (const named of [
+      "Hadrian's Wall at Cawfields today",
+      "The Rosetta Stone",
+      "Stonehenge",
+      "Samuel Pepys",
+      "Milecastle 42",
+      "the remains of Old St Paul's",
+      // Reviewer (#709): lowercase names still fail closed.
+      "hadrian's wall at cawfields",
+      "the roman fort",
+      "the bakery on pudding lane",
+      "a gateway in the wall",
+    ])
+      expect(setIsGenerated(greatfire(named), { subject: "history" })).toBe(false);
+  });
+  test("namesRealThing fails closed: any capital after the article, or a number, is a name", () => {
+    expect(namesRealThing(gap)).toBe(false);
+    expect(namesRealThing("leather fire buckets in a row")).toBe(false);
+    expect(namesRealThing("A Tudor house")).toBe(true);
+    expect(namesRealThing("Room 101")).toBe(true);
+    expect(namesRealThing("")).toBe(false);
   });
 });
 

@@ -25,7 +25,7 @@ import {
   shownFor,
   wordsWithin,
 } from "./shown-cap";
-import { waveCMenuBlock } from "./wave-c";
+import { type WaveCMenuOpts, waveCMenuBlock } from "./wave-c";
 
 /*
  * The writer's menu lines for the three pilot layouts (items-row, panel-list, split-compare), one
@@ -784,7 +784,11 @@ export const WRITER_RULES = { answers: ANSWERS_RULE } as const;
  * that layout's line for the stage. Throws on a missing, repeated or unknown slot, so a template can
  * never ship with a hand copy in place of a slot or a slot left unfilled.
  */
-export function assembleWriterSystem(template: string, stage: WriterStage): string {
+export function assembleWriterSystem(
+  template: string,
+  stage: WriterStage,
+  waveCOpts: WaveCMenuOpts = {},
+): string {
   let out = template;
   for (const [layout, menu] of Object.entries(LAYOUT_WRITER_MENUS)) {
     const slot = `{{menu:${layout}}}`;
@@ -796,7 +800,7 @@ export function assembleWriterSystem(template: string, stage: WriterStage): stri
   const block = "{{menu:wave-c}}";
   const blocks = out.split(block).length - 1;
   if (blocks > 1) throw new Error(`writer system: ${block} must appear at most once`);
-  if (blocks) out = out.replace(block, () => waveCMenuBlock(stage));
+  if (blocks) out = out.replace(block, () => waveCMenuBlock(stage, waveCOpts));
   for (const [name, rule] of Object.entries(WRITER_RULES)) {
     const slot = `{{rule:${name}}}`;
     if (out.split(slot).length !== 2)

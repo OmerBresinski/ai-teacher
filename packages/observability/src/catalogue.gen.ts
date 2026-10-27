@@ -17,6 +17,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_drafts: ["ms", "n", "peeks"],
   gen_drafts_stopped: [],
   gen_duplicate_seen: ["fault", "slide"],
+  gen_editable: ["atWords"],
   gen_exit_ticket_missing: ["level", "slides"],
   gen_fact_check: [
     "by",
@@ -42,6 +43,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_hinge_first_unmet: ["correct", "slide"],
   gen_keep_pic: ["key", "orphans", "rule", "slide"],
   gen_keep_pic_unused: ["key", "path", "slide", "why"],
+  gen_late_picture_hook_failed: [],
   gen_layout_gate: ["faults", "outcome", "slide"],
   gen_layout_gate_split_capped: ["parts", "slide"],
   gen_lib_catalogue_failed: [],
@@ -98,6 +100,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
     "stock",
     "via",
   ],
+  gen_pictures_settled: [],
   gen_pilot_fit: ["overs", "path", "slide", "steps"],
   gen_pilot_members_over: ["id", "slide", "template"],
   gen_point_guard: ["how", "removed", "ships", "slide"],

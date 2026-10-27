@@ -1,4 +1,5 @@
 import { safeError } from "@tj/domain";
+import type { PhotoSource } from "@tj/domain/documents";
 import {
   type AgeBand,
   DEFAULT_SLIDE_TIER,
@@ -27,6 +28,7 @@ import { SMALL_MODEL } from "../writer/services";
 import { runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
 import { isWriterStamp, writerBundleOf } from "./objectives-first";
+import { hasOpenJobSlots, type OpenSlot, resolveOpenSlots } from "./open-slots";
 import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
 import { createProgressiveDeck, type ProgressiveDeck } from "./progressive";
 
@@ -261,6 +263,9 @@ export function plannedSlide(id: string, does?: string, look?: string, layout?: 
  * (`stageOf().written`).
  */
 export const SLIDES_DRAFTED = "Slides drafted";
+
+/** Part av: the longest a resumed job searches again for the picture slots it left open. */
+export const RESUME_PICTURE_DEADLINE_MS = 30_000;
 const WRITTEN_PERCENT = 66;
 
 /**
@@ -358,14 +363,70 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   const allIn = (slides: { id: string }[], state: SlideGenerationState) =>
     Object.fromEntries(slides.map((s) => [s.id, state]));
 
+  /** The theme the open slots are laid away in: the row's now, at the lesson's key stage. */
+  const slotTheme = async () => {
+    const now = await deps.themeNow?.().catch(() => undefined);
+    return atKeyStage(
+      getTheme(now ?? lesson.themeId, null),
+      stageOf(lesson.ageBand, lesson.yearGroup),
+    );
+  };
+  /**
+   * Part av: a resumed deck's open picture slots, searched once more (all at once, at most
+   * `RESUME_PICTURE_DEADLINE_MS`), each filled in its frame or laid away, and credited.
+   */
+  const reopenedSlots = async <T extends { id: string; elements: unknown[] }>(slides: T[]) => {
+    const placer = deps.images as DirectedPlacer | undefined;
+    let sources: ReadonlyMap<string, PhotoSource> = new Map();
+    const search = placer
+      ? async (open: OpenSlot[]) => {
+          const p = createWriterPictures({
+            lesson,
+            country: locale().country,
+            images: placer,
+            deps,
+            batchSystem: PICTURE_DIRECTOR_BATCH_SYSTEM,
+            ...(deps.pictureMaker ? { maker: deps.pictureMaker } : {}),
+          });
+          for (const o of open) {
+            const shows = String(o.slot.alt ?? "").trim();
+            p.start(
+              o.index,
+              { key: o.slot.id, type: "photo", shows, mustSee: [], named: false },
+              { heading: shows },
+            );
+          }
+          await p.settle(RESUME_PICTURE_DEADLINE_MS);
+          sources = p.sources();
+          const found = new Map<string, { src: string; alt: string }>();
+          for (const o of open) {
+            const st = p.state(o.index, o.slot.id);
+            if (st.status === "photo") found.set(o.key, { src: st.photo.src, alt: st.photo.alt });
+          }
+          return found;
+        }
+      : undefined;
+    const r = await resolveOpenSlots(slides, {
+      theme: await slotTheme(),
+      ...(search ? { search } : {}),
+    });
+    deps.logger.info(
+      { stage: "generate", open: r.open, placed: r.placed },
+      "open picture slots resolved on resume",
+    );
+    return withPhotoSources(r.slides as never, sources) as unknown as T[];
+  };
   // A retry (pg-boss runs the job again after a throw) never visibly undoes work (TEACH-312 part
   // j). An earlier attempt that saved the editable deck is finished from it: no second writer
   // call, no slide back to `writing`, every word and placed picture as the teacher saw them.
   if (hasEditableDeck(lesson)) {
-    // What the writer does after editable, minus anything that changes a slide: its pictures were
-    // settled before editable (rule (a)), so no slot is open; the speaker notes are written here.
+    // What the writer does after editable, minus anything that changes a slide; the speaker notes
+    // are written here. Since part av the pictures settle after editable, so a job that stopped in
+    // that window left slots open: each is searched once more, and laid away if none is found.
+    const saved = lesson.slides as unknown as { id: string; notes?: string; elements: unknown[] }[];
+    const resumed = hasOpenJobSlots(saved) ? await reopenedSlots(saved) : saved;
     const slides = await notesForSavedSlides({
-      slides: lesson.slides as unknown as { id: string; notes?: string; elements: unknown[] }[],
+      slides: resumed,
       brief: writerBrief(lesson),
       objectives,
       bundle: writerBundleOf(lesson),
@@ -508,6 +569,39 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
     | undefined;
   /** When the editable deck was saved: a save in its place keeps it (resume reads it). */
   let editableAt: string | undefined;
+  /**
+   * Part av: the newest deck handed over while its pictures still settle (undefined once they
+   * have): a job stopping in that window lays its open slots away from it, never leaving one open.
+   */
+  let lastDeck:
+    | Parameters<NonNullable<Parameters<typeof runWriter>[0]["onLatePicture"]>>[0]
+    | undefined;
+  /** Part av: the saves of pictures landing after editable, one at a time, the newest deck wins. */
+  let lateSaves: Promise<void> = Promise.resolve();
+  let lateNext:
+    | Parameters<NonNullable<Parameters<typeof runWriter>[0]["onLatePicture"]>>[0]
+    | undefined;
+  const saveLate = (slides: NonNullable<typeof lateNext>) => {
+    lateNext = slides;
+    lateSaves = lateSaves
+      .then(async () => {
+        const next = lateNext;
+        lateNext = undefined;
+        if (!next || !editableSaved || deps.signal.aborted) return;
+        const deck = kept(credited(next));
+        const { updatedAt } = await deps.persist(
+          toLesson(deck, "planned", allIn(deck, "done"), editableAt),
+        );
+        // The editor folds each save the job reports (FillingFollower).
+        await deps.onProgress(70, "Slides written", "generate", updatedAt);
+      })
+      .catch((err: unknown) =>
+        deps.logger.warn(
+          { stage: "generate", err: String(err).slice(0, 200) },
+          "late picture save failed",
+        ),
+      );
+  };
   try {
     const services = aiWriterServices(deps);
     out = await runWriter({
@@ -640,6 +734,20 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         await pictures?.settle();
         noPicturesSettled = true;
       },
+      // TEACH-251 part av (UX ruling 37): editable when the words finish; pictures keep arriving
+      // after, each saved as it lands under the per-slide merge (ADR 0037), so a late picture
+      // fills only a slot the teacher left as it was and never a slide they deleted.
+      editableAtWords: true,
+      onLatePicture: (slides) => {
+        lastDeck = slides;
+        saveLate(slides);
+      },
+      onPicturesSettled: async (slides, unheld) => {
+        lastDeck = undefined;
+        saveLate(slides);
+        await lateSaves;
+        heldBack = JSON.stringify(unheld) === JSON.stringify(slides) ? undefined : unheld;
+      },
       // lostPic: single pictures for a lost compound picture, placed and settled after editable.
       // Only this slide's pictures are waited for: the slides' tails run in parallel.
       ...(pictures
@@ -658,6 +766,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       onEditable: async (slides, unheld) => {
         // Kept only when the editable deck holds a frame open (it differs from the unheld copy).
         heldBack = JSON.stringify(unheld) === JSON.stringify(slides) ? undefined : unheld;
+        lastDeck = slides;
         // Editable: every slide is laid out and done (rule (a): editable waits for the pictures);
         // the checkpoint stays at `planned` until the end. No streamed save lands after this one.
         await progressive.close();
@@ -685,11 +794,20 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       "write stage failed",
     );
     failed.abort();
+    // Part av: a late picture's save still in flight lands before the failure's own save.
+    await lateSaves;
     await progressive.close();
     if (pictures) await pictures.settle(0).then(undefined, () => undefined);
     // Stopped after the editable deck: the frames it held for pictures are laid out without them
     // (under the same per-slide ownership merge, ADR 0037). Best effort: the failure is the job's.
-    const cleared = editableSaved && heldBack ? kept(credited(heldBack)) : undefined;
+    // Part av: stopped while pictures still settled: the open slots are laid away (no search, the
+    // job is stopping), so none shimmers on after the job; a retry resumes from this deck.
+    const unsettled =
+      editableSaved && lastDeck && hasOpenJobSlots(lastDeck)
+        ? (await resolveOpenSlots(lastDeck, { theme: await slotTheme() })).slides
+        : undefined;
+    const fallbackDeck = unsettled ?? heldBack;
+    const cleared = editableSaved && fallbackDeck ? kept(credited(fallbackDeck)) : undefined;
     if (cleared)
       await deps
         .persist(toLesson(cleared, "planned", allIn(cleared, "done"), editableAt))

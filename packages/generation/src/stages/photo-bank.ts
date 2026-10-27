@@ -102,6 +102,11 @@ export interface BankRequest {
   draw?: CountArray | null;
   /** Search stock (judged against mustShow) before generating a generic picture. */
   stockFirst?: boolean;
+  /**
+   * TEACH-251 part ax: a failed generic generation may fall back to stock, because this is the
+   * slide's only picture (never a set panel or one of several). Absent: no fallback.
+   */
+  stockFallback?: boolean;
   /** What a real miss falls back to (REAL_FALLBACK); absent: none. */
   realFallback?: RealFallback;
   /** The time and place a historical subject belongs to: the judge's context. */
@@ -308,6 +313,16 @@ export const MADE_ATTEMPTS = 3;
  * failure never throws: it is a miss. A generated picture the judge passed is stored in the
  * library (`remember`) once it is the one placed, as a fetched one is (TEACH-84 part b).
  */
+/** Generation failures that say nothing about the picture: the provider was busy or unreachable. */
+const PROVIDER_DOWN: ReadonlySet<string> = new Set([
+  "rate-limited",
+  "quota",
+  "server-error",
+  "network",
+  "network-unsure",
+  "timeout",
+]);
+
 export async function findPicture(
   req: BankRequest,
   bank: PictureBank,
@@ -496,7 +511,27 @@ export async function findPicture(
       fallback === "faithful" ? "generated-faithful" : "generated",
     );
   }
-  return placeMade(await make(false), "generated");
+  const made = await make(false);
+  // TEACH-251 part ax (ruling 210, "always find something"): a generic picture whose generation
+  // failed on a busy or broken provider (after the generator's own backoff) falls back to the stock
+  // search it skipped, once, so the slide keeps a visual. A judge or safety refusal does not. The stock pick is judged against
+  // mustShow as ever, and the slide still holds one picture from one source (ruling 209).
+  if (
+    !made &&
+    req.stockFallback &&
+    !req.stockFirst &&
+    !req.draw &&
+    lastFail &&
+    PROVIDER_DOWN.has(lastFail)
+  ) {
+    // A failed search is a miss on the trace (`stockFailed`); a fatal error still ends the job.
+    const fetched = await fetchStock().catch(whenNonFatal(stockFailed));
+    if (fetched) {
+      await bank.remember(req, fetched).catch(whenNonFatal(() => undefined));
+      return done(fetched, "fetched");
+    }
+  }
+  return placeMade(made, "generated");
 
   /**
    * The real ladder with its generated fallback started beside it once the search has run `ms`.
