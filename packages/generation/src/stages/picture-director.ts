@@ -62,6 +62,7 @@ import {
   makePictureSet,
   type SetAsk,
   type SetPicture,
+  STRUCTURE,
   setIsGenerated,
   setLookFor,
 } from "./picture-set";
@@ -626,6 +627,11 @@ export async function findDirected(args: {
   draws?: boolean;
   /** Ruling 163 for this slot (a history card): the real ladder only, never generated. */
   realOnly?: boolean;
+  /**
+   * TEACH-251 part ax: the slot is its slide's only picture, so a failed generation may fall back
+   * to stock without mixing sources on the slide (ruling 209). Absent: no stock fallback.
+   */
+  stockFallback?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -719,7 +725,7 @@ export async function findDirected(args: {
     });
     return undefined;
   }
-  const req = plan.request;
+  const req = args.stockFallback ? { ...plan.request, stockFallback: true } : plan.request;
   const brief: ImageBrief =
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
@@ -987,17 +993,16 @@ const SCENE_PEOPLE =
 const SCENE_DOING =
   /\b(patroll?(ing|ed)|patrols?|walking|marching|guarding|keeping watch|standing guard|approaching|crossing|carrying|trading|waiting|(check|stopp|search|question|inspect)(ing|ed))\b/i;
 
+/** TEACH-251 part ax: a slot key that is its slide's only picture (no `.n` or `#n` suffix). */
+export function soleOnSlide(key: string): boolean {
+  return !/[.#]/.test(key);
+}
+
 /** A picture of people doing something at a past place: a scene there (ruling 210). */
 export function isPastScene(shows: string): boolean {
   return SCENE_PEOPLE.test(shows) && SCENE_DOING.test(shows);
 }
 
-/**
- * Kinds of built thing: a proper name that holds one names a real monument, site or building
- * ("Hadrian's Wall", "Housesteads Roman Fort", "Old St Paul's Cathedral"). Kinds, never names.
- */
-const STRUCTURE =
-  /\b(walls?|forts?|fortress|castles?|cathedral|church|abbey|priory|chapel|minster|mosque|temple|palace|towers?|bridge|gates?|gateway|villa|amphitheatre|colosseum|forum|baths|pyramids?|henge|monument|hall|house|museum|theatre|stadium|lighthouse|barracks|milecastles?)\b/i;
 /** Proper-name phrases: capitalised words, joined by "of"/"the", a saint's prefix included. */
 const PROPER = /\b(?:St\.?\s+|Saint\s+)?[A-Z][\w'’-]*(?:\s+(?:of\s+|the\s+)?[A-Z][\w'’-]*)*/g;
 /** Words before a name that put the monument out of view ("near Hadrian's Wall"). */
@@ -1331,6 +1336,9 @@ export async function placeWriterPicture(args: {
         ...(args.onOutcome ? { onOutcome: args.onOutcome } : {}),
         ...(args.draws ? { draws: true } : {}),
         ...(args.realOnly ? { realOnly: true } : {}),
+        // One picture on the slide only: a panel, tile, card or split part (`side.1`, `card.2`,
+        // `figure#1`) shares its slide with others, so it never falls back to stock (ruling 209).
+        ...(soleOnSlide(ask.key) ? { stockFallback: true } : {}),
       });
     },
     (error) => {
