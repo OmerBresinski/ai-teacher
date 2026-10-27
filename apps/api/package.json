@@ -18,7 +18,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@better-auth/core": "1.7.2",
+    "@better-auth/core": "1.7.14",
     "@hono/zod-validator": "0.9.1",
     "@tj/ai": "workspace:*",
     "@tj/db": "workspace:*",
@@ -30,7 +30,7 @@
     "@tj/slides": "workspace:*",
     "@tj/storage": "workspace:*",
     "ai": "7.0.114",
-    "better-auth": "1.7.2",
+    "better-auth": "1.7.14",
     "hono": "4.13.9",
     "pg-boss": "12.34.0",
     "pino": "10.3.1",

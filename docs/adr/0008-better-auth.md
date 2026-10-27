@@ -67,6 +67,8 @@ with the founder; the tickets (TEACH-311, TEACH-312, TEACH-31) implement it and 
    account model requires; the P0 schema lacks it, and magic links never write `accounts`, so
    until then every OAuth callback fails with `internal_server_error`. The button lands after
    production has credentials; a `smoke:prod` case proves the api returns a Google URL.
+   better-auth 1.7.3 dropped that requirement and keys accounts on `(provider_id, account_id)`
+   again; migration `0014` drops the unique index and makes `issuer` nullable (TEACH-274 part b).
 8. **Console-only steps.** Google has no API or gcloud command for a standard Web OAuth client or
    for the consent screen (the IAP OAuth Admin API behind `gcloud iap oauth-clients` shut down on
    2026-03-19). The consent screen and the clients are created in the Google Cloud console;
