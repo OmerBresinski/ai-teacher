@@ -66,7 +66,7 @@ describe("a picture on its way", () => {
       expect(cue?.textContent).toBe("Adding picture…");
     }));
 
-  test("the moving light is drawn in the lesson theme's tokens, never a fixed white (part av)", () =>
+  test("the dots and the moving light are drawn in the lesson theme's tokens (part av)", () =>
     withReducedMotion(false, () => {
       const theme = getTheme("splash");
       const { container } = render(
@@ -74,9 +74,34 @@ describe("a picture on its way", () => {
           <PendingSheen theme={theme} />
         </ProposalsContext.Provider>,
       );
-      const band = container.querySelector("[data-slot-sheen] > div") as HTMLElement;
-      expect(band.getAttribute("style")).toContain(theme.colors.surface);
-      expect(band.getAttribute("style")).not.toContain("255,255,255");
+      const field = container.querySelector("[data-slot-sheen]") as HTMLElement;
+      const lit = container.querySelector("[data-slot-light] > div") as HTMLElement;
+      expect(field.getAttribute("style")).not.toContain("255,255,255");
+      expect(field.innerHTML).toContain(theme.colors.muted);
+      expect(lit.getAttribute("style")).toContain(theme.colors.accent);
+      expect(lit.getAttribute("style")).toContain("radial-gradient");
+    }));
+
+  test("Present and the viewer draw a slot still pending when they loaded, without the job", () =>
+    withReducedMotion(false, () => {
+      for (const mode of ["present", "view"] as const) {
+        const { container, unmount } = render(
+          <PendingSheen theme={getTheme("crayon")} mode={mode} />,
+        );
+        expect(container.querySelector("[data-slot-light]")).toBeTruthy();
+        unmount();
+      }
+    }));
+
+  test("in the rail, reduced motion keeps the still dots but not the words", () =>
+    withReducedMotion(true, () => {
+      const { container } = render(
+        <ProposalsContext.Provider value={coming}>
+          <PendingSheen theme={getTheme("exam-hall")} mode="thumb" />
+        </ProposalsContext.Provider>,
+      );
+      expect(container.querySelector("[data-slot-sheen=still]")).toBeTruthy();
+      expect(container.textContent).toBe("");
     }));
 
   test("once the job has ended there is no cue", () =>

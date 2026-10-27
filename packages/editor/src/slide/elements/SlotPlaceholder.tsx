@@ -4,6 +4,7 @@ import { Camera, Shapes } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useProposals } from "../../lesson/proposals-context";
 import { useReducedMotion } from "../../present/use-fullscreen";
+import type { SlideMode } from "./kit";
 
 /**
  * Where a photograph or a diagram goes, and what the model asked for (look/image-slot): a tinted
@@ -87,63 +88,119 @@ export function isJobPictureSlot(el: { src: string; alt?: string | undefined }):
 }
 
 /**
- * A picture still on its way (TEACH-202 part o; Greg 25 Oct: "no animation on image placeholders
- * to show they're loading"): while the lesson's job runs, a soft band of light sweeps across the
- * slot every 2.4 s. The document cannot tell a picture that failed from one still coming (a failed
- * slot is laid away only when the lesson turns editable), so the sweep stops when the job ends.
- * With reduced motion nothing moves: the slot takes a soft tint and says "Adding picture…". (Not
- * named for the effect's usual word: it contains
- * "immer", which the thumb test bans.)
+ * A picture still on its way (TEACH-202 part o; TEACH-251 part av, Greg 26 Oct: "a clear
+ * generating" cue, the way a dot matrix lights up): the slot is a field of small dots in the
+ * lesson theme's muted colour on its accent tint, and a soft slanted band crosses it every 2 s,
+ * lighting the dots it passes in the accent and drawing them larger. Only transforms move (the band
+ * slides one way and the lit dots inside it slide back, so the dots stay put while the light
+ * travels), every slot keeps the same phase, and nothing is laid out again, so a deck full of
+ * pending slots stays cheap.
+ *
+ * The document cannot tell a picture that failed from one still coming (a failed slot is laid away
+ * only when the lesson turns editable), so in the editor and its rail the field shows only while
+ * the job runs. Present and the viewer load the lesson once; a slot still holding the placeholder
+ * there was pending when it loaded (the api lays an open slot away on read once no job holds the
+ * lesson), so they draw it as coming. Print and export never do.
+ *
+ * With reduced motion nothing moves: the dots stand still and the slot says "Adding picture…"
+ * (not in the rail, where the words would be a smudge). (Not named for the effect's usual word: it
+ * contains "immer", which the thumb test bans.)
  */
+const PERIOD = 2000;
+const SLANT =
+  "linear-gradient(to right, transparent, #000 35%, #000 65%, transparent), linear-gradient(105deg, transparent 15%, #000 50%, transparent 85%)";
+/** Dot pitch and radii in slide units; the rail draws them twice the size so they still read. */
+const DOTS = { pitch: 14, dot: 1.5, lit: 2.6 };
+
 export function PendingSheen({
   radius,
   theme,
+  mode = "edit",
 }: {
   radius?: number | undefined;
-  /** The light and the still state are drawn in the lesson theme's own tokens (part av). */
+  /** The ground, the dots and the light are drawn in the lesson theme's own tokens (part av). */
   theme: Theme;
+  mode?: SlideMode;
 }) {
-  const light = `color-mix(in srgb, ${theme.colors.surface} 60%, transparent)`;
   const { writingSlideIds } = useProposals();
   const reduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement | null>(null);
-  const coming = writingSlideIds !== undefined;
+  const band = useRef<HTMLDivElement | null>(null);
+  const lit = useRef<HTMLDivElement | null>(null);
+  const loadedPending = mode === "present" || mode === "view";
+  const coming = loadedPending || writingSlideIds !== undefined;
   useEffect(() => {
     if (!coming || reduced) return;
-    const a = ref.current?.animate?.(
-      [
-        { transform: "translateX(-100%)", offset: 0 },
-        { transform: "translateX(100%)", offset: 0.6 },
-        { transform: "translateX(100%)", offset: 1 },
-      ],
-      { duration: 2400, easing: "ease-in-out", iterations: Number.POSITIVE_INFINITY },
-    );
-    return () => a?.cancel();
+    const timing = {
+      duration: PERIOD,
+      easing: "linear",
+      iterations: Number.POSITIVE_INFINITY,
+    };
+    // The band is 0.6 of the slot wide; its brightest line runs from 0.2 of a slot before the left
+    // edge to 0.2 past the right, so the light is on the dots most of the time and the loop's
+    // restart happens out of sight. The lit dots (the slot's width) run back by the same distance,
+    // so they hold still.
+    const moves = [
+      band.current?.animate?.(
+        [{ transform: "translateX(-83.333%)" }, { transform: "translateX(150%)" }],
+        timing,
+      ),
+      lit.current?.animate?.(
+        [{ transform: "translateX(50%)" }, { transform: "translateX(-90%)" }],
+        timing,
+      ),
+    ];
+    // One phase for every slot on screen: the light crosses them together, never at random.
+    for (const m of moves) {
+      if (!m) continue;
+      m.startTime = 0;
+      // Cancelling rejects `finished`; nothing waits on it.
+      m.finished?.catch(() => {});
+    }
+    return () => {
+      for (const m of moves) m?.cancel();
+    };
   }, [coming, reduced]);
   if (!coming) return null;
+  const k = mode === "thumb" ? 2 : 1;
+  const pitch = DOTS.pitch * k;
+  const field = (colour: string, r: number) =>
+    `radial-gradient(circle, ${colour} ${r * k}px, transparent ${r * k + 0.75}px) center / ${pitch}px ${pitch}px`;
+  // The field fades out towards the slot's edges, so it has no hard grid border.
+  const edges = "radial-gradient(ellipse 60% 60% at 50% 50%, #000 50%, transparent 100%)";
+  const fill = {
+    position: "absolute",
+    inset: 0,
+    maskImage: edges,
+    WebkitMaskImage: edges,
+  } as const;
+  const dots = `color-mix(in srgb, ${theme.colors.muted} ${reduced ? 55 : 40}%, transparent)`;
+  const light = `color-mix(in srgb, ${theme.colors.accent} 75%, ${theme.colors.ink})`;
+  const ground = { borderRadius: radius || undefined, background: accentTint(theme) };
   if (reduced)
     return (
       <div
         data-slot-sheen="still"
-        className="pointer-events-none absolute inset-0 flex items-end justify-start"
-        style={{
-          borderRadius: radius || undefined,
-          background: `color-mix(in srgb, ${theme.colors.surface} 30%, transparent)`,
-        }}
+        className="pointer-events-none absolute inset-0 flex items-end justify-start overflow-hidden"
+        style={ground}
       >
-        <span
-          style={{
-            margin: 12,
-            padding: "4px 12px",
-            borderRadius: 999,
-            background: theme.colors.surface,
-            color: theme.colors.muted,
-            fontSize: 18,
-            lineHeight: 1.3,
-          }}
-        >
-          Adding picture…
-        </span>
+        <div aria-hidden style={{ ...fill, background: field(dots, DOTS.dot) }} />
+        {mode === "thumb" ? null : (
+          <span
+            style={{
+              position: "relative",
+              margin: 12,
+              padding: "4px 12px",
+              borderRadius: 999,
+              background: theme.colors.surface,
+              color: theme.colors.muted,
+              fontFamily: theme.fonts.body,
+              fontSize: 18,
+              lineHeight: 1.3,
+            }}
+          >
+            Adding picture…
+          </span>
+        )}
       </div>
     );
   return (
@@ -151,17 +208,37 @@ export function PendingSheen({
       aria-hidden
       data-slot-sheen
       className="pointer-events-none absolute inset-0 overflow-hidden"
-      style={{ borderRadius: radius || undefined }}
+      style={ground}
     >
+      <div style={{ ...fill, background: field(dots, DOTS.dot) }} />
       <div
-        ref={ref}
+        ref={band}
+        data-slot-light
         style={{
           position: "absolute",
-          inset: 0,
-          transform: "translateX(-100%)",
-          background: `linear-gradient(100deg, transparent 20%, ${light} 50%, transparent 80%)`,
+          top: 0,
+          bottom: 0,
+          left: 0,
+          width: "60%",
+          transform: "translateX(-83.333%)",
+          // A slanted light, faded to nothing at the band's sides whatever the slot's shape.
+          maskImage: SLANT,
+          WebkitMaskImage: SLANT,
+          maskComposite: "intersect",
+          WebkitMaskComposite: "source-in",
         }}
-      />
+      >
+        <div
+          ref={lit}
+          style={{
+            ...fill,
+            right: "auto",
+            width: "166.667%",
+            transform: "translateX(50%)",
+            background: field(light, DOTS.lit),
+          }}
+        />
+      </div>
     </div>
   );
 }
