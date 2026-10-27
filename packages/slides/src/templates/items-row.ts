@@ -316,15 +316,13 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const concepts = labels.map((l) =>
     l === PENDING_ICON ? PENDING_ICON : l ? (res.ids[named.indexOf(l)] ?? null) : null,
   );
-  // Pictures (part bg): any item with a photo or an open slot makes a picture row of two to four;
-  // a tile takes the medal's place, so no icon or connector is drawn. One lost picture takes its
-  // item's number in the tile's place (the row stays even); two or more and the row is numbered.
-  const lostPics = items.filter((it) => !itemPhoto(it)).length;
+  // Pictures (part bg): any item with a photo, an open slot or a planned picture not yet in makes a
+  // picture row of two to four; a tile takes the medal's place, so no icon or connector is drawn.
+  // TEACH-251 part ay (Greg, 27 Oct: "a planned picture is never missing"): an item whose picture
+  // is not in yet keeps its tile slot, and its number medal sits on it only as the placeholder
+  // while the picture loads; the final state is always a picture, never the number.
   const pics =
-    n >= ROW_MIN &&
-    n <= ROW_PIC_MAX &&
-    lostPics < Math.min(2, n) &&
-    items.some((it) => itemPhoto(it));
+    n >= ROW_MIN && n <= ROW_PIC_MAX && items.some((it) => itemPhoto(it) || it.picture === null);
   const icons = !pics && n > 0 && concepts.every(Boolean);
   // Unordered and no icons: no medal at all, never an empty face or numbers that read as a sequence.
   const bare = !pics && !icons && input.ordered === false;
@@ -512,7 +510,10 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
       if (!b) continue;
       const mx = p.cx - mm / 2;
       const my = p.cy - mm / 2;
-      const photo = pics ? itemPhoto(it) : null;
+      // A picture not in yet is an open slot, so the picture still lands in its tile.
+      const photo = pics
+        ? (itemPhoto(it) ?? ({ photo: PLACEHOLDER_IMAGE, alt: it.name } as Photo))
+        : null;
       if (photo) {
         // The part alone on a small tile, cover-cropped (subjects kept in view), no labels.
         const tw = Math.min(itemW, Math.round(mm * ITEM_PIC_ASPECT));
@@ -535,8 +536,9 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
           radius: Math.min(c.t.radius ?? 12, Math.round(mm * 0.12)),
         } as unknown as (typeof c.els)[number]);
       }
-      if (pics && !photo) {
-        // The one lost picture: the item's number on a medal, centred where its tile would be.
+      if (photo && (!photo.photo || photo.photo === PLACEHOLDER_IMAGE)) {
+        // Loading only: the item's number on a medal, centred on its tile until the picture lands
+        // (the slide is laid out again then, and the medal is gone).
         const d = Math.min(mm, M * 0.72);
         medal(c, p.k, null, it.name, false, true, p.cx - d / 2, my + (mm - d) / 2, d, prof, col);
       }
