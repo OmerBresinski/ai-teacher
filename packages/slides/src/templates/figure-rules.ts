@@ -10,13 +10,34 @@
  *   figure slide that is not next to a diagram slide keeps the layout; any other is laid as the
  *   old big diagram (`figureSlideAllowed`).
  * - **The caption's writer cap** per age, in characters (one line, measured in the drawn font).
+ * - **The caption holds two lines** (TEACH-247 part bi, pack v4.18's "up to 2 lines of facts"):
+ *   `FIGURE_CAPTION_TWO_LINE_FITS` is the measured two-line fit; a longer caption takes the big
+ *   layout, whose lead wraps under the figure.
  */
+// Data only (the measured table), so the leaf still pulls in no drawing code.
+import TWO_LINE from "./figure-two-line-capacity.json" with { type: "json" };
 
 /** Width over height past which a library model takes the figure slide (C6 takes the rest). */
 export const FIGURE_WIDE_ASPECT = 1.45;
 
 /** The caption's writer cap in characters, per age group (one line at the drawn size). */
 export const FIGURE_CAPTION_CAP = { early: 60, primary: 70, secondary: 74 } as const;
+
+/**
+ * The figure's least stage height (slide points, 44% of the slide): a second caption line never
+ * takes the figure under it. With a one-line title the smallest stage is 280 (Beacon KS1); a
+ * two-line title can take it to 223, and then the caption takes the big layout instead.
+ */
+export const FIGURE_MIN_H = 240;
+/** The layout's flag when a two-line caption would take the figure under `FIGURE_MIN_H`. */
+export const FIGURE_TOO_SMALL = "figure too small beside a two-line caption";
+/** The most caption lines the figure slide shows. */
+export const FIGURE_CAPTION_LINES = 2;
+/** The caption's measured two-line fit (characters) per age, on every theme at the drawn size. */
+export const FIGURE_CAPTION_TWO_LINE_FITS = TWO_LINE as Record<
+  keyof typeof FIGURE_CAPTION_CAP,
+  number
+>;
 
 /** A writer slide as the rule reads it: its template and the visual fields it may hold. */
 export type FigureRuleSlide =

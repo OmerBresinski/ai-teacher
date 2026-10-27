@@ -52,12 +52,13 @@ export function ImageView(props: ElementViewProps<ImageElement>) {
     );
   }
   // A writer's picture slot holds the placeholder picture until its picture lands: in the editor it
-  // shows the picture is on its way (TEACH-202 part o).
-  if (props.mode === "edit" && isJobPictureSlot(props.element))
+  // shows the picture is on its way (TEACH-202 part o), and so do the rail, Present and the viewer
+  // (TEACH-251 part av). Print and export draw the placeholder as stored.
+  if (props.mode !== "capture" && isJobPictureSlot(props.element))
     return (
       <div style={{ position: "relative", width: "100%", height: "100%" }}>
         <Picture {...props} />
-        <PendingSheen radius={props.element.radius} />
+        <PendingSheen radius={props.element.radius} theme={props.theme} mode={props.mode} />
       </div>
     );
   return <Picture {...props} />;

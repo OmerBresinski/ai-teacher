@@ -34,7 +34,8 @@ const NEW_REPEAT =
 const ANCHOR = "is reasons or causes, never one big idea.";
 
 describe("pilot pack v4.16", () => {
-  test("production runs v4.16", () => expect(PILOT_PACK_ID).toBe("v4.16"));
+  test("production runs v4.16 or a later pack", () =>
+    expect(Object.keys(PILOT_PACKS)).toContain(PILOT_PACK_ID));
 
   for (const stage of STAGES) {
     const ks = KS[stage];

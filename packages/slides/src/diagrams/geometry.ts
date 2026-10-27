@@ -64,6 +64,13 @@ export function diagramGeometryFaults(
   for (let i = 0; i < ls.length && !labelled; i++)
     for (let j = i + 1; j < ls.length; j++)
       if (segmentsCross(ls[i] as Seg, ls[j] as Seg)) out.push("two leader lines cross");
+  // TEACH-247 part bf: a river's or hydrograph's name never sits on one of the drawing's own
+  // paths (a bank, the sand, an axis guide, another leader); its own leader ends at its edge.
+  const kind = (spec as { kind?: unknown } | null)?.kind;
+  if (kind === "river" || kind === "hydrograph")
+    for (const b of probe.rec)
+      if ([...probe.strokes, ...ls].some((sg) => segCutsBox(sg as Seg, b)))
+        out.push(`the label "${b.text}" is crossed by a line`);
   for (const a of probe.arrows) {
     const [px, py] = a.tip;
     const { x0, y0, x1, y1 } = a.target;
@@ -82,6 +89,21 @@ export function diagramGeometryFaults(
 }
 
 type Seg = [number, number, number, number];
+
+/** True when `s` passes through box `b` shrunk by 1.5 pt (a leader ending on its edge is fine). */
+export function segCutsBox(s: Seg, b: { x0: number; y0: number; x1: number; y1: number }): boolean {
+  const x0 = b.x0 + 1.5;
+  const x1 = b.x1 - 1.5;
+  const y0 = b.y0 + 1.5;
+  const y1 = b.y1 - 1.5;
+  if (x0 >= x1 || y0 >= y1) return false;
+  for (let i = 0; i <= 64; i++) {
+    const px = s[0] + ((s[2] - s[0]) * i) / 64;
+    const py = s[1] + ((s[3] - s[1]) * i) / 64;
+    if (px > x0 && px < x1 && py > y0 && py < y1) return true;
+  }
+  return false;
+}
 
 export { segmentsCross };
 

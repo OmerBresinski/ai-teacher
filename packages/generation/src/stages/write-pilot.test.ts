@@ -4,7 +4,7 @@ import { labAi, romansLesson } from "../planner/testing";
 import { initialState, recordingDeps, writerFixture } from "../testing";
 import { WRITER_VERSION, writerRoute } from "../writer/ai-services";
 import { LAYOUT_WRITER_MENUS } from "../writer/layout-menu";
-import { PILOT_PACK_ID } from "../writer/pilot-pack";
+import { ITEMS_ROW_LABELLED, ITEMS_ROW_V417, PILOT_PACK_ID } from "../writer/pilot-pack";
 import { checkedWriterObjectives } from "./objectives";
 import { write } from "./write";
 
@@ -45,7 +45,9 @@ describe("the production writer runs the pilot pack", () => {
     expect(call).toBeDefined();
     const system = call?.systemText ?? "";
     const stage = romansLesson().ageBand === "ks2" ? "KS2" : "KS3-5";
-    for (const menu of Object.values(LAYOUT_WRITER_MENUS)) expect(system).toContain(menu[stage]);
+    // v4.17 reroutes items-row's long list of parts (no labelled diagram on the writer's menu).
+    for (const menu of Object.values(LAYOUT_WRITER_MENUS))
+      expect(system).toContain(menu[stage].replace(ITEMS_ROW_LABELLED, ITEMS_ROW_V417));
     const schema = (call?.responseFormat as { schema?: { $defs?: Record<string, unknown> } })
       ?.schema;
     const defs = Object.keys(schema?.$defs ?? {});

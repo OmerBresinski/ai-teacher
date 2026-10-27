@@ -7,6 +7,12 @@ import ks4EnglishLiterature from "./briefs/ks4-english-literature-macbeth.json";
 import ks4Geography from "./briefs/ks4-geography-coasts.json";
 import ks4Science from "./briefs/ks4-science-electrolysis.json";
 import ks5History from "./briefs/ks5-history-weimar-crisis.json";
+import lc_y1_plants from "./briefs/lc-y1-plants.json";
+import lc_y2_greatfire from "./briefs/lc-y2-greatfire.json";
+import lc_y4_romans from "./briefs/lc-y4-romans.json";
+import lc_y8_photosynthesis from "./briefs/lc-y8-photosynthesis.json";
+import lc_y9_equations from "./briefs/lc-y9-equations.json";
+import lc_y9_rivers from "./briefs/lc-y9-rivers.json";
 import post16Economics from "./briefs/post16-economics-elasticity.json";
 import y3Maths from "./briefs/y3-maths-fractions.json";
 import y8Science from "./briefs/y8-science-particles.json";
@@ -39,6 +45,24 @@ const RAW: Record<string, unknown> = {
   "ks4-english-literature-macbeth": ks4EnglishLiterature,
   "ks5-history-weimar-crisis": ks5History,
 };
+
+/**
+ * Lab briefs (layout-selection, 27 Oct 2026): the six genlab lessons the layout audit read. Never in
+ * the default set; `--briefs` reaches them by id.
+ */
+const RAW_LAB: Record<string, unknown> = {
+  "lc-y2-greatfire": lc_y2_greatfire,
+  "lc-y4-romans": lc_y4_romans,
+  "lc-y1-plants": lc_y1_plants,
+  "lc-y8-photosynthesis": lc_y8_photosynthesis,
+  "lc-y9-rivers": lc_y9_rivers,
+  "lc-y9-equations": lc_y9_equations,
+};
+
+/** The lab briefs, parsed like the rest. */
+export function labBriefs(): EvalBrief[] {
+  return Object.entries(RAW_LAB).map(([id, raw]) => ({ id, input: CreateLessonSchema.parse(raw) }));
+}
 
 /** Every brief, parsed by the same schema `POST /lessons` runs; throws on a bad fixture. */
 export function evalBriefs(): EvalBrief[] {

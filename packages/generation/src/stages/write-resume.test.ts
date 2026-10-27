@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FakeCall } from "@tj/ai/testing";
 import { type Lesson, type Slide, SlideSchema } from "@tj/domain/documents";
+import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import pino from "pino";
 import { labAi, romansLesson } from "../planner/testing";
 import { initialState, type RecordedDeps, recordingDeps, writerFixture } from "../testing";
@@ -265,4 +266,52 @@ describe("UX-A: a writer that breaks off mid-stream", () => {
     expect(out.lesson.slides.length).toBeGreaterThan(stored.slides.length);
     expect(out.lesson.generation?.stage).toBe("generated");
   }, 20_000);
+});
+
+describe("part av: a deck that turned editable before its pictures settled", () => {
+  test("a retry leaves no picture slot open: one with no picture found is laid away", async () => {
+    const planned = await plannedState();
+    const a0 = recordingDeps(writerAi().ai);
+    const deps0: RecordedDeps = {
+      ...a0,
+      onProgress: async (_p, message) => {
+        if (message === "Slides written") throw new TypeError("stopped while pictures settled");
+      },
+    };
+    await expect(write(planned, deps0)).rejects.toBeInstanceOf(TypeError);
+    const saved = storedAfter(a0);
+    // The job stopped with a picture still coming on a done slide: its open frame was saved.
+    const at = saved.slides.findIndex((s, i) => i >= 2 && s.elements.length > 0);
+    const open = {
+      id: "open-frame",
+      type: "image",
+      x: 980,
+      y: 200,
+      w: 800,
+      h: 600,
+      src: PLACEHOLDER_IMAGE,
+      alt: "A Roman legionary in armour",
+    } as unknown as Slide["elements"][number];
+    const stored = {
+      ...saved,
+      slides: saved.slides.map((s, i) =>
+        i === at ? { ...s, elements: [...s.elements, open] } : s,
+      ),
+    };
+    const retry = recordingDeps(writerAi().ai);
+    const out = await write({ ...planned, lesson: stored }, retry);
+    const srcs = out.lesson.slides.flatMap((s) =>
+      s.elements.flatMap((e) => (e.type === "image" ? [e.src] : [])),
+    );
+    expect(srcs).not.toContain(PLACEHOLDER_IMAGE);
+    expect(out.lesson.slides.some((s) => s.elements.some((e) => e.id === "open-frame"))).toBe(
+      false,
+    );
+    // The teacher's words on that slide are all still there.
+    const words = (s: Slide) =>
+      s.elements.flatMap((e) => (e.type === "text" && "text" in e ? [String(e.text)] : []));
+    const was = stored.slides[at] as Slide;
+    const now = out.lesson.slides.find((s) => s.id === was.id) as Slide;
+    for (const w of words(was)) expect(words(now).join(" ")).toContain(w.slice(0, 20));
+  });
 });

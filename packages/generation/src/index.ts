@@ -91,6 +91,7 @@ export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";
 export { type FactsStepReport, facts, runFactsStep } from "./stages/facts";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
+export { healOpenSlots } from "./stages/heal-open-slots";
 export {
   MAX_OUTPUT_TOKENS_OBJECTIVES,
   ObjectivesBlocked,
@@ -186,5 +187,6 @@ export * from "./worksheet";
 export { WRITER_VERSION, writerRoute } from "./writer/ai-services";
 export { DIAGRAM_CONTRACT, writerDrawerSystem } from "./writer/diagram-contract.gen";
 export { type DraftOptions, peekPartial, type SlideDraft } from "./writer/draft";
+export { PILOT_PACK_ID, packWriter } from "./writer/pilot-pack";
 export { isBudgetRefusal, SMALL_MODEL, WRITER_EFFORT, WRITER_MODEL } from "./writer/services";
 export { runWriter, WriterIncompleteError } from "./writer/stage";
