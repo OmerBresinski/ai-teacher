@@ -565,8 +565,9 @@ describe("writer pictures: generated sets", () => {
     pictures.start(2, ask({ ...hen, named: true }), slide);
     await pictures.settle(5_000);
     expect(m.made).toHaveLength(0);
-    // TEACH-251 part ay: the set had a hole, so both panels are directed again to be painted.
-    expect(directed).toBe(4);
+    // TEACH-251 part ay: the set had a hole, so both panels are directed again to be painted, then
+    // once more for the topic's unjudged scene.
+    expect(directed).toBe(6);
     expect(pictures.state(2, "seq.0").status).toBe("failed");
   });
 });
@@ -1507,9 +1508,10 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         },
       },
     });
-    // TEACH-251 part ay: the hole sends the whole set to be painted together; that repaint failed
-    // here, so the set keeps its real panel and nothing painted is mixed in beside it.
-    expect(made).toHaveLength(2);
+    // TEACH-251 part ay: the hole sends the whole set to be painted together, then as the topic's
+    // unjudged scene; both failed here (no picture made), so the set keeps its real panel and
+    // nothing painted is mixed in beside it.
+    expect(made).toHaveLength(4);
     expect(r.prompts).toHaveLength(0);
     expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
     expect(r.providers.has("generated")).toBe(false);
@@ -1553,6 +1555,47 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
     expect(made.some((t) => t.includes("Rosetta"))).toBe(false);
   });
 
+  test("TEACH-251 part ay: a group repaint the judge fails becomes the topic's scene, unjudged, on every panel", async () => {
+    const STONE = "The Rosetta Stone in the British Museum";
+    const FIRE = "The Great Fire spreading across London";
+    const made: { text: string; painted: boolean }[] = [];
+    const r = await run({
+      lesson: { subject: "History" },
+      panels: [STONE, FIRE],
+      hit: (w) => w === STONE,
+      namedAt: (k) => k === 0,
+      kind: "event",
+      period: "London, 1666",
+      bank: {
+        ...STOCK_ONLY_BANK,
+        // Every painting carries bytes, so the judged repaint is judged (and refused by the fake
+        // model's empty script); the unjudged pass places what it makes.
+        generate: async (req) => {
+          made.push({ text: req.text, painted: req.style === "illustration" });
+          return {
+            src: `/files/q${made.length}.png`,
+            alt: req.text,
+            style: "illustration",
+            dataUrl: "data:image/png;base64,AA",
+            source: {
+              provider: "generated",
+              id: `q${made.length}`,
+              pageUrl: "https://example.com/p",
+              photographer: "",
+              photographerUrl: "https://example.com/p",
+            },
+          } as never;
+        },
+      },
+    });
+    expect(r.states.map((x) => x.status)).toEqual(["photo", "photo"]);
+    expect([...r.providers]).toEqual(["generated"]);
+    expect(made.every((m) => m.painted)).toBe(true);
+    // The judged repaint ran and failed, then the unjudged pass painted both panels.
+    expect(made.length).toBeGreaterThanOrEqual(4);
+    expect(made.some((m) => m.text.includes("Rosetta"))).toBe(false);
+  });
+
   test("rulings 163, 210 keep 209: a past event beside a named real panel is never painted", async () => {
     const STONE = "The Rosetta Stone in the British Museum";
     const FIRE = "The Great Fire spreading across London";
@@ -1572,9 +1615,10 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         },
       },
     });
-    // TEACH-251 part ay: the hole sends the whole set to be painted together; that repaint failed
-    // here, so the set keeps its real panel and nothing painted is mixed in beside it.
-    expect(made).toHaveLength(2);
+    // TEACH-251 part ay: the hole sends the whole set to be painted together, then as the topic's
+    // unjudged scene; both failed here (no picture made), so the set keeps its real panel and
+    // nothing painted is mixed in beside it.
+    expect(made).toHaveLength(4);
     expect(r.prompts).toHaveLength(0);
     expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
     expect(r.providers.has("generated")).toBe(false);

@@ -642,6 +642,11 @@ export async function findDirected(args: {
    * had a member every step missed, so every member is painted together (rulings 209, 300).
    */
   paintOnly?: boolean;
+  /**
+   * With `paintOnly`: a group whose judged repaint failed is painted as the slide topic's scene,
+   * unjudged, every panel alike (TEACH-251 part ay).
+   */
+  unjudged?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -740,7 +745,9 @@ export async function findDirected(args: {
   const req = args.paintOnly
     ? lastResortRequest(
         // A writer-named panel is a real thing: never painted itself, only a scene (ruling 299).
-        ask.named ? { ...plan.request, route: "real", realFallback: "none" } : plan.request,
+        ask.named || args.unjudged
+          ? { ...plan.request, route: "real", realFallback: "none" }
+          : plan.request,
         args.slide.heading,
         lesson.title,
         args.look,
@@ -788,7 +795,7 @@ export async function findDirected(args: {
     args.bank,
     (signal) => args.stock(brief, signal),
     deps.signal,
-    (made, reuse, onWhy) => args.judgeMade(brief, made, reuse, onWhy),
+    args.unjudged ? undefined : (made, reuse, onWhy) => args.judgeMade(brief, made, reuse, onWhy),
     Date.now,
     sharedVerdictCache,
     args.raceMs,
@@ -1453,6 +1460,8 @@ export async function placeWriterPicture(args: {
   realOnly?: boolean;
   /** Painted straight away with its group (`findDirected`'s `paintOnly`). */
   paintOnly?: boolean;
+  /** With `paintOnly`, the topic's scene unjudged (`findDirected`'s `unjudged`). */
+  unjudged?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
@@ -1562,6 +1571,7 @@ export async function placeWriterPicture(args: {
         // `figure#1`) shares its slide with others, so it never falls back to stock (ruling 209).
         ...(soleOnSlide(ask.key) ? { stockFallback: true } : {}),
         ...(args.paintOnly ? { paintOnly: true } : {}),
+        ...(args.unjudged ? { unjudged: true } : {}),
       });
     },
     (error) => {
@@ -1986,6 +1996,7 @@ export function createWriterPictures(opts: {
       !ask.fixedShape &&
       !/^card\./.test(ask.key),
     paint = false,
+    unjudged = false,
   ) => {
     let reason: PictureOutcome["reason"];
     let diagram: string | undefined;
@@ -2016,6 +2027,7 @@ export function createWriterPictures(opts: {
       ...(redraw ? { draws: true } : {}),
       ...(real ? { realOnly: true } : {}),
       ...(paint ? { paintOnly: true } : {}),
+      ...(unjudged ? { unjudged: true } : {}),
     })
       .then((photo) => {
         if (slot.state.status !== "pending") return;
@@ -2102,27 +2114,42 @@ export function createWriterPictures(opts: {
   ): Promise<void> => {
     const missed = members.filter(({ slot }) => slot.state.status !== "photo").length;
     if (!missed || members.length < 2) return;
-    const stand = members.map(({ slot }) => ({
-      ...slot,
-      state: { status: "pending" } as WriterPictureState,
-      miss: undefined,
-    }));
-    await Promise.all(
-      members.map(({ ask }, i) =>
-        place(stand[i] as Slot, index, ask, slide, false, false, true).catch(
-          whenNonFatal(() => undefined),
+    const paintAll = async (unjudged: boolean) => {
+      const stand = members.map(({ slot }) => ({
+        ...slot,
+        state: { status: "pending" } as WriterPictureState,
+        miss: undefined,
+      }));
+      let threw = false;
+      await Promise.all(
+        members.map(({ ask }, i) =>
+          place(stand[i] as Slot, index, ask, slide, false, false, true, unjudged).catch(
+            whenNonFatal(() => {
+              threw = true;
+            }),
+          ),
         ),
-      ),
-    );
-    const painted = stand.every((s) => s.state.status === "photo");
+      );
+      return { stand, threw, painted: stand.every((x) => x.state.status === "photo") };
+    };
+    // The judged repaint first; if any panel fails it, every panel takes the slide topic's scene,
+    // unjudged, in the deck's look and captioned, so the panels match and none is empty. The real
+    // panels stay only when that also fails (the provider is down).
+    let pass = await paintAll(false);
+    const fallback = !pass.painted;
+    if (fallback) pass = await paintAll(true);
+    const { stand, painted } = pass;
     deps.logger.info(
       {
         stage: "illustrate",
         ev: "picture-last-resort",
         kind: "group",
+        group: true,
         slideIndex: index,
         members: members.length,
         missed,
+        unjudged: fallback,
+        ...(pass.threw ? { threw: true } : {}),
         outcome: painted ? "painted" : "missed",
       },
       "picture last resort",
