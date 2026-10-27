@@ -1101,6 +1101,7 @@ export function diagramFailed(spec: unknown): boolean {
 }
 
 /** An SVG that draws at least one mark besides its title (the y7 s8/s9 empty panels drew none). */
+const MARKS = /<(rect|circle|ellipse|path|line|polyline|polygon|image|text|foreignObject)\b/;
 export function svgDrawsSomething(src: string): boolean {
   let svg = src;
   try {
@@ -1108,10 +1109,13 @@ export function svgDrawsSomething(src: string): boolean {
     svg = /;base64,/.test(src.slice(0, 60)) ? atob(body) : decodeURIComponent(body);
   } catch {}
   // Drop the accessible <title> and any text before the first group (the diagram's own title).
-  const g = svg.replace(/<title>[\s\S]*?<\/title>/g, "").indexOf("<g");
-  if (g < 0) return false;
-  const inner = svg.replace(/<title>[\s\S]*?<\/title>/g, "").slice(g);
-  return /<(rect|circle|ellipse|path|line|polyline|polygon|image|text|foreignObject)\b/.test(inner);
+  // A drawing with no group (a writer template such as a river: its marks sit at the top level,
+  // Rivers v417 s6) is read whole, so it is never taken for an empty panel.
+  const bare = svg.replace(/<title>[\s\S]*?<\/title>/g, "");
+  const g = bare.indexOf("<g");
+  const inner = g < 0 ? bare : bare.slice(g);
+  const marks = g < 0 ? /<(rect|circle|ellipse|path|line|polyline|polygon|image)\b/ : MARKS;
+  return marks.test(inner);
 }
 
 function elementDrawsSomething(el: SlideElement): boolean {
