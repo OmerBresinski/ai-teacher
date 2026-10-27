@@ -153,6 +153,7 @@ import {
   type PilotPackId,
   packRepairMenu,
   packRepairSchema,
+  packWriter,
   pilotRepairSchema,
   pilotRequest,
   stripStringCaps,
@@ -1447,8 +1448,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     ? { usd: 0, ms: 0, ...run.recordedWriter }
     : await run.services.writer(
         {
-          model: WRITER_MODEL,
-          effort: WRITER_EFFORT,
+          // The pack's writer model and effort (v4.17 on), else the code default.
+          model: packWriter(run.pilotPack)?.model ?? WRITER_MODEL,
+          effort: packWriter(run.pilotPack)?.effort ?? WRITER_EFFORT,
           system:
             activities && !pilot ? withActivityMenu(system, stageKey, P.activityMenu) : system,
           user: localise(user),
