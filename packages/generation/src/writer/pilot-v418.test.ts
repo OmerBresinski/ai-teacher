@@ -63,3 +63,30 @@ describe("pilot pack v4.18", () => {
     expect(Object.keys((req.schema as J).properties.flow.items.properties)).not.toContain("group");
   });
 });
+
+describe("pilot pack v4.18b", () => {
+  const V418B = PILOT_PACKS["v4.18b"];
+  for (const stage of STAGES) {
+    const ks = KS[stage];
+    test(`${ks}: the assembled text is the pinned snapshot`, () =>
+      expect(V418B.system[ks]).toBe(
+        readFileSync(
+          new URL(`./bundles/pilot-v4.18b-menu/system-${ks}.snapshot.txt`, import.meta.url),
+          "utf8",
+        ),
+      ));
+    test(`${ks}: group is a required string, never null`, () => {
+      const req = pilotRequest(
+        "v4.18b",
+        stage,
+        writerSchema(stage, SLIDE_TIER_RANGES.standard),
+        (s) => s,
+      );
+      const items = (req.schema as J).properties.flow.items;
+      expect(items.properties.group.type).toBe("string");
+      expect(items.required).toContain("group");
+    });
+    test(`${ks}: at most half the checks are hinges`, () =>
+      expect(V418B.system[ks]).toContain("at most half of a lesson's checks are hinges"));
+  }
+});
