@@ -173,7 +173,7 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
     const rows = await db.sql<
       {
         provider_id: string;
-        issuer: string;
+        issuer: string | null;
         account_id: string;
         access_token: string | null;
         refresh_token: string | null;
@@ -191,7 +191,8 @@ describeDb("auth (Google sign-in, token endpoint stubbed)", () => {
   function googleAccount(accountId: string) {
     return {
       provider_id: "google",
-      issuer: GOOGLE_ISSUER,
+      // better-auth 1.7.3+ never writes issuer; 0014 left the column nullable (TEACH-274 part b).
+      issuer: null,
       account_id: accountId,
       access_token: null,
       refresh_token: null,
