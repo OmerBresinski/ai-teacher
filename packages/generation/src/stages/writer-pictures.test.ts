@@ -551,7 +551,17 @@ describe("writer pictures: generated sets", () => {
         return direction({ route: "none", pictures: [] });
       },
     });
-    pictures.start(2, ask({ ...chick, named: true }), slide);
+    // Ruling 296: a named set names a specific real thing (part ax: a described one is generated).
+    pictures.start(
+      2,
+      ask({
+        ...chick,
+        shows: "Tutankhamun's golden mask",
+        mustSee: ["Tutankhamun's golden mask"],
+        named: true,
+      }),
+      slide,
+    );
     pictures.start(2, ask({ ...hen, named: true }), slide);
     await pictures.settle(5_000);
     expect(m.made).toHaveLength(0);

@@ -2,7 +2,8 @@
  * Integration (TEACH-110 part b, rows 8 and 9): `AI_LESSON_PLANNER=writer` through the two lesson
  * jobs against Postgres, with a fake answering by prompt version. The plan job stops at `planned`
  * stamped for the writer; the generate job runs the writer (a saved writer answer) to a finished
- * deck; the writer call goes to `gpt-6.1-sol` at low effort through the worker's route; a flip of
+ * deck; the writer call goes to the production pack's writer model and effort (`packWriter`; Terra
+ * low from v4.17), the objectives call to `gpt-6.1-sol` at low, through the worker's route; a flip of
  * the flag back does not move a writer lesson off the writer. K3: an incomplete writer answer
  * fails the job (pg-boss records it on the last attempt), saves no deck but keeps the call's cost,
  * and the retry resumes at the writer; a `length` finish is not retried. Skips visibly without a
@@ -21,7 +22,9 @@ import {
 } from "@tj/domain";
 import { type Lesson, parseLesson } from "@tj/domain/documents";
 import {
+  PILOT_PACK_ID,
   type Planner,
+  packWriter,
   plannerOf,
   WRITER_PLANNED_VERSION,
   WRITER_VERSION,
@@ -30,10 +33,14 @@ import {
 import { labAi, romansLesson, writerFixture } from "@tj/generation/testing";
 import { NonRetryableError } from "@tj/jobs";
 import pino from "pino";
+
 import type { WorkerDeps } from "../deps";
 import { memoryStorage } from "../testing/memory-storage";
 import { lessonGenerateJob } from "./lesson-generate";
 import { lessonPlanJob } from "./lesson-plan";
+
+/** The production pack's writer call (v4.17 on), else the code default, Sol at low. */
+const WRITER_CALL = packWriter(PILOT_PACK_ID) ?? { model: "openai/gpt-6.1-sol", effort: "low" };
 
 const t = await withTestDb();
 const describeDb = t.ok ? describe : describe.skip;
@@ -190,8 +197,9 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
       (c) => c.context?.promptVersion === `${WRITER_VERSION}/lesson`,
     );
     expect(writer).toHaveLength(1);
-    expect(writer[0]?.modelId).toBe("openai/gpt-6.1-sol");
-    expect(writer[0]?.context?.effort).toBe("low");
+    // The writer call runs the production pack's model and effort (v4.17: Terra, low).
+    expect(writer[0]?.modelId).toBe(WRITER_CALL.model);
+    expect(writer[0]?.context?.effort).toBe(WRITER_CALL.effort);
     const small = genAi.calls.filter(
       (c) => c.context?.promptVersion?.startsWith(`${WRITER_VERSION}/`) && c !== writer[0],
     );
@@ -283,7 +291,12 @@ describeDb("writer planner through the lesson jobs (TEACH-110 part b)", () => {
 
   test("flipping the flag back: a writer-stamped lesson still generates on the writer route", async () => {
     const { genAi, done } = await planAndGenerate("objectives-first");
-    expect(genAi.calls.filter((c) => c.modelId === "openai/gpt-6.1-sol")).toHaveLength(1);
+    // The one writer call still goes to the pack's writer model: the flag does not move it.
+    const writer = genAi.calls.filter(
+      (c) => c.context?.promptVersion === `${WRITER_VERSION}/lesson`,
+    );
+    expect(writer).toHaveLength(1);
+    expect(writer[0]?.modelId).toBe(WRITER_CALL.model);
     expect(done.lesson.generation?.stage).toBe("generated");
     expect(plannerOf(done.lesson)).toBe("writer");
   });

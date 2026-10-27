@@ -187,5 +187,6 @@ export * from "./worksheet";
 export { WRITER_VERSION, writerRoute } from "./writer/ai-services";
 export { DIAGRAM_CONTRACT, writerDrawerSystem } from "./writer/diagram-contract.gen";
 export { type DraftOptions, peekPartial, type SlideDraft } from "./writer/draft";
+export { PILOT_PACK_ID, packWriter } from "./writer/pilot-pack";
 export { isBudgetRefusal, SMALL_MODEL, WRITER_EFFORT, WRITER_MODEL } from "./writer/services";
 export { runWriter, WriterIncompleteError } from "./writer/stage";
