@@ -57,6 +57,9 @@ import t173 from "./bundles/pilot-v4.17-menu/system-KS3.template.txt" with { typ
 import t181 from "./bundles/pilot-v4.18-menu/system-KS1.template.txt" with { type: "text" };
 import t182 from "./bundles/pilot-v4.18-menu/system-KS2.template.txt" with { type: "text" };
 import t183 from "./bundles/pilot-v4.18-menu/system-KS3.template.txt" with { type: "text" };
+import t18b1 from "./bundles/pilot-v4.18b-menu/system-KS1.template.txt" with { type: "text" };
+import t18b2 from "./bundles/pilot-v4.18b-menu/system-KS2.template.txt" with { type: "text" };
+import t18b3 from "./bundles/pilot-v4.18b-menu/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -158,7 +161,7 @@ export type PilotPack = {
    * it is part of, the same words on every slide of that group, else null. Written after `does`, so
    * the unit is decided before the shape; code can see a group planned one slide a member.
    */
-  flowGroup?: boolean;
+  flowGroup?: boolean | "required";
 };
 
 /** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
@@ -214,6 +217,27 @@ export const V418_MENU_EDITS: readonly (readonly [string, string])[] = [
     " The lesson has one practice slide, as its Lesson structure says.",
   ],
 ];
+/** v4.18b: items-row's schema has no picture, so its line no longer offers one; pictured parts go to panel-list. */
+export const V418B_MENU_EDITS: readonly (readonly [string, string])[] = [
+  [
+    " When each part is a thing pupils need to see, such as a root, a stem or a leaf, every item gets a picture of it alone, one object with no labels, and its line stays on its job; then every icon is null.",
+    "",
+  ],
+  [
+    "Parts that are each a real building, structure or site take items-row with a named picture on every part;",
+    "Parts pupils need to see, each a thing a camera shows (a root, a leaf, a fort, a gate), take panel-list with a picture on every item, as items-row has none; a real building, structure or site is a named picture;",
+  ],
+];
+function v418bSystem(assembled: string, stage: WriterStage): string {
+  let text = v418System(assembled, stage);
+  for (const [from, to] of V418B_MENU_EDITS) {
+    if (text.split(from).length !== 2)
+      throw new Error(`pilot pack v4.18b (${stage}): not found once: ${from.slice(0, 60)}`);
+    text = text.replace(from, to);
+  }
+  return text;
+}
+
 function v418System(assembled: string, stage: WriterStage): string {
   let text = assembled;
   for (const [from, to] of V418_MENU_EDITS) {
@@ -227,6 +251,17 @@ function v418System(assembled: string, stage: WriterStage): string {
   if (!cap.test(text)) throw new Error(`pilot pack v4.18 (${stage}): figure-slide Fits not found`);
   return text.replace(cap, "$1each line up to $2 words.");
 }
+
+/**
+ * v4.18b's flow `group`: a string every entry writes, "none" on the title, objectives and checks.
+ * v4.18's nullable group came back null on 39 of 39 slides (its null meant "stands alone", which
+ * the one-slide-a-group rule made true of every slide).
+ */
+const FLOW_GROUP_REQUIRED = {
+  type: "string",
+  description:
+    "on a teaching slide, up to 6 words: the question its content answers or the whole or set it is part of, the same on any later slide about it; none on the title, the objectives and a check slide",
+};
 
 /** v4.18's flow `group`, written after `does` (`PilotPack.flowGroup`). */
 const FLOW_GROUP = {
@@ -572,6 +607,33 @@ export const PILOT_PACKS = {
     flowGroup: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v4.18b (27 Oct): v4.18 with a required group ("none" off teaching slides), varied checks (at most
+  // half hinges; Y1-2 checks favour doing), and pictured parts of a whole on panel-list, since
+  // items-row has no picture slot yet.
+  "v4.18b": {
+    id: "v4.18b",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v418bSystem(withFits(v417System(t18b1, "KS1"), "KS1", WAVE_C_ROUTED_FITS), "KS1"),
+      KS2: v418bSystem(withFits(v417System(t18b2, "KS2"), "KS2", WAVE_C_ROUTED_FITS), "KS2"),
+      KS3: v418bSystem(withFits(v417System(t18b3, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS), "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    flowGroup: "required",
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
@@ -650,7 +712,8 @@ export function pilotRequest(
   fp.items.properties.shape.enum = [...pack.layouts.flowShapes];
   if (pack.flowGroup) {
     const { slide, does, ...after } = fp.items.properties;
-    fp.items.properties = { slide, does, group: FLOW_GROUP, ...after };
+    const group = pack.flowGroup === "required" ? FLOW_GROUP_REQUIRED : FLOW_GROUP;
+    fp.items.properties = { slide, does, group, ...after };
     const req = fp.items.required as string[];
     const at = req.indexOf("does") + 1;
     fp.items.required = [...req.slice(0, at), "group", ...req.slice(at)];
