@@ -524,7 +524,8 @@ export async function findPicture(
     lastFail &&
     PROVIDER_DOWN.has(lastFail)
   ) {
-    const fetched = await fetchStock().catch(stockFailed);
+    // A failed search is a miss on the trace (`stockFailed`); a fatal error still ends the job.
+    const fetched = await fetchStock().catch(whenNonFatal(stockFailed));
     if (fetched) {
       await bank.remember(req, fetched).catch(whenNonFatal(() => undefined));
       return done(fetched, "fetched");
