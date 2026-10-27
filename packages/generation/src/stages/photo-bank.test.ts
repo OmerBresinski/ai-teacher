@@ -221,6 +221,51 @@ describe("findPicture ladder", () => {
     expect(out.reason).toBe("refused-safety");
   });
 
+  // TEACH-251 part ax (ruling 210, "always find something"): a generic picture whose generation
+  // failed falls back to the stock search it skipped, so the slide keeps a visual.
+  test("a generation still rate-limited after its backoff falls back to stock", async () => {
+    const { bank } = fakeBank();
+    bank.generate = async () => {
+      throw new ImageGenerationError(
+        "image generation failed (429): rate-limited",
+        "rate-limited",
+        3,
+        429,
+      );
+    };
+    let searched = 0;
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => {
+        searched++;
+        return photo("stock.jpg");
+      },
+      signal,
+      async () => true,
+    );
+    expect(searched).toBe(1);
+    expect(out.photo?.src).toBe("stock.jpg");
+    expect(out.via).toBe("fetched");
+  });
+
+  test("a generated picture that succeeds never runs the stock fallback", async () => {
+    const { bank } = fakeBank();
+    let searched = 0;
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => {
+        searched++;
+        return photo("stock.jpg");
+      },
+      signal,
+      async () => true,
+    );
+    expect(searched).toBe(0);
+    expect(out.via).toBe("generated");
+  });
+
   test("refused again with the safety line on: no third request with that same prompt", async () => {
     const { bank } = fakeBank();
     const hints: (RetryHint | undefined)[] = [];

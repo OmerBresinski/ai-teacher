@@ -284,7 +284,22 @@ export interface PictureSetDeps {
  * (`setLookFor`); a named set takes the real ladder only (ruling 163).
  */
 export function setIsGenerated(asks: SetAsk[], _lesson?: PeriodFields): boolean {
-  return !asks.some((a) => a.named);
+  return !asks.some((a) => a.named && namesRealThing(a.mustSee[0] || a.shows));
+}
+
+/** Words that open a description, never a name ("A wide gap", "The houses"). */
+const OPENERS = /^(?:(?:a|an|the|some|two|three|four|several|many|one|this|that|these|those)\s+)+/i;
+
+/**
+ * TEACH-251 part ax (ruling 296): whether a panel the writer marked `named` names a specific real
+ * thing, read from its subject (its first mustSee). The writer sometimes marks a plain description
+ * ("A wide cleared gap where houses have been pulled down", greatfire verify6 s9), which forced the
+ * whole set real-only and left it empty. A name has a capitalised word once the opening article is set aside ("Stonehenge", "Hadrian's
+ * Wall at Cawfields", "Tudor house"): fails closed, any capital counts.
+ */
+export function namesRealThing(named: string | null | undefined): boolean {
+  const rest = (named ?? "").trim().replace(OPENERS, "");
+  return /(?:^|[\s(\-\u2018'"])[A-Z\u00C0-\u00DE]/.test(rest) || /\d/.test(rest);
 }
 
 /**
