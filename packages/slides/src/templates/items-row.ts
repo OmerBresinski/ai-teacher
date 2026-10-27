@@ -20,13 +20,23 @@
  */
 import type { PathElement, ShapeElement, TextPreset } from "@tj/domain/documents";
 import { uid } from "../factories";
+import { PLACEHOLDER_IMAGE } from "../layouts";
 import { pathSegments } from "../path";
 import { samplePath } from "../path-sample";
 import { countLines } from "../text-measure";
 import { resolveFontSize } from "../text-style";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
 import { surfacesOf } from "../themes/surfaces";
-import { type Ctx, type FieldReport, G, kit, mix, type Stage, type TemplateInput } from "./index";
+import {
+  type Ctx,
+  type FieldReport,
+  type Figure,
+  G,
+  kit,
+  mix,
+  type Stage,
+  type TemplateInput,
+} from "./index";
 import CAPACITY from "./items-row-capacity.json" with { type: "json" };
 import {
   type Age,
@@ -39,9 +49,36 @@ import {
   v2Colors,
   v2Profile,
 } from "./items-row-deps";
+import PICTURE_CAPACITY from "./items-row-pictures-capacity.json" with { type: "json" };
+import { cropFor, factsOf } from "./panel-list-deps";
 
-/** One item: a short name, one line and an optional icon label (matched to the library). */
-export type RowItem = { name: string; text: string; icon?: string | null };
+/**
+ * One item: a short name, one line, an optional icon label (matched to the library) and an
+ * optional picture (TEACH-247 part bg): a small tile of the part alone, no labels, in the medal's
+ * place, so the parts of one whole share a slide (Y1 plant parts: roots, stem, leaves, flower).
+ * The empty slot (`PLACEHOLDER_IMAGE`) holds a tile while its picture is made; a picture that is
+ * lost (`null`, or no picture while a sibling has one) leaves no tile and no box, its words level
+ * with the others.
+ */
+export type RowItem = {
+  name: string;
+  text: string;
+  icon?: string | null;
+  picture?: Figure | null;
+};
+type Photo = Extract<Figure, { photo: string }>;
+/** An item's picture when a tile can show it: a photo, or the empty slot while it is made. */
+export const itemPhoto = (it: RowItem | null | undefined): Photo | null =>
+  it?.picture &&
+  typeof it.picture === "object" &&
+  "photo" in it.picture &&
+  typeof it.picture.photo === "string"
+    ? it.picture
+    : null;
+/** A picture tile's shape (width over height): the row pictures' 4:3. */
+export const ITEM_PIC_ASPECT = 4 / 3;
+/** Picture rows hold at most four parts (two to four; five or more stay icons or numbers). */
+export const ROW_PIC_MAX = 4;
 /**
  * The connecting line, each a stroke recipe on the same curve in the theme's colours (pilot
  * `drawConnector`). `plain` (the default): one soft band in the theme's tint. Only when the input
@@ -77,6 +114,7 @@ export const ROW_NAMES = {
   ring: "Circle edge",
   medal: "Circle",
   icon: "Picture",
+  picture: "Item picture",
   numeral: "Number",
   badgeRing: "Number edge",
   /** The number badge on an icon circle: `kit.disc`'s list marker. */
@@ -148,16 +186,20 @@ export type FieldCap = { cap: number; hardMax: number };
 export type RowCaps = { name: FieldCap; text: FieldCap; lead: FieldCap; heading: FieldCap };
 type CapCell = RowCaps & { items: number; icons: boolean; withLead: boolean };
 let TABLE = CAPACITY as unknown as Record<string, CapCell[]>;
+let PIC_TABLE = PICTURE_CAPACITY as unknown as Record<string, CapCell[]>;
 /** Lays out with no caps table, so the capacity script measures geometry alone. */
 export function withoutCaps<T>(f: () => T): T {
   const kept = TABLE;
+  const keptPic = PIC_TABLE;
   TABLE = {};
+  PIC_TABLE = {};
   const wasMeasuring = MEASURING;
   MEASURING = true;
   try {
     return f();
   } finally {
     TABLE = kept;
+    PIC_TABLE = keptPic;
     MEASURING = wasMeasuring;
   }
 }
@@ -173,8 +215,12 @@ export function withRowCapsTable<T>(table: Record<string, RowCaps[]>, f: () => T
 }
 /** True while the capacity script measures: no field is checked against a table it is writing. */
 let MEASURING = false;
-export function capsOf(age: Age, n: number, o: { icons: boolean; lead: boolean }) {
-  const cells = TABLE[age] ?? [];
+export function capsOf(
+  age: Age,
+  n: number,
+  o: { icons: boolean; lead: boolean; pictures?: boolean },
+) {
+  const cells = (o.pictures ? PIC_TABLE : TABLE)[age] ?? [];
   return cells.find((c) => c.items === n && c.icons === o.icons && c.withLead === o.lead);
 }
 
@@ -266,10 +312,13 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const concepts = labels.map((l) =>
     l === PENDING_ICON ? PENDING_ICON : l ? (res.ids[named.indexOf(l)] ?? null) : null,
   );
-  const icons = n > 0 && concepts.every(Boolean);
+  // Pictures (part bg): any item with a photo or an open slot makes a picture row of two to four;
+  // a tile takes the medal's place, so no icon, number or connector is drawn.
+  const pics = n >= ROW_MIN && n <= ROW_PIC_MAX && items.some((it) => itemPhoto(it));
+  const icons = !pics && n > 0 && concepts.every(Boolean);
   // Unordered and no icons: no medal at all, never an empty face or numbers that read as a sequence.
-  const bare = !icons && input.ordered === false;
-  const fields = report(age, input, items, icons);
+  const bare = !pics && !icons && input.ordered === false;
+  const fields = report(age, input, items, icons, pics);
   c.fields = fields;
   for (const f of fields) if (f.over && !c.over.includes(f.field)) c.over.push(f.field);
   if (!n) return;
@@ -279,14 +328,21 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const shape = rowShape(n);
   const perRow = shape[0] ?? n;
   const M = prof.medal;
-  const m = bare
-    ? 0
-    : icons
-      ? M * (two ? 0.66 : n === 4 ? 0.8 : 1)
-      : M * (two ? 0.44 : n === 4 ? 0.62 : 0.72);
-  const minMedal = bare ? 0 : icons ? prof.medalMin : M * 0.4;
   const gap = n <= 3 ? 37 : 29;
   const itemW = Math.floor(Math.min(n <= 2 ? 293 : 1e9, (STAGE_W - (perRow - 1) * gap) / perRow));
+  // A picture tile's height: as wide as most of the item (4:3), never taller than 1.5 medals; it
+  // gives way like a medal, to 60% before the type does.
+  const picH = Math.min((itemW * 0.82) / ITEM_PIC_ASPECT, M * 1.5);
+  const m = bare
+    ? 0
+    : pics
+      ? picH
+      : icons
+        ? M * (two ? 0.66 : n === 4 ? 0.8 : 1)
+        : M * (two ? 0.44 : n === 4 ? 0.62 : 0.72);
+  const minMedal = bare ? 0 : pics ? picH * 0.8 : icons ? prof.medalMin : M * 0.4;
+  // The gap under a medal or tile: a medal's ring needs air, a flat tile only a hairline.
+  const under = (mm: number) => (pics ? 6 : mm * 0.14 + 3);
   const nf = beside ? 0.86 : two ? 0.8 : 1;
   const bf = two ? 0.9 : 1;
   const pad = prof.badge * 0.5;
@@ -320,7 +376,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
       if (!wordsFit(c, it.text, "body", textW, bodyWeight, bodySize)) wordsOk = false;
       const gapN = beside ? 4 : 7;
       const textH = nameH + (lineH ? gapN + lineH : 0);
-      const h = beside ? Math.max(mm, textH) : bare ? textH : mm + mm * 0.14 + 3 + textH;
+      const h = beside ? Math.max(mm, textH) : bare ? textH : mm + under(mm) + textH;
       return { nameH, lineH, textH, h, gapN };
     });
     // Stacked rows: the names in one row share the tallest name's height (each name top-aligned
@@ -334,7 +390,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
         for (const b of row) {
           b.nameH = nameH;
           b.textH = nameH + (b.lineH ? b.gapN + b.lineH : 0);
-          b.h = bare ? b.textH : mm + mm * 0.14 + 3 + b.textH;
+          b.h = bare ? b.textH : mm + under(mm) + b.textH;
         }
       }
     }
@@ -369,7 +425,9 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const step: Step = { ms: 1, fk: 1 };
   let g = measureAt(step);
   // Medals give way first, all the way to their comfort minimum (numbers to 40% of the medal).
-  const msComfort = bare ? 1 : Math.min(1, minMedal / m);
+  // Pictures are what a picture row is for (a Y1 child names the part it sees): they hold their
+  // size (to 80%) before the type gives way, and go on to 60% only when the row is tight.
+  const msComfort = bare ? 1 : pics ? 0.8 : Math.min(1, minMedal / m);
   while (!g.comfy && step.ms > msComfort + 1e-6) {
     step.ms = Math.max(msComfort, +(step.ms - 0.05).toFixed(2));
     g = measureAt(step);
@@ -387,7 +445,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   g = measureAt(step);
   const medalOk = g.mm >= minMedal - 1;
   if (!(g.comfy && medalOk && g.typeOk)) {
-    while (!bare && !g.fits && step.ms > 0.7) {
+    while (!bare && !g.fits && step.ms > (pics ? 0.6 : 0.7)) {
       step.ms = +(step.ms - 0.05).toFixed(2);
       g = measureAt(step);
     }
@@ -430,7 +488,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   });
 
   const motif = motifOf(input.motif);
-  if (motif !== "none" && !beside && !bare)
+  if (motif !== "none" && !beside && !bare && !pics)
     for (const row of rows) connector(c, row, mm, icons, prof, col, motif);
 
   y = rowsTop;
@@ -443,7 +501,30 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
       if (!b) continue;
       const mx = p.cx - mm / 2;
       const my = p.cy - mm / 2;
-      if (!bare)
+      const photo = pics ? itemPhoto(it) : null;
+      if (photo) {
+        // The part alone on a small tile, cover-cropped (subjects kept in view), no labels.
+        const tw = Math.min(itemW, Math.round(mm * ITEM_PIC_ASPECT));
+        const box = { x: Math.round(p.cx - tw / 2), y: Math.round(my), w: tw, h: Math.round(mm) };
+        const real = !!photo.photo && photo.photo !== PLACEHOLDER_IMAGE;
+        const crop =
+          real && photo.aspect ? cropFor(factsOf(photo.aspect, photo.subjects), box) : undefined;
+        c.els.push({
+          id: uid(),
+          type: "image",
+          name: ROW_NAMES.picture,
+          ...box,
+          src: photo.photo || PLACEHOLDER_IMAGE,
+          alt: photo.alt ?? it.name,
+          ...(photo.request ? { request: photo.request } : {}),
+          ...(photo.subjects ? { subjects: photo.subjects } : {}),
+          ...(photo.source ? { source: photo.source } : {}),
+          ...(crop ? { crop } : {}),
+          fit: "cover",
+          radius: Math.min(c.t.radius ?? 12, Math.round(mm * 0.12)),
+        } as unknown as (typeof c.els)[number]);
+      }
+      if (!bare && !pics)
         medal(
           c,
           p.k,
@@ -458,7 +539,7 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
           col,
         );
       const tx = beside ? mx + mm + 17 : p.cx - g.textW / 2;
-      const ty = beside ? y : bare ? y : my + mm + mm * 0.14 + 3;
+      const ty = beside ? y : bare ? y : my + mm + under(mm);
       const align = beside ? "left" : "center";
       textAt(c, it.name, "heading", g.nameSize, nameWeight, NAME_LH, {
         x: tx,
@@ -832,11 +913,18 @@ function leaves(
 }
 
 /** Every field with its length and measured limits (the live "62/80" counters, ruling 215). */
-function report(age: Age, input: TemplateInput, items: RowItem[], icons: boolean): RowField[] {
+function report(
+  age: Age,
+  input: TemplateInput,
+  items: RowItem[],
+  icons: boolean,
+  pictures = false,
+): RowField[] {
   const lead = !!input.lead?.trim();
   const caps = capsOf(age, Math.min(Math.max(items.length, ROW_MIN), ROW_DRAW_MAX[age]), {
     icons,
     lead,
+    pictures,
   });
   const row = (field: string, value: string, measured?: FieldCap): RowField => {
     const chars = value.length;

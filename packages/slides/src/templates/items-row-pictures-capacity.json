@@ -1,0 +1,386 @@
+{
+  "early": [
+    {
+      "items": 2,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 26,
+        "hardMax": 54
+      },
+      "text": {
+        "cap": 56,
+        "hardMax": 100
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 68
+      }
+    },
+    {
+      "items": 2,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 14,
+        "hardMax": 36
+      },
+      "text": {
+        "cap": 40,
+        "hardMax": 56
+      },
+      "lead": {
+        "cap": 50,
+        "hardMax": 100
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 68
+      }
+    },
+    {
+      "items": 3,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 14,
+        "hardMax": 40
+      },
+      "text": {
+        "cap": 48,
+        "hardMax": 86
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 68
+      }
+    },
+    {
+      "items": 3,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 14,
+        "hardMax": 26
+      },
+      "text": {
+        "cap": 30,
+        "hardMax": 66
+      },
+      "lead": {
+        "cap": 50,
+        "hardMax": 100
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 34
+      }
+    },
+    {
+      "items": 4,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 16,
+        "hardMax": 26
+      },
+      "text": {
+        "cap": 30,
+        "hardMax": 54
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 34
+      }
+    },
+    {
+      "items": 4,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 16,
+        "hardMax": 16
+      },
+      "text": {
+        "cap": 20,
+        "hardMax": 46
+      },
+      "lead": {
+        "cap": 50,
+        "hardMax": 50
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 34
+      }
+    }
+  ],
+  "primary": [
+    {
+      "items": 2,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 36,
+        "hardMax": 72
+      },
+      "text": {
+        "cap": 62,
+        "hardMax": 106
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    },
+    {
+      "items": 2,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 16,
+        "hardMax": 54
+      },
+      "text": {
+        "cap": 40,
+        "hardMax": 86
+      },
+      "lead": {
+        "cap": 64,
+        "hardMax": 120
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 68
+      }
+    },
+    {
+      "items": 3,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 44,
+        "hardMax": 74
+      },
+      "text": {
+        "cap": 78,
+        "hardMax": 116
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    },
+    {
+      "items": 3,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 30,
+        "hardMax": 60
+      },
+      "text": {
+        "cap": 56,
+        "hardMax": 98
+      },
+      "lead": {
+        "cap": 64,
+        "hardMax": 120
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 68
+      }
+    },
+    {
+      "items": 4,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 32,
+        "hardMax": 48
+      },
+      "text": {
+        "cap": 68,
+        "hardMax": 98
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    },
+    {
+      "items": 4,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 22,
+        "hardMax": 32
+      },
+      "text": {
+        "cap": 54,
+        "hardMax": 68
+      },
+      "lead": {
+        "cap": 64,
+        "hardMax": 120
+      },
+      "heading": {
+        "cap": 34,
+        "hardMax": 68
+      }
+    }
+  ],
+  "secondary": [
+    {
+      "items": 2,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 64,
+        "hardMax": 124
+      },
+      "text": {
+        "cap": 106,
+        "hardMax": 182
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    },
+    {
+      "items": 2,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 40,
+        "hardMax": 104
+      },
+      "text": {
+        "cap": 78,
+        "hardMax": 154
+      },
+      "lead": {
+        "cap": 70,
+        "hardMax": 132
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    },
+    {
+      "items": 3,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 78,
+        "hardMax": 112
+      },
+      "text": {
+        "cap": 110,
+        "hardMax": 150
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 132
+      }
+    },
+    {
+      "items": 3,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 58,
+        "hardMax": 94
+      },
+      "text": {
+        "cap": 92,
+        "hardMax": 128
+      },
+      "lead": {
+        "cap": 70,
+        "hardMax": 132
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    },
+    {
+      "items": 4,
+      "icons": false,
+      "withLead": false,
+      "name": {
+        "cap": 54,
+        "hardMax": 82
+      },
+      "text": {
+        "cap": 94,
+        "hardMax": 124
+      },
+      "lead": {
+        "cap": 0,
+        "hardMax": 0
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 132
+      }
+    },
+    {
+      "items": 4,
+      "icons": false,
+      "withLead": true,
+      "name": {
+        "cap": 38,
+        "hardMax": 70
+      },
+      "text": {
+        "cap": 80,
+        "hardMax": 106
+      },
+      "lead": {
+        "cap": 70,
+        "hardMax": 132
+      },
+      "heading": {
+        "cap": 68,
+        "hardMax": 98
+      }
+    }
+  ]
+}
