@@ -91,6 +91,7 @@ export { checkInput } from "./stages/check-input";
 export { evaluate } from "./stages/evaluate";
 export { type FactsStepReport, facts, runFactsStep } from "./stages/facts";
 export { BUDGET_FINDING, generate, PLANNED_SLIDES } from "./stages/generate";
+export { healOpenSlots } from "./stages/heal-open-slots";
 export {
   MAX_OUTPUT_TOKENS_OBJECTIVES,
   ObjectivesBlocked,

@@ -34,7 +34,8 @@ import {
   type ScopableDb,
   softDelete,
 } from "@tj/db";
-import { DocumentKindSchema, DocumentParseError } from "@tj/domain/documents";
+import { DocumentKindSchema, DocumentParseError, type Lesson } from "@tj/domain/documents";
+import { healOpenSlots } from "@tj/generation";
 import { type Context, Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -111,6 +112,33 @@ function notFound(): never {
 }
 
 /** The document id inside a body, when there is one; `undefined` for anything else. */
+/**
+ * TEACH-251 part av: a lesson no job holds that still has an open picture slot (its worker died
+ * hard after the lesson turned editable, so nothing laid the slot away) has it laid away on read,
+ * under the usual `updatedAt` check; a save racing it wins and the next read heals. Best effort.
+ */
+async function withSlotsHealed(
+  ws: ReturnType<typeof forWorkspace>,
+  row: DocumentRow,
+  c: Context<AppEnv>,
+): Promise<DocumentRow> {
+  if (row.kind !== "lesson" || row.generatingJobId !== null) return row;
+  try {
+    const healed = await healOpenSlots(row.body as unknown as Lesson);
+    if (!healed) return row;
+    const result = await putDocument(ws, row.id, healed, row.updatedAt);
+    if (result.status !== "ok") return row;
+    c.get("logger")?.info({ lessonId: row.id }, "laid away open picture slots on read");
+    return result.row;
+  } catch (err) {
+    c.get("logger")?.warn(
+      { lessonId: row.id, err: String(err).slice(0, 200) },
+      "open slot heal failed",
+    );
+    return row;
+  }
+}
+
 function bodyId(document: unknown): string | undefined {
   if (typeof document !== "object" || document === null) return undefined;
   const id = (document as { id?: unknown }).id;
@@ -159,7 +187,7 @@ export function documentRoutes(unsafeDb: ScopableDb) {
         found.generatingJobId === null
           ? found
           : await releaseStaleLock(ws, found, { logger: c.get("logger") });
-      return c.json({ document: toDocumentJson(row) }, 200);
+      return c.json({ document: toDocumentJson(await withSlotsHealed(ws, row, c)) }, 200);
     })
     .put(
       "/documents/:id",
