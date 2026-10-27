@@ -398,6 +398,11 @@ describe("a set is real-only only when a panel names a specific real thing", () 
       "Samuel Pepys",
       "Milecastle 42",
       "the remains of Old St Paul's",
+      // Reviewer (#709): lowercase names still fail closed.
+      "hadrian's wall at cawfields",
+      "the roman fort",
+      "the bakery on pudding lane",
+      "a gateway in the wall",
     ])
       expect(setIsGenerated(greatfire(named), { subject: "history" })).toBe(false);
   });

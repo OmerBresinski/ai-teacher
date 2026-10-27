@@ -12,6 +12,7 @@ import {
   type PictureBank,
   photoBankOn,
 } from "./photo-bank";
+import { soleOnSlide } from "./picture-director";
 
 const photo = (src: string): PlacedPhoto => ({
   src,
@@ -235,7 +236,7 @@ describe("findPicture ladder", () => {
     };
     let searched = 0;
     const out = await findPicture(
-      req("generic"),
+      { ...req("generic"), stockFallback: true },
       bank,
       async () => {
         searched++;
@@ -247,6 +248,37 @@ describe("findPicture ladder", () => {
     expect(searched).toBe(1);
     expect(out.photo?.src).toBe("stock.jpg");
     expect(out.via).toBe("fetched");
+  });
+
+  // Reviewer (#709), ruling 209: a panel, tile or card shares its slide with other pictures, so a
+  // failed generation there never falls back to stock beside AI pictures.
+  test("a slot that is not its slide's only picture never falls back to stock", async () => {
+    const { bank } = fakeBank();
+    bank.generate = async () => {
+      throw new ImageGenerationError(
+        "image generation failed (429): rate-limited",
+        "rate-limited",
+        3,
+        429,
+      );
+    };
+    let searched = 0;
+    const out = await findPicture(
+      req("generic"),
+      bank,
+      async () => {
+        searched++;
+        return photo("stock.jpg");
+      },
+      signal,
+      async () => true,
+    );
+    expect(searched).toBe(0);
+    expect(out.via).toBe("none");
+    expect(soleOnSlide("picture")).toBe(true);
+    expect(soleOnSlide("figure")).toBe(true);
+    for (const key of ["side.1", "card.2", "tile.3", "seq.0", "figure#1"])
+      expect(soleOnSlide(key)).toBe(false);
   });
 
   test("a generated picture that succeeds never runs the stock fallback", async () => {

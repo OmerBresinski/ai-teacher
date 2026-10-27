@@ -102,6 +102,11 @@ export interface BankRequest {
   draw?: CountArray | null;
   /** Search stock (judged against mustShow) before generating a generic picture. */
   stockFirst?: boolean;
+  /**
+   * TEACH-251 part ax: a failed generic generation may fall back to stock, because this is the
+   * slide's only picture (never a set panel or one of several). Absent: no fallback.
+   */
+  stockFallback?: boolean;
   /** What a real miss falls back to (REAL_FALLBACK); absent: none. */
   realFallback?: RealFallback;
   /** The time and place a historical subject belongs to: the judge's context. */
@@ -511,7 +516,14 @@ export async function findPicture(
   // failed on a busy or broken provider (after the generator's own backoff) falls back to the stock
   // search it skipped, once, so the slide keeps a visual. A judge or safety refusal does not. The stock pick is judged against
   // mustShow as ever, and the slide still holds one picture from one source (ruling 209).
-  if (!made && !req.stockFirst && !req.draw && lastFail && PROVIDER_DOWN.has(lastFail)) {
+  if (
+    !made &&
+    req.stockFallback &&
+    !req.stockFirst &&
+    !req.draw &&
+    lastFail &&
+    PROVIDER_DOWN.has(lastFail)
+  ) {
     const fetched = await fetchStock().catch(stockFailed);
     if (fetched) {
       await bank.remember(req, fetched).catch(whenNonFatal(() => undefined));

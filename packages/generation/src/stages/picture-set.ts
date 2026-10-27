@@ -287,6 +287,20 @@ export function setIsGenerated(asks: SetAsk[], _lesson?: PeriodFields): boolean 
   return !asks.some((a) => a.named && namesRealThing(a.mustSee[0] || a.shows));
 }
 
+/**
+ * Kinds of built thing: a proper name that holds one names a real monument, site or building
+ * ("Hadrian's Wall", "Housesteads Roman Fort", "Old St Paul's Cathedral"). Kinds, never names.
+ */
+export const STRUCTURE =
+  /\b(walls?|forts?|fortress|castles?|cathedral|church|abbey|priory|chapel|minster|mosque|temple|palace|towers?|bridge|gates?|gateway|villa|amphitheatre|colosseum|forum|baths|pyramids?|henge|monument|hall|house|museum|theatre|stadium|lighthouse|barracks|milecastles?)\b/i;
+
+/**
+ * Nouns for a real place or site that are not buildings: a `named` panel holding one is real-only
+ * (ruling 296), capitalised or not ("the lane where it began", "the river crossing").
+ */
+const PLACE_NOUN =
+  /\b(street|lane|road|square|market ?place|city|town|village|river|harbou?r|port|island|mountain|hill|park|site|landmark|ruins?|remains|building|shop|bakery|grave|tomb|statue|ship|mask|stone|coin|note|document|letter|portrait|painting|map)s?\b/i;
+
 /** Words that open a description, never a name ("A wide gap", "The houses"). */
 const OPENERS = /^(?:(?:a|an|the|some|two|three|four|several|many|one|this|that|these|those)\s+)+/i;
 
@@ -295,10 +309,14 @@ const OPENERS = /^(?:(?:a|an|the|some|two|three|four|several|many|one|this|that|
  * thing, read from its subject (its first mustSee). The writer sometimes marks a plain description
  * ("A wide cleared gap where houses have been pulled down", greatfire verify6 s9), which forced the
  * whole set real-only and left it empty. A name has a capitalised word once the opening article is set aside ("Stonehenge", "Hadrian's
- * Wall at Cawfields", "Tudor house"): fails closed, any capital counts.
+ * Wall at Cawfields", "Tudor house"): fails closed: any capital, digit,
+ * building, place or artefact word counts; only a plain description is generated.
  */
 export function namesRealThing(named: string | null | undefined): boolean {
   const rest = (named ?? "").trim().replace(OPENERS, "");
+  // Fails closed (reviewer, #709): a building, monument, place or artefact word, in any case, keeps
+  // the panel real-only ("hadrian's wall at cawfields", "the roman fort").
+  if (STRUCTURE.test(rest) || PLACE_NOUN.test(rest)) return true;
   return /(?:^|[\s(\-\u2018'"])[A-Z\u00C0-\u00DE]/.test(rest) || /\d/.test(rest);
 }
 
