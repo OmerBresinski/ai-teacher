@@ -1651,10 +1651,10 @@ const RIVERS: Record<River["view"], RiverGeo> = {
     ground: [],
     marks: () => "",
     anchors: {
-      "outer-bank": { at: [80, 21.5], prefer: ["n", "ne", "nw"] },
-      "inner-bank": { at: [80, 38.5], prefer: ["s", "se", "sw"] },
+      "outer-bank": { at: [80, 21], prefer: ["n", "ne", "nw"] },
+      "inner-bank": { at: [80, 39], prefer: ["s", "se", "sw"] },
       "river-cliff": { at: [109, 29], prefer: ["ne", "e", "n"] },
-      "slip-off-slope": { at: [80, 50], prefer: ["s", "sw", "se"] },
+      "slip-off-slope": { at: [80, 54.5], prefer: ["s", "sw", "se"] },
       "fastest-flow": { at: [53, 32], prefer: ["nw", "w", "n"] },
       "flow-direction": { at: [30, 86], prefer: ["e", "w", "ne"] },
     },
@@ -1795,11 +1795,25 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
       });
     addLine(x, sc, edge(8.5));
     addLine(x, sc, edge(-8.5));
+    // The water itself is an obstacle (part bf): a bank's name stands on its own side of the bank.
+    addArea(sc, [...edge(8.5), ...edge(-8.5).reverse()]);
     if (has.has("slip-off-slope") || has.has("inner-bank")) {
-      const [ax, ay] = t([80, 46]);
+      const [ax, ay] = t([80, 47]);
       out.push(
-        `<ellipse cx="${n(ax)}" cy="${n(ay)}" rx="${n(26 * k)}" ry="${n(8 * k)}" fill="${mix("#c9a227", x.c.surface, 0.5)}"/>`,
+        `<ellipse cx="${n(ax)}" cy="${n(ay)}" rx="${n(26 * k)}" ry="${n(7 * k)}" fill="${mix("#c9a227", x.c.surface, 0.5)}"/>`,
       );
+      // TEACH-247 part bf: the sand is an obstacle, so a name stands inside the bend below it,
+      // never on it (Rivers v417 s6), and its outline is a path the label checks see.
+      const sand: Pt[] = Array.from({ length: 24 }, (_, i) => {
+        const a = (i / 24) * 2 * Math.PI;
+        return [ax + 26 * k * Math.cos(a), ay + 7 * k * Math.sin(a)];
+      });
+      addArea(sc, sand);
+      for (let i = 0; i < sand.length; i++) {
+        const a = sand[i] as Pt;
+        const b = sand[(i + 1) % sand.length] as Pt;
+        x.strokes?.push([a[0], a[1], b[0], b[1]]);
+      }
     }
     if (has.has("fastest-flow")) {
       const line = edge(-4.5).slice(9, 42);
