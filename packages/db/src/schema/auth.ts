@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * better-auth tables (ADR 0008). Generated with
@@ -56,7 +56,9 @@ export const accounts = pgTable(
   "accounts",
   {
     id: text("id").primaryKey(),
-    issuer: text("issuer").notNull(),
+    // better-auth 1.7.0-1.7.2 required it; 1.7.3+ never writes it and keys accounts on
+    // (provider_id, account_id) again. Kept nullable per the 1.7 upgrade guide (TEACH-274 part b).
+    issuer: text("issuer"),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     userId: text("user_id")
@@ -74,10 +76,7 @@ export const accounts = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (t) => [
-    index("accounts_user_id_idx").on(t.userId),
-    uniqueIndex("accounts_issuer_account_id_idx").on(t.issuer, t.accountId),
-  ],
+  (t) => [index("accounts_user_id_idx").on(t.userId)],
 );
 
 export const verifications = pgTable(
