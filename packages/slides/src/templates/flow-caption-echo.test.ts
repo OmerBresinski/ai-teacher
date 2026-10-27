@@ -4,8 +4,9 @@ import { getTheme } from "../themes";
 import { layoutTemplate, type TemplateInput } from "./index";
 
 /*
- * TEACH-247 part bj (v4.18 test, Y8 photosynthesis s4): the caption under a full-width flow repeated
- * its boxes word for word
+ * TEACH-247 part bj (v4.18 test, Y8 photosynthesis s4): a three-step flow across the slide drew as
+ * an L (the zoom search took the largest zoom that drew cleanly, a zone so narrow the chain bent
+ * into a two-row snake), and the caption under it repeated its boxes word for word
  * ("Carbon dioxide + water → glucose + oxygen" under "Carbon dioxide + water", "Photosynthesis",
  * "Glucose + oxygen").
  */
@@ -37,6 +38,13 @@ const lay = (lead: string) =>
   layoutTemplate(input(lead), getTheme("studio"), "ks3").slide.elements as El[];
 
 describe("a caption that repeats its flow (TEACH-247 bj)", () => {
+  test("a three-step flow draws as one row, not an L", () => {
+    const d = lay("Carbon dioxide + water → glucose + oxygen").find((e) => e.name === "Diagram");
+    const svg = decodeURIComponent((d?.src ?? "").slice((d?.src ?? "").indexOf(",") + 1));
+    const tops = new Set([...svg.matchAll(/<rect x="[\d.]+" y="([\d.]+)"/g)].map((m) => m[1]));
+    expect(tops.size).toBe(1);
+  });
+
   test("a caption that only repeats the boxes is not drawn", () => {
     const els = lay("Carbon dioxide + water → glucose + oxygen");
     expect(els.some((e) => e.name === "Diagram")).toBe(true);

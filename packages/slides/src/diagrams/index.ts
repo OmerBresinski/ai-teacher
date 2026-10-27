@@ -12,7 +12,7 @@ import { THEMES } from "../themes";
 import { drawBarModel } from "./bar-model";
 import { drawBarChart, drawCarroll, drawPie, drawVenn } from "./charts";
 import { drawCubes } from "./cubes";
-import { drawFlow } from "./flow";
+import { drawFlow, lastChainShape } from "./flow";
 import { drawEqualGroups, drawFractionShapes } from "./groups";
 import { drawLabelled } from "./labelled";
 import { mendParticleLabels } from "./labels3";
@@ -449,11 +449,13 @@ function cleanZooms(
     const size = { w: rect.w / z, h: rect.h / z, fs: rect.fs };
     if (size.w < 80 || size.h < 60) continue;
     // A bar model spans its box by design (its bars run edge to edge), so it has no fill cap.
-    if (
-      diagramFaults(spec, theme, size).length === 0 &&
-      (bar || (drawnFill(spec, theme, size) ?? 0) <= 0.92)
-    )
-      out.push(z);
+    if (diagramFaults(spec, theme, size).length !== 0) continue;
+    // TEACH-247 part bj (v4.18 Y8 photosynthesis): a chain of up to three steps is never zoomed
+    // into a zone so narrow that it bends into a two-row snake (an L: two boxes, then one under the
+    // second); it takes a smaller zoom, or none, and stays one line.
+    const shape = parseDiagram(spec)?.kind === "flow" ? lastChainShape() : undefined;
+    if (shape && shape.steps <= 3 && shape.cols > 1 && shape.rows > 1) continue;
+    if (bar || (drawnFill(spec, theme, size) ?? 0) <= 0.92) out.push(z);
   }
   return out;
 }
