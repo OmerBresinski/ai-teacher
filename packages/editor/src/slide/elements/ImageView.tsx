@@ -197,6 +197,38 @@ function Picture({
           }}
         />
       </div>
+      {element.source?.caption ? (
+        <ReconstructionCaption text={element.source.caption} height={element.h} />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Ruling 300 (TEACH-251 part ay): a painting made because no real picture exists says so on the
+ * picture, "Artist's reconstruction", in every mode (edit, present, thumb, capture and print).
+ */
+function ReconstructionCaption({ text, height }: { text: string; height: number }) {
+  const size = Math.max(12, Math.round(height * 0.045));
+  return (
+    <span
+      data-testid="picture-caption"
+      style={{
+        position: "absolute",
+        left: size * 0.6,
+        bottom: size * 0.6,
+        padding: `${size * 0.25}px ${size * 0.6}px`,
+        borderRadius: size * 0.3,
+        background: "rgba(0, 0, 0, 0.62)",
+        color: "#fff",
+        fontSize: size,
+        lineHeight: 1.2,
+        fontStyle: "italic",
+        pointerEvents: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {text}
+    </span>
   );
 }
