@@ -139,7 +139,14 @@ function parseTrailingJson(text: string): unknown {
   throw new Error("no JSON table on stdout");
 }
 
-const SIDE_BY_SIDE = "side-by-side-capacity.json";
+/**
+ * Tables a generator writes beside its own: split-compare's also writes side-by-side's, and
+ * reasons' also writes the question-picture cells (TEACH-247 part ba).
+ */
+const ALSO_WRITES: Record<string, string[]> = {
+  "split-compare-capacity.json": ["side-by-side-capacity.json"],
+  "reasons-capacity.json": ["reasons-picture-capacity.json"],
+};
 
 async function main() {
   const only = process.argv.includes("--only")
@@ -158,7 +165,10 @@ async function main() {
     const f = join(copy, TEMPLATES, t);
     return `${statSync(f, { bigint: true }).mtimeNs}:${readFileSync(f, "utf8")}`;
   };
-  const targets = [...gens.filter((g) => g.from === "file").map((g) => g.target), SIDE_BY_SIDE];
+  const targets = [
+    ...gens.filter((g) => g.from === "file").map((g) => g.target),
+    ...Object.values(ALSO_WRITES).flat(),
+  ];
   const before = new Map(targets.map((t) => [t, stamp(t)]));
   const wrote = (t: string) => stamp(t) !== before.get(t);
 
@@ -208,49 +218,37 @@ async function main() {
     }),
   );
 
-  // Every committed table must have a generator; split-compare's also writes side-by-side's.
-  const covered = new Set([...gens.map((g) => g.target), "side-by-side-capacity.json"]);
+  // Every committed table must have a generator (one written beside another counts).
+  const covered = new Set([...gens.map((g) => g.target), ...Object.values(ALSO_WRITES).flat()]);
   const orphans = only
     ? []
     : readdirSync(join(PKG, TEMPLATES)).filter(
         (f) => f.endsWith("-capacity.json") && !covered.has(f),
       );
-  // split-compare-capacity.ts writes side-by-side's table too; judge it only when that run succeeded.
-  const split = results.find((r) => r.target === "split-compare-capacity.json");
-  if (split) {
-    let r: Result;
-    if (!split.ran)
-      r = {
-        target: SIDE_BY_SIDE,
-        ok: false,
-        ran: false,
-        ms: 0,
-        note: "split-compare-capacity.ts failed, so it was not regenerated",
-      };
-    else if (!wrote(SIDE_BY_SIDE))
-      r = {
-        target: SIDE_BY_SIDE,
-        ok: false,
-        ran: false,
-        ms: 0,
-        note: "split-compare-capacity.ts did not write it",
-      };
-    else {
-      const got = JSON.parse(readFileSync(join(copy, TEMPLATES, SIDE_BY_SIDE), "utf8"));
-      const d = firstDiff(
-        got,
-        JSON.parse(readFileSync(join(PKG, TEMPLATES, SIDE_BY_SIDE), "utf8")),
-      );
-      r = {
-        target: SIDE_BY_SIDE,
-        ok: !d,
-        ran: true,
-        got,
-        ms: 0,
-        note: d ?? "matches (written by split-compare-capacity.ts)",
-      };
+  // A table written beside another is judged only when its writer's run succeeded.
+  for (const [by, extra] of Object.entries(ALSO_WRITES)) {
+    const w = results.find((r) => r.target === by);
+    if (!w) continue;
+    const gen = by.replace(/\.json$/, ".ts");
+    for (const target of extra) {
+      let r: Result;
+      if (!w.ran)
+        r = {
+          target,
+          ok: false,
+          ran: false,
+          ms: 0,
+          note: `${gen} failed, so it was not regenerated`,
+        };
+      else if (!wrote(target))
+        r = { target, ok: false, ran: false, ms: 0, note: `${gen} did not write it` };
+      else {
+        const got = JSON.parse(readFileSync(join(copy, TEMPLATES, target), "utf8"));
+        const d = firstDiff(got, JSON.parse(readFileSync(join(PKG, TEMPLATES, target), "utf8")));
+        r = { target, ok: !d, ran: true, got, ms: 0, note: d ?? `matches (written by ${gen})` };
+      }
+      results.push(r);
     }
-    results.push(r);
   }
 
   let fail = 0;
