@@ -25,12 +25,6 @@ export const KNOWN: Record<
     generated?: unknown;
   }
 > = {
-  "figure-capacity.json": {
-    kind: "drift",
-    reason:
-      "the generator writes 210/210/210 (its probe sentence's length): figure.ts ellipsises a long caption to one line (#563), so the one-line probe never fails. The committed 60/67/79 is what figure.ts reads. Fix in M1.",
-    generated: { early: 210, primary: 210, secondary: 210 },
-  },
   "hinge-capacity.json": {
     kind: "stdout-only",
     reason: "hinge-capacity.ts prints its table and writes nothing; compared from stdout.",
@@ -146,6 +140,7 @@ function parseTrailingJson(text: string): unknown {
 const ALSO_WRITES: Record<string, string[]> = {
   "split-compare-capacity.json": ["side-by-side-capacity.json"],
   "reasons-capacity.json": ["reasons-picture-capacity.json"],
+  "figure-capacity.json": ["figure-two-line-capacity.json"],
 };
 
 async function main() {

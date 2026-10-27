@@ -10,7 +10,12 @@ import {
   FIGURE_NAMES,
   figureBox,
 } from "./figure";
-import { FIGURE_CAPTION_CAP, FIGURE_WIDE_ASPECT, figureSlideAllowed } from "./figure-rules";
+import {
+  FIGURE_CAPTION_CAP,
+  FIGURE_CAPTION_TWO_LINE_FITS,
+  FIGURE_WIDE_ASPECT,
+  figureSlideAllowed,
+} from "./figure-rules";
 import { layoutTemplate, mix, type Stage, type TemplateInput } from "./index";
 import { v2Colors } from "./items-row-deps";
 
@@ -86,11 +91,11 @@ describe("figure slide: the open stage", () => {
     expect(lay({ lead: undefined }).fields ?? []).toEqual([]);
   });
 
-  test("an over-cap caption is flagged for repair, never shrunk or cut", () => {
+  test("a caption over two lines is flagged for repair, never shrunk", () => {
     const long =
-      "The same water goes round and round for ever: it is never made, never used up and never lost.";
+      "The same water goes round and round for ever: it is never made, never used up and never lost. It falls as rain, runs to the sea and rises again as vapour, again and again and again.";
     const r = lay({ lead: long });
-    expect(r.over).toContain("figure caption over one line");
+    expect(r.over).toContain("figure caption over two lines");
     const f = r.fields?.find((x) => x.path === "lead");
     expect(f?.over).toBe(true);
     const [cap] = named(r.slide.elements, FIGURE_NAMES.caption) as TextElement[];
@@ -98,24 +103,25 @@ describe("figure slide: the open stage", () => {
       (lay().slide.elements.find((e) => e.name === "Caption") as TextElement | undefined)?.style
         .fontSize,
     );
-    // Meanwhile it shows as one line, cut at a word with an ellipsis: never two lines.
+    // Meanwhile it shows as two lines, cut at a word with an ellipsis: never three.
     const text = JSON.stringify(cap?.doc);
     expect(text).toContain("…");
-    expect(text).not.toContain("never lost.");
+    expect(text).not.toContain("again and again.");
     const lineH = (cap?.style.fontSize ?? 0) * (cap?.style.lineHeight ?? 0);
-    expect(Math.round((cap?.h ?? 0) / lineH)).toBe(1);
+    expect(Math.round((cap?.h ?? 0) / lineH)).toBe(2);
     expect(f?.chars).toBe(long.length);
   });
 
-  test("the caption cap is the writer's cap under the measured one-line fit, per age", () => {
+  test("the caption: comfortable to one line, over past the measured two-line fit, per age", () => {
     for (const [stage, age] of [
       ["ks1", "early"],
       ["ks2", "primary"],
       ["ks3", "secondary"],
     ] as const) {
       const f = lay({}, stage).fields?.find((x) => x.path === "lead");
-      expect(f?.hardMax).toBe(FIGURE_CAPTION_FITS[age]);
+      expect(f?.hardMax).toBe(FIGURE_CAPTION_TWO_LINE_FITS[age]);
       expect(f?.cap).toBe(Math.min(FIGURE_CAPTION_CAP[age], FIGURE_CAPTION_FITS[age]));
+      expect(FIGURE_CAPTION_TWO_LINE_FITS[age]).toBeGreaterThan(FIGURE_CAPTION_FITS[age]);
       expect(FIGURE_CAPTION_FITS[age]).toBeGreaterThan(0);
     }
   });
@@ -212,5 +218,43 @@ describe("figure rules (leaf, ruling 229)", () => {
   });
   test("wide models come here: the split with picture and text is one shared number", () => {
     expect(FIGURE_WIDE_ASPECT).toBe(1.45);
+  });
+});
+
+describe("figure slide: two caption lines (TEACH-247 part bi)", () => {
+  const TWO =
+    "Hadrian's Wall ran 73 miles from coast to coast. Soldiers watched the border from forts and towers along it.";
+  const SPEC = {
+    template: "figure",
+    heading: "Hadrian's Wall",
+    figure: { photo: "/wall.jpg", aspect: 1.5, alt: "" },
+  } as TemplateInput;
+  test("every theme, KS1-KS3: two lines show whole under the figure, which keeps its room", () => {
+    let twoLines = 0;
+    for (const theme of THEMES)
+      for (const stage of ["ks1", "ks2", "ks3"] as Stage[]) {
+        const where = `${theme.name} ${stage}`;
+        const one = layoutTemplate(
+          { ...SPEC, lead: "Hadrian's Wall ran from coast to coast." },
+          theme,
+          stage,
+        );
+        const two = layoutTemplate({ ...SPEC, lead: TWO }, theme, stage);
+        expect(two.over, where).toEqual([]);
+        const cap = two.slide.elements.find((e) => e.name === FIGURE_NAMES.caption) as TextElement;
+        const lineH = (cap.style.fontSize ?? 0) * (cap.style.lineHeight ?? 0);
+        const lines = Math.round(cap.h / lineH);
+        expect(lines, where).toBeLessThanOrEqual(2);
+        if (lines === 2) twoLines++;
+        expect(JSON.stringify(cap.doc), where).toContain("towers along it.");
+        const pic = (r: typeof one) =>
+          r.slide.elements.find((e) => e.name === FIGURE_NAMES.photo) as ImageElement;
+        const [p1, p2] = [pic(one), pic(two)];
+        // The figure gives the caption one line's height at most, and sits clear of it.
+        expect(p1.h - p2.h, where).toBeLessThanOrEqual(Math.ceil(lineH) + 1);
+        expect(p2.y + p2.h, where).toBeLessThanOrEqual(cap.y);
+        expect(cap.y + cap.h, where).toBeLessThanOrEqual(540);
+      }
+    expect(twoLines).toBeGreaterThan(THEMES.length);
   });
 });

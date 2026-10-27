@@ -25,7 +25,11 @@ import { uid } from "../factories";
 import { FONT_STACKS } from "../fonts";
 import { iconsLoaded, loadIcons } from "../icons/loader";
 import FIGURE_CAPACITY from "./figure-capacity.json" with { type: "json" };
-import { FIGURE_CAPTION_CAP } from "./figure-rules";
+import {
+  FIGURE_CAPTION_CAP,
+  FIGURE_CAPTION_LINES,
+  FIGURE_CAPTION_TWO_LINE_FITS,
+} from "./figure-rules";
 import {
   type Ctx,
   type FieldReport,
@@ -126,13 +130,16 @@ export function figureBox(
   };
 }
 
-/** The caption's field report: its length against the writer cap and the measured one-line fit. */
+/**
+ * The caption's field report: its length against the measured two-line fit (TEACH-247 part bi);
+ * past one line (the writer's per-line cap) it is tight, past two lines over.
+ */
 function captionField(caption: string, age: FigureAge, lines: number): FieldReport {
-  const hardMax = FIGURE_CAPTION_FITS[age] ?? 0;
-  const cap = Math.min(FIGURE_CAPTION_CAP[age], hardMax);
+  const hardMax = FIGURE_CAPTION_TWO_LINE_FITS[age] ?? 0;
+  const cap = Math.min(FIGURE_CAPTION_CAP[age], FIGURE_CAPTION_FITS[age] ?? 0, hardMax);
   const chars = caption.length;
-  // A 0 cap is over for any caption, never "no cap"; a caption over one line is over, whatever its count.
-  const over = chars > hardMax || lines > 1;
+  // A 0 cap is over for any caption, never "no cap"; a caption over two lines is over, whatever its count.
+  const over = chars > hardMax || lines > FIGURE_CAPTION_LINES;
   return { field: "Caption", path: "lead", chars, cap, hardMax, tight: chars > cap, over };
 }
 
@@ -229,8 +236,8 @@ function plateMedal(
     } as ShapeElement);
 }
 
-/** The longest run of the caption's words that, with an ellipsis, stays on one line. */
-function oneLine(c: Ctx, caption: string): string {
+/** The longest run of the caption's words that, with an ellipsis, stays within `n` lines. */
+function withinLines(c: Ctx, caption: string, n: number): string {
   const words = caption.split(/\s+/);
   const lineH = c.s[CAPTION_ROLE] * kit.LH[CAPTION_ROLE];
   let lo = 1;
@@ -238,7 +245,7 @@ function oneLine(c: Ctx, caption: string): string {
   while (lo < hi) {
     const mid = Math.ceil((lo + hi) / 2);
     const t = `${words.slice(0, mid).join(" ")}…`;
-    if (Math.round(kit.measure(c, t, CAPTION_ROLE, G.width) / lineH) <= 1) lo = mid;
+    if (Math.round(kit.measure(c, t, CAPTION_ROLE, G.width) / lineH) <= n) lo = mid;
     else hi = mid - 1;
   }
   return `${words
@@ -257,17 +264,20 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
   const titleLines = Math.round(title.h / (c.s.heading * kit.LH.heading));
   if (titleLines > 1) c.over.push("figure title over one line");
   const top = title.y + title.h + FIGURE_GAP;
-  const caption = (input.lead ?? "").trim();
+  // One wrapping paragraph: the writer's two lines of facts may come with a line break.
+  const caption = (input.lead ?? "").replace(/\s+/g, " ").trim();
   const lineH = c.s[CAPTION_ROLE] * kit.LH[CAPTION_ROLE];
   const capLine = Math.ceil(lineH);
   const capH = caption ? kit.measure(c, caption, CAPTION_ROLE, G.width) : 0;
   const capLines = caption ? Math.round(capH / lineH) : 0;
-  // The stage leaves one caption line: an over-long caption is flagged, never given more room.
+  // The stage leaves the caption's lines, two at most (TEACH-247 part bi): a one-line caption keeps
+  // the figure's old room, and a longer caption is flagged, never given more.
+  const shownLines = Math.min(Math.max(capLines, 1), FIGURE_CAPTION_LINES);
   const st: { x: number; y: number; w: number; h: number } = {
     x: G.margin,
     y: top,
     w: G.width,
-    h: Math.round(FIGURE_FOOT - (caption ? capLine + FIGURE_CAPTION_GAP : 0) - top),
+    h: Math.round(FIGURE_FOOT - (caption ? shownLines * capLine + FIGURE_CAPTION_GAP : 0) - top),
   };
   const f = input.figure;
   let box = st;
@@ -303,9 +313,10 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
     } else c.over.push("figure has no drawing and no icon");
   }
   if (caption) {
-    // Over one line the caption is flagged for repair; meanwhile it shows as one line cut at a word
-    // with an ellipsis (never two lines, never smaller). The full words stay in the field report.
-    const shown = capLines > 1 ? oneLine(c, caption) : caption;
+    // Over two lines the caption is flagged for repair; meanwhile it shows as two lines cut at a
+    // word with an ellipsis (never three, never smaller). The full words stay in the field report.
+    const over = capLines > FIGURE_CAPTION_LINES;
+    const shown = over ? withinLines(c, caption, FIGURE_CAPTION_LINES) : caption;
     kit.text(
       c,
       shown,
@@ -313,7 +324,7 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
       { x: G.margin, y: box.y + box.h + FIGURE_CAPTION_GAP, w: G.width },
       { color: c.t.colors.muted, name: FIGURE_NAMES.caption },
     );
-    if (capLines > 1) c.over.push("figure caption over one line");
+    if (over) c.over.push("figure caption over two lines");
     c.fields = [...(c.fields ?? []), captionField(caption, age, capLines)];
   }
 }

@@ -39,8 +39,19 @@ const ctx = (slides: S[], index: number, visual: (k: string) => unknown) =>
   }) as never;
 
 describe("writer: the figure slide", () => {
-  test("a caption over the one-line cap is never cut: the big layout wraps it (TEACH-251 part ae)", () => {
+  test("a two-line caption keeps the figure slide, whole (TEACH-247 part bi)", () => {
     const caption = "The wall stretched between Wallsend and Bowness-on-Solway: 73 miles long.";
+    const two = { ...figureSlide, caption };
+    const i = toInput(
+      two,
+      ctx([{ template: "title" }, two], 1, () => drawn(2.27)),
+    );
+    expect(i.template).toBe("figure");
+    expect((i as S).lead).toBe(caption);
+  });
+  test("a caption over two lines is never cut: the big layout wraps it (TEACH-251 part ae)", () => {
+    const caption =
+      "The wall stretched between Wallsend and Bowness-on-Solway: 73 miles long. Soldiers lived in forts along it, and every Roman mile there was a small castle with a gate and a tower.";
     const long = { ...figureSlide, caption };
     const i = toInput(
       long,
