@@ -928,6 +928,21 @@ describe("TEACH-251 part v: a 'where' slide about a real place tries a locator m
 });
 
 // TEACH-251 part ay (Greg, 27 Oct: "a planned picture is never missing"; rulings 299, 300).
+const refusal = (over: Record<string, unknown>) =>
+  JSON.stringify({
+    pick: null,
+    onSubject: false,
+    kindMatches: null,
+    clear: false,
+    fits: false,
+    why: "x",
+    visible: [],
+    count: null,
+    boxes: [],
+    query: null,
+    ...over,
+  });
+
 describe("a planned picture is never missing", () => {
   const painting = (src: string) =>
     ({
@@ -1000,12 +1015,63 @@ describe("a planned picture is never missing", () => {
       expect.objectContaining({ outcome: "missed" }),
     ]);
   });
-  test("a forced-real slot or a slide's second picture never takes the last step (ruling 209)", async () => {
-    for (const opts of [{ realOnly: true }, { key: "3:side.1" }]) {
-      const { got, made, lines } = run({ paints: true, ...opts });
-      expect(await got).toBeUndefined();
-      expect(made.filter(isLastResort)).toHaveLength(0);
-      expect(lines.filter((l) => l.ev === "picture-last-resort")).toHaveLength(0);
-    }
+  test("a forced-real sole slot that misses gets the captioned period scene", async () => {
+    const { got, made, lines } = run({ paints: true, realOnly: true });
+    const photo = await got;
+    expect(photo?.source.caption).toBe("Artist's reconstruction");
+    expect(made.at(-1)?.text).not.toContain("Henry");
+    expect(lines.filter((l) => l.ev === "picture-last-resort")).toHaveLength(1);
+  });
+  test("a slide's second picture is left to its group (painted together), never painted alone", async () => {
+    const { got, made, lines } = run({ paints: true, key: "3:side.1" });
+    expect(await got).toBeUndefined();
+    expect(made.filter(isLastResort)).toHaveLength(0);
+    expect(lines.filter((l) => l.ev === "picture-last-resort")).toHaveLength(0);
+  });
+  test("a painting the judge refused falls back to an unjudged painted scene of the topic", async () => {
+    const { images } = placer({ commons: async () => [], pexels: async () => [] });
+    const made: BankRequest[] = [];
+    let judged = 0;
+    const bank: PictureBank = {
+      lookup: async () => undefined,
+      remember: async () => undefined,
+      generate: async (req) => {
+        made.push(req);
+        return { ...painting(`p${made.length}`), dataUrl: "data:image/png;base64,AA" } as never;
+      },
+    };
+    const lines: Record<string, unknown>[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _enc, cb) {
+          lines.push(JSON.parse(String(chunk)));
+          cb();
+        },
+      }),
+    );
+    // The judge refuses every painting it sees (a fake model that answers "no").
+    const ai = createFakeAi({
+      script: Array.from({ length: 20 }, () =>
+        refusal({ pick: null, onSubject: false, clear: true, fits: false, why: "Wrong period." }),
+      ),
+    });
+    const photo = await placeWriterPicture({
+      ask: ask({ shows: "A Tudor market", mustSee: ["market stalls"], named: false }),
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(ai, { logger }),
+      bank,
+      direct: async () => direction({ named: "event", period: "Tudor England, 1509-1547" }),
+    });
+    judged = made.length;
+    expect(photo?.source.provider).toBe("generated");
+    expect(photo?.source.caption).toBe("Artist's reconstruction");
+    expect(made.at(-1) && isLastResort(made.at(-1) as BankRequest)).toBe(true);
+    expect(judged).toBeGreaterThan(1);
+    expect(lines.filter((l) => l.ev === "picture-last-resort")).toEqual([
+      expect.objectContaining({ outcome: "painted", refused: true }),
+    ]);
   });
 });

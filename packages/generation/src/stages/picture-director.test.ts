@@ -17,6 +17,7 @@ import {
   createDirectorBatcher,
   directPicture,
   illustrationPrompt,
+  lastResortRequest,
   monumentInView,
   PERIOD_LANDMARK_LINE,
   planPicture,
@@ -944,5 +945,31 @@ describe("a real place in its own time is painted; the place today stays real-on
     expect(monumentInView("Hadrian's Wall with soldiers patrolling")).toBe(true);
     expect(monumentInView("Housesteads Roman Fort with soldiers marching")).toBe(true);
     expect(monumentInView("St Paul's with crowds waiting")).toBe(true);
+  });
+});
+
+// TEACH-251 part ay (coordinator, 27 Oct): the last step paints in an illustration deck's own look.
+describe("the last step in an illustration lesson", () => {
+  const look = {
+    style: "illustration" as const,
+    palette: ["#E4572E", "#17BEBB", "#FFFDF7", "#1D1D1F"],
+    line: "Flat illustration in {{palette}} only.",
+  };
+  const req = {
+    text: "A market in Roman Britain",
+    named: null,
+    route: "generic" as const,
+    imagePrompt: "A market in Roman Britain.",
+  };
+  test("uses the deck's style and palette, not the generic painting line", () => {
+    const r = lastResortRequest(req, "Roman markets", "Roman Britain", look);
+    expect(r.imagePrompt).toContain("Flat illustration in");
+    expect(r.palette).toBeTruthy();
+    expect(r.style).toBe("illustration");
+  });
+  test("with no deck look it is the plain painting", () => {
+    const r = lastResortRequest(req, "Roman markets", "Roman Britain");
+    expect(r.imagePrompt).not.toContain("Flat illustration in");
+    expect(r.palette).toBeUndefined();
   });
 });

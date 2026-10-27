@@ -565,7 +565,8 @@ describe("writer pictures: generated sets", () => {
     pictures.start(2, ask({ ...hen, named: true }), slide);
     await pictures.settle(5_000);
     expect(m.made).toHaveLength(0);
-    expect(directed).toBe(2);
+    // TEACH-251 part ay: the set had a hole, so both panels are directed again to be painted.
+    expect(directed).toBe(4);
     expect(pictures.state(2, "seq.0").status).toBe("failed");
   });
 });
@@ -663,34 +664,28 @@ describe("writer pictures: a later round does not repaint a slide the judge kept
   };
   const hen = ask({ key: "picture", shows: "A hen", mustSee: ["a hen"], named: false });
 
-  test("a round keeps its own retries; the next round for that slide paints nothing", async () => {
+  test("a round keeps its own retries; then the last step paints the slide's topic, unjudged", async () => {
+    // TEACH-251 part ay (Greg, 27 Oct): a painting the judge refused through the slide's cap is
+    // replaced by a painted scene of the slide's topic, not judged again, so it is never missing.
     const { pictures, made } = setup(Array.from({ length: 12 }, refuse));
     pictures.start(3, hen, slide);
     await pictures.settle(5_000);
-    expect(pictures.state(3, "picture").status).toBe("failed");
-    expect(made.length).toBe(3);
-    // The lost-picture round asks the slide again: its search runs, nothing is generated.
-    pictures.start(3, hen, slide);
-    await pictures.settleSlide(3, 5_000);
-    expect(pictures.state(3, "picture").status).toBe("failed");
-    expect(made.length).toBe(3);
-    // Another slide is still painted.
-    pictures.start(4, hen, slide);
-    await pictures.settleSlide(4, 5_000);
-    expect(made.length).toBe(6);
+    expect(made.length).toBe(4);
+    expect(pictures.state(3, "picture").status).toBe("photo");
   });
 
   test("new words for the slide (forget) let it be painted again", async () => {
     const { pictures, made } = setup([refuse(), refuse(), refuse(), accept()]);
     pictures.start(3, hen, slide);
     await pictures.settle(5_000);
-    expect(made.length).toBe(3);
+    expect(made.length).toBe(4);
     expect(SLIDE_REFUSALS_MAX).toBeLessThanOrEqual(3);
     pictures.forget(3);
     pictures.start(3, hen, slide);
     await pictures.settleSlide(3, 5_000);
     expect(pictures.state(3, "picture").status).toBe("photo");
-    expect(made.length).toBe(4);
+    // The first round ended with the last step's painting; the new words paint once more.
+    expect(made.length).toBe(5);
   });
 });
 
@@ -1512,10 +1507,50 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         },
       },
     });
-    expect(made).toHaveLength(0);
+    // TEACH-251 part ay: the hole sends the whole set to be painted together; that repaint failed
+    // here, so the set keeps its real panel and nothing painted is mixed in beside it.
+    expect(made).toHaveLength(2);
     expect(r.prompts).toHaveLength(0);
     expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
     expect(r.providers.has("generated")).toBe(false);
+  });
+
+  test("TEACH-251 part ay: a set with a hole is painted together, every panel, with the caption", async () => {
+    const STONE = "The Rosetta Stone in the British Museum";
+    const FIRE = "The Great Fire spreading across London";
+    const made: string[] = [];
+    const r = await run({
+      lesson: { subject: "History" },
+      panels: [STONE, FIRE],
+      hit: (w) => w === STONE,
+      namedAt: (k) => k === 0,
+      kind: "event",
+      period: "London, 1666",
+      bank: {
+        ...STOCK_ONLY_BANK,
+        generate: async (req) => {
+          made.push(req.text);
+          return {
+            src: `/files/p${made.length}.png`,
+            alt: req.text,
+            style: "illustration",
+            source: {
+              provider: "generated",
+              id: `p${made.length}`,
+              pageUrl: "https://example.com/p",
+              photographer: "",
+              photographerUrl: "https://example.com/p",
+            },
+          } as never;
+        },
+      },
+    });
+    // No hole, and no real panel left beside a painted one (rulings 209, 300).
+    expect(r.states.map((x) => x.status)).toEqual(["photo", "photo"]);
+    expect(r.providers.has("generated")).toBe(true);
+    expect(r.providers.size).toBe(1);
+    // The named real thing is never painted itself: its panel is a period scene (ruling 299).
+    expect(made.some((t) => t.includes("Rosetta"))).toBe(false);
   });
 
   test("rulings 163, 210 keep 209: a past event beside a named real panel is never painted", async () => {
@@ -1537,7 +1572,9 @@ describe("ruling 209 with 163: one source type per set; a history set is real fi
         },
       },
     });
-    expect(made).toHaveLength(0);
+    // TEACH-251 part ay: the hole sends the whole set to be painted together; that repaint failed
+    // here, so the set keeps its real panel and nothing painted is mixed in beside it.
+    expect(made).toHaveLength(2);
     expect(r.prompts).toHaveLength(0);
     expect(r.states.map((x) => x.status)).toEqual(["photo", "failed"]);
     expect(r.providers.has("generated")).toBe(false);

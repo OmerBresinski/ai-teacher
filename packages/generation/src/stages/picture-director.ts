@@ -637,6 +637,11 @@ export async function findDirected(args: {
    * to stock without mixing sources on the slide (ruling 209). Absent: no stock fallback.
    */
   stockFallback?: boolean;
+  /**
+   * TEACH-251 part ay: paint this slot straight away, no search: its group (a set, a slide's cards)
+   * had a member every step missed, so every member is painted together (rulings 209, 300).
+   */
+  paintOnly?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -730,7 +735,19 @@ export async function findDirected(args: {
     });
     return undefined;
   }
-  const req = args.stockFallback ? { ...plan.request, stockFallback: true } : plan.request;
+  // A painted-only slot (its group is repainted together) skips every search: a real thing is a
+  // period scene, anything else its own subject, painted (`lastResortRequest`).
+  const req = args.paintOnly
+    ? lastResortRequest(
+        // A writer-named panel is a real thing: never painted itself, only a scene (ruling 299).
+        ask.named ? { ...plan.request, route: "real", realFallback: "none" } : plan.request,
+        args.slide.heading,
+        lesson.title,
+        args.look,
+      )
+    : args.stockFallback
+      ? { ...plan.request, stockFallback: true }
+      : plan.request;
   const brief: ImageBrief =
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
@@ -740,7 +757,7 @@ export async function findDirected(args: {
   // slower), capped at LOCATOR_MAP_MS, and stored in the library like any picture; when one is
   // found it is placed, else the ladder's picture is.
   const place =
-    args.slide.locate && direction?.named === "place"
+    !args.paintOnly && args.slide.locate && direction?.named === "place"
       ? placeNameOf(req.text, brief.queries ?? [])
       : null;
   const mapCtl = new AbortController();
@@ -802,7 +819,7 @@ export async function findDirected(args: {
   let out = map ? { ...found, photo: map, via: "fetched" as const, attempts: 0 } : found;
   // a lesson trial, ruling 163: a past event or person that the scene search missed is shown by a
   // real artefact, coin, map, site or museum object (a Claudius bust), before nothing.
-  if (!out.photo && req.depicts && plan.kind === "photo") {
+  if (!out.photo && req.depicts && plan.kind === "photo" && !args.paintOnly) {
     const t0 = Date.now();
     const artefact: ImageBrief = {
       ...brief,
@@ -826,18 +843,25 @@ export async function findDirected(args: {
   // panel, card or forced-real slot, so a painting never sits beside a real photo (ruling 209).
   // Every slot that reaches this step is logged.
   let lastResort: "painted" | "missed" | undefined;
+  // A painting the judge refused through its own retries (the slide's cap, TEACH-202 part x) is
+  // not judged again: the last step paints a generic scene of the slide's topic, unjudged.
+  const refused = out.attempts > 0 && (out.reason === "judge" || out.reason === "refused-safety");
   if (
     !out.photo &&
     plan.kind === "photo" &&
+    // The slide's sole picture, forced-real or not; a group member that misses is painted with
+    // its whole group instead (`paintGroup`), so a slide never mixes real and painted.
     args.stockFallback &&
-    !args.realOnly &&
-    // A painting the judge already refused through its own retries is not painted again here:
-    // the slide's refusal cap holds (TEACH-202 part x).
-    !(out.attempts > 0 && (out.reason === "judge" || out.reason === "refused-safety")) &&
+    !args.paintOnly &&
     !deps.signal.aborted
   ) {
     const t0 = Date.now();
-    const scene = lastResortRequest(req, args.slide.heading, lesson.title);
+    const scene = lastResortRequest(
+      refused ? { ...req, route: "real", realFallback: "none" } : req,
+      args.slide.heading,
+      lesson.title,
+      args.look,
+    );
     const sceneBrief: ImageBrief = {
       ...brief,
       request: scene.text,
@@ -850,7 +874,7 @@ export async function findDirected(args: {
       args.bank,
       async () => undefined,
       deps.signal,
-      (made, reuse, onWhy) => args.judgeMade(sceneBrief, made, reuse, onWhy),
+      refused ? undefined : (made, reuse, onWhy) => args.judgeMade(sceneBrief, made, reuse, onWhy),
     ).catch(whenNonFatal(() => undefined));
     if (got?.photo)
       out = {
@@ -869,6 +893,7 @@ export async function findDirected(args: {
         outcome: lastResort,
         realOnly: req.route === "real" && (req.realFallback ?? "none") === "none",
         historical: !!req.period,
+        refused,
         attempts: got?.attempts ?? 0,
         ...(got?.reason ? { reason: got.reason } : {}),
       },
@@ -964,8 +989,8 @@ export async function findDirected(args: {
   const reconstruction =
     out.photo.source.provider === "generated" &&
     style === "illustration" &&
-    (req.route === "real" || lastResort === "painted") &&
-    (!!req.period || lastResort === "painted");
+    (req.route === "real" || lastResort === "painted" || !!args.paintOnly) &&
+    (!!req.period || lastResort === "painted" || !!args.paintOnly);
   return {
     ...out.photo,
     ...(reconstruction ? { source: { ...out.photo.source, caption: RECONSTRUCTION_CAPTION } } : {}),
@@ -995,6 +1020,8 @@ export function lastResortRequest(
   req: BankRequest,
   heading: string,
   lessonTitle: string,
+  /** The deck's look: an illustration lesson paints in its own style, never the generic line. */
+  look?: LessonLook,
 ): BankRequest {
   const realOnly = req.route === "real" && (req.realFallback ?? "none") === "none";
   // The topic is the heading, else the lesson title, with a leading question ("How did ...") and the
@@ -1032,6 +1059,14 @@ export function lastResortRequest(
       : period
         ? illustrationPrompt(prompt, period)
         : `${ILLUSTRATION_LINE}\n${prompt}`;
+  // An illustration lesson's own look (TEACH-251 part ay): its style and palette, the period still
+  // checked by the judge through `period`.
+  // A painting retried with its own prompt is already in the deck's look: never wrapped twice.
+  const decked =
+    look?.style === "illustration" && painted !== req.imagePrompt
+      ? lessonIllustrationPrompt(prompt, look)
+      : undefined;
+  const palette = decked ? paletteKey(look) : undefined;
   return {
     text: subject,
     named: null,
@@ -1039,7 +1074,8 @@ export function lastResortRequest(
     route: "generic",
     realFallback: "illustration",
     style: "illustration",
-    imagePrompt: `${painted}\n${LAST_RESORT_SAFE_LINE}`,
+    ...(palette ? { palette } : {}),
+    imagePrompt: `${decked ?? painted}\n${LAST_RESORT_SAFE_LINE}`,
     ...(req.period ? { period: req.period, depicts: true } : {}),
   };
 }
@@ -1415,6 +1451,8 @@ export async function placeWriterPicture(args: {
   draws?: boolean;
   /** Ruling 163 for this slot (`findDirected`'s `realOnly`). */
   realOnly?: boolean;
+  /** Painted straight away with its group (`findDirected`'s `paintOnly`). */
+  paintOnly?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
@@ -1523,6 +1561,7 @@ export async function placeWriterPicture(args: {
         // One picture on the slide only: a panel, tile, card or split part (`side.1`, `card.2`,
         // `figure#1`) shares its slide with others, so it never falls back to stock (ruling 209).
         ...(soleOnSlide(ask.key) ? { stockFallback: true } : {}),
+        ...(args.paintOnly ? { paintOnly: true } : {}),
       });
     },
     (error) => {
@@ -1946,6 +1985,7 @@ export function createWriterPictures(opts: {
       !ask.set &&
       !ask.fixedShape &&
       !/^card\./.test(ask.key),
+    paint = false,
   ) => {
     let reason: PictureOutcome["reason"];
     let diagram: string | undefined;
@@ -1975,6 +2015,7 @@ export function createWriterPictures(opts: {
       },
       ...(redraw ? { draws: true } : {}),
       ...(real ? { realOnly: true } : {}),
+      ...(paint ? { paintOnly: true } : {}),
     })
       .then((photo) => {
         if (slot.state.status !== "pending") return;
@@ -1984,7 +2025,8 @@ export function createWriterPictures(opts: {
           if (reason === "director-code") slot.draw = diagram;
           return;
         }
-        if (real && photo.source?.provider === "generated") {
+        // The last step's captioned period scene is not the card's real thing painted (ruling 299).
+        if (real && photo.source?.provider === "generated" && !photo.source.caption) {
           slot.state = { status: "failed" };
           slot.miss = "history-card-generated";
           opts.deps.logger.info(
@@ -2045,6 +2087,69 @@ export function createWriterPictures(opts: {
         );
       });
   };
+
+  /**
+   * TEACH-251 part ay (Greg, 27 Oct: "a planned picture is never missing"): a group of pictures on
+   * one slide (a set's panels, a slide's cards or tiles) with a member every step missed is painted
+   * again together, every member, so the slide has no hole and never mixes real and painted
+   * (ruling 209). Painted into stand-in slots; the group's pictures are swapped in only when every
+   * member was painted, so a failed repaint never empties a member that had its picture.
+   */
+  const paintGroup = async (
+    index: number,
+    slide: SlideForPicture,
+    members: { ask: WriterPhotoAsk; slot: Slot }[],
+  ): Promise<void> => {
+    const missed = members.filter(({ slot }) => slot.state.status !== "photo").length;
+    if (!missed || members.length < 2) return;
+    const stand = members.map(({ slot }) => ({
+      ...slot,
+      state: { status: "pending" } as WriterPictureState,
+      miss: undefined,
+    }));
+    await Promise.all(
+      members.map(({ ask }, i) =>
+        place(stand[i] as Slot, index, ask, slide, false, false, true).catch(
+          whenNonFatal(() => undefined),
+        ),
+      ),
+    );
+    const painted = stand.every((s) => s.state.status === "photo");
+    deps.logger.info(
+      {
+        stage: "illustrate",
+        ev: "picture-last-resort",
+        kind: "group",
+        slideIndex: index,
+        members: members.length,
+        missed,
+        outcome: painted ? "painted" : "missed",
+      },
+      "picture last resort",
+    );
+    if (!painted) return;
+    for (const [i, { ask, slot }] of members.entries()) {
+      // The real picture it replaces leaves the lesson's sources (no credit for a picture not shown).
+      if (slot.state.status === "photo") sources.delete(slot.state.photo.src);
+      slot.state = (stand[i] as Slot).state;
+      slot.miss = undefined;
+      nonFatalSync(
+        () => opts.onPlaced?.(index, ask.key),
+        () => undefined,
+      );
+    }
+  };
+  /** A slide's group of single asks (`card.1`, `card.2`): their placements, for `paintGroup`. */
+  const groups = new Map<
+    string,
+    {
+      members: { ask: WriterPhotoAsk; slot: Slot }[];
+      placed: Promise<unknown>[];
+      painting?: Promise<void>;
+    }
+  >();
+  const groupOf = (index: number, key: string) =>
+    soleOnSlide(key) ? undefined : id(index, key.split(/[.#]/)[0] ?? key);
 
   /**
    * One slide's set, once its panels are all in: made together by the generator when it is a
@@ -2116,7 +2221,15 @@ export function createWriterPictures(opts: {
         panels.map(({ ask, slot }) =>
           slot ? place(slot, group.index, ask, group.slide, true) : undefined,
         ),
-      ).then(finish, finish);
+      )
+        .then(() =>
+          paintGroup(
+            group.index,
+            group.slide,
+            panels.flatMap(({ ask, slot }) => (slot ? [{ ask, slot }] : [])),
+          ),
+        )
+        .then(finish, finish);
       return;
     }
     // Ruling 210: anything else is generated, in one look (drawn for history, rulings 163/209).
@@ -2317,7 +2430,7 @@ export function createWriterPictures(opts: {
       }
       // An ask the director sent to the drawer, asked again (the drawer could not draw it): the
       // picture route this time, so it ends with a picture or a real miss, never none.
-      slot.done = place(
+      const placed = place(
         slot,
         index,
         ask,
@@ -2325,6 +2438,22 @@ export function createWriterPictures(opts: {
         undefined,
         prev?.miss === "director-code" ? false : undefined,
       );
+      // TEACH-251 part ay: a slide's cards or tiles are one group: once every member's placement is
+      // over, a group with a hole is painted again together (`paintGroup`).
+      const gk = groupOf(index, ask.key);
+      if (gk) {
+        const g = groups.get(gk) ?? { members: [], placed: [] };
+        groups.set(gk, g);
+        g.members = [...g.members.filter((m) => m.ask.key !== ask.key), { ask, slot }];
+        g.placed.push(placed);
+        // A member asked again reopens its group's check.
+        g.painting = undefined;
+        slot.done = placed.then(async () => {
+          await Promise.allSettled(g.placed);
+          g.painting ??= paintGroup(index, slide, g.members);
+          await g.painting;
+        });
+      } else slot.done = placed;
       slots.set(k, slot);
       // Its own placement is over: a failed single ask may be asked again before the round ends.
       void slot.done.then(
