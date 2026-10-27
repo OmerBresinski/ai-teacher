@@ -39,6 +39,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_fit_continued: ["slide"],
   gen_gas8: ["fault", "slide"],
   gen_gas8_fallback: ["cleared", "fault", "slide"],
+  gen_gas8_skipped: ["slide", "why"],
   gen_grid_pick: ["judged", "pick", "set"],
   gen_hinge_first_unmet: ["correct", "slide"],
   gen_keep_pic: ["key", "orphans", "rule", "slide"],
@@ -63,6 +64,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_look_unmet: ["kind", "slide"],
   gen_lost_early: ["slide"],
   gen_lost_early_failed: ["slide"],
+  gen_lost_fallback_early: ["slide"],
   gen_lost_library_undrawn: ["slide", "why"],
   gen_lost_picture: ["asked", "landed", "ok", "slide", "try"],
   gen_main_incomplete: ["chars", "why"],
@@ -147,6 +149,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_unpoint: ["slide"],
   gen_unshared_pile: ["key", "total", "via"],
   gen_unshown_strip: ["how", "removed", "slide"],
+  gen_unshown_text_only: ["from", "ok", "slide"],
   gen_visual_path: ["path", "slide"],
   gen_written_hook_failed: [],
 };
