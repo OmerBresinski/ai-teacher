@@ -268,9 +268,11 @@ export async function issueSessionCookie(auth: SessionIssuer, userId: string): P
   const user = await ctx.internalAdapter.findUserById(userId);
   if (!user) throw new Error(`issueSessionCookie: no user with id ${userId}`);
   const token = newId().replaceAll("-", "");
+  // better-auth 1.7.7+ (GHSA-965c-763c-88jm) namespaces magic-link rows as `magic-link:<token>`
+  // and accepts only a strict `{ type: "magic-link", email }` value (TEACH-274 part b).
   await ctx.internalAdapter.createVerificationValue({
-    identifier: token,
-    value: JSON.stringify({ email: user.email }),
+    identifier: `magic-link:${token}`,
+    value: JSON.stringify({ type: "magic-link", email: user.email }),
     expiresAt: new Date(Date.now() + 60_000),
   });
   const url = `${ctx.baseURL}/magic-link/verify?token=${token}`;

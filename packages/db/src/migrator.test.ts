@@ -156,7 +156,7 @@ describeDb("migrations", () => {
       let issuer: string | null = null;
       await sql
         .begin(async (tx) => {
-          await tx`drop index accounts_issuer_account_id_idx`;
+          await tx`drop index if exists accounts_issuer_account_id_idx`;
           await tx`alter table accounts drop column issuer`;
           await tx`insert into users (id, name, email, email_verified, created_at, updated_at)
             values ('u-0008', 'Pre 0008', 'pre-0008@example.test', true, now(), now())`;
@@ -182,15 +182,14 @@ describeDb("migrations", () => {
       await expect(migrateAccountRow("microsoft")).rejects.toThrow(/issuer.*null/i);
     });
 
-    test("the migrated table requires issuer and keys accounts on (issuer, account_id)", async () => {
+    test("0014 relaxes issuer for better-auth 1.7.3+ and drops the (issuer, account_id) index", async () => {
       const [column] = await sql<{ is_nullable: string }[]>`
         select is_nullable from information_schema.columns
         where table_name = 'accounts' and column_name = 'issuer'`;
-      expect(column?.is_nullable).toBe("NO");
-      const [index] = await sql<{ indexdef: string }[]>`
-        select indexdef from pg_indexes where indexname = 'accounts_issuer_account_id_idx'`;
-      expect(index?.indexdef).toStartWith("CREATE UNIQUE INDEX");
-      expect(index?.indexdef).toEndWith("USING btree (issuer, account_id)");
+      expect(column?.is_nullable).toBe("YES");
+      const indexes = await sql`
+        select indexname from pg_indexes where indexname = 'accounts_issuer_account_id_idx'`;
+      expect(indexes).toHaveLength(0);
     });
   });
 });
