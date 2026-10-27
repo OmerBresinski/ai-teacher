@@ -987,8 +987,9 @@ export const RECONSTRUCTION_CAPTION = "Artist's reconstruction";
  * real-only thing (a named person, a place today, a unique artefact) is never painted itself:
  * the slot takes a painted scene of its period, or of the slide's topic, with no particular real
  * person, place or object in it (ruling 299). Painted, never photo-style; checked against the
- * period by the judge when there is one (rulings 163, 209).
- * Prompt wording here is code-owned and due a prompt-engineer review.
+ * period by the judge when there is one (rulings 163, 209). Every last-resort prompt ends with
+ * LAST_RESORT_SAFE_LINE: the step can run unjudged after a refusal.
+ * Prompt wording reviewed 27 Oct (prompt-engineer, PR #715).
  */
 export function lastResortRequest(
   req: BankRequest,
@@ -996,21 +997,41 @@ export function lastResortRequest(
   lessonTitle: string,
 ): BankRequest {
   const realOnly = req.route === "real" && (req.realFallback ?? "none") === "none";
-  // Names (capitalised words, numerals) are dropped from the topic, so a real person, place or
-  // object is never named to the painter ("Henry VIII" leaves nothing; ruling 299).
-  const plain = (t: string) =>
-    t
-      .replace(/\b[A-Z][\w'’-]*|\b\d[\w-]*/g, " ")
-      .replace(/[^\p{L}\s'-]/gu, " ")
+  // The topic is the heading, else the lesson title, with a leading question ("How did ...") and the
+  // real thing's own words cut. It is used only when no other capitalised word or numeral is left:
+  // a cut name leaves a fragment ("break with"), and any name left could be another real person or
+  // place to paint (ruling 299). "How did the fire spread?" gives "the fire spread".
+  const topicOf = (t: string) => {
+    const left = (withoutWords(t.replace(LEADING_QUESTION, ""), req.named) ?? "")
+      .replace(/[^\p{L}\p{N}\s'’-]/gu, " ")
       .replace(/\s+/g, " ")
       .trim();
-  const topic = [plain(heading), plain(lessonTitle)].find((t) => t.split(" ").length >= 2) ?? "";
-  // The real thing's own name never reaches the prompt: a period scene names only its period; a
-  // present-day one, the slide's topic.
+    return left && !/\p{Lu}|\p{N}/u.test(left) ? left : "";
+  };
+  const topic = topicOf(heading) || topicOf(lessonTitle);
+  // The director's period is a time and place phrase, so it can carry the real thing's own name
+  // ("Hadrian's Wall, AD 130"): those words are cut from it before it reaches the painter.
+  const period = req.period && realOnly ? withoutWords(req.period, req.named) : req.period;
+  // The real thing's own name never reaches the prompt: the scene names only its period and the
+  // slide's topic, both cleared of it.
   const subject = realOnly
-    ? `An everyday scene${req.period ? ` in ${req.period}` : topic ? ` about ${topic}` : ""}, with no particular real person, building, place or object in it`
+    ? `An everyday scene${period ? ` in ${period}` : ""}${topic ? `, to do with ${topic}` : ""}: ordinary people, buildings and objects${period ? " of that time" : ""}, none of them a particular real person, building, place or object`
     : req.text;
-  const prompt = realOnly ? `${subject}.` : (req.imagePrompt ?? req.text);
+  // A photo-lesson prompt is written as a photograph ("one realistic photograph", the house photo
+  // line, a count photo): painting it under a "not a photograph" line contradicts itself, so the
+  // slot's plain description is painted instead.
+  const prompt = realOnly
+    ? `${subject}.`
+    : req.style === "illustration"
+      ? (req.imagePrompt ?? req.text)
+      : `${req.text.replace(/[.\s]+$/, "")}.`;
+  const painted =
+    // A painting that already failed is tried again with its own prompt, never wrapped twice.
+    !realOnly && req.style === "illustration" && req.imagePrompt
+      ? req.imagePrompt
+      : period
+        ? illustrationPrompt(prompt, period)
+        : `${ILLUSTRATION_LINE}\n${prompt}`;
   return {
     text: subject,
     named: null,
@@ -1018,15 +1039,39 @@ export function lastResortRequest(
     route: "generic",
     realFallback: "illustration",
     style: "illustration",
-    // A painting that already failed is tried again with its own prompt, never wrapped twice.
-    imagePrompt:
-      !realOnly && req.style === "illustration" && req.imagePrompt
-        ? req.imagePrompt
-        : req.period
-          ? illustrationPrompt(prompt, req.period)
-          : `A hand-painted educational illustration, clearly a painting and not a photograph.\n${prompt}`,
+    imagePrompt: `${painted}\n${LAST_RESORT_SAFE_LINE}`,
     ...(req.period ? { period: req.period, depicts: true } : {}),
   };
+}
+
+/**
+ * The last step's safety line (KS1 to KS4). No age word ("children" draws young children) and no
+ * listed harms (a named thing turns up in the picture; gpt-image notes in the prompt guide).
+ */
+export const LAST_RESORT_SAFE_LINE =
+  "The scene is calm and fit to show in any primary or secondary school classroom: nobody in it is hurt or in danger.";
+
+/** A heading's opening question words ("How did", "What is", "Why were"), cut before names are. */
+const LEADING_QUESTION =
+  /^\s*(how|why|what|when|where|who|which)\b(\s+(did|do|does|is|are|was|were|can|could|should|would|has|have|had)\b)?\s*/i;
+
+/** A phrase with the real thing's own words cut out, or undefined when nothing is left. */
+export function withoutWords(text: string, named: string | null): string | undefined {
+  const words = (named ?? "")
+    .replace(/[’']s\b/g, "")
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length > 2 && /^\p{Lu}/u.test(w));
+  let p = text;
+  for (const w of words) p = p.replace(new RegExp(`\\b${w}(?:[’']s)?\\b`, "giu"), " ");
+  for (let i = 0; i < 3; i++) p = p.replace(/\b(the|of|in|at|on|near|and)\s*(?=[,;:?.]|$)/gi, " ");
+  p = p
+    .replace(/\s*,\s*(,\s*)+/g, ", ")
+    .replace(/\s+([,;:?.])/g, "$1")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s,;:-]*(?:(?:in|at|of|on|near|around|during)\s+)*[\s,;:-]*/i, "")
+    .replace(/[\s,;:-]+$/, "")
+    .trim();
+  return /\p{L}|\p{N}/u.test(p) ? p : undefined;
 }
 
 /** Round 7: words that make a historical picture show people or an event (not wheat or ore). */
