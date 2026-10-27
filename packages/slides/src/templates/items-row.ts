@@ -77,6 +77,10 @@ export const itemPhoto = (it: RowItem | null | undefined): Photo | null =>
     : null;
 /** A picture tile's shape (width over height): the row pictures' 4:3. */
 export const ITEM_PIC_ASPECT = 4 / 3;
+/** A picture tile's tallest (slide points): a 3-item row's column would give 195. */
+const PIC_MAX_H = 170;
+/** The space under a tile to its name's box (the name's own line space adds the rest). */
+const PIC_UNDER = 10;
 /** Picture rows hold at most four parts (two to four; five or more stay icons or numbers). */
 export const ROW_PIC_MAX = 4;
 /**
@@ -313,8 +317,14 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
     l === PENDING_ICON ? PENDING_ICON : l ? (res.ids[named.indexOf(l)] ?? null) : null,
   );
   // Pictures (part bg): any item with a photo or an open slot makes a picture row of two to four;
-  // a tile takes the medal's place, so no icon, number or connector is drawn.
-  const pics = n >= ROW_MIN && n <= ROW_PIC_MAX && items.some((it) => itemPhoto(it));
+  // a tile takes the medal's place, so no icon or connector is drawn. One lost picture takes its
+  // item's number in the tile's place (the row stays even); two or more and the row is numbered.
+  const lostPics = items.filter((it) => !itemPhoto(it)).length;
+  const pics =
+    n >= ROW_MIN &&
+    n <= ROW_PIC_MAX &&
+    lostPics < Math.min(2, n) &&
+    items.some((it) => itemPhoto(it));
   const icons = !pics && n > 0 && concepts.every(Boolean);
   // Unordered and no icons: no medal at all, never an empty face or numbers that read as a sequence.
   const bare = !pics && !icons && input.ordered === false;
@@ -330,9 +340,9 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   const M = prof.medal;
   const gap = n <= 3 ? 37 : 29;
   const itemW = Math.floor(Math.min(n <= 2 ? 293 : 1e9, (STAGE_W - (perRow - 1) * gap) / perRow));
-  // A picture tile's height: as wide as most of the item (4:3), never taller than 1.5 medals; it
-  // gives way like a medal, to 60% before the type does.
-  const picH = Math.min((itemW * 0.82) / ITEM_PIC_ASPECT, M * 1.5);
+  // A picture tile's height: the column's full width at 4:3, never taller than PIC_MAX_H; it
+  // holds its size before the type gives way (below).
+  const picH = Math.min(itemW / ITEM_PIC_ASPECT, PIC_MAX_H);
   const m = bare
     ? 0
     : pics
@@ -340,9 +350,9 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
       : icons
         ? M * (two ? 0.66 : n === 4 ? 0.8 : 1)
         : M * (two ? 0.44 : n === 4 ? 0.62 : 0.72);
-  const minMedal = bare ? 0 : pics ? picH * 0.8 : icons ? prof.medalMin : M * 0.4;
+  const minMedal = bare ? 0 : pics ? picH : icons ? prof.medalMin : M * 0.4;
   // The gap under a medal or tile: a medal's ring needs air, a flat tile only a hairline.
-  const under = (mm: number) => (pics ? 6 : mm * 0.14 + 3);
+  const under = (mm: number) => (pics ? PIC_UNDER : mm * 0.14 + 3);
   const nf = beside ? 0.86 : two ? 0.8 : 1;
   const bf = two ? 0.9 : 1;
   const pad = prof.badge * 0.5;
@@ -374,7 +384,8 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
         lines(c, it.text, "body", textW, bodyWeight, bodySize) * bodySize * prof.lineHeights.body;
       if (!wordsFit(c, it.name, "heading", textW, nameWeight, nameSize)) wordsOk = false;
       if (!wordsFit(c, it.text, "body", textW, bodyWeight, bodySize)) wordsOk = false;
-      const gapN = beside ? 4 : 7;
+      // Under a picture the name stands a little clear of its line, as a heading does its text.
+      const gapN = beside ? 4 : pics ? Math.round(bodySize * 0.35) : 7;
       const textH = nameH + (lineH ? gapN + lineH : 0);
       const h = beside ? Math.max(mm, textH) : bare ? textH : mm + under(mm) + textH;
       return { nameH, lineH, textH, h, gapN };
@@ -426,8 +437,8 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
   let g = measureAt(step);
   // Medals give way first, all the way to their comfort minimum (numbers to 40% of the medal).
   // Pictures are what a picture row is for (a Y1 child names the part it sees): they hold their
-  // size (to 80%) before the type gives way, and go on to 60% only when the row is tight.
-  const msComfort = bare ? 1 : pics ? 0.8 : Math.min(1, minMedal / m);
+  // full size while the type gives way to its comfort sizes, and go to 60% only to fit.
+  const msComfort = bare || pics ? 1 : Math.min(1, minMedal / m);
   while (!g.comfy && step.ms > msComfort + 1e-6) {
     step.ms = Math.max(msComfort, +(step.ms - 0.05).toFixed(2));
     g = measureAt(step);
@@ -523,6 +534,11 @@ export function layoutItemsRow(c: Ctx, input: TemplateInput) {
           fit: "cover",
           radius: Math.min(c.t.radius ?? 12, Math.round(mm * 0.12)),
         } as unknown as (typeof c.els)[number]);
+      }
+      if (pics && !photo) {
+        // The one lost picture: the item's number on a medal, centred where its tile would be.
+        const d = Math.min(mm, M * 0.72);
+        medal(c, p.k, null, it.name, false, true, p.cx - d / 2, my + (mm - d) / 2, d, prof, col);
       }
       if (!bare && !pics)
         medal(

@@ -49,7 +49,9 @@ describe("items row pictures", () => {
 
   test("a pending picture keeps its tile as the placeholder (the editor sweeps each one)", () => {
     const items = PARTS.map((it, i) => (i === 1 ? { ...it, picture: pic(PLACEHOLDER_IMAGE) } : it));
-    const t = tiles(layoutTemplate(row(items), THEMES[0]!, "ks1").slide.elements as never) as {
+    const t = tiles(
+      layoutTemplate(row(items), THEMES[0] as never, "ks1").slide.elements as never,
+    ) as {
       src: string;
       alt: string;
     }[];
@@ -58,33 +60,39 @@ describe("items row pictures", () => {
     expect(t[1]?.alt.startsWith("Describe this")).toBe(false);
   });
 
-  test("a lost picture leaves no tile and no box; the words stay level", () => {
+  test("one lost picture takes its item's number in the tile's place; the row stays even", () => {
     for (const theme of THEMES) {
       const items = PARTS.map((it, i) => (i === 2 ? { ...it, picture: null } : it));
       const els = layoutTemplate(row(items), theme, "ks1").slide.elements as unknown as (Box & {
         name?: string;
         type: string;
       })[];
-      expect(tiles(els).length).toBe(3);
+      expect(tiles(els).length, theme.name).toBe(3);
       const names = els.filter((e) => e.name === ROW_NAMES.name);
-      expect(new Set(names.map((e) => Math.round(e.y))).size).toBe(1);
-      // Nothing drawn above the lost item's name inside its column (no empty frame or face).
+      expect(new Set(names.map((e) => Math.round(e.y))).size, theme.name).toBe(1);
+      // The lost item's column holds a medal (its number), never an empty frame.
       const lost = names[2] as Box;
-      const above = els.filter(
-        (e) =>
-          e.type !== "text" &&
-          e.name !== ROW_NAMES.ground &&
-          !e.name?.startsWith("surface:") &&
-          e.y < lost.y &&
-          meets(e, { ...lost, y: 0, h: lost.y }),
-      );
-      expect(above).toEqual([]);
+      const col = { x: lost.x, y: 0, w: lost.w, h: lost.y };
+      const marks = els.filter((e) => e.name === ROW_NAMES.medal && meets(e, col));
+      expect(marks.length, theme.name).toBeGreaterThan(0);
+      for (const t of tiles(els)) expect(meets(t, col), theme.name).toBe(false);
     }
+  });
+
+  test("two lost pictures: the whole row is numbered", () => {
+    const items = PARTS.map((it, i) => (i === 1 || i === 3 ? { ...it, picture: null } : it));
+    const els = layoutTemplate(row(items), THEMES[0] as never, "ks1").slide.elements as {
+      name?: string;
+    }[];
+    expect(tiles(els).length).toBe(0);
+    expect(els.filter((e) => e.name === ROW_NAMES.medal).length).toBeGreaterThanOrEqual(4);
   });
 
   test("every picture lost: the row falls back to numbers", () => {
     const items = PARTS.map((it) => ({ ...it, picture: null }));
-    const els = layoutTemplate(row(items), THEMES[0]!, "ks2").slide.elements as { name?: string }[];
+    const els = layoutTemplate(row(items), THEMES[0] as never, "ks2").slide.elements as {
+      name?: string;
+    }[];
     expect(tiles(els).length).toBe(0);
     expect(els.some((e) => e.name === ROW_NAMES.medal)).toBe(true);
   });
