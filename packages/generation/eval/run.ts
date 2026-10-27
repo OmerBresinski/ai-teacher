@@ -38,7 +38,7 @@ import { type PhotoPlacer, type Planner, writerRoute } from "../src";
 import { stageOf } from "../src/stages/write";
 import { type MenuWordCaps, menuWordCaps } from "../src/writer/layout-menu";
 import { WRITER_MODEL } from "../src/writer/services";
-import { type EvalBrief, evalBriefs, isSecondaryBrief } from "./briefs";
+import { type EvalBrief, evalBriefs, isSecondaryBrief, labBriefs } from "./briefs";
 import { type ClipReport, clipFields, clipReport } from "./clipped";
 import {
   deckFields,
@@ -494,7 +494,10 @@ if (import.meta.main) {
     console.error(UNCONFIGURED_MESSAGE);
     process.exit(2);
   }
-  const briefs = pickBriefs(evalBriefs(), args.briefs);
+  const briefs = pickBriefs(
+    args.briefs ? [...evalBriefs(), ...labBriefs()] : evalBriefs(),
+    args.briefs,
+  );
   const planner = args.planner ?? env.AI_LESSON_PLANNER;
   const mode = args.planOnly ? "plan-only" : "full";
   const writer = planner === "writer" ? mode : undefined;

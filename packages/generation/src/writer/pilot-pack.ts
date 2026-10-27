@@ -54,6 +54,9 @@ import t163 from "./bundles/pilot-v4.16-menu/system-KS3.template.txt" with { typ
 import t171 from "./bundles/pilot-v4.17-menu/system-KS1.template.txt" with { type: "text" };
 import t172 from "./bundles/pilot-v4.17-menu/system-KS2.template.txt" with { type: "text" };
 import t173 from "./bundles/pilot-v4.17-menu/system-KS3.template.txt" with { type: "text" };
+import t181 from "./bundles/pilot-v4.18-menu/system-KS1.template.txt" with { type: "text" };
+import t182 from "./bundles/pilot-v4.18-menu/system-KS2.template.txt" with { type: "text" };
+import t183 from "./bundles/pilot-v4.18-menu/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -150,6 +153,12 @@ export type PilotPack = {
    * frontier calls never read it.
    */
   writer?: { model: string; effort: "low" | "medium" | "high" };
+  /**
+   * Each flow entry names its group (v4.18): the question its content answers or the whole or set
+   * it is part of, the same words on every slide of that group, else null. Written after `does`, so
+   * the unit is decided before the shape; code can see a group planned one slide a member.
+   */
+  flowGroup?: boolean;
 };
 
 /** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
@@ -163,6 +172,68 @@ function v417System(template: string, stage: WriterStage): string {
     throw new Error("pilot pack v4.17: items-row's labelled-diagram reroute not found once");
   return text.replace(ITEMS_ROW_LABELLED, ITEMS_ROW_V417);
 }
+
+/**
+ * v4.18's edits to the code-built menu lines (layout-selection PROPOSAL, 27 Oct 2026): the routing
+ * the Routes table now carries leaves each line; figure-slide states its facts in up to 2 lines;
+ * items-row offers a picture per part; practice is one slide (ruling 297). Each must match once.
+ */
+export const V418_MENU_EDITS: readonly (readonly [string, string])[] = [
+  [" Two pictures side by side, a before and an after, go to split-compare.", ""],
+  [
+    " Never the steps of a method or calculation, even in order (steps or equation-hero), or the stages of a process (steps or picture-sequence); not for an idea with its reasons (explain), a set of kinds or examples (panel-list), or a contrast (split-compare).",
+    " When each part is a thing pupils need to see, such as a root, a stem or a leaf, every item gets a picture of it alone, one object with no labels, and its line stays on its job; then every icon is null.",
+  ],
+  [
+    " Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero;",
+    " Two members come here when the point is the set, not how they differ;",
+  ],
+  [
+    " Never a mistake against its correction (the misconception slide), two worked examples of one method, or two uses of one rule or sentence pattern (equation-hero or explain): every side is true and a thing in its own right. Three or more kinds of one group are a set, not a vs, even when they differ on the same feature and each wants a picture or diagram: panel-list; so are two examples of one idea.",
+    " Every side is true and a thing in its own right.",
+  ],
+  [" A method pupils carry out goes to steps, and parts that work together go to items-row.", ""],
+  [
+    " The reasons of a why or how question come here together, rather than one visual-text slide a reason, a flow diagram of causes, panel-list or explain.",
+    "",
+  ],
+  [
+    " Reasons that a diagram or library model explains go to visual-text beside that figure rather than here. A reason pupils must see to grasp may take a picture slide of its own after this one, never in its place.",
+    "",
+  ],
+  [
+    "A one-line caption says what to take from it, with the topic's closest listed icon, shown if the figure fails.",
+    "Up to 2 lines under it state the facts pupils take from it, with the topic's closest listed icon, shown if the figure fails.",
+  ],
+  [
+    "Parts that are each a real building, structure or site, even ones that work together, take panel-list with a named picture on every item, as items-row has none;",
+    "Parts that are each a real building, structure or site take items-row with a named picture on every part;",
+  ],
+  [
+    " More tasks take a second practice slide.",
+    " The lesson has one practice slide, as its Lesson structure says.",
+  ],
+];
+function v418System(assembled: string, stage: WriterStage): string {
+  let text = assembled;
+  for (const [from, to] of V418_MENU_EDITS) {
+    if (text.split(from).length !== 2)
+      throw new Error(`pilot pack v4.18 (${stage}): not found once: ${from.slice(0, 60)}`);
+    text = text.replace(from, to);
+  }
+  // figure-slide's caption cap becomes the cap of each of its 2 lines (stage numbers differ).
+  const cap =
+    /(figure fails\. At most one figure-slide[^\n]*?Fits: )the caption up to (\d+) words\./;
+  if (!cap.test(text)) throw new Error(`pilot pack v4.18 (${stage}): figure-slide Fits not found`);
+  return text.replace(cap, "$1each line up to $2 words.");
+}
+
+/** v4.18's flow `group`, written after `does` (`PilotPack.flowGroup`). */
+const FLOW_GROUP = {
+  type: ["string", "null"],
+  description:
+    "up to 6 words: the question this slide's content answers or the whole or set it is part of, the same on every slide of that group; null for a slide that stands alone",
+};
 
 /** v4.8's flow `size`: the words the idea needs, counted against the fit its `layout` names. */
 const FLOW_SIZE_COUNTED = {
@@ -472,6 +543,35 @@ export const PILOT_PACKS = {
     noLabelledDiagram: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v4.18 (layout-selection, 27 Oct 2026): v4.17 with the plan in units. Each flow entry names its
+  // group, and a group's members share one slide; a generated Routes table (shape x what pupils
+  // look at) replaces the routing clauses; the caption-first rule holds for big-visual only;
+  // lessons run in learning cycles with one practice slide (UX ruling 297). Schema as v4.17 plus
+  // the flow `group`. Slide-side asks not built yet: figure-slide lines, items-row pictures.
+  "v4.18": {
+    id: "v4.18",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v418System(withFits(v417System(t181, "KS1"), "KS1", WAVE_C_ROUTED_FITS), "KS1"),
+      KS2: v418System(withFits(v417System(t182, "KS2"), "KS2", WAVE_C_ROUTED_FITS), "KS2"),
+      KS3: v418System(withFits(v417System(t183, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS), "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    flowGroup: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
@@ -548,6 +648,13 @@ export function pilotRequest(
     schema.properties.slides.maxItems = ps.maxItems;
   }
   fp.items.properties.shape.enum = [...pack.layouts.flowShapes];
+  if (pack.flowGroup) {
+    const { slide, does, ...after } = fp.items.properties;
+    fp.items.properties = { slide, does, group: FLOW_GROUP, ...after };
+    const req = fp.items.required as string[];
+    const at = req.indexOf("does") + 1;
+    fp.items.required = [...req.slice(0, at), "group", ...req.slice(at)];
+  }
   if (pack.layouts.flowSize) {
     // Sized at planning, so the layout step picks a fit that holds it (never squeezed at writing).
     const { teaches, ...rest } = fp.items.properties;
