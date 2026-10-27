@@ -23,6 +23,14 @@ export const FIGURE_WIDE_ASPECT = 1.45;
 /** The caption's writer cap in characters, per age group (one line at the drawn size). */
 export const FIGURE_CAPTION_CAP = { early: 60, primary: 70, secondary: 74 } as const;
 
+/**
+ * The figure's least stage height (slide points, 44% of the slide): a second caption line never
+ * takes the figure under it. With a one-line title the smallest stage is 280 (Beacon KS1); a
+ * two-line title can take it to 223, and then the caption takes the big layout instead.
+ */
+export const FIGURE_MIN_H = 240;
+/** The layout's flag when a two-line caption would take the figure under `FIGURE_MIN_H`. */
+export const FIGURE_TOO_SMALL = "figure too small beside a two-line caption";
 /** The most caption lines the figure slide shows. */
 export const FIGURE_CAPTION_LINES = 2;
 /** The caption's measured two-line fit (characters) per age, on every theme at the drawn size. */

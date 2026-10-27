@@ -29,6 +29,8 @@ import {
   FIGURE_CAPTION_CAP,
   FIGURE_CAPTION_LINES,
   FIGURE_CAPTION_TWO_LINE_FITS,
+  FIGURE_MIN_H,
+  FIGURE_TOO_SMALL,
 } from "./figure-rules";
 import {
   type Ctx,
@@ -279,6 +281,9 @@ export function layoutFigure(c: Ctx, input: TemplateInput, stage: Stage) {
     w: G.width,
     h: Math.round(FIGURE_FOOT - (caption ? shownLines * capLine + FIGURE_CAPTION_GAP : 0) - top),
   };
+  // The figure keeps its least height: a second caption line that would take it under is flagged,
+  // and the writer's route sends the slide to the big layout (materialise).
+  if (shownLines > 1 && st.h < FIGURE_MIN_H) c.over.push(FIGURE_TOO_SMALL);
   const f = input.figure;
   let box = st;
   if (isModel(f)) {

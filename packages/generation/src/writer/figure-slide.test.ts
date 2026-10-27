@@ -49,6 +49,20 @@ describe("writer: the figure slide", () => {
     expect(i.template).toBe("figure");
     expect((i as S).lead).toBe(caption);
   });
+  test("a two-line caption that would take the figure under its least height goes big", () => {
+    const caption = "The wall stretched between Wallsend and Bowness-on-Solway: 73 miles long.";
+    const tall = {
+      ...figureSlide,
+      caption,
+      heading: "How the Romans built Hadrian's Wall across the north of Britain to hold the border",
+    };
+    const i = toInput(
+      tall,
+      ctx([{ template: "title" }, tall], 1, () => drawn(2.27)),
+    );
+    expect(i.template).toBe("big-diagram");
+    expect((i as S).lead).toBe(caption);
+  });
   test("a caption over two lines is never cut: the big layout wraps it (TEACH-251 part ae)", () => {
     const caption =
       "The wall stretched between Wallsend and Bowness-on-Solway: 73 miles long. Soldiers lived in forts along it, and every Roman mile there was a small castle with a gate and a tower.";

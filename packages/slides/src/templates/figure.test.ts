@@ -13,6 +13,7 @@ import {
 import {
   FIGURE_CAPTION_CAP,
   FIGURE_CAPTION_TWO_LINE_FITS,
+  FIGURE_TOO_SMALL,
   FIGURE_WIDE_ASPECT,
   figureSlideAllowed,
 } from "./figure-rules";
@@ -222,6 +223,20 @@ describe("figure rules (leaf, ruling 229)", () => {
 });
 
 describe("figure slide: two caption lines (TEACH-247 part bi)", () => {
+  test("the figure keeps its least height: a two-line caption that would take it under is flagged", () => {
+    const beacon = THEMES.find((t) => t.name === "Beacon") as (typeof THEMES)[number];
+    const input = {
+      template: "figure",
+      heading: "How the roots, stem and leaves of a flowering plant work together",
+      lead: "Roots anchor the plant and drink water. The stem carries the water up to the leaves.",
+      figure: { photo: "/x.jpg", aspect: 1.5, alt: "" },
+    } as TemplateInput;
+    expect(layoutTemplate(input, beacon, "ks1").over).toContain(FIGURE_TOO_SMALL);
+    // One caption line leaves the stage as it was: never flagged for room.
+    const one = { ...input, lead: "Roots anchor the plant." } as TemplateInput;
+    expect(layoutTemplate(one, beacon, "ks1").over).not.toContain(FIGURE_TOO_SMALL);
+  });
+
   const TWO =
     "Hadrian's Wall ran 73 miles from coast to coast. Soldiers watched the border from forts and towers along it.";
   const SPEC = {
