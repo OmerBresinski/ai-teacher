@@ -935,14 +935,12 @@ describe("LessonEditorPage", () => {
       fakeApi.nextProposalJobId = CASCADE_JOB;
       renderPage();
       await editObjective();
-      await waitFor(
-        () =>
-          expect(
-            fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade"),
-          ).toHaveLength(1),
-        { timeout: 3_000 },
-      );
-      expect(fakeApi.requests.at(-1)?.body).toEqual({ changedFactIds: ["o1"] });
+      // The cascade request itself, not `requests.at(-1)`: the editor's own save of the copy it
+      // tidied on open (the autosave's debounce) can land after it on a slow runner.
+      const cascades = () =>
+        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/cascade");
+      await waitFor(() => expect(cascades()).toHaveLength(1), { timeout: 3_000 });
+      expect(cascades()[0]?.body).toEqual({ changedFactIds: ["o1"] });
       // The impact set is busy until the proposals land.
       await waitFor(() => expect(document.querySelectorAll("[data-slide-busy]").length).toBe(2));
       const source = FakeEventSource.latest;
@@ -1192,12 +1190,12 @@ describe("LessonEditorPage", () => {
         target: { value: "Simpler words" },
       });
       fireEvent.click(within(dialog).getByRole("button", { name: "Regenerate" }));
-      await waitFor(() =>
-        expect(
-          fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/regenerate"),
-        ).toHaveLength(1),
-      );
-      expect(fakeApi.requests.at(-1)?.body).toEqual({
+      // The regenerate request itself, not `requests.at(-1)`: the editor's own save of the copy
+      // it tidied on open (the autosave's debounce) can land after it on a slow runner.
+      const regenerates = () =>
+        fakeApi.requests.filter((r) => r.path === "/lessons/demo-water-cycle/regenerate");
+      await waitFor(() => expect(regenerates()).toHaveLength(1));
+      expect(regenerates()[0]?.body).toEqual({
         targets: [{ slideId: "s-vocab" }],
         instruction: "Simpler words",
       });
