@@ -121,7 +121,9 @@ describe("the director's own none", () => {
     });
     pictures.start(4, ask(), slide);
     await pictures.settle(1_000);
-    expect(made).toEqual(["A cow and its calf in a field. adult cow. young calf"]);
+    // TEACH-251 part ay: declined, it is tried once more as the last step.
+    const cow = "A cow and its calf in a field. adult cow. young calf";
+    expect(made).toEqual([cow, cow]);
   });
 });
 

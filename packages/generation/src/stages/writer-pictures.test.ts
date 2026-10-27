@@ -1167,9 +1167,10 @@ describe("writer pictures: a director code route is drawn or kept as a picture, 
     await pictures.settle(1_000);
     pictures.start(3, heart, heartSlide);
     await pictures.settleSlide(3, 1_000);
-    expect(made).toEqual([
-      "A cross-section of the human heart showing its four chambers. left atrium. right ventricle",
-    ]);
+    // TEACH-251 part ay: the declined generation is painted once more as the last step.
+    const heartText =
+      "A cross-section of the human heart showing its four chambers. left atrium. right ventricle";
+    expect(made).toEqual([heartText, heartText]);
     expect(pictures.drawAs(3, "picture")).toBeUndefined();
   });
 
@@ -1192,7 +1193,9 @@ describe("writer pictures: a director code route is drawn or kept as a picture, 
       });
       pictures.start(index, a, heartSlide);
       await pictures.settle(1_000);
-      expect(made.length).toBe(1);
+      // TEACH-251 part ay: a sole picture is tried once more as the last step; a card shares its
+      // slide with other cards, so it never is (ruling 209).
+      expect(made.length).toBe(a.key === "card.1" ? 1 : 2);
       expect(pictures.drawAs(index, a.key)).toBeUndefined();
     }
   });
@@ -1229,7 +1232,13 @@ describe("writer pictures: the kept-picture and retry paths spend under the same
     });
     pictures.start(3, street, slide);
     await pictures.settle(1_000);
-    expect(made).toEqual([]);
+    // TEACH-251 part ay: nothing photo-style and nothing of the real thing; only the last step's
+    // painted scene, which never names it ("a planned picture is never missing", ruling 299).
+    expect(made.length).toBeLessThanOrEqual(1);
+    for (const t of made) {
+      expect(t).toStartWith("An everyday scene");
+      expect(t).not.toMatch(/[A-Z]{2,}|Henry|Tudor/);
+    }
     expect(pictures.state(3, "picture").status).toBe("failed");
   });
 

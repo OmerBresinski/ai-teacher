@@ -128,9 +128,11 @@ describe("planPicture", () => {
     expect(fallbackOf(real("Hadrian's Wall", "Roman soldiers patrolling Hadrian's Wall"))).toBe(
       "none",
     );
+    // Ruling 299 (TEACH-251 part ay): a past scene at the place in its own time is painted, named
+    // by the writer or not.
     expect(
       fallbackOf(real("Roman soldiers patrolling Hadrian's Wall", "x", "Hadrian's Wall")),
-    ).toBe("none");
+    ).toBe("illustration");
     expect(fallbackOf(real("A traveller approaching the gateway as Roman guards watch"))).toBe(
       "illustration",
     );
@@ -141,8 +143,10 @@ describe("planPicture", () => {
           "A reconstruction of a trader being checked by Roman soldiers at a narrow gateway in Hadrian's Wall.",
         ),
       ),
-    ).toBe("none");
-    expect(fallbackOf(real("Soldiers stopping a cart at the gate of Hadrian's Wall"))).toBe("none");
+    ).toBe("illustration");
+    expect(fallbackOf(real("Soldiers stopping a cart at the gate of Hadrian's Wall"))).toBe(
+      "illustration",
+    );
     expect(fallbackOf(real("Soldiers stopping a cart at a gate"))).toBe("illustration");
     // Still the monument: a gate "guarded by" soldiers, or soldiers merely standing there.
     expect(fallbackOf(real("A gateway in Hadrian's Wall guarded by soldiers"))).toBe("none");
@@ -753,12 +757,16 @@ describe("ruling 296: which real things may fall back to a generated picture", (
     if (p.kind !== "photo") throw new Error("photo expected");
     expect(p.request.realFallback).toBe("none");
   });
-  test("a real place (the Pudding Lane bakery) stays real-only, named or not", () => {
+  test("ruling 299: a reconstruction of the Pudding Lane bakery is painted, named or not", () => {
     for (const writerNamed of ["Pudding Lane bakery", null])
       expect(
         hist("place", "A reconstruction of the Pudding Lane bakery", writerNamed).request
           .realFallback,
-      ).toBe("none");
+      ).toBe("illustration");
+    // With no sign of its own time it stays real-only (fails closed).
+    expect(
+      hist("place", "The Pudding Lane bakery", "Pudding Lane bakery").request.realFallback,
+    ).toBe("none");
   });
   test("a present-day real place stays real-only", () => {
     for (const writerNamed of ["Buckingham Palace", null])
@@ -836,9 +844,10 @@ describe("illustrationPrompt: no later landmark in a period painting", () => {
   });
 });
 
-// TEACH-251 part ai (ruling 296): real places, monuments and buildings are real-only. Asks from
+// TEACH-251 part ai, amended by part ay (ruling 299): a real place in its own time is painted;
+// the place today stays real-only. Asks from
 // romans rompic (s8, s9, s10) and greatfire verify7 (director replies, cassettes).
-describe("a past scene at a named monument is never painted", () => {
+describe("a real place in its own time is painted; the place today stays real-only", () => {
   const romans = "Why the Romans built Hadrian's Wall";
   const plan = (shows: string, text: string, named: "place" | "event", title: string) =>
     planPicture(
@@ -847,17 +856,17 @@ describe("a past scene at a named monument is never painted", () => {
     );
   const fallbackOf = (p: ReturnType<typeof planPicture>) =>
     p.kind === "photo" ? (p.request.realFallback ?? "none") : p.kind;
-  test("s8: a guarded gateway through Hadrian's Wall stays real-only", () => {
+  test("s8: a guarded gateway through Hadrian's Wall in its own time is painted (ruling 299)", () => {
     const p = plan(
       "A guarded gateway through Hadrian’s Wall, with soldiers checking a waiting traveller and goods carried by a pack animal.",
       "A reconstruction of a guarded Roman gateway on Hadrian’s Wall, with soldiers checking a trader and a pack animal.",
       "place",
       romans,
     );
-    expect(fallbackOf(p)).toBe("none");
+    expect(fallbackOf(p)).toBe("illustration");
     if (p.kind === "photo") expect(p.request.route).toBe("real");
   });
-  test("s9: a lookout on a watchtower on the wall stays real-only", () => {
+  test("s9: a lookout on a watchtower on the wall is painted (ruling 299)", () => {
     expect(
       fallbackOf(
         plan(
@@ -867,11 +876,24 @@ describe("a past scene at a named monument is never painted", () => {
           romans,
         ),
       ),
-    ).toBe("none");
+    ).toBe("illustration");
     // The lesson's own monument by its kind word: soldiers patrolling "the wall".
     expect(fallbackOf(plan("Roman soldiers patrolling along the wall", "x", "place", romans))).toBe(
-      "none",
+      "illustration",
     );
+  });
+  test("ruling 299: in its own time is painted, today, its remains or a map stay real-only", () => {
+    const fallback = (shows: string, text = shows) =>
+      fallbackOf(plan(shows, text, "place", romans));
+    expect(fallback("Pudding Lane in 1666, with timber houses and a bakery")).toBe("illustration");
+    expect(fallback("Hadrian's Wall as built, with a milecastle and its gate")).toBe(
+      "illustration",
+    );
+    expect(fallback("Housesteads Roman Fort in use, in the 2nd century")).toBe("illustration");
+    expect(fallback("Hadrian's Wall today at Cawfields")).toBe("none");
+    expect(fallback("The remains of Housesteads Roman Fort")).toBe("none");
+    expect(fallback("A map of Britain in AD 122 showing Hadrian's Wall")).toBe("none");
+    expect(fallback("Hadrian's Wall crossing the hills")).toBe("none");
   });
   test("s10: a traveller near the wall, the wall not shown, is still painted", () => {
     expect(

@@ -103,6 +103,14 @@ const verdict = (over: Record<string, unknown>) =>
     ...over,
   });
 
+/**
+ * TEACH-251 part ay: the requests before the last step. A slot every step missed is painted once
+ * more (`lastResortRequest`: generic route, painted, the illustration fallback).
+ */
+const isLastResort = (m: BankRequest) =>
+  m.route === "generic" && m.realFallback === "illustration" && m.style === "illustration";
+const firstTries = (made: BankRequest[]) => made.filter((m) => !isLastResort(m));
+
 function spyBank(): { bank: PictureBank; made: BankRequest[] } {
   const made: BankRequest[] = [];
   return {
@@ -188,7 +196,7 @@ describe("ruling 163 under strict (placement)", () => {
       onOutcome: (o) => outcomes.push(o),
     });
     expect(got).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
     expect(calls.some((c) => c.startsWith("commons:"))).toBe(true);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
     expect(outcomes[0]?.attempts).toBe(0);
@@ -265,7 +273,7 @@ describe("ruling 163 under strict (placement)", () => {
     });
     expect(got).toBeUndefined();
     // The scene search missed, so the painted illustration is asked for once.
-    expect(made).toHaveLength(1);
+    expect(firstTries(made)).toHaveLength(1);
     expect(made[0]?.style).toBe("illustration");
     expect(outcomes[0]?.reason).not.toBe("real-miss-no-fallback");
     // Strict history never falls back to stock: Commons only, the artefact search included.
@@ -291,7 +299,7 @@ describe("ruling 163 under strict (placement)", () => {
       direct: async () => direction({ named: "person", period: "Tudor England, 1509-1547" }),
     });
     expect(got).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
     expect(calls.some((c) => c.startsWith("pexels:"))).toBe(false);
   });
 });
@@ -636,7 +644,7 @@ describe("ruling 296 (placement)", () => {
     );
     await run;
     expect(calls.some((c) => c.startsWith("commons:"))).toBe(true);
-    expect(made).toHaveLength(1);
+    expect(firstTries(made)).toHaveLength(1);
     expect(made[0]?.route).toBe("real");
     expect(made[0]?.style).toBe("illustration");
     expect(outcomes[0]?.reason).not.toBe("real-miss-no-fallback");
@@ -644,20 +652,20 @@ describe("ruling 296 (placement)", () => {
   test("the Pudding Lane bakery (a real place) missed by Commons and stock stays empty", async () => {
     const { run, made, outcomes } = fire("place", "The Pudding Lane bakery", true);
     expect(await run).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
   });
   test("a present-day real place missed by Commons and stock stays empty", async () => {
     const { run, made, outcomes } = fire("place", "Buckingham Palace", true, null);
     expect(await run).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
   });
   test("a present-day generic object is searched (Commons first), then generated on the generic route", async () => {
     const { run, made, calls } = fire("object", "A fire extinguisher", false, null);
     await run;
     expect(calls[0]?.startsWith("commons:")).toBe(true);
-    expect(made).toHaveLength(1);
+    expect(firstTries(made)).toHaveLength(1);
     expect(made[0]?.route).toBe("generic");
     expect(made[0]?.realFallback).toBeUndefined();
   });
@@ -665,14 +673,14 @@ describe("ruling 296 (placement)", () => {
     for (const period of ["London, 1666", null]) {
       const { run, made, outcomes } = fire(null, "A thing in the lesson", false, period);
       expect(await run).toBeUndefined();
-      expect(made).toHaveLength(0);
+      expect(firstTries(made)).toHaveLength(0);
       expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
     }
   });
   test("a forced-real slot never generates a generic object", async () => {
     const { run, made } = fire("object", "A leather fire bucket", false, "London, 1666", true);
     expect(await run).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
   });
   test("a painted past event is placed only after the judge checks it against the period", async () => {
     const { images } = placer({ commons: async () => [], pexels: async () => [] });
@@ -719,7 +727,7 @@ describe("ruling 296 (placement)", () => {
           pictures: [{ shows, mustShow: [], queries: [shows], imagePrompt: `${shows}.` }],
         }),
     });
-    expect(made).toHaveLength(1);
+    expect(firstTries(made)).toHaveLength(1);
     expect(got?.src).toBe("/files/g1.png");
     // The wrong-period check: the made-picture judge is given the period.
     expect(ai.calls.some((c) => c.promptText.includes("Period and place: London, 1666"))).toBe(
@@ -732,7 +740,7 @@ describe("ruling 296 (placement)", () => {
   test("a named past person with no real picture stays empty", async () => {
     const { run, made, outcomes } = fire("person", "Samuel Pepys", true);
     expect(await run).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
   });
   test("order for a past event: the scene search, then the painting, then the artefact backup", async () => {
@@ -800,7 +808,7 @@ describe("ruling 296 (placement)", () => {
   test("a past ask the director did not classify is never painted", async () => {
     const { run, made, outcomes } = fire(null, "A portrait of Charles II", false);
     expect(await run).toBeUndefined();
-    expect(made).toHaveLength(0);
+    expect(firstTries(made)).toHaveLength(0);
     expect(outcomes[0]?.reason).toBe("real-miss-no-fallback");
   });
 });
@@ -916,5 +924,88 @@ describe("TEACH-251 part v: a 'where' slide about a real place tries a locator m
     ).toBe("Hadrian's Wall");
     expect(placeNameOf("Pudding Lane in the City of London")).toBe("City of London");
     expect(placeNameOf("a stone wall on a hill")).toBeNull();
+  });
+});
+
+// TEACH-251 part ay (Greg, 27 Oct: "a planned picture is never missing"; rulings 299, 300).
+describe("a planned picture is never missing", () => {
+  const painting = (src: string) =>
+    ({
+      src,
+      alt: src,
+      style: "illustration",
+      source: {
+        provider: "generated",
+        id: src,
+        pageUrl: "https://example.com/p",
+        photographer: "",
+        photographerUrl: "https://example.com/p",
+      },
+    }) as unknown as PlacedPhoto;
+  const run = (opts: { paints: boolean; realOnly?: boolean; key?: string }) => {
+    const { images } = placer({ commons: async () => [], pexels: async () => [] });
+    const made: BankRequest[] = [];
+    const bank: PictureBank = {
+      lookup: async () => undefined,
+      remember: async () => undefined,
+      // The first try at the real thing is never made here; only the last step paints.
+      generate: async (req) => {
+        made.push(req);
+        return opts.paints && isLastResort(req)
+          ? (painting(`p${made.length}`) as never)
+          : undefined;
+      },
+    };
+    const lines: Record<string, unknown>[] = [];
+    const logger = pino(
+      { level: "info" },
+      new Writable({
+        write(chunk, _enc, cb) {
+          lines.push(JSON.parse(String(chunk)));
+          cb();
+        },
+      }),
+    );
+    const got = placeWriterPicture({
+      ask: ask(opts.key ? { key: opts.key } : {}),
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images,
+      deps: recordingDeps(createFakeAi({ script: [] }), { logger }),
+      bank,
+      direct: async () => direction({ named: "person", period: "Tudor England, 1509-1547" }),
+      ...(opts.realOnly ? { realOnly: true } : {}),
+    });
+    return { got, made, lines };
+  };
+  test("a named person with no real picture gets a painted period scene, never the person", async () => {
+    const { got, made, lines } = run({ paints: true });
+    const photo = await got;
+    expect(photo?.source.provider).toBe("generated");
+    expect(photo?.source.caption).toBe("Artist's reconstruction");
+    const last = made.at(-1);
+    expect(last && isLastResort(last)).toBe(true);
+    expect(last?.text).toContain("Tudor England");
+    expect(last?.text).not.toContain("Henry");
+    expect(last?.imagePrompt).toContain("clearly a painting and not a photograph");
+    expect(last?.period).toBe("Tudor England, 1509-1547");
+    expect(lines.filter((l) => l.ev === "picture-last-resort")).toEqual([
+      expect.objectContaining({ outcome: "painted", realOnly: true, historical: true }),
+    ]);
+  });
+  test("a last step that also fails is logged as missed", async () => {
+    const { got, lines } = run({ paints: false });
+    expect(await got).toBeUndefined();
+    expect(lines.filter((l) => l.ev === "picture-last-resort")).toEqual([
+      expect.objectContaining({ outcome: "missed" }),
+    ]);
+  });
+  test("a forced-real slot or a slide's second picture never takes the last step (ruling 209)", async () => {
+    for (const opts of [{ realOnly: true }, { key: "3:side.1" }]) {
+      const { got, made, lines } = run({ paints: true, ...opts });
+      expect(await got).toBeUndefined();
+      expect(made.filter(isLastResort)).toHaveLength(0);
+      expect(lines.filter((l) => l.ev === "picture-last-resort")).toHaveLength(0);
+    }
   });
 });

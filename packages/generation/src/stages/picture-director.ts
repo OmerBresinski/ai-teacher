@@ -505,12 +505,17 @@ export function planPicture(
   // building (a gateway through Hadrian's Wall) is a picture of the monument, so it stays
   // real-only; only a scene with no named monument in view ("a traveller near Hadrian's Wall") is
   // painted.
+  // TEACH-251 part ay (rulings 299, 300; amends part ai): a real place or monument shown as it was
+  // in its own time (a past scene there, a reconstruction, "Pudding Lane in 1666", "Hadrian's Wall
+  // as built") is painted when the search misses, named by the writer or not, and captioned
+  // "Artist's reconstruction". The place as it is today ("at Cawfields today", its remains) or a
+  // map stays real-only. With no sign of its own time it stays real-only too (fails closed).
+  const placeWords = `${first.shows} ${ask.text}`;
   const pastScene =
     !!period &&
     d.named === "place" &&
-    !ask.named &&
-    isPastScene(first.shows) &&
-    !monumentInView(`${first.shows} ${ask.text}`, ask.lessonTitle);
+    !isPresentDay(placeWords) &&
+    (isPastScene(first.shows) || isInItsTime(placeWords));
   const kind = pastScene ? "event" : (d.named ?? null);
   // A forced-real slot (a named set's panel, a named history card) is real-only, an event too:
   // ruling 209 never puts a generated panel beside real ones.
@@ -814,6 +819,62 @@ export async function findDirected(args: {
     );
     if (got) out = { ...out, photo: got, via: "fetched", ms: out.ms + Date.now() - t0 };
   }
+  // TEACH-251 part ay (Greg, 27 Oct: "a planned picture is never missing"): a slot the search,
+  // stock and painting all missed is painted once more as the last step: the same subject, or for
+  // a real-only thing a period scene that shows no particular real person, place or object
+  // (ruling 299 keeps the real thing itself real-only). Only the slide's sole picture, never a set
+  // panel, card or forced-real slot, so a painting never sits beside a real photo (ruling 209).
+  // Every slot that reaches this step is logged.
+  let lastResort: "painted" | "missed" | undefined;
+  if (
+    !out.photo &&
+    plan.kind === "photo" &&
+    args.stockFallback &&
+    !args.realOnly &&
+    // A painting the judge already refused through its own retries is not painted again here:
+    // the slide's refusal cap holds (TEACH-202 part x).
+    !(out.attempts > 0 && (out.reason === "judge" || out.reason === "refused-safety")) &&
+    !deps.signal.aborted
+  ) {
+    const t0 = Date.now();
+    const scene = lastResortRequest(req, args.slide.heading, lesson.title);
+    const sceneBrief: ImageBrief = {
+      ...brief,
+      request: scene.text,
+      mustShow:
+        req.route === "real" && (req.realFallback ?? "none") === "none" ? [] : brief.mustShow,
+      specific: false,
+    };
+    const got = await findPicture(
+      scene,
+      args.bank,
+      async () => undefined,
+      deps.signal,
+      (made, reuse, onWhy) => args.judgeMade(sceneBrief, made, reuse, onWhy),
+    ).catch(whenNonFatal(() => undefined));
+    if (got?.photo)
+      out = {
+        ...out,
+        photo: got.photo,
+        via: got.via,
+        attempts: out.attempts + got.attempts,
+        ms: out.ms + Date.now() - t0,
+      };
+    lastResort = got?.photo ? "painted" : "missed";
+    deps.logger.info(
+      {
+        stage: "illustrate",
+        ev: "picture-last-resort",
+        slideIndex: args.index,
+        outcome: lastResort,
+        realOnly: req.route === "real" && (req.realFallback ?? "none") === "none",
+        historical: !!req.period,
+        attempts: got?.attempts ?? 0,
+        ...(got?.reason ? { reason: got.reason } : {}),
+      },
+      "picture last resort",
+    );
+  }
   log({
     via: out.via,
     ms: out.ms,
@@ -898,8 +959,16 @@ export async function findDirected(args: {
   if (!out.photo) return undefined;
   // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
   // and the period the request belongs to.
+  // Ruling 300: a painting made because no real picture exists, of a past scene, a place in its own
+  // time or the last step's period scene, says so on the picture.
+  const reconstruction =
+    out.photo.source.provider === "generated" &&
+    style === "illustration" &&
+    (req.route === "real" || lastResort === "painted") &&
+    (!!req.period || lastResort === "painted");
   return {
     ...out.photo,
+    ...(reconstruction ? { source: { ...out.photo.source, caption: RECONSTRUCTION_CAPTION } } : {}),
     look:
       out.photo.source.provider === "generated"
         ? style === "drawn"
@@ -907,6 +976,56 @@ export async function findDirected(args: {
           : (style ?? "photo")
         : "photo",
     ...(req.period && req.depicts ? { period: req.period } : {}),
+  };
+}
+
+/** Ruling 300's caption on a painting made because no real picture exists. */
+export const RECONSTRUCTION_CAPTION = "Artist's reconstruction";
+
+/**
+ * TEACH-251 part ay: the last step's request. A subject that may be painted is painted again; a
+ * real-only thing (a named person, a place today, a unique artefact) is never painted itself:
+ * the slot takes a painted scene of its period, or of the slide's topic, with no particular real
+ * person, place or object in it (ruling 299). Painted, never photo-style; checked against the
+ * period by the judge when there is one (rulings 163, 209).
+ * Prompt wording here is code-owned and due a prompt-engineer review.
+ */
+export function lastResortRequest(
+  req: BankRequest,
+  heading: string,
+  lessonTitle: string,
+): BankRequest {
+  const realOnly = req.route === "real" && (req.realFallback ?? "none") === "none";
+  // Names (capitalised words, numerals) are dropped from the topic, so a real person, place or
+  // object is never named to the painter ("Henry VIII" leaves nothing; ruling 299).
+  const plain = (t: string) =>
+    t
+      .replace(/\b[A-Z][\w'’-]*|\b\d[\w-]*/g, " ")
+      .replace(/[^\p{L}\s'-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const topic = [plain(heading), plain(lessonTitle)].find((t) => t.split(" ").length >= 2) ?? "";
+  // The real thing's own name never reaches the prompt: a period scene names only its period; a
+  // present-day one, the slide's topic.
+  const subject = realOnly
+    ? `An everyday scene${req.period ? ` in ${req.period}` : topic ? ` about ${topic}` : ""}, with no particular real person, building, place or object in it`
+    : req.text;
+  const prompt = realOnly ? `${subject}.` : (req.imagePrompt ?? req.text);
+  return {
+    text: subject,
+    named: null,
+    ...(req.aspect === undefined ? {} : { aspect: req.aspect }),
+    route: "generic",
+    realFallback: "illustration",
+    style: "illustration",
+    // A painting that already failed is tried again with its own prompt, never wrapped twice.
+    imagePrompt:
+      !realOnly && req.style === "illustration" && req.imagePrompt
+        ? req.imagePrompt
+        : req.period
+          ? illustrationPrompt(prompt, req.period)
+          : `A hand-painted educational illustration, clearly a painting and not a photograph.\n${prompt}`,
+    ...(req.period ? { period: req.period, depicts: true } : {}),
   };
 }
 
@@ -996,6 +1115,26 @@ const SCENE_DOING =
 /** TEACH-251 part ax: a slot key that is its slide's only picture (no `.n` or `#n` suffix). */
 export function soleOnSlide(key: string): boolean {
   return !/[.#]/.test(key);
+}
+
+/** The place as it is now, or a map of it: real-only (ruling 299). */
+const PRESENT_DAY =
+  /\b(today|nowadays|now|modern|present[- ]day|remains|ruins?|surviving|survives|still stands?|excavat\w*|museum|maps?)\b/i;
+/**
+ * A place in its own time (ruling 299): a reconstruction, "as built", "in use", or a date or
+ * century ("Pudding Lane in 1666", "in AD 122", "the 17th century", "Roman times").
+ */
+const IN_ITS_TIME =
+  /\b(reconstruct\w*|as (it was |first )?built|as it (may|might|would) have looked|as it (stood|was)|in use|in its (own )?time|(in|of|around|by) (AD |CE |BC )?\d{3,4}\b|AD \d{2,4}|\d{1,2}(st|nd|rd|th)[- ]century|(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth)[- ]century|(roman|tudor|victorian|medieval|viking|saxon|norman|stuart|georgian|ancient) times)/i;
+
+/** TEACH-251 part ay: words that show a place as it is today, or a map (ruling 299). */
+export function isPresentDay(text: string): boolean {
+  return PRESENT_DAY.test(text.replace(/’/g, "'"));
+}
+
+/** TEACH-251 part ay: words that show a place as it was in its own time (ruling 299). */
+export function isInItsTime(text: string): boolean {
+  return IN_ITS_TIME.test(text.replace(/’/g, "'"));
 }
 
 /** A picture of people doing something at a past place: a scene there (ruling 210). */
