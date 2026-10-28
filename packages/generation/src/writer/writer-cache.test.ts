@@ -281,4 +281,23 @@ describe("the writer's cached prefix ends before the lesson's model menu", () =>
     expect(sha256(b.head)).toBe(sha256(a.head));
     expect(a.head.length).toBeGreaterThan(20000);
   });
+
+  test("two KS3 lessons with different years, topics and objectives share the cached prefix", async () => {
+    // The pair genlab ran 13 minutes apart on 27 Oct (Y9 rivers, then Y8 photosynthesis, subject
+    // left blank) and the second read 0 cached tokens: the prefix our code sends was one.
+    const a = await prodRequest("Year 9", "ks3", "", [
+      "Describe how hydraulic action, abrasion, attrition and solution erode river channels.",
+      "Explain how faster outer-bend flow and slower inner-bend flow form meanders.",
+      "Explain how meander migration and neck cut-through form oxbow lakes.",
+    ]);
+    const b = await prodRequest("Year 8", "ks3", "", [
+      "Describe photosynthesis using its word equation.",
+      "Explain how broad, thin leaves and stomata help photosynthesis.",
+    ]);
+    expect(a.system).not.toBe(b.system);
+    expect(sha256(b.schema)).toBe(sha256(a.schema));
+    expect(sha256(b.head)).toBe(sha256(a.head));
+    // Over the provider's 1,024-token floor many times over (~4 characters a token).
+    expect(a.head.length).toBeGreaterThan(20000);
+  });
 });
