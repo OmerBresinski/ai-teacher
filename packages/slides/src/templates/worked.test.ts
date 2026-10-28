@@ -2,7 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { type Slide, slideStepCount } from "@tj/domain/documents";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { mathText, moveHot, panelDraws, splitWorked, WORKED_NAMES, workedMax } from "./worked";
+import {
+  mathText,
+  moveHot,
+  panelDraws,
+  snap,
+  splitWorked,
+  WORKED_NAMES,
+  workedMax,
+} from "./worked";
 import { measureWorkedCapacity } from "./worked-capacity";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
 import { WORKED_CASES } from "./worked-fixtures";
@@ -187,4 +195,33 @@ describe("worked example: caps and continuation", () => {
       }
     expect(faults).toEqual([]);
   });
+});
+
+// v4.18c Equations (TEACH-247 part bl): rounding x and w each on its own turned an 82.5 pt row
+// pitch into Move rows at y175 h83 and y257, 1 px over, and checks.ts called it an overlap.
+describe("worked example: boxes that touch share an edge", () => {
+  test("snap rounds edges, not sizes", () => {
+    const a = snap({ x: 392.4, y: 174.5, w: 46.5, h: 82.5 });
+    const b = snap({ x: 438.9, y: 257, w: 100, h: 82.5 });
+    expect(a.y + a.h).toBe(b.y);
+    expect(a.x + a.w).toBe(b.x);
+  });
+  const boxes = (els: readonly El[], n: string) =>
+    named(els, n).map((e) => ({ x: e.x, y: e.y, w: e.w, h: e.h }));
+  type Box = { x: number; y: number; w: number; h: number };
+  const over = (A: Box, B: Box) =>
+    Math.min(A.x + A.w, B.x + B.w) > Math.max(A.x, B.x) &&
+    Math.min(A.y + A.h, B.y + B.h) > Math.max(A.y, B.y);
+  for (const k of Object.keys(WORKED_CASES))
+    test(`${k}: no Move row or arrow overlaps another, in any theme`, () => {
+      for (const t of THEMES) {
+        const els = lay(k, t).slide.elements as El[];
+        const all = [...boxes(els, WORKED_NAMES.move), ...boxes(els, WORKED_NAMES.arrow)];
+        for (let i = 0; i < all.length; i++)
+          for (let j = i + 1; j < all.length; j++)
+            expect({ k, t: t.id, i, j, over: over(all[i] as Box, all[j] as Box) }).toMatchObject({
+              over: false,
+            });
+      }
+    });
 });

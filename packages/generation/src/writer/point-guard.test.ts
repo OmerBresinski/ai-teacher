@@ -92,3 +92,22 @@ describe("pointGuard (D47) on the D45 slides", () => {
     expect(pointTaskFault("Which young animal goes with the sheep?")).toBeUndefined();
   });
 });
+
+// v4.18c Gate B (TEACH-247 part bl): two false "dangling" hits, and the true one that must stay.
+describe("pointGuard: algebra's left side and noun points are not pointing tasks", () => {
+  test("Equations hinge option: 'the left side is 9' is algebra", () => {
+    expect(pointTaskFault("Subtract 3 from both sides, so the left side is 9.")).toBeUndefined();
+  });
+  test("Romans lead: 'guarded crossing points' is a noun", () => {
+    expect(
+      pointTaskFault("Soldiers kept the wall's guarded crossing points open for trade."),
+    ).toBeUndefined();
+    expect(pointTaskFault("The main point is that the fire spread fast.")).toBeUndefined();
+  });
+  test("a real pointing task still fires", () => {
+    expect(pointTaskFault("Point to the gate in the wall.")).toBeDefined();
+    expect(pointTaskFault("Now point at the river. Which way does it flow?")).toBeDefined();
+    expect(pointTaskFault("Which is bigger? Point and say.")).toBeDefined();
+    expect(pointTaskFault("Look at the right picture.")).toBeDefined();
+  });
+});
