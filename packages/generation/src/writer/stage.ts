@@ -115,6 +115,7 @@ import {
   teaching,
   words as wordsOfText,
 } from "./guards";
+import { hingeLeakFaults } from "./hinge-leak";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
@@ -273,7 +274,9 @@ export type WriterRun = {
    * result: no repair call, revert, check-driven relayout, rewrite, strip or visual drop, and a
    * library model or writer spec falls back only when it cannot be drawn at all. Answer hiding
    * (roleAsk), text fit sizing and a visual that genuinely fails to load or draw still act, and so
-   * does the split of a slide whose text or a card runs off the slide (Greg 70 B, 20 Oct).
+   * does the split of a slide whose text or a card runs off the slide (Greg 70 B, 20 Oct), and
+   * the one-slide repair of a hinge whose answer alone repeats a question word (its `leak:` fault
+   * only; UX ruling 307, 28 Oct).
    */
   checks?: "act" | "log";
   /**
@@ -2241,6 +2244,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
     for (let i = 0; i < n; i++)
       res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
+    // TEACH-247 part bp: a hinge whose answer alone repeats a question word goes to repair; the
+    // answer option is kept word for word (keepAnswerKey), so the question or a wrong option changes.
+    for (let i = 0; i < n; i++)
+      if (repairable(plan.slides[i] as S, i))
+        res[i]?.faults.push(...hingeLeakFaults(plan.slides[i] as S));
     // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
     for (const h of gasFaults(gasTexts()))
       if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);
@@ -2359,6 +2367,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       keepPartial?: boolean;
       /** The call's schema; absent: the bundle's repair schema for the stage. */
       schema?: Record<string, unknown>;
+      /** Judge the repaired slide on these faults only (log mode's leak repair, ruling 307). */
+      only?: (fault: string) => boolean;
     } = {},
   ): Promise<boolean> => {
     const i = c.slide - 1;
@@ -2500,7 +2510,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     swapSlide(i, o2.slide);
     if (orphanDrop) override.set(`${i}:picture`, { status: "failed" });
     applyRepair(plan.slides, notes, i, r?.out);
-    const now = judged(i).filter((f) => n0 || !f.startsWith("unanswered"));
+    const now = judged(i).filter(
+      (f) => (n0 || !f.startsWith("unanswered")) && (!ro.only || ro.only(f)),
+    );
     const was = kinds(c.faults);
     const fresh = [...kinds(now)].filter((k) => !was.has(k));
     // A pilot repair's fit is measured by the fit ladder itself (pilotOvers at the drawn size); the
@@ -2938,8 +2950,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     checks = check();
     failing = failingNow();
   }
+  // UX ruling 307 (28 Oct): with checks only logging, a hinge whose answer alone repeats a
+  // question word still goes to the one-slide repair, on its leak fault alone; every other fault
+  // stays logged. The answer is kept word for word, and a rewrite that still leaks is reverted.
+  const isLeak = (f: string) => f.startsWith("leak:");
+  const leaky = act
+    ? []
+    : failing.flatMap((c) =>
+        (plan.slides[c.slide - 1] as S | undefined)?.template === "hinge" && c.faults.some(isLeak)
+          ? [{ slide: c.slide, faults: c.faults.filter(isLeak) }]
+          : [],
+      );
   // The early fallbacks may start now, beside the repairs, on every slide the repairs leave alone.
-  const repaired = new Set(act ? failing.map((c) => c.slide - 1) : []);
+  const repaired = new Set((act ? failing : leaky).map((c) => c.slide - 1));
   openLate((i) => !repaired.has(i));
   if (act) {
     phaseSlides = [...plan.slides];
@@ -2947,7 +2970,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       await fitLoop(c);
     });
     phaseSlides = undefined;
-  } else for (const c of failing) log({ ev: "repair-skipped", slide: c.slide, faults: c.faults });
+  } else {
+    for (const c of failing) {
+      const rest = leaky.some((l) => l.slide === c.slide)
+        ? c.faults.filter((f) => !isLeak(f))
+        : c.faults;
+      if (rest.length) log({ ev: "repair-skipped", slide: c.slide, faults: rest });
+    }
+    phaseSlides = [...plan.slides];
+    await eachBounded(leaky, TAIL_CONCURRENCY, async (c) => {
+      await repairOne(c, "fit", { only: isLeak });
+    });
+    phaseSlides = undefined;
+  }
   void charsOver;
   // gas8: a slide the one repair left impossible (or never repaired) gets the text-safe version,
   // every claimed gas volume scaled under the stated reactant's maximum by one factor for the
