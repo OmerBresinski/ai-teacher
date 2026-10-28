@@ -542,7 +542,15 @@ export type Arrival = {
    * (`build/writer-smoke/fill.py`: path, words, capWords): `capWords` is the measured cap in words
    * (the hard limit), `shownWords` what the writer was shown for it (`shown-cap.ts`).
    */
-  fields: { path: string; words: number; capWords: number; shownWords?: number }[];
+  fields: {
+    path: string;
+    words: number;
+    capWords: number;
+    shownWords?: number;
+    /** A field judged in characters (stages, reasons; TEACH-247 part bq): its length and limit. */
+    chars?: number;
+    capChars?: number;
+  }[];
   /** The writer's measure (`charsOver`): the slide overflows its layout. Logged, not repaired. */
   over: string[];
   route: "as-written" | "writer-fault";
@@ -606,7 +614,7 @@ export function slotFillArrival(
     // Wave C at its own count (stages, reasons, worked rows, picture-text points): pack runs only.
     const atCount = pack
       ? waveCCountCaps(layout, key, raw, writerStageOfKey(stage))
-      : { caps: {}, cuts: [] };
+      : { caps: {}, chars: {}, cuts: [] };
     cuts.push(...atCount.cuts);
     const walk = (s: J, v: unknown, path: string) => {
       if (s.$ref) return walk(capDefs[String(s.$ref).replace("#/$defs/", "")] ?? {}, v, path);
@@ -617,12 +625,22 @@ export function slotFillArrival(
       // A word cap (wave C, `maxWords`): the field's words as the caps were measured, no characters.
       if (pack && s.type === "string" && typeof v === "string" && typeof s.maxWords === "number") {
         const words = capWords(v);
-        const cap =
-          (atCount.caps as Record<string, number>)[path.replace(/\[\d+\]/g, "[]")] ?? s.maxWords;
-        fields.push({ path, words, capWords: cap, shownWords: cap });
+        const at = path.replace(/\[\d+\]/g, "[]");
+        const cap = (atCount.caps as Record<string, number>)[at] ?? s.maxWords;
         const t = v.trim();
+        // A cell with a measured character limit (stages, reasons) is judged in characters, the
+        // unit the layout fits in (TEACH-247 part bq); the words stay logged for the fill scorer.
+        const capChars = (atCount.chars as Record<string, number>)[at];
+        fields.push({
+          path,
+          words,
+          capWords: cap,
+          shownWords: cap,
+          ...(capChars !== undefined ? { chars: t.length, capChars } : {}),
+        });
         const sentence = SENTENCE_FIELD.test(path) || INNER_SENTENCE.test(t);
-        if (words > cap || (sentence && t && !SENTENCE_END.test(t))) cuts.push(path);
+        const over = capChars !== undefined ? t.length > capChars : words > cap;
+        if (over || (sentence && t && !SENTENCE_END.test(t))) cuts.push(path);
       } else if (s.type === "string" && typeof v === "string" && typeof s.maxLength === "number") {
         fields.push(
           pack

@@ -334,7 +334,18 @@ export function layoutMyth(c: Ctx, input: TemplateInput) {
   const bodyFace = c.t.fonts.body;
   const claimH = (s: number, w = claimW, l = LH.claim) =>
     heightOf(claimDoc(claimText), "heading", s, w, claimWt, l, bodyFace);
-  const claimFits = (s: number) => claimH(s) <= claimRoom + 0.5;
+  // TEACH-247 part bq: the panel is narrow (a third of the slide), so a long word can be wider than
+  // it while the claim's height still fits: the browser then breaks the word inside
+  // ("photosynthe/sise;", lint's `text-wide`). Each word must measure one line at the claim's width,
+  // or the claim takes the same step down as a claim too tall for its room.
+  const claimWords = [...new Set(claimText.split(/\s+/).filter(Boolean))];
+  const wordFits = (s: number) =>
+    claimWords.every(
+      (w) =>
+        heightOf(claimDoc(w), "heading", s, claimW, claimWt, LH.claim, bodyFace) <=
+        s * LH.claim + 0.5,
+    );
+  const claimFits = (s: number) => claimH(s) <= claimRoom + 0.5 && wordFits(s);
 
   const fitFact = (disc: number) => {
     const shown = disc ? iconIds : [];
