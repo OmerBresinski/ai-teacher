@@ -149,8 +149,10 @@ export function keepAnswerKey(before: S, after: S): S | null {
   const c = Number(before.correct);
   if (!Array.isArray(b) || !Number.isInteger(c) || c < 1 || c > b.length) return after;
   if (after.template !== "hinge" || !Array.isArray(after.options)) return null;
+  // An option is a string or, on a pack, {text, icon, why}: compared by its words (an object's
+  // String() is "[object Object]", which matched every option and re-keyed the hinge to 1).
   const norm = (x: unknown) =>
-    String(x ?? "")
+    String((x && typeof x === "object" ? (x as S).text : x) ?? "")
       .trim()
       .replace(/\s+/g, " ")
       .toLowerCase();
