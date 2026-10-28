@@ -140,6 +140,7 @@ function parseTrailingJson(text: string): unknown {
 const ALSO_WRITES: Record<string, string[]> = {
   "split-compare-capacity.json": ["side-by-side-capacity.json"],
   "reasons-capacity.json": ["reasons-picture-capacity.json"],
+  "items-row-capacity.json": ["items-row-pictures-capacity.json"],
   "figure-capacity.json": ["figure-two-line-capacity.json"],
 };
 
