@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Brief, offPlanSlides } from "./fixes";
-import { recordedHeld, recordedVisuals, replayServices } from "./replay-fixture";
+import { recordedHeld, recordedVisuals, replayRun, replayServices } from "./replay-fixture";
 import type { WriterServices } from "./services";
 import { runWriter } from "./stage";
 
@@ -118,3 +118,85 @@ async function run(text: string) {
   });
   return { slides: r.slides, logs };
 }
+
+/*
+ * TEACH-247 part bs: Equations v4.18e r1 wrote a practice slide "Apply the method" where its flow
+ * planned the exit ticket, then the exit ticket. The guard above dropped it from the final deck,
+ * but the stream had shown it typing out first, then swapped it for the exit ticket. A streamed
+ * slide no flow entry plans is never drafted or shown; the final deck is as before.
+ */
+describe("a streamed slide in the exit ticket's slot that the flow does not plan", () => {
+  const EXIT = {
+    template: "exit-ticket",
+    heading: "Exit ticket",
+    questions: ["Find 3/4 of 20."],
+    answers: ["15"],
+  };
+  type J = Record<string, unknown>;
+  const lesson = (extra: boolean) => (text: string) => {
+    const raw = JSON.parse(text) as { title?: J; flow: J[]; slides: J[] };
+    const layoutOf = (n: number) =>
+      n === 1
+        ? String(raw.title?.template ?? "title")
+        : n === 2
+          ? "objectives"
+          : String(raw.slides[n - 3]?.template);
+    const flow: J[] = raw.flow.map((f) => ({ ...f, layout: layoutOf(Number(f.slide)) }));
+    const last = flow.at(-1) as J;
+    flow.push({ ...last, slide: flow.length + 1, layout: "exit-ticket" });
+    const practice = raw.slides.findLast((s) => s.template === "practice") as J;
+    const slides = extra
+      ? [...raw.slides, { ...practice, heading: "Apply the method" }]
+      : raw.slides;
+    return JSON.stringify({ ...raw, flow, slides, close: EXIT });
+  };
+  const pieces = (text: string) => {
+    const out: string[] = [];
+    for (let at = 0; at < text.length; at += 9) out.push(text.slice(at, at + 9));
+    return out;
+  };
+  const streamed = async (extra: boolean) => {
+    const logs: { ev?: string; why?: string; slide?: number }[] = [];
+    const seen: string[] = [];
+    const reopened: number[] = [];
+    const r = await replayRun(B, {
+      stream: pieces,
+      text: lesson(extra),
+      brief: (b) => ({ ...b, slides: { min: 3, max: 40 } }),
+      services: { ...replayServices(B), log: (e: object) => logs.push(e as { ev?: string }) },
+      hooks: {
+        draft: { ms: 0 },
+        onDraftSlide: (i, s) => seen.push(`draft:${i}:${JSON.stringify(s)}`),
+        onSlide: (i, s) => seen.push(`slide:${i}:${JSON.stringify(s)}`),
+        onReopen: (i) => reopened.push(i),
+      },
+    });
+    return { slides: r.slides, logs, seen, reopened };
+  };
+  const stable = (v: unknown, top = true): unknown => {
+    if (Array.isArray(v)) return v.map((x) => stable(x, false));
+    if (v && typeof v === "object")
+      return Object.fromEntries(
+        Object.entries(v)
+          .filter(([k]) => !(k === "id" && !top))
+          .map(([k, x]) => [k, stable(x, false)]),
+      );
+    return v;
+  };
+
+  test("is never drafted or shown, nothing is swapped, and the final deck is the planned one", async () => {
+    const plain = await streamed(false);
+    const extra = await streamed(true);
+    expect(extra.logs.filter((e) => e.ev === "off-plan-dropped")).toHaveLength(1);
+    expect(extra.seen.some((e) => e.includes("Apply the method"))).toBe(false);
+    expect(extra.reopened).toEqual([]);
+    const stops = extra.logs.filter((e) => e.ev === "stream-stopped").map((e) => e.why);
+    expect(stops).toEqual([
+      `slide ${extra.logs.find((e) => e.ev === "off-plan-dropped")?.slide} off plan`,
+    ]);
+    expect(JSON.stringify(stable(extra.slides))).toBe(JSON.stringify(stable(plain.slides)));
+    // The planned deck streams to its end, unchanged by the guard.
+    expect(plain.logs.some((e) => e.ev === "stream-stopped")).toBe(false);
+    expect(plain.reopened).toEqual([]);
+  });
+});
