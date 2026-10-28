@@ -26,7 +26,13 @@ export interface CapturedCall {
     settings: Record<string, unknown>;
   };
   response?: { text: string; reasoning?: string; finishReason: string; rawFinishReason?: string };
-  usage?: { inputTokens: number | null; outputTokens: number | null; cachedInputTokens?: number };
+  usage?: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    cachedInputTokens?: number;
+    /** Input tokens the call wrote to the prompt cache (OpenAI `cache_write_tokens`). */
+    cacheWriteInputTokens?: number;
+  };
   costUsd: number | null;
   durationMs: number;
   ok: boolean;
@@ -40,7 +46,11 @@ export type CallCapture = (call: CapturedCall) => void;
 
 type Params = Parameters<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>[0]["params"];
 type Usage = {
-  inputTokens: { total: number | undefined; cacheRead?: number | undefined };
+  inputTokens: {
+    total: number | undefined;
+    cacheRead?: number | undefined;
+    cacheWrite?: number | undefined;
+  };
   outputTokens: { total: number | undefined };
 };
 
@@ -105,16 +115,25 @@ function usageOf(modelId: string, usage: Usage | undefined) {
   const inputTokens = usage?.inputTokens.total ?? null;
   const outputTokens = usage?.outputTokens.total ?? null;
   const cached = usage?.inputTokens.cacheRead;
+  // A cache write shows in the record and is priced at its own rate, so a miss that wrote the
+  // prefix is told apart from one that wrote nothing (the writer's prompt cache, TEACH-247).
+  const written = usage?.inputTokens.cacheWrite;
   return {
     usage: {
       inputTokens,
       outputTokens,
       ...(cached !== undefined ? { cachedInputTokens: cached } : {}),
+      ...(written !== undefined ? { cacheWriteInputTokens: written } : {}),
     },
     costUsd:
       inputTokens === null || outputTokens === null
         ? null
-        : costUsd(modelId, { inputTokens, outputTokens, cachedInputTokens: cached }),
+        : costUsd(modelId, {
+            inputTokens,
+            outputTokens,
+            cachedInputTokens: cached,
+            cacheWriteInputTokens: written,
+          }),
   };
 }
 
