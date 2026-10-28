@@ -312,25 +312,30 @@ describe("wave C caps at the slide's own count (review, 19 Oct 2026)", () => {
     expect(caps.meaning.anyOf[0].maxWords).toBe(KEY_CAPS.meaning);
     expect(caps.num.anyOf[0].maxLength).toBe(KEY_CAPS.num);
   });
+  // TEACH-247 part bq: stages and reasons fields are judged in their cell's characters (`hardMax`).
+  const chars = (n: number) => "x".repeat(n);
+  const roomOf = (slide: unknown, path: string) =>
+    arrive(slide).fields.find((f) => f.path === path)?.capChars ?? 0;
   test("a stage line fits three stages but not five: checked at five", () => {
-    const n = W.stages["5-icons"].line + 1;
-    expect(n).toBeLessThanOrEqual(W.stages["3-icons"].line);
-    const at = (count: number) => {
+    const at = (count: number, line: string) => {
       const st = structuredClone(slides.stages);
       st.items = Array.from({ length: count }, (_, i) => ({
         name: `Step${i}`,
-        line: words(n),
+        line,
         icon: null,
         picture: null,
       }));
-      return arrive(st).cuts;
+      return st;
     };
-    expect(at(3)).toEqual([]);
-    expect(at(5)).toContain("items[0].line");
+    const n = roomOf(at(5, "a"), "items[0].line") + 1;
+    expect(n).toBeLessThanOrEqual(roomOf(at(3, "a"), "items[0].line"));
+    expect(arrive(at(3, chars(n))).cuts).toEqual([]);
+    expect(arrive(at(5, chars(n))).cuts).toContain("items[0].line");
   });
   test("a reasons count no cell offers is a cut; the heading is held to the question", () => {
     const rs = structuredClone(slides.reasons);
-    rs.heading = words(W.reasons["reasons-2"].question + 1);
+    rs.heading = chars(roomOf(rs, "heading") + 1);
+    expect(roomOf(slides.reasons, "heading")).toBeGreaterThan(0);
     expect(arrive(rs).cuts).toContain("heading");
   });
   test("the myth heading and factEm are capped; step n is one digit", () => {

@@ -53,7 +53,12 @@ const list = (items: J, min: number, max: number): J => ({
 });
 const lit = (v: string) => ({ type: "string", enum: [v] });
 
-type StageCell = { n: number; vis: string; name: { cap: number }; line: { cap: number } };
+type StageCell = {
+  n: number;
+  vis: string;
+  name: { cap: number; hardMax: number };
+  line: { cap: number; hardMax: number };
+};
 const stageCells = (s: WriterStage): StageCell[] =>
   ((STAGES_CAPACITY as J)[AGE[s]] as StageCell[]).filter(
     (c) =>
@@ -361,9 +366,14 @@ export function waveCCountCaps(
   fit: string | undefined,
   raw: J,
   s: WriterStage,
-): { caps: Record<string, number>; cuts: string[] } {
+): { caps: Record<string, number>; chars: Record<string, number>; cuts: string[] } {
   const W = waveCWords(s);
   const caps: Record<string, number> = {};
+  // TEACH-247 part bq: the cell's own character limit (`hardMax`, the longest the layout still
+  // fits, the limit stages.ts and reasons.ts judge `over` by). Slot-fill judges a field that has
+  // one by its characters: the word cap is that limit divided by a p80 word length, so a line of
+  // short words was flagged one word over while well inside the room it is drawn in.
+  const chars: Record<string, number> = {};
   const cuts: string[] = [];
   const items = Array.isArray(raw.items) ? (raw.items as J[]) : [];
   if (layout === "stages") {
@@ -373,11 +383,17 @@ export function waveCCountCaps(
     else {
       caps["items[].name"] = cell.name;
       caps["items[].line"] = cell.line;
+      const room = stageCells(s).find((c) => c.n === items.length && c.vis === vis);
+      if (room) {
+        chars["items[].name"] = room.name.hardMax;
+        chars["items[].line"] = room.line.hardMax;
+      }
     }
   } else if (layout === "reasons") {
     const kind = raw.kind === "chain" ? "chain" : "reasons";
     // A question picture leaves the question less room (reasons-picture-capacity.json).
-    const cells = raw.picture && typeof raw.picture === "object" ? W.reasonsPicture : W.reasons;
+    const pictured = !!raw.picture && typeof raw.picture === "object";
+    const cells = pictured ? W.reasonsPicture : W.reasons;
     const cell = cells[`${kind}-${items.length}`] as J | undefined;
     if (!cell) cuts.push("items");
     else {
@@ -385,6 +401,13 @@ export function waveCCountCaps(
       caps.lead = cell.lead;
       caps["items[].head"] = cell.head;
       caps["items[].line"] = cell.line;
+      const room = reasonsCells(s, pictured)[`${kind}-${items.length}`];
+      if (room) {
+        chars.heading = room.question.hardMax;
+        chars.lead = room.lead.hardMax;
+        chars["items[].head"] = room.head.hardMax;
+        chars["items[].line"] = room.line.hardMax;
+      }
     }
   } else if (layout === "worked") {
     const lines = Array.isArray(raw.lines) ? raw.lines.length : 0;
@@ -400,7 +423,7 @@ export function waveCCountCaps(
     const together = wordsOf(raw.lead) + points.reduce((n: number, p) => n + wordsOf(p), 0);
     if (together > W.pictureText.leadAndPoints) cuts.push("lead");
   }
-  return { caps, cuts };
+  return { caps, chars, cuts };
 }
 
 /* ------------------------------------------------------------------ */
