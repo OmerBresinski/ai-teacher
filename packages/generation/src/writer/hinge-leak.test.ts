@@ -156,16 +156,19 @@ describe("stage: a leaky hinge goes to the one-slide repair", () => {
   };
   const REPAIR = writerBundle().repair;
 
-  async function run(reply: S) {
+  async function run(reply: S, checks: "act" | "log" = "act") {
     const events: S[] = [];
     const asked: { system: string; user: string }[] = [];
+    const slideCalls: string[] = [];
     const base = replayServices(B);
     await replayRun(B, {
       text,
+      checks,
       services: {
         ...base,
         log: (e) => events.push(e as S),
         chat: async (r) => {
+          if (r.name === "slide") slideCalls.push(r.user);
           if (r.name === "slide" && r.user.includes("leak: ")) {
             asked.push({ system: r.system, user: r.user });
             return { out: reply, usd: 0, ms: 0 };
@@ -174,7 +177,12 @@ describe("stage: a leaky hinge goes to the one-slide repair", () => {
         },
       },
     });
-    return { events, asked, repair: events.filter((e) => e.ev === "repair" && e.slide === 8) };
+    return {
+      events,
+      asked,
+      slideCalls,
+      repair: events.filter((e) => e.ev === "repair" && e.slide === 8),
+    };
   }
 
   test("one repair request carries the leak line; a reworded stem is kept", async () => {
@@ -194,6 +202,30 @@ describe("stage: a leaky hinge goes to the one-slide repair", () => {
   test("a repaired slide that still leaks is not kept", async () => {
     const r = await run({ fix: "reference", slide: LEAKY, to_notes: "none" });
     expect(r.asked.length).toBeGreaterThanOrEqual(1);
+    expect(r.repair).toEqual([expect.objectContaining({ ok: true, reverted: true })]);
+  });
+
+  // UX ruling 307 (28 Oct): production's checks only log, but a leak still goes to repair.
+  test('checks "log": the leak is repaired; every other fault is still only logged', async () => {
+    const r = await run(
+      { fix: "reference", slide: { ...LEAKY, stem: "What is a fifth of 20?" }, to_notes: "none" },
+      "log",
+    );
+    // The one slide call is the leak repair, carrying the leak line alone.
+    expect(r.slideCalls).toHaveLength(1);
+    expect(r.asked[0]?.user).toContain("leak: options[");
+    expect(r.asked[0]?.user).not.toMatch(/^(overflow|clipped|dangling|unanswered):/m);
+    expect(r.repair).toEqual([expect.objectContaining({ ok: true, reverted: false })]);
+    // The faults the acting run repairs (slides 5 and 9 in this replay) are skipped, never sent.
+    const skipped = r.events.filter((e) => e.ev === "repair-skipped");
+    expect(skipped.length).toBeGreaterThan(0);
+    for (const e of skipped)
+      expect((e.faults as string[]).some((f) => f.startsWith("leak:"))).toBe(false);
+  });
+
+  test('checks "log": a rewrite that still leaks is reverted', async () => {
+    const r = await run({ fix: "reference", slide: LEAKY, to_notes: "none" }, "log");
+    expect(r.slideCalls).toHaveLength(1);
     expect(r.repair).toEqual([expect.objectContaining({ ok: true, reverted: true })]);
   });
 });
