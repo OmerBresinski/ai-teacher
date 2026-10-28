@@ -50,3 +50,22 @@ export function withoutEchoTitle(spec: unknown, onSlide: string[]): unknown {
   const { title: _echo, ...rest } = s;
   return rest;
 }
+
+/**
+ * TEACH-247 part bj: whether a caption under a drawing says anything the drawing's own labels (and
+ * `onSlide`, such as the heading) do not. "Carbon dioxide + water → glucose + oxygen" under a flow
+ * whose boxes read "Carbon dioxide + water", "Photosynthesis", "Glucose + oxygen" says nothing new:
+ * every content word is already on a box, so the slide does not say it twice. A caption with no
+ * content words, or a drawing with no labels to read, keeps its caption (true).
+ */
+export function captionAddsInformation(
+  spec: unknown,
+  caption: string,
+  onSlide: string[] = [],
+): boolean {
+  const said = words(caption);
+  const shown = labels(spec);
+  if (!said.length || !shown.length) return true;
+  const known = new Set([...onSlide, ...shown].flatMap(words));
+  return said.some((w) => !known.has(w));
+}
