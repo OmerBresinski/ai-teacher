@@ -18,6 +18,24 @@ const DIR = join(import.meta.dir, "fixtures/replay");
 const read = (b: string, f: string) => readFileSync(join(DIR, b, f), "utf8");
 type El = Record<string, unknown>;
 
+/**
+ * TEACH-247 part bj: the lab drew a three-step chain as an L (two boxes, then one under the second).
+ * Such a chain now stays one line, so its lab drawing is not drawn again; these lessons hold that
+ * many, and nothing else may go missing.
+ */
+const L_CHAINS: Record<string, number> = { "y12-psychology-multi-store-model": 1 };
+/** Three flow boxes on two rows and two columns: the L a three-step chain no longer takes. */
+const isLChain = (svg: string) => {
+  const boxes = [
+    ...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="[\d.]+" height="[\d.]+" rx=/g),
+  ];
+  return (
+    boxes.length === 3 &&
+    new Set(boxes.map((m) => m[1])).size === 2 &&
+    new Set(boxes.map((m) => m[2])).size === 2
+  );
+};
+
 /** Slides (0-based) whose lab drawing was the G3 pile bug, with the rings the writer's spec asks for. */
 const G3_FIXED: Record<string, Record<number, number>> = {
   "y2-maths-halves-quarters": { 5: 2, 7: 4 },
@@ -73,7 +91,10 @@ for (const b of [
       const fixed = new Set(Object.keys(rings).map(Number));
       const lab = savedSlides(b).flatMap((s, i) => (fixed.has(i) ? [] : svgs(s.elements)));
       const ours = out.slides.flatMap((s) => svgs(s.elements as El[]));
-      const missing = lab.filter((svg) => !ours.includes(svg));
+      const gone = lab.filter((svg) => !ours.includes(svg));
+      const bent = gone.filter(isLChain);
+      expect(bent.length).toBe(L_CHAINS[b] ?? 0);
+      const missing = gone.filter((svg) => !isLChain(svg));
       for (const i of fixed) {
         const svg = svgs((out.slides[i]?.elements ?? []) as El[]).join("");
         expect(svg.match(/>\?</g)?.length, `slide ${i}`).toBe(rings[i]);

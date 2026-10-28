@@ -399,6 +399,17 @@ function widthAt(c: Ctx, text: string, size: number, weight = 500): number {
   return ((lineWidth(text, "body", c.t, weight) - 2 * r.padding) / r.fontSize) * size;
 }
 
+/**
+ * A box on whole pixels, rounded by its edges rather than by its position and size: two boxes that
+ * touch keep one shared edge. Rounding x and w each on its own let a 82.5 pt row pitch give rows at
+ * y175 h83 and y257 (1 px overlap), which checks.ts flags (v4.18c Equations, TEACH-247 part bl).
+ */
+export function snap(b: { x: number; y: number; w: number; h: number }) {
+  const x = Math.round(b.x);
+  const y = Math.round(b.y);
+  return { x, y, w: Math.round(b.x + b.w) - x, h: Math.round(b.y + b.h) - y };
+}
+
 function textEl(
   c: Ctx,
   name: string,
@@ -413,10 +424,7 @@ function textEl(
     id: uid(),
     type: "text",
     name,
-    x: Math.round(box.x),
-    y: Math.round(box.y),
-    w: Math.round(box.w),
-    h: Math.round(box.h),
+    ...snap(box),
     doc: docOf(runs),
     style: {
       preset,
@@ -448,10 +456,7 @@ function shape(c: Ctx, el: Omit<ShapeElement, "id" | "type">, step?: number): Sh
     id: uid(),
     type: "shape",
     ...el,
-    x: Math.round(el.x),
-    y: Math.round(el.y),
-    w: Math.round(el.w),
-    h: Math.round(el.h),
+    ...snap(el),
     ...(step ? { revealStep: step, reveal: "fade" as const } : {}),
   } as ShapeElement;
   c.els.push(s);
@@ -465,16 +470,14 @@ function svgImage(
   box: { x: number; y: number; w: number; h: number },
   step?: number,
 ): ImageElement {
+  const b = snap(box);
   const el: ImageElement = {
     id: uid(),
     type: "image",
     name,
-    x: Math.round(box.x),
-    y: Math.round(box.y),
-    w: Math.round(box.w),
-    h: Math.round(box.h),
+    ...b,
     src: svgDataUrl(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(box.w)}" height="${Math.round(box.h)}" viewBox="0 0 ${Math.round(box.w)} ${Math.round(box.h)}" overflow="visible">${svg}</svg>`,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${b.w}" height="${b.h}" viewBox="0 0 ${b.w} ${b.h}" overflow="visible">${svg}</svg>`,
     ),
     alt: "",
     fit: "contain",

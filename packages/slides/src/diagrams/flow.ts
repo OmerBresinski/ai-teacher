@@ -94,7 +94,15 @@ function edge(b: Box, tx: number, ty: number, gap: number): [number, number] {
 let stuck: { words: string; overlap: number }[] = [];
 export const lastFlowStuck = (): { words: string; overlap: number }[] => stuck;
 
+/**
+ * TEACH-247 part bj: the shape the last chain drawn took (columns by rows), so the zoom search can
+ * tell a short chain kept on one line from one bent into a snake.
+ */
+let chainShape: { steps: number; cols: number; rows: number } | undefined;
+export const lastChainShape = () => chainShape;
+
 export function drawFlow(f: Flow, x: Ctx, w: number, h: number): string {
+  chainShape = undefined;
   if (f.layout === "graph") return graph(f, x, w, h);
   return f.layout === "cycle" ? cycle(f, x, w, h) : chain(f, x, w, h);
 }
@@ -824,6 +832,7 @@ function chain(f: Flow, x: Ctx, fullW: number, fullH: number): string {
     return "";
   }
   const { fs, noteFs, cols, rows, bw, bh, gapX, gapY } = plan;
+  chainShape = { steps: k, cols, rows };
   const totalW = bw * cols + gapX * (cols - 1);
   const totalH = bh * rows + gapY * (rows - 1);
   const ox = inset + (w - totalW) / 2;

@@ -61,6 +61,20 @@ const LABEL_CLASH_ROWS = new Set(
     .map((r) => `${r.lesson} slide ${r.slide}`),
 );
 
+/**
+ * TEACH-247 part bj: base4 drew this row's three-step chain (Sensory register, STM, LTM) as an L,
+ * two boxes and one under the second. A chain of up to three steps now stays one line (here a
+ * column), so this row is redrawn on purpose; its new drawing must be one line.
+ */
+const L_CHAIN_ROWS = new Set(["b3-r2-2/y12-psychology-multi-store-model slide 5"]);
+/** Whether every flow box in `svg` shares one row or one column. */
+const oneLine = (svg: string) => {
+  const boxes = [
+    ...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="[\d.]+" height="[\d.]+" rx=/g),
+  ];
+  return new Set(boxes.map((m) => m[1])).size === 1 || new Set(boxes.map((m) => m[2])).size === 1;
+};
+
 type J = Record<string, unknown>;
 const STAGES = ["KS1", "KS2", "KS3-5"] as const;
 const studio = getTheme("studio");
@@ -340,6 +354,10 @@ describe("replay: saved base4 writer outputs (lab/ab 92f1b36d)", () => {
         );
       });
       if (hit) same += 1;
+      else if (L_CHAIN_ROWS.has(`${row.lesson} slide ${row.slide}`)) {
+        const el = writerDiagramElement(row.specs[0], getTheme(row.theme), row.stage, row.rect);
+        expect(oneLine(svgOfDataUrl(el?.src ?? "") ?? "")).toBe(true);
+      }
       // readGraph and labels3 (TEACH-110 part e) redraw measured line graphs and particle keys on
       // purpose: those drawings may differ from base4's. So may the labelled diagram whose labels
       // clashed (TEACH-247 part n, register diagrams-02); no other kind or row may.
@@ -353,7 +371,9 @@ describe("replay: saved base4 writer outputs (lab/ab 92f1b36d)", () => {
             ),
         }).toEqual({ row: `${row.lesson} slide ${row.slide}`, redrawn: true });
     }
-    expect(same).toBeGreaterThan(fixture.rows.length - 10 - LABEL_CLASH_ROWS.size);
+    expect(same).toBeGreaterThan(
+      fixture.rows.length - 10 - LABEL_CLASH_ROWS.size - L_CHAIN_ROWS.size,
+    );
   });
   test("the writer's specs draw by code as the lab's did (D14), and every diagram asked is drawn", () => {
     const specs = fixture.figures.filter((f) => writerSpecOf(f.figure as J));

@@ -147,6 +147,33 @@ function expectRangedPhoto(got: El, want: El, at: string) {
   expect({ at, inside }).toEqual({ at, inside: true });
 }
 
+/** TEACH-247 part bj: the slide (0-based) whose lab drawing was a three-step chain bent into an L. */
+const L_CHAIN_SLIDES: Record<string, number> = { "y12-psychology-multi-store-model": 4 };
+const boxesOf = (svg: string) => [
+  ...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="[\d.]+" height="[\d.]+" rx=/g),
+];
+const isLChain = (svg: string) => {
+  const b = boxesOf(svg);
+  return (
+    b.length === 3 &&
+    new Set(b.map((m) => m[1])).size === 2 &&
+    new Set(b.map((m) => m[2])).size === 2
+  );
+};
+const oneLine = (svg: string) => {
+  const b = boxesOf(svg);
+  return (
+    b.length === 3 &&
+    (new Set(b.map((m) => m[1])).size === 1 || new Set(b.map((m) => m[2])).size === 1)
+  );
+};
+/** Every word the drawing shows, sorted (a label may wrap differently in a wider box). */
+const wordsOf = (svg: string) =>
+  [...svg.matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)]
+    .flatMap((m) => (m[1] ?? "").split(/\s+/))
+    .filter(Boolean)
+    .sort();
+
 describe.each(LESSONS)("replay %s", (b) => {
   test("the stage reproduces the lab's replayed slides", async () => {
     const out = await replayRun(b);
@@ -246,6 +273,23 @@ describe.each(LESSONS)("replay %s", (b) => {
             at: `s${i + 1} #${k}`,
             el: stable(w),
           });
+          continue;
+        }
+        // TEACH-247 part bj: the lab drew a three-step chain as an L (two boxes, then one under the
+        // second); it now stays one line (here a column). Only the drawing differs: the same words,
+        // every box on one line, and every other field the lab's.
+        if (L_CHAIN_SLIDES[b] === i && el.name === "Diagram" && isLChain(String(stable(w).src))) {
+          const { src, ...rest } = stable(e);
+          const { src: wantSrc, ...wantRest } = stable(w);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          expect({ at: `s${i + 1} #${k}`, line: oneLine(String(src)) }).toEqual({
+            at: `s${i + 1} #${k}`,
+            line: true,
+          });
+          expect(wordsOf(String(src))).toEqual(wordsOf(String(wantSrc)));
           continue;
         }
         // Ruling 21 A (TEACH-215 part e): the cover's title and question take the gold's sizes
