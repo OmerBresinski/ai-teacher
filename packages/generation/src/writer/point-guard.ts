@@ -12,12 +12,12 @@ const LOOK_HEAD = /^\s*(?:look at|point to|find)\s+(?=(?:this|these|the)\b)/i;
 
 /**
  * Words that need pupils to see something on the slide. "Point" counts only as a verb: first in a
- * sentence ("Point and say"), or before to, at, out, and or a comma; "crossing points" and "the main
- * point" are nouns. "The left side" is algebra as often as a picture, so "side" is not a pointing
+ * sentence ("Point and say"), before to, at or out, or (singular) before "and" or a comma;
+ * "crossing points and places" and "the main point" are nouns. "The left side" is algebra as often as a picture, so "side" is not a pointing
  * word (v4.18c false hits, TEACH-247 part bl).
  */
 export const POINT_TASK =
-  /\b(point(?:s|ing)?(?=\s*,|\s+(?:to|at|out|and)\b)|(?<=(?:^|[.!?:])\s*)point\b|look(?:s|ing)?\b(?!\s+after)|can you see|what do you notice|shown (?:here|above|below)|(?:in|on) (?:the|this) (?:picture|photo|image|diagram|drawing)|(?:shape|picture|part)s? [A-D]\b|of [A-D] is\b|[A-D] is shaded|(?:the )?(?:left|right) (?:square|shape|picture|photo|one))/i;
+  /\b(point(?:s|ing)?(?=\s+(?:to|at|out)\b)|point(?=\s*,|\s+and\b)|(?<=(?:^|[.!?:])\s*)point\b|look(?:s|ing)?\b(?!\s+after)|can you see|what do you notice|shown (?:here|above|below)|(?:in|on) (?:the|this) (?:picture|photo|image|diagram|drawing)|(?:shape|picture|part)s? [A-D]\b|of [A-D] is\b|[A-D] is shaded|(?:the )?(?:left|right) (?:square|shape|picture|photo|one))/i;
 /** A question that is about a particular drawn thing: it cannot be kept without the drawing. */
 const ABOUT_DRAWN =
   /\b((?:shape|picture|part)s? [A-D]\b|of [A-D] is\b|[A-D] is shaded|(?:the )?(?:left|right) (?:square|shape|picture|photo|one))/i;

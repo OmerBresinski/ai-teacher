@@ -99,15 +99,20 @@ describe("pointGuard: algebra's left side and noun points are not pointing tasks
     expect(pointTaskFault("Subtract 3 from both sides, so the left side is 9.")).toBeUndefined();
   });
   test("Romans lead: 'guarded crossing points' is a noun", () => {
+    // The slide 13 lead as written (Romans r2).
     expect(
-      pointTaskFault("Soldiers kept the wall's guarded crossing points open for trade."),
+      pointTaskFault(
+        "The Wall joined guarded crossing points and places where soldiers watched and lived along the frontier.",
+      ),
     ).toBeUndefined();
+    expect(pointTaskFault("Soldiers guarded the crossing points, day and night.")).toBeUndefined();
     expect(pointTaskFault("The main point is that the fire spread fast.")).toBeUndefined();
   });
   test("a real pointing task still fires", () => {
     expect(pointTaskFault("Point to the gate in the wall.")).toBeDefined();
     expect(pointTaskFault("Now point at the river. Which way does it flow?")).toBeDefined();
     expect(pointTaskFault("Which is bigger? Point and say.")).toBeDefined();
+    expect(pointTaskFault("Now point and say its name.")).toBeDefined();
     expect(pointTaskFault("Look at the right picture.")).toBeDefined();
   });
 });
