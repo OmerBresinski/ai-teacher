@@ -87,6 +87,7 @@ import {
   lookOf,
   lostFault,
   OVERFLOW,
+  offPlanSlides,
   overflowPt,
   plainWords,
   promptStage,
@@ -1544,6 +1545,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   if (closed.note) log({ ev: "close-missing", level: "warn", why: closed.note });
   out.slides = closed.slides;
+  // A slide no flow entry plans, in a deck longer than its flow, is dropped before the final parse
+  // lays anything (TEACH-247 part bm: Photosynthesis r1's "A note for the teacher" pupil slide).
+  // One that only swapped its planned layout is kept and logged.
+  const offPlan = offPlanSlides(out.flow, out.title, out.slides);
+  for (const o of offPlan.kept) log({ ev: "off-plan-kept", level: "warn", ...o });
+  for (const o of offPlan.dropped) log({ ev: "off-plan-dropped", level: "warn", ...o });
+  if (offPlan.dropped.length) out.slides = offPlan.slides;
   // The teacher's exact count (ADR 0036): a miss ships as written, logged for measuring. A tier's
   // deck under its minimum ships too, logged, never retried (TEACH-110 part ao): a second writer
   // run would double the cost and splice two attempts' slides.
@@ -1574,6 +1582,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     openSlide(idx, raw);
   }
+  // A slide the stream opened past the final deck's end (an off-plan slide was dropped, so the
+  // rest moved up): its asks and diagrams are void and it leaves the plan.
+  const end = 2 + (out.slides?.length ?? 0);
+  for (const idx of [...opened.keys()].filter((i) => i >= end)) {
+    log({ ev: "stream-dropped", slide: idx + 1 });
+    cancelDiagrams(idx);
+    run.onReopen?.(idx);
+    opened.delete(idx);
+    asks.delete(idx);
+    laid.delete(idx);
+  }
+  if (plan.slides.length > end) plan.slides.length = end;
   // Slide 2 with the pupil wording (a small call started with the writer, so it has landed by
   // now or soon after); a line that failed its checks keeps the teacher's. Then slide 2 is final too, and is
   // handed over with the written slides (TEACH-202 part o).
