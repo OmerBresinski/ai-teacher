@@ -115,6 +115,7 @@ import {
   teaching,
   words as wordsOfText,
 } from "./guards";
+import { hingeLeakFaults } from "./hinge-leak";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
@@ -2241,6 +2242,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!flags.duplicateLogOnly) for (const [i, f] of duplicates()) res[i]?.faults.push(f);
     for (let i = 0; i < n; i++)
       res[i]?.faults.push(...activityFaults(plan.slides[i] as S, laid.get(i)?.slide));
+    // TEACH-247 part bp: a hinge whose answer alone repeats a question word goes to repair; the
+    // answer option is kept word for word (keepAnswerKey), so the question or a wrong option changes.
+    for (let i = 0; i < n; i++)
+      if (repairable(plan.slides[i] as S, i))
+        res[i]?.faults.push(...hingeLeakFaults(plan.slides[i] as S));
     // gas8 (BAKEOFF base4f): practical data the lesson's own stated quantities cannot give.
     for (const h of gasFaults(gasTexts()))
       if (repairable(plan.slides[h.slide] as S, h.slide)) res[h.slide]?.faults.push(h.fault);

@@ -1,0 +1,2183 @@
+{
+  "v417": [
+    {
+      "run": "record-y1-plants-r1-v417",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "Which part carries water to the leaves?",
+      "options": [
+        {
+          "text": "The stem",
+          "why": null
+        },
+        {
+          "text": "The roots",
+          "why": "Pupils may confuse taking in water with carrying it up the plant."
+        },
+        {
+          "text": "The flower",
+          "why": "Pupils may confuse the flower with another part above the ground."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which part carries water to the leaves?",
+        "options": [
+          {
+            "text": "The stem",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "The roots",
+            "icon": null,
+            "why": "Pupils may confuse taking in water with carrying it up the plant."
+          },
+          {
+            "text": "The flower",
+            "icon": null,
+            "why": "Pupils may confuse the flower with another part above the ground."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v417",
+      "where": "s6",
+      "template": "hinge",
+      "stem": "How did strong winds spread flames?",
+      "options": [
+        {
+          "text": "They blew flames towards houses.",
+          "why": null
+        },
+        {
+          "text": "They blew flames away forever.",
+          "why": "Confuses wind moving flames with putting them out."
+        },
+        {
+          "text": "They made wooden houses fireproof.",
+          "why": "Does not understand that wood can still burn in wind."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did strong winds spread flames?",
+        "options": [
+          {
+            "text": "They blew flames towards houses.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They blew flames away forever.",
+            "icon": null,
+            "why": "Confuses wind moving flames with putting them out."
+          },
+          {
+            "text": "They made wooden houses fireproof.",
+            "icon": null,
+            "why": "Does not understand that wood can still burn in wind."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v417",
+      "where": "s10",
+      "template": "hinge",
+      "stem": "Where did the Great Fire start?",
+      "options": [
+        {
+          "text": "A baker's shop",
+          "why": null
+        },
+        {
+          "text": "A wooden house",
+          "why": "Remembers houses burned but confuses them with the starting place."
+        },
+        {
+          "text": "A shop selling buckets",
+          "why": "Confuses firefighting buckets with the place where the fire began."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where did the Great Fire start?",
+        "options": [
+          {
+            "text": "A baker's shop",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "A wooden house",
+            "icon": null,
+            "why": "Remembers houses burned but confuses them with the starting place."
+          },
+          {
+            "text": "A shop selling buckets",
+            "icon": null,
+            "why": "Confuses firefighting buckets with the place where the fire began."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y4-romans-r1-v417",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How did gates help Romans control crossings?",
+      "options": [
+        {
+          "text": "Soldiers could check people passing through them.",
+          "why": null
+        },
+        {
+          "text": "Soldiers could stop everyone from crossing them.",
+          "why": "Confuses controlling crossings with banning all crossings."
+        },
+        {
+          "text": "Soldiers could check only people leaving forts.",
+          "why": "Confuses a gate in the frontier with an exit used only by fort occupants."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did gates help Romans control crossings?",
+        "options": [
+          {
+            "text": "Soldiers could check people passing through them.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Soldiers could stop everyone from crossing them.",
+            "icon": null,
+            "why": "Confuses controlling crossings with banning all crossings."
+          },
+          {
+            "text": "Soldiers could check only people leaving forts.",
+            "icon": null,
+            "why": "Confuses a gate in the frontier with an exit used only by fort occupants."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v417",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "What is light's role in photosynthesis?",
+      "options": [
+        {
+          "text": "It provides energy to make glucose.",
+          "why": null
+        },
+        {
+          "text": "It is a substance changed into glucose.",
+          "why": "Confuses light energy with a reactant."
+        },
+        {
+          "text": "It is released as a product with oxygen.",
+          "why": "Confuses the energy input with a product."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is light's role in photosynthesis?",
+        "options": [
+          {
+            "text": "It provides energy to make glucose.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "It is a substance changed into glucose.",
+            "icon": null,
+            "why": "Confuses light energy with a reactant."
+          },
+          {
+            "text": "It is released as a product with oxygen.",
+            "icon": null,
+            "why": "Confuses the energy input with a product."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r1-v417",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Which process makes river pebbles smaller and rounder through collisions?",
+      "options": [
+        {
+          "text": "Attrition: rock fragments collide and break into smaller pieces.",
+          "why": null
+        },
+        {
+          "text": "Abrasion: carried rock fragments scrape material from the bed.",
+          "why": "Confuses collisions between fragments with scraping of the river bed."
+        },
+        {
+          "text": "Hydraulic action: the force of water breaks bank material.",
+          "why": "Attributes the breaking of pebbles to water pressure rather than collisions."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which process makes river pebbles smaller and rounder through collisions?",
+        "options": [
+          {
+            "text": "Attrition: rock fragments collide and break into smaller pieces.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Abrasion: carried rock fragments scrape material from the bed.",
+            "icon": null,
+            "why": "Confuses collisions between fragments with scraping of the river bed."
+          },
+          {
+            "text": "Hydraulic action: the force of water breaks bank material.",
+            "icon": null,
+            "why": "Attributes the breaking of pebbles to water pressure rather than collisions."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r1-v417",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "Is x = 3 a solution to 2x + 5 = 12?",
+      "options": [
+        {
+          "text": "No: substituting gives 11, not 12.",
+          "why": null
+        },
+        {
+          "text": "Yes: substituting gives 11, which is close to 12.",
+          "why": "Treats an approximate match as enough for equality."
+        },
+        {
+          "text": "Yes: substituting gives 12, the value on the right.",
+          "why": "Miscalculates 2 × 3 + 5 as 12."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Is x = 3 a solution to 2x + 5 = 12?",
+        "options": [
+          {
+            "text": "No: substituting gives 11, not 12.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Yes: substituting gives 11, which is close to 12.",
+            "icon": null,
+            "why": "Treats an approximate match as enough for equality."
+          },
+          {
+            "text": "Yes: substituting gives 12, the value on the right.",
+            "icon": null,
+            "why": "Miscalculates 2 × 3 + 5 as 12."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y1-plants-r2-v417",
+      "where": "s8",
+      "template": "hinge",
+      "stem": "Which part takes water in from the soil?",
+      "options": [
+        {
+          "text": "Roots",
+          "why": null
+        },
+        {
+          "text": "Stem",
+          "why": "Pupils may confuse carrying water with taking it in from the soil."
+        },
+        {
+          "text": "Leaves",
+          "why": "Pupils may think leaves take water directly from the soil because they use water."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which part takes water in from the soil?",
+        "options": [
+          {
+            "text": "Roots",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Stem",
+            "icon": null,
+            "why": "Pupils may confuse carrying water with taking it in from the soil."
+          },
+          {
+            "text": "Leaves",
+            "icon": null,
+            "why": "Pupils may think leaves take water directly from the soil because they use water."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r2-v417",
+      "where": "s6",
+      "template": "hinge",
+      "stem": "How did strong winds spread fire?",
+      "options": [
+        {
+          "text": "They blew flames towards houses.",
+          "why": null
+        },
+        {
+          "text": "They blew flames away forever.",
+          "why": "The pupil thinks wind always blows a fire out."
+        },
+        {
+          "text": "They carried water to houses.",
+          "why": "The pupil confuses wind spreading flames with people carrying water."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did strong winds spread fire?",
+        "options": [
+          {
+            "text": "They blew flames towards houses.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They blew flames away forever.",
+            "icon": null,
+            "why": "The pupil thinks wind always blows a fire out."
+          },
+          {
+            "text": "They carried water to houses.",
+            "icon": null,
+            "why": "The pupil confuses wind spreading flames with people carrying water."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y4-romans-r2-v417",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How did gates help Romans control movement?",
+      "options": [
+        {
+          "text": "Soldiers could check people passing through the gates.",
+          "why": null
+        },
+        {
+          "text": "Soldiers could stop everyone from ever crossing the frontier.",
+          "why": "Assumes the wall prevented every crossing rather than controlling crossings."
+        },
+        {
+          "text": "Soldiers could check only people travelling south of the wall.",
+          "why": "Assumes checks applied only on one side of the frontier."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did gates help Romans control movement?",
+        "options": [
+          {
+            "text": "Soldiers could check people passing through the gates.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Soldiers could stop everyone from ever crossing the frontier.",
+            "icon": null,
+            "why": "Assumes the wall prevented every crossing rather than controlling crossings."
+          },
+          {
+            "text": "Soldiers could check only people travelling south of the wall.",
+            "icon": null,
+            "why": "Assumes checks applied only on one side of the frontier."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r2-v417",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "What is light's role in photosynthesis?",
+      "options": [
+        {
+          "text": "It provides energy for making glucose from carbon dioxide and water.",
+          "why": null
+        },
+        {
+          "text": "It is a substance that becomes part of the glucose.",
+          "why": "The pupil treats light as a reactant rather than an energy source."
+        },
+        {
+          "text": "It is released as a product alongside oxygen and glucose.",
+          "why": "The pupil confuses an input with the products."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is light's role in photosynthesis?",
+        "options": [
+          {
+            "text": "It provides energy for making glucose from carbon dioxide and water.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "It is a substance that becomes part of the glucose.",
+            "icon": null,
+            "why": "The pupil treats light as a reactant rather than an energy source."
+          },
+          {
+            "text": "It is released as a product alongside oxygen and glucose.",
+            "icon": null,
+            "why": "The pupil confuses an input with the products."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r2-v417",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "How does attrition change stones carried by a river?",
+      "options": [
+        {
+          "text": "They collide and become smaller and rounder.",
+          "why": null
+        },
+        {
+          "text": "They scrape the river bed and wear it away.",
+          "why": "Confuses attrition with abrasion."
+        },
+        {
+          "text": "They dissolve as weak acids react with the rock.",
+          "why": "Confuses attrition with solution."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How does attrition change stones carried by a river?",
+        "options": [
+          {
+            "text": "They collide and become smaller and rounder.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They scrape the river bed and wear it away.",
+            "icon": null,
+            "why": "Confuses attrition with abrasion."
+          },
+          {
+            "text": "They dissolve as weak acids react with the rock.",
+            "icon": null,
+            "why": "Confuses attrition with solution."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r2-v417",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "What is x if 2x + 7 = 17?",
+      "options": [
+        {
+          "text": "x = 5",
+          "why": null
+        },
+        {
+          "text": "x = 8.5",
+          "why": "Divides the right-hand side by 2 but overlooks the 7."
+        },
+        {
+          "text": "x = 12",
+          "why": "Subtracts 7 but then subtracts 2 instead of dividing by 2."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is x if 2x + 7 = 17?",
+        "options": [
+          {
+            "text": "x = 5",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "x = 8.5",
+            "icon": null,
+            "why": "Divides the right-hand side by 2 but overlooks the 7."
+          },
+          {
+            "text": "x = 12",
+            "icon": null,
+            "why": "Subtracts 7 but then subtracts 2 instead of dividing by 2."
+          }
+        ]
+      }
+    }
+  ],
+  "v418c": [
+    {
+      "run": "record-y1-plants-r1-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "What do roots do for a plant?",
+      "options": [
+        {
+          "text": "Take in water",
+          "why": null
+        },
+        {
+          "text": "Make its food",
+          "why": "Confuses roots with leaves."
+        },
+        {
+          "text": "Make its seeds",
+          "why": "Confuses roots with flowers."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What do roots do for a plant?",
+        "options": [
+          {
+            "text": "Take in water",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Make its food",
+            "icon": null,
+            "why": "Confuses roots with leaves."
+          },
+          {
+            "text": "Make its seeds",
+            "icon": null,
+            "why": "Confuses roots with flowers."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y1-plants-r1-v418c",
+      "where": "s8",
+      "template": "hinge",
+      "stem": "What do leaves use to make food?",
+      "options": [
+        {
+          "text": "Light",
+          "why": null
+        },
+        {
+          "text": "Soil only",
+          "why": "Thinks plants make food directly from soil."
+        },
+        {
+          "text": "Seeds only",
+          "why": "Confuses making food with making seeds."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What do leaves use to make food?",
+        "options": [
+          {
+            "text": "Light",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Soil only",
+            "icon": null,
+            "why": "Thinks plants make food directly from soil."
+          },
+          {
+            "text": "Seeds only",
+            "icon": null,
+            "why": "Confuses making food with making seeds."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418c",
+      "where": "s6",
+      "template": "hinge",
+      "stem": "Where did the Great Fire begin?",
+      "options": [
+        {
+          "text": "A Pudding Lane bakery",
+          "why": null
+        },
+        {
+          "text": "A Pudding Lane house",
+          "why": "Confuses a house where the fire spread with the bakery where it began."
+        },
+        {
+          "text": "A London church",
+          "why": "Thinks the fire began in another London building."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where did the Great Fire begin?",
+        "options": [
+          {
+            "text": "A Pudding Lane bakery",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "A Pudding Lane house",
+            "icon": null,
+            "why": "Confuses a house where the fire spread with the bakery where it began."
+          },
+          {
+            "text": "A London church",
+            "icon": null,
+            "why": "Thinks the fire began in another London building."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418c",
+      "where": "s8",
+      "template": "hinge",
+      "stem": "How did strong winds affect the fire?",
+      "options": [
+        {
+          "text": "They blew flames towards houses.",
+          "why": null
+        },
+        {
+          "text": "They blew the flames out.",
+          "why": "Applies the everyday idea of blowing out a small flame to the Great Fire."
+        },
+        {
+          "text": "They made wooden houses wet.",
+          "why": "Confuses the effect of wind with the use of water."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did strong winds affect the fire?",
+        "options": [
+          {
+            "text": "They blew flames towards houses.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They blew the flames out.",
+            "icon": null,
+            "why": "Applies the everyday idea of blowing out a small flame to the Great Fire."
+          },
+          {
+            "text": "They made wooden houses wet.",
+            "icon": null,
+            "why": "Confuses the effect of wind with the use of water."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y4-romans-r1-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Who ordered the wall to be built?",
+      "options": [
+        {
+          "text": "Emperor Hadrian",
+          "why": null
+        },
+        {
+          "text": "Roman soldiers",
+          "why": "Confuses the soldiers who built the wall with the emperor who ordered it."
+        },
+        {
+          "text": "Roman governors",
+          "why": "Thinks local Roman leaders rather than the emperor ordered it."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Who ordered the wall to be built?",
+        "options": [
+          {
+            "text": "Emperor Hadrian",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Roman soldiers",
+            "icon": null,
+            "why": "Confuses the soldiers who built the wall with the emperor who ordered it."
+          },
+          {
+            "text": "Roman governors",
+            "icon": null,
+            "why": "Thinks local Roman leaders rather than the emperor ordered it."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y4-romans-r1-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How did the wall help control movement?",
+      "options": [
+        {
+          "text": "Soldiers could check people passing through gates.",
+          "why": null
+        },
+        {
+          "text": "Soldiers could stop everyone from crossing anywhere.",
+          "why": "Mistakes controlling crossings for banning all movement."
+        },
+        {
+          "text": "Soldiers could check only people travelling north.",
+          "why": "Assumes checks applied in only one direction."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did the wall help control movement?",
+        "options": [
+          {
+            "text": "Soldiers could check people passing through gates.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Soldiers could stop everyone from crossing anywhere.",
+            "icon": null,
+            "why": "Mistakes controlling crossings for banning all movement."
+          },
+          {
+            "text": "Soldiers could check only people travelling north.",
+            "icon": null,
+            "why": "Assumes checks applied in only one direction."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "What is the role of light in photosynthesis?",
+      "options": [
+        {
+          "text": "It supplies energy for the reaction.",
+          "why": null
+        },
+        {
+          "text": "It is a substance plants turn into glucose.",
+          "why": "Confuses an energy source with a reactant."
+        },
+        {
+          "text": "It is a substance produced by the reaction.",
+          "why": "Confuses an energy source with a product."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is the role of light in photosynthesis?",
+        "options": [
+          {
+            "text": "It supplies energy for the reaction.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "It is a substance plants turn into glucose.",
+            "icon": null,
+            "why": "Confuses an energy source with a reactant."
+          },
+          {
+            "text": "It is a substance produced by the reaction.",
+            "icon": null,
+            "why": "Confuses an energy source with a product."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How do stomata help a leaf carry out photosynthesis?",
+      "options": [
+        {
+          "text": "They allow carbon dioxide into the leaf.",
+          "why": null
+        },
+        {
+          "text": "They absorb light energy for the leaf.",
+          "why": "Confuses stomata with chlorophyll."
+        },
+        {
+          "text": "They carry water into the leaf from roots.",
+          "why": "Confuses gas exchange through pores with water transport."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How do stomata help a leaf carry out photosynthesis?",
+        "options": [
+          {
+            "text": "They allow carbon dioxide into the leaf.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They absorb light energy for the leaf.",
+            "icon": null,
+            "why": "Confuses stomata with chlorophyll."
+          },
+          {
+            "text": "They carry water into the leaf from roots.",
+            "icon": null,
+            "why": "Confuses gas exchange through pores with water transport."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r1-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Which process makes carried stones smaller and rounder?",
+      "options": [
+        {
+          "text": "Stones collide and break into pieces.",
+          "why": null
+        },
+        {
+          "text": "Stones scrape material from the river bank.",
+          "why": "Confuses attrition with abrasion."
+        },
+        {
+          "text": "Water dissolves minerals from the river channel.",
+          "why": "Confuses attrition with solution."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which process makes carried stones smaller and rounder?",
+        "options": [
+          {
+            "text": "Stones collide and break into pieces.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Stones scrape material from the river bank.",
+            "icon": null,
+            "why": "Confuses attrition with abrasion."
+          },
+          {
+            "text": "Water dissolves minerals from the river channel.",
+            "icon": null,
+            "why": "Confuses attrition with solution."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r1-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "Why does sediment build up on an inner bank?",
+      "options": [
+        {
+          "text": "Slower water deposits sediment on the inner bank.",
+          "why": null
+        },
+        {
+          "text": "Faster water deposits sediment on the inner bank.",
+          "why": "Associates faster flow with deposition."
+        },
+        {
+          "text": "Slower water erodes sediment from the inner bank.",
+          "why": "Confuses deposition with erosion."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Why does sediment build up on an inner bank?",
+        "options": [
+          {
+            "text": "Slower water deposits sediment on the inner bank.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Faster water deposits sediment on the inner bank.",
+            "icon": null,
+            "why": "Associates faster flow with deposition."
+          },
+          {
+            "text": "Slower water erodes sediment from the inner bank.",
+            "icon": null,
+            "why": "Confuses deposition with erosion."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r1-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "What is the solution to x ÷ 4 + 3 = 8?",
+      "options": [
+        {
+          "text": "x = 20",
+          "why": null
+        },
+        {
+          "text": "x = 35",
+          "why": "Multiplies 8 by 4 before subtracting 3."
+        },
+        {
+          "text": "x = 2",
+          "why": "Divides by 4 rather than multiplying after subtracting 3."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is the solution to x ÷ 4 + 3 = 8?",
+        "options": [
+          {
+            "text": "x = 20",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "x = 35",
+            "icon": null,
+            "why": "Multiplies 8 by 4 before subtracting 3."
+          },
+          {
+            "text": "x = 2",
+            "icon": null,
+            "why": "Divides by 4 rather than multiplying after subtracting 3."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r1-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "What is the solution to −2x + 4 = 14?",
+      "options": [
+        {
+          "text": "x = −5",
+          "why": null
+        },
+        {
+          "text": "x = 5",
+          "why": "Divides by 2 and loses the negative sign."
+        },
+        {
+          "text": "x = −9",
+          "why": "Adds 4 instead of subtracting it, then divides by −2."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is the solution to −2x + 4 = 14?",
+        "options": [
+          {
+            "text": "x = −5",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "x = 5",
+            "icon": null,
+            "why": "Divides by 2 and loses the negative sign."
+          },
+          {
+            "text": "x = −9",
+            "icon": null,
+            "why": "Adds 4 instead of subtracting it, then divides by −2."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y1-plants-r2-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Which part grows under the soil?",
+      "options": [
+        {
+          "text": "Roots",
+          "why": null
+        },
+        {
+          "text": "Leaves",
+          "why": "Confuses leaves with the underground roots."
+        },
+        {
+          "text": "Flowers",
+          "why": "Confuses flowers with the underground roots."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which part grows under the soil?",
+        "options": [
+          {
+            "text": "Roots",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Leaves",
+            "icon": null,
+            "why": "Confuses leaves with the underground roots."
+          },
+          {
+            "text": "Flowers",
+            "icon": null,
+            "why": "Confuses flowers with the underground roots."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y1-plants-r2-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "Which part carries water up the plant?",
+      "options": [
+        {
+          "text": "Stem",
+          "why": null
+        },
+        {
+          "text": "Roots",
+          "why": "Confuses taking in water with carrying it up the plant."
+        },
+        {
+          "text": "Flower",
+          "why": "Confuses the flower's job with the stem's job."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which part carries water up the plant?",
+        "options": [
+          {
+            "text": "Stem",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Roots",
+            "icon": null,
+            "why": "Confuses taking in water with carrying it up the plant."
+          },
+          {
+            "text": "Flower",
+            "icon": null,
+            "why": "Confuses the flower's job with the stem's job."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y1-plants-r2-v418c",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "Which part makes food for the plant?",
+      "options": [
+        {
+          "text": "Leaves",
+          "why": null
+        },
+        {
+          "text": "Roots",
+          "why": "Thinks roots take food from the soil."
+        },
+        {
+          "text": "Flowers",
+          "why": "Confuses making seeds with making food."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which part makes food for the plant?",
+        "options": [
+          {
+            "text": "Leaves",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Roots",
+            "icon": null,
+            "why": "Thinks roots take food from the soil."
+          },
+          {
+            "text": "Flowers",
+            "icon": null,
+            "why": "Confuses making seeds with making food."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r2-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Where did the Great Fire begin?",
+      "options": [
+        {
+          "text": "In a London bakery",
+          "why": null
+        },
+        {
+          "text": "In a London house",
+          "why": "Confuses the buildings that burned with the bakery where the fire began."
+        },
+        {
+          "text": "In a London boat",
+          "why": "Confuses escape on the river with the place where the fire began."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where did the Great Fire begin?",
+        "options": [
+          {
+            "text": "In a London bakery",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "In a London house",
+            "icon": null,
+            "why": "Confuses the buildings that burned with the bakery where the fire began."
+          },
+          {
+            "text": "In a London boat",
+            "icon": null,
+            "why": "Confuses escape on the river with the place where the fire began."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r2-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "Why did nearby houses catch fire quickly?",
+      "options": [
+        {
+          "text": "Flames crossed the narrow gaps",
+          "why": null
+        },
+        {
+          "text": "Flames crossed the wide gaps",
+          "why": "Thinks the houses were far apart rather than close together."
+        },
+        {
+          "text": "Wind blew flames away",
+          "why": "Confuses the wind blowing flames towards houses with blowing them away."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Why did nearby houses catch fire quickly?",
+        "options": [
+          {
+            "text": "Flames crossed the narrow gaps",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Flames crossed the wide gaps",
+            "icon": null,
+            "why": "Thinks the houses were far apart rather than close together."
+          },
+          {
+            "text": "Wind blew flames away",
+            "icon": null,
+            "why": "Confuses the wind blowing flames towards houses with blowing them away."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y4-romans-r2-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Where was Hadrian’s Wall in Roman Britain?",
+      "options": [
+        {
+          "text": "Across the north, at the frontier.",
+          "why": null
+        },
+        {
+          "text": "Across the south, at the frontier.",
+          "why": "Confuses the northern frontier with the southern coast."
+        },
+        {
+          "text": "Across the middle, far from the frontier.",
+          "why": "Thinks the Wall divided Roman Britain rather than marking its northern frontier."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where was Hadrian’s Wall in Roman Britain?",
+        "options": [
+          {
+            "text": "Across the north, at the frontier.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Across the south, at the frontier.",
+            "icon": null,
+            "why": "Confuses the northern frontier with the southern coast."
+          },
+          {
+            "text": "Across the middle, far from the frontier.",
+            "icon": null,
+            "why": "Thinks the Wall divided Roman Britain rather than marking its northern frontier."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y4-romans-r2-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How did the Wall control crossings?",
+      "options": [
+        {
+          "text": "Soldiers checked people passing through gates.",
+          "why": null
+        },
+        {
+          "text": "Soldiers stopped everyone passing through gates.",
+          "why": "Confuses control of crossings with a total ban."
+        },
+        {
+          "text": "Soldiers let everyone pass without checking.",
+          "why": "Thinks the gates were not used to control movement."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did the Wall control crossings?",
+        "options": [
+          {
+            "text": "Soldiers checked people passing through gates.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Soldiers stopped everyone passing through gates.",
+            "icon": null,
+            "why": "Confuses control of crossings with a total ban."
+          },
+          {
+            "text": "Soldiers let everyone pass without checking.",
+            "icon": null,
+            "why": "Thinks the gates were not used to control movement."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r2-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "What is the role of light in photosynthesis?",
+      "options": [
+        {
+          "text": "It provides energy for the reaction.",
+          "why": null
+        },
+        {
+          "text": "It is a substance changed into glucose.",
+          "why": "Pupils confuse energy supplied with a reactant."
+        },
+        {
+          "text": "It is a substance produced with oxygen.",
+          "why": "Pupils confuse energy supplied with a product."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is the role of light in photosynthesis?",
+        "options": [
+          {
+            "text": "It provides energy for the reaction.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "It is a substance changed into glucose.",
+            "icon": null,
+            "why": "Pupils confuse energy supplied with a reactant."
+          },
+          {
+            "text": "It is a substance produced with oxygen.",
+            "icon": null,
+            "why": "Pupils confuse energy supplied with a product."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r2-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How does carbon dioxide enter a leaf?",
+      "options": [
+        {
+          "text": "It enters through tiny pores called stomata.",
+          "why": null
+        },
+        {
+          "text": "It enters through veins carrying water.",
+          "why": "Pupils confuse the water supply with gas exchange."
+        },
+        {
+          "text": "It enters through chlorophyll in leaf cells.",
+          "why": "Pupils confuse light absorption with gas exchange."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How does carbon dioxide enter a leaf?",
+        "options": [
+          {
+            "text": "It enters through tiny pores called stomata.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "It enters through veins carrying water.",
+            "icon": null,
+            "why": "Pupils confuse the water supply with gas exchange."
+          },
+          {
+            "text": "It enters through chlorophyll in leaf cells.",
+            "icon": null,
+            "why": "Pupils confuse light absorption with gas exchange."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r2-v418c",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Which process makes carried pebbles smaller and rounder?",
+      "options": [
+        {
+          "text": "Attrition: pebbles collide and break apart.",
+          "why": null
+        },
+        {
+          "text": "Abrasion: pebbles scrape against the river bed.",
+          "why": "Confuses wear of the bed and banks with collisions between pieces of load."
+        },
+        {
+          "text": "Hydraulic action: water forces air into rock cracks.",
+          "why": "Confuses the breaking of bed or bank rock with collisions between carried pebbles."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which process makes carried pebbles smaller and rounder?",
+        "options": [
+          {
+            "text": "Attrition: pebbles collide and break apart.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Abrasion: pebbles scrape against the river bed.",
+            "icon": null,
+            "why": "Confuses wear of the bed and banks with collisions between pieces of load."
+          },
+          {
+            "text": "Hydraulic action: water forces air into rock cracks.",
+            "icon": null,
+            "why": "Confuses the breaking of bed or bank rock with collisions between carried pebbles."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r2-v418c",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "Where does a slip-off slope form on a meander?",
+      "options": [
+        {
+          "text": "On the inner bend, where slower water deposits sediment.",
+          "why": null
+        },
+        {
+          "text": "On the outer bend, where faster water erodes rock.",
+          "why": "Confuses the deposited inner-bank feature with the eroded outer-bank river cliff."
+        },
+        {
+          "text": "On the inner bend, where slower water erodes rock.",
+          "why": "Identifies the inner bend but confuses deposition with erosion."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where does a slip-off slope form on a meander?",
+        "options": [
+          {
+            "text": "On the inner bend, where slower water deposits sediment.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "On the outer bend, where faster water erodes rock.",
+            "icon": null,
+            "why": "Confuses the deposited inner-bank feature with the eroded outer-bank river cliff."
+          },
+          {
+            "text": "On the inner bend, where slower water erodes rock.",
+            "icon": null,
+            "why": "Identifies the inner bend but confuses deposition with erosion."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r2-v418c",
+      "where": "s6",
+      "template": "hinge",
+      "stem": "What is the first step to solve 5x + 3 = 18?",
+      "options": [
+        {
+          "text": "Subtract 3 from both sides.",
+          "why": null
+        },
+        {
+          "text": "Divide both sides by 5.",
+          "why": "Reverses multiplication before removing the added term."
+        },
+        {
+          "text": "Add 3 to both sides.",
+          "why": "Uses addition rather than its inverse."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is the first step to solve 5x + 3 = 18?",
+        "options": [
+          {
+            "text": "Subtract 3 from both sides.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Divide both sides by 5.",
+            "icon": null,
+            "why": "Reverses multiplication before removing the added term."
+          },
+          {
+            "text": "Add 3 to both sides.",
+            "icon": null,
+            "why": "Uses addition rather than its inverse."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r2-v418c",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "Does x = 3 satisfy 2x + 3 = 11?",
+      "options": [
+        {
+          "text": "No, because the left side is 9, not 11.",
+          "why": null
+        },
+        {
+          "text": "Yes, because the left side is 9, not 11.",
+          "why": "Calculates the substitution but does not compare it correctly with the right side."
+        },
+        {
+          "text": "Yes, because the left side is 11, matching 11.",
+          "why": "Substitutes incorrectly and treats the claimed value as a match."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Does x = 3 satisfy 2x + 3 = 11?",
+        "options": [
+          {
+            "text": "No, because the left side is 9, not 11.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Yes, because the left side is 9, not 11.",
+            "icon": null,
+            "why": "Calculates the substitution but does not compare it correctly with the right side."
+          },
+          {
+            "text": "Yes, because the left side is 11, matching 11.",
+            "icon": null,
+            "why": "Substitutes incorrectly and treats the claimed value as a match."
+          }
+        ]
+      }
+    }
+  ],
+  "v418d": [
+    {
+      "run": "record-y9-equations-r1-v418d",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Solve 4x + 5 = 21.",
+      "options": [
+        {
+          "text": "x = 4",
+          "why": null
+        },
+        {
+          "text": "x = 6.5",
+          "why": "The pupil adds 5 instead of subtracting it, then divides by 4."
+        },
+        {
+          "text": "x = 1",
+          "why": "The pupil divides by 4 first and then subtracts 5."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Solve 4x + 5 = 21.",
+        "options": [
+          {
+            "text": "x = 4",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "x = 6.5",
+            "icon": null,
+            "why": "The pupil adds 5 instead of subtracting it, then divides by 4."
+          },
+          {
+            "text": "x = 1",
+            "icon": null,
+            "why": "The pupil divides by 4 first and then subtracts 5."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r1-v418d",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "Solve −3x + 2 = 14.",
+      "options": [
+        {
+          "text": "x = −4",
+          "why": null
+        },
+        {
+          "text": "x = 4",
+          "why": "The pupil divides by positive 3 rather than negative 3."
+        },
+        {
+          "text": "x = −16/3",
+          "why": "The pupil adds 2 instead of subtracting it, then divides by −3."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Solve −3x + 2 = 14.",
+        "options": [
+          {
+            "text": "x = −4",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "x = 4",
+            "icon": null,
+            "why": "The pupil divides by positive 3 rather than negative 3."
+          },
+          {
+            "text": "x = −16/3",
+            "icon": null,
+            "why": "The pupil adds 2 instead of subtracting it, then divides by −3."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-equations-r1-v418d",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "Does x = −3 solve 2x + 5 = −1?",
+      "options": [
+        {
+          "text": "Yes, because 2 × (−3) + 5 = −1.",
+          "why": null
+        },
+        {
+          "text": "No, because 2 × (−3) + 5 = 1.",
+          "why": "The pupil treats −6 + 5 as positive 1."
+        },
+        {
+          "text": "No, because 2 × (−3) + 5 = −11.",
+          "why": "The pupil subtracts 5 rather than adding 5."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Does x = −3 solve 2x + 5 = −1?",
+        "options": [
+          {
+            "text": "Yes, because 2 × (−3) + 5 = −1.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "No, because 2 × (−3) + 5 = 1.",
+            "icon": null,
+            "why": "The pupil treats −6 + 5 as positive 1."
+          },
+          {
+            "text": "No, because 2 × (−3) + 5 = −11.",
+            "icon": null,
+            "why": "The pupil subtracts 5 rather than adding 5."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418d",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Where did the Great Fire begin?",
+      "options": [
+        {
+          "text": "A Pudding Lane bakery",
+          "why": null
+        },
+        {
+          "text": "A Pudding Lane house",
+          "why": "The pupil remembers the street but confuses the bakery with a house."
+        },
+        {
+          "text": "A London street outside",
+          "why": "The pupil thinks the fire started outdoors rather than in the bakery."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where did the Great Fire begin?",
+        "options": [
+          {
+            "text": "A Pudding Lane bakery",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "A Pudding Lane house",
+            "icon": null,
+            "why": "The pupil remembers the street but confuses the bakery with a house."
+          },
+          {
+            "text": "A London street outside",
+            "icon": null,
+            "why": "The pupil thinks the fire started outdoors rather than in the bakery."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418d",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How did strong winds spread the fire?",
+      "options": [
+        {
+          "text": "They blew flames towards houses.",
+          "why": null
+        },
+        {
+          "text": "They blew water towards houses.",
+          "why": "The pupil confuses the wind's effect with the use of water to fight fire."
+        },
+        {
+          "text": "They pulled houses into streets.",
+          "why": "The pupil confuses wind with the pulling down of buildings."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did strong winds spread the fire?",
+        "options": [
+          {
+            "text": "They blew flames towards houses.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They blew water towards houses.",
+            "icon": null,
+            "why": "The pupil confuses the wind's effect with the use of water to fight fire."
+          },
+          {
+            "text": "They pulled houses into streets.",
+            "icon": null,
+            "why": "The pupil confuses wind with the pulling down of buildings."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418d",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "How did buckets help fight the fire?",
+      "options": [
+        {
+          "text": "They carried water to flames.",
+          "why": null
+        },
+        {
+          "text": "They pulled buildings away.",
+          "why": "The pupil confuses buckets with fire hooks."
+        },
+        {
+          "text": "They made gaps between houses.",
+          "why": "The pupil confuses buckets with demolished houses."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How did buckets help fight the fire?",
+        "options": [
+          {
+            "text": "They carried water to flames.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "They pulled buildings away.",
+            "icon": null,
+            "why": "The pupil confuses buckets with fire hooks."
+          },
+          {
+            "text": "They made gaps between houses.",
+            "icon": null,
+            "why": "The pupil confuses buckets with demolished houses."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418d",
+      "where": "s11",
+      "template": "hinge",
+      "stem": "Why did Londoners demolish houses?",
+      "options": [
+        {
+          "text": "To leave gaps without fuel",
+          "why": null
+        },
+        {
+          "text": "To carry water to flames",
+          "why": "The pupil confuses demolishing houses with using buckets."
+        },
+        {
+          "text": "To blow flames towards houses",
+          "why": "The pupil confuses firefighting with the effect of strong winds."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Why did Londoners demolish houses?",
+        "options": [
+          {
+            "text": "To leave gaps without fuel",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "To carry water to flames",
+            "icon": null,
+            "why": "The pupil confuses demolishing houses with using buckets."
+          },
+          {
+            "text": "To blow flames towards houses",
+            "icon": null,
+            "why": "The pupil confuses firefighting with the effect of strong winds."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v418d",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Which substances are products of photosynthesis?",
+      "options": [
+        {
+          "text": "Glucose and oxygen",
+          "why": null
+        },
+        {
+          "text": "Carbon dioxide and water",
+          "why": "Confuses the reactants with the products."
+        },
+        {
+          "text": "Glucose and water",
+          "why": "Treats water as a product rather than a reactant."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which substances are products of photosynthesis?",
+        "options": [
+          {
+            "text": "Glucose and oxygen",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Carbon dioxide and water",
+            "icon": null,
+            "why": "Confuses the reactants with the products."
+          },
+          {
+            "text": "Glucose and water",
+            "icon": null,
+            "why": "Treats water as a product rather than a reactant."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v418d",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "Where is chlorophyll found in leaf cells?",
+      "options": [
+        {
+          "text": "Inside chloroplasts",
+          "why": null
+        },
+        {
+          "text": "Inside the nucleus",
+          "why": "Confuses the nucleus with the chloroplast."
+        },
+        {
+          "text": "Inside the cell wall",
+          "why": "Confuses a cell boundary with the chloroplast."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where is chlorophyll found in leaf cells?",
+        "options": [
+          {
+            "text": "Inside chloroplasts",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Inside the nucleus",
+            "icon": null,
+            "why": "Confuses the nucleus with the chloroplast."
+          },
+          {
+            "text": "Inside the cell wall",
+            "icon": null,
+            "why": "Confuses a cell boundary with the chloroplast."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v418d",
+      "where": "s9",
+      "template": "hinge",
+      "stem": "What can plants turn glucose into for storage?",
+      "options": [
+        {
+          "text": "Starch for storage",
+          "why": null
+        },
+        {
+          "text": "Oxygen for storage",
+          "why": "Confuses a photosynthesis product with the storage substance."
+        },
+        {
+          "text": "Water for storage",
+          "why": "Confuses a photosynthesis reactant with the storage substance."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What can plants turn glucose into for storage?",
+        "options": [
+          {
+            "text": "Starch for storage",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Oxygen for storage",
+            "icon": null,
+            "why": "Confuses a photosynthesis product with the storage substance."
+          },
+          {
+            "text": "Water for storage",
+            "icon": null,
+            "why": "Confuses a photosynthesis reactant with the storage substance."
+          }
+        ]
+      }
+    }
+  ],
+  "v418e": [
+    {
+      "run": "record-y9-equations-r1-v418e",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "What is the first step to solve 2x − 4 = 10?",
+      "options": [
+        {
+          "text": "Add 4 to both sides.",
+          "why": null
+        },
+        {
+          "text": "Divide both sides by 2.",
+          "why": "Pupil undoes multiplication before the subtraction."
+        },
+        {
+          "text": "Subtract 4 from both sides.",
+          "why": "Pupil repeats the subtraction instead of using its inverse."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "What is the first step to solve 2x − 4 = 10?",
+        "options": [
+          {
+            "text": "Add 4 to both sides.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Divide both sides by 2.",
+            "icon": null,
+            "why": "Pupil undoes multiplication before the subtraction."
+          },
+          {
+            "text": "Subtract 4 from both sides.",
+            "icon": null,
+            "why": "Pupil repeats the subtraction instead of using its inverse."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y2-greatfire-r1-v418e",
+      "where": "s6",
+      "template": "hinge",
+      "stem": "Why did narrow streets help the fire spread?",
+      "options": [
+        {
+          "text": "Flames reached nearby houses.",
+          "why": null
+        },
+        {
+          "text": "Flames stayed inside houses.",
+          "why": "The pupil thinks close houses kept the fire contained."
+        },
+        {
+          "text": "Flames needed no wind.",
+          "why": "The pupil confuses a way flames spread with wind having no effect."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Why did narrow streets help the fire spread?",
+        "options": [
+          {
+            "text": "Flames reached nearby houses.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Flames stayed inside houses.",
+            "icon": null,
+            "why": "The pupil thinks close houses kept the fire contained."
+          },
+          {
+            "text": "Flames needed no wind.",
+            "icon": null,
+            "why": "The pupil confuses a way flames spread with wind having no effect."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y8-photosynthesis-r1-v418e",
+      "where": "s5",
+      "template": "hinge",
+      "stem": "Which substances are the reactants in photosynthesis?",
+      "options": [
+        {
+          "text": "Carbon dioxide and water",
+          "why": null
+        },
+        {
+          "text": "Glucose and oxygen",
+          "why": "Confuses products with reactants."
+        },
+        {
+          "text": "Carbon dioxide and oxygen",
+          "why": "Mixes one reactant with one product."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Which substances are the reactants in photosynthesis?",
+        "options": [
+          {
+            "text": "Carbon dioxide and water",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "Glucose and oxygen",
+            "icon": null,
+            "why": "Confuses products with reactants."
+          },
+          {
+            "text": "Carbon dioxide and oxygen",
+            "icon": null,
+            "why": "Mixes one reactant with one product."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y1-plants-r1-v418e",
+      "where": "s7",
+      "template": "hinge",
+      "stem": "How does water reach the leaves?",
+      "options": [
+        {
+          "text": "The stem carries it.",
+          "why": null
+        },
+        {
+          "text": "The flower carries it.",
+          "why": "Confuses the flower with the stem."
+        },
+        {
+          "text": "The leaves carry it.",
+          "why": "Thinks leaves draw water directly from the soil."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "How does water reach the leaves?",
+        "options": [
+          {
+            "text": "The stem carries it.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "The flower carries it.",
+            "icon": null,
+            "why": "Confuses the flower with the stem."
+          },
+          {
+            "text": "The leaves carry it.",
+            "icon": null,
+            "why": "Thinks leaves draw water directly from the soil."
+          }
+        ]
+      }
+    },
+    {
+      "run": "record-y9-rivers-r1-v418e",
+      "where": "s6",
+      "template": "hinge",
+      "stem": "Where does sediment build up in a meander, and why?",
+      "options": [
+        {
+          "text": "On the inner bank, where slower water loses energy.",
+          "why": null
+        },
+        {
+          "text": "On the outer bank, where faster water loses energy.",
+          "why": "The pupil associates the outer bank with deposition and misunderstands the effect of faster flow."
+        },
+        {
+          "text": "On the inner bank, where faster water loses energy.",
+          "why": "The pupil identifies the correct bank but thinks the water is faster there."
+        }
+      ],
+      "slide": {
+        "template": "hinge",
+        "heading": "Where does sediment build up in a meander, and why?",
+        "options": [
+          {
+            "text": "On the inner bank, where slower water loses energy.",
+            "icon": null,
+            "why": null
+          },
+          {
+            "text": "On the outer bank, where faster water loses energy.",
+            "icon": null,
+            "why": "The pupil associates the outer bank with deposition and misunderstands the effect of faster flow."
+          },
+          {
+            "text": "On the inner bank, where faster water loses energy.",
+            "icon": null,
+            "why": "The pupil identifies the correct bank but thinks the water is faster there."
+          }
+        ]
+      }
+    }
+  ]
+}
