@@ -11,7 +11,14 @@ import { writeFileSync } from "node:fs";
 import { THEMES } from "../themes";
 import { sample } from "./capacity";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
-import { type FieldCap, ROW_DRAW_MAX, type RowCaps, type RowItem, withoutCaps } from "./items-row";
+import {
+  type FieldCap,
+  ROW_DRAW_MAX,
+  ROW_PIC_MAX,
+  type RowCaps,
+  type RowItem,
+  withoutCaps,
+} from "./items-row";
 import CAPACITY from "./items-row-capacity.json" with { type: "json" };
 import type { Age } from "./items-row-deps";
 
@@ -20,7 +27,9 @@ export const ROW_CAP_GROUPS: Record<Age, Stage[]> = {
   primary: ["ks2"],
   secondary: ["ks3", "ks4", "ks5"],
 };
-export type RowVariant = { icons: boolean; lead: boolean };
+export type RowVariant = { icons: boolean; lead: boolean; pictures?: boolean };
+/** The stand-in picture a picture row's cells are measured with (part bg). */
+const PICTURE = { photo: "/capacity/item.jpg", aspect: 4 / 3, alt: "" };
 export type RowField = "name" | "text" | "lead" | "heading";
 
 /** The heading every item cell is measured under (one line at every age). */
@@ -58,6 +67,7 @@ function input(n: number, v: RowVariant, f: Fill = {}): TemplateInput {
     name: sample(len("name", k), k + 2),
     text: sample(len("text", k), k),
     ...(v.icons ? { icon: ICONS[k % ICONS.length] as string } : {}),
+    ...(v.pictures ? { picture: PICTURE } : {}),
   }));
   return {
     template: "items-row",
@@ -120,12 +130,13 @@ function longest(ok: (chars: number) => boolean): number {
 
 export type RowCell = RowCaps & { items: number; icons: boolean; withLead: boolean };
 
-export function measureRowCaps(age: Age): RowCell[] {
+export function measureRowCaps(age: Age, pictures = false): RowCell[] {
   const out: RowCell[] = [];
-  for (let n = 2; n <= ROW_DRAW_MAX[age]; n++)
-    for (const icons of [true, false])
+  const top = pictures ? Math.min(ROW_PIC_MAX, ROW_DRAW_MAX[age]) : ROW_DRAW_MAX[age];
+  for (let n = 2; n <= top; n++)
+    for (const icons of pictures ? [false] : [true, false])
       for (const lead of [false, true]) {
-        const v = { icons, lead };
+        const v = { icons, lead, pictures };
         // Text first, beside the default name and lead; then name beside text at most its limit;
         // then the heading and lead beside both (stand-ins never over the field's own limit).
         const cap = (field: RowField, base: (mode: "fit" | "comfort") => Base = () => ({})) => ({
@@ -173,6 +184,14 @@ if (import.meta.main) {
   writeFileSync(
     new URL("./items-row-capacity.json", import.meta.url),
     `${JSON.stringify(table, null, 2)}\n`,
+  );
+  // Picture rows (part bg), two to four parts, beside the table above (caps:check reads both).
+  const pictures = Object.fromEntries(
+    (Object.keys(ROW_CAP_GROUPS) as Age[]).map((age) => [age, measureRowCaps(age, true)]),
+  );
+  writeFileSync(
+    new URL("./items-row-pictures-capacity.json", import.meta.url),
+    `${JSON.stringify(pictures, null, 2)}\n`,
   );
   console.log(JSON.stringify(table));
 }
