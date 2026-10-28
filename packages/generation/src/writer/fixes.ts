@@ -1,6 +1,7 @@
 import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
 import { gridFit } from "./cards-grid-fits";
+import { EXIT_TICKET } from "./close";
 import { coverFit } from "./cover-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
@@ -931,6 +932,53 @@ export function flowMatcher<E extends FlowEntry>(flowNow: () => readonly E[] | u
       }
     byIdx.set(idx, got);
     return got;
+  };
+}
+
+/** A written slide that no flow entry plans: its deck number, template and heading. */
+export type OffPlanSlide = {
+  slide: number;
+  template: string;
+  heading: string | null;
+  planned: string | null;
+};
+
+/**
+ * The written slides with the ones no flow entry plans taken out, when the deck runs longer than
+ * its flow (TEACH-247 part bm). v4.18c Photosynthesis r1 planned 11 slides and the writer wrote a
+ * 12th, an `explain` "A note for the teacher", shown to pupils. A slide is off plan when
+ * `flowMatcher` finds no entry for it. Only as many as the deck runs over the flow are dropped, the
+ * latest first, and never the last slide or an exit ticket (the lesson's check). An off-plan slide
+ * in a deck no longer than its flow swapped its planned layout (Romans r1: the exit ticket written
+ * as a question set): it is kept, and reported as `kept`. A flow without layouts drops nothing.
+ * `slides` are the written slides after the title, close included (deck numbers 3 on).
+ */
+export function offPlanSlides<E extends FlowEntry>(
+  flow: readonly E[] | undefined,
+  title: S | undefined,
+  slides: readonly S[],
+): { slides: S[]; dropped: OffPlanSlide[]; kept: OffPlanSlide[] } {
+  const all = [...slides];
+  if (!flow?.some((f) => typeof f.layout === "string"))
+    return { slides: all, dropped: [], kept: [] };
+  const of = flowMatcher(() => flow);
+  if (title) of(0, String(title.template ?? ""));
+  const off = all.flatMap((s, k) => (of(k + 2, String(s.template ?? "")) ? [] : [k]));
+  const excess = Math.max(0, 2 + all.length - flow.length);
+  const droppable = off.filter(
+    (k) => k !== all.length - 1 && String(all[k]?.template ?? "").split("~")[0] !== EXIT_TICKET,
+  );
+  const drop = new Set(excess ? droppable.slice(-excess) : []);
+  const row = (k: number): OffPlanSlide => ({
+    slide: k + 3,
+    template: String(all[k]?.template ?? ""),
+    heading: typeof all[k]?.heading === "string" ? (all[k]?.heading as string) : null,
+    planned: flow.find((f) => f.slide === k + 3)?.layout ?? null,
+  });
+  return {
+    slides: all.filter((_, k) => !drop.has(k)),
+    dropped: off.filter((k) => drop.has(k)).map(row),
+    kept: off.filter((k) => !drop.has(k)).map(row),
   };
 }
 
