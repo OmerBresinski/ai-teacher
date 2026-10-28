@@ -8,6 +8,7 @@ import {
 import { contrastRatio } from "../colour-contrast";
 import * as ICONS from "../icons";
 import { provideIcons } from "../icons/loader";
+import { textFaults } from "../lint";
 import { resolveTextStyle } from "../text-style";
 import { v2Colors } from "../theme-v2";
 import { atKeyStage, getTheme, THEMES } from "../themes";
@@ -327,6 +328,46 @@ describe("myth and fact: caps and fit", () => {
           ].filter((x): x is string => typeof x === "string");
           for (const p of paint) expect(known.has(p.toUpperCase())).toBe(true);
         }
+      }
+  });
+});
+
+describe("a claim word wider than the panel (TEACH-247 part bq)", () => {
+  // The saved v4.17 Year 8 photosynthesis run, slide 9: "photosynthesise;" was wider than the
+  // panel claim's box at 42.7pt, so the browser broke it inside (lint `text-wide`).
+  const input = {
+    template: "myth",
+    heading: "Do plants respire?",
+    myth: {
+      opening: "vote",
+      verdict: "myth",
+      claim: "Plants only photosynthesise; they do not respire.",
+      fact: "Plants respire as well as photosynthesise, using glucose in respiration to release energy.",
+      factEm: "respire as well as photosynthesise",
+      proof: null,
+    },
+  } as TemplateInput;
+  test("every theme and stage: the claim steps down until no word is wider than its box, else it is over", () => {
+    for (const t of THEMES)
+      for (const st of ["ks1", "ks2", "ks3"] as Stage[]) {
+        const out = lay(input, st, t);
+        const { slide } = out;
+        const wide = textFaults(slide as Slide, atKeyStage(t, st)).filter((f) =>
+          f.startsWith("text-wide"),
+        );
+        // KS1's body floor is too large for a 16-letter word in the panel: the claim is named
+        // over (the layout's rule: never a silent break, never a cut word).
+        if (wide.length)
+          expect({ theme: t.id, st, over: out.over }).toEqual({
+            theme: t.id,
+            st,
+            over: ["myth.claim"],
+          });
+        if (st !== "ks1") expect({ theme: t.id, st, wide }).toEqual({ theme: t.id, st, wide: [] });
+        const claim = one(slide.elements, MYTH_NAMES.claim) as TextElement;
+        expect(claim.style.fontSize).toBe(
+          (one(slide.elements, MYTH_NAMES.fact) as TextElement).style.fontSize,
+        );
       }
   });
 });
