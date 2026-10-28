@@ -186,4 +186,47 @@ describe("the call capture middleware (generation_debug model-call rows)", () =>
       expect(row).not.toContain("sk-header-secret");
     }
   });
+  test("a cache read and a cache write are both recorded and priced at their own rates", async () => {
+    const calls: CapturedCall[] = [];
+    const usageFor = (cacheRead: number | undefined, cacheWrite: number | undefined) => ({
+      inputTokens: { total: 20000, noCache: 1000, cacheRead, cacheWrite },
+      outputTokens: { total: 2000, text: 2000, reasoning: undefined },
+    });
+    const call = async (read: number | undefined, write: number | undefined) => {
+      const inner = new MockLanguageModelV4({
+        provider: "openai",
+        modelId: "gpt-6.1-terra",
+        doGenerate: async () => ({
+          content: [{ type: "text", text: "ok" }],
+          finishReason: { unified: "stop", raw: "stop" },
+          usage: usageFor(read, write),
+          warnings: [],
+        }),
+      });
+      const base = {
+        kind: "openai",
+        region: "x",
+        model: () => inner,
+        modelId: () => "openai/gpt-6.1-terra",
+      };
+      const ai = withCallCapture(base as unknown as CreatedAi, (c) => calls.push(c));
+      await generateText({ model: ai.model("frontier", context), prompt: "hi" });
+    };
+    await call(undefined, 19000);
+    await call(19000, undefined);
+    // The miss wrote the prefix: 19 000 at $1.25, 1 000 at $1, 2 000 out at $5 per MTok.
+    expect(calls[0]?.usage).toEqual({
+      inputTokens: 20000,
+      outputTokens: 2000,
+      cacheWriteInputTokens: 19000,
+    });
+    expect(calls[0]?.costUsd).toBeCloseTo((19000 * 1.25 + 1000 * 1 + 2000 * 5) / 1e6, 10);
+    // The hit read it: 19 000 at $0.05.
+    expect(calls[1]?.usage).toEqual({
+      inputTokens: 20000,
+      outputTokens: 2000,
+      cachedInputTokens: 19000,
+    });
+    expect(calls[1]?.costUsd).toBeCloseTo((19000 * 0.05 + 1000 * 1 + 2000 * 5) / 1e6, 10);
+  });
 });
