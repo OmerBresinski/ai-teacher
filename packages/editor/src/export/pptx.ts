@@ -1528,6 +1528,46 @@ async function drawImage(
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
+  if (element.source?.caption)
+    drawPictureCaption(pptxSlide, element, element.source.caption, theme);
+}
+
+/**
+ * Ruling 300 (TEACH-251 part ay): a painting made because no real picture exists says so on the
+ * picture ("Artist's reconstruction"), in the export as in edit, present and print. The same
+ * label as the editor's `ReconstructionCaption`: white italic on a dark rounded plate, bottom left
+ * of the picture's box, its size from the box's height.
+ */
+function drawPictureCaption(
+  pptxSlide: PptxGenJS.Slide,
+  element: ImageElement,
+  caption: string,
+  theme: Theme,
+): void {
+  const size = Math.max(12, Math.round(element.h * 0.045));
+  const inset = size * 0.6;
+  // The text's width at about half an em a character, plus the plate's side padding; never wider
+  // than the picture.
+  const w = Math.min(element.w - 2 * inset, caption.length * size * 0.52 + 2 * size * 0.6);
+  const h = size * 1.2 + 2 * size * 0.25;
+  pptxSlide.addText(caption, {
+    x: inches(element.x + inset),
+    y: inches(element.y + element.h - inset - h),
+    w: inches(w),
+    h: inches(h),
+    align: "center",
+    valign: "middle",
+    margin: 0,
+    fontFace: fontFaceFor(theme.fonts.body),
+    fontSize: size,
+    italic: true,
+    color: "FFFFFF",
+    fill: { color: "000000", transparency: 38 },
+    shape: "roundRect",
+    rectRadius: inches(size * 0.3),
+    wrap: false,
+    objectName: "Picture caption",
+  });
 }
 
 /**
