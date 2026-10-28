@@ -21,7 +21,7 @@ import type {
   TextElement,
   Theme,
 } from "@tj/domain/documents";
-import { drawDiagram } from "../diagrams";
+import { captionAddsInformation, drawDiagram } from "../diagrams";
 import { isPointKind, POINT_KIND_LABELS, type PointKind } from "../point-kinds";
 import { drawKeyCard, keyCardHeight, typedLast } from "./key-card";
 
@@ -1676,8 +1676,22 @@ export function modelBodyRect(
   return modelBodyIn(c, heading(c, title), lead || undefined);
 }
 
+/**
+ * The line a full-width diagram's slide sets under it as its caption: the lead, unless it only
+ * repeats the drawing's own labels (TEACH-247 part bj: "Carbon dioxide + water → glucose +
+ * oxygen" under a flow whose boxes say exactly that). Then the slide does not say it twice.
+ */
+function captionLine(input: TemplateInput): string | undefined {
+  const lead = input.lead;
+  const f = input.figure;
+  if (!lead || !f || !("diagram" in f)) return lead;
+  const d = f.diagram as { kind?: unknown; spec?: unknown } | undefined;
+  const spec = d?.kind === "drawer" ? d.spec : d;
+  return captionAddsInformation(spec, lead, [input.heading ?? ""]) ? lead : undefined;
+}
+
 function bigRect(c: Ctx, input: TemplateInput) {
-  const line = input.lead;
+  const line = captionLine(input);
   const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
   const f = input.figure;
   const kind = f && "diagram" in f ? String((f.diagram as { kind?: unknown })?.kind ?? "") : "";
@@ -1779,7 +1793,7 @@ function bigWithCards(c: Ctx, input: TemplateInput, points: TemplatePoint[]): bo
   const d: Ctx = { ...c, els: [], over: [], fails: [] };
   heading(d, input.heading);
   const strip = keyCardStrip(d, points);
-  const lead = input.lead;
+  const lead = captionLine(input);
   const lh = lead ? measure(d, lead, "body", G.width) + 8 : 0;
   const top = FOOT - strip.h;
   const h = top - 12 - lh - G.band.y;
@@ -2289,7 +2303,7 @@ function layoutOnce(
           );
         break;
       }
-      const line = input.lead;
+      const line = captionLine(input);
       const lh = line ? measure(c, line, "body", G.width) + 14 : 0;
       if (line && lh > Math.ceil(c.s.body * LH.body * 2) + 14) c.over.push("caption over 2 lines");
       // A graph or chart stretched across the full width reads squashed (T y11 s10): a plot's panel
