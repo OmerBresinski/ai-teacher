@@ -1285,6 +1285,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** Each written slide's flow entry (fixes.ts `flowMatcher`), matched once, in order. */
   const flowOf = flowMatcher(() => plan.flow);
   /**
+   * TEACH-247 part bs: a streamed slide no flow entry plans, by #723's test (`flowMatcher` finds
+   * none for the template it was written as). Equations v4.18e r1 wrote a practice slide where the
+   * exit ticket goes and then the exit ticket: the teacher saw the practice slide type out, then
+   * turn into the exit ticket when `offPlanSlides` dropped it. The stream stops opening slides at
+   * it, so the final parse opens it and the rest once the guard has ruled. Matched once, as the
+   * slide's open would, so the final deck is the same. A flow without layouts plans no templates.
+   */
+  const offPlanStreamed = (idx: number, template: unknown): boolean =>
+    idx >= 2 &&
+    !!plan.flow?.some((f) => typeof f.layout === "string") &&
+    !flowOf(idx, String(template ?? ""));
+  /**
    * TEACH-251 part v: the slide teaches where a place is: its flow entry teaches an objective
    * that asks pupils to locate or say where, or its heading asks where. Its picture of a real place
    * tries a locator map first.
@@ -1446,6 +1458,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (idx < 0) return;
     if (!plan.flow || idx !== nextOpen || !value || typeof value !== "object")
       return stopStream(`slide ${idx + 1} out of order`);
+    if (offPlanStreamed(idx, (value as S).template)) return stopStream(`slide ${idx + 1} off plan`);
     const ok = nonFatalSync(
       () => {
         openSlide(idx, value as S);
@@ -1465,6 +1478,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const onDraft =
     run.onDraft || onDraftSlide
       ? (idx: number, d: SlideDraft) => {
+          // An off-plan slide is not drafted: its template is known from its first draft.
+          if (!opened.has(idx) && offPlanStreamed(idx, d.template))
+            return stopStream(`slide ${idx + 1} off plan`);
           run.onDraft?.(idx, d);
           // The objectives slide is laid by code (never written); a slide already open is done.
           if (!onDraftSlide || idx === 1 || opened.has(idx)) return;
