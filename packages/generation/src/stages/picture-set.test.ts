@@ -989,3 +989,36 @@ describe("activity cards are distinct subjects (TEACH-247 part ca)", () => {
     );
   });
 });
+
+describe("a placed panel is handed over at once (TEACH-247 part cd, plants showcase s13)", () => {
+  test("the set's passing panels reach onPanel while an odd panel is still being made again", async () => {
+    const pngs = [stripPng([30]), stripPng([50]), stripPng([70])];
+    const f = fakes({ strips: pngs, set: { same: false, odd: [0] } });
+    const shown: string[] = [];
+    let n = 0;
+    let release: () => void = () => undefined;
+    const hold = new Promise<void>((r) => {
+      release = r;
+    });
+    const gen = f.deps.generator;
+    const deps: PictureSetDeps = {
+      ...f.deps,
+      // The fourth generation (panel 0's solo) waits: the settle deadline would stop it here.
+      generator: {
+        model: gen.model,
+        generate: async (req) => {
+          if (n++ === 3) await hold;
+          return gen.generate(req);
+        },
+      },
+      onPanel: (k, p) => shown.push(`${k}:${p.key}`),
+    };
+    const done = makePictureSet(asks(3), deps);
+    for (let i = 0; i < 50 && shown.length < 2; i++) await new Promise((r) => setTimeout(r, 1));
+    expect(shown.sort()).toEqual(["1:p1", "2:p2"]);
+    release();
+    const out = await done;
+    expect(out.every(Boolean)).toBe(true);
+    expect(shown.sort()).toEqual(["0:p0", "1:p1", "2:p2"]);
+  });
+});
