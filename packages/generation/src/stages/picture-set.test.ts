@@ -19,6 +19,7 @@ import {
   namesRealThing,
   type PictureSetDeps,
   panelBrief,
+  partsOf,
   type SetAsk,
   SOLO_ATTEMPTS,
   STRIP_ATTEMPTS,
@@ -26,6 +27,7 @@ import {
   setIsGenerated,
   setLookFor,
   setMode,
+  setRelation,
   setSize,
   soloImagePrompt,
   TILE_GRID_OPENER,
@@ -246,7 +248,15 @@ function fakes(opts: {
 const asks = (n: number): SetAsk[] =>
   ["A newly hatched chick", "A growing young chicken", "An adult hen", "An old hen"]
     .slice(0, n)
-    .map((shows, k) => ({ key: `p${k}`, index: 3, shows, mustSee: [], aspect: 1 }));
+    // A stages set: one individual growing (TEACH-247 part ca: a set is one subject only when it says so).
+    .map((shows, k) => ({
+      key: `p${k}`,
+      index: 3,
+      shows,
+      mustSee: [],
+      aspect: 1,
+      sameSubject: true,
+    }));
 
 /** A light 2x2 grid with white gutters; cell k holds a dark square of sizes[k]. */
 function gridPng(sizes: number[], w = 150, h = 100): Uint8Array {
@@ -880,5 +890,102 @@ describe("a frame's second retry carries the reason (picture retries)", () => {
       ["empty", 0, "capped"],
       ["empty", 0, "capped"],
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// TEACH-247 part ca (Plants s5): a pair activity's roots, stem, leaves and flower came out as four
+// whole plants. Activity cards are distinct subjects; a part card shows only its part, close up;
+// the stages set judge never runs on them.
+// ---------------------------------------------------------------------------------------------
+
+const plantParts = (): SetAsk[] =>
+  ["Roots", "Stem", "Leaves", "Flower"].map((p, k) => ({
+    key: `card.${k}`,
+    index: 4,
+    shows: `${p} of a flowering plant`,
+    mustSee: [],
+    aspect: 1,
+  }));
+
+describe("activity cards are distinct subjects (TEACH-247 part ca)", () => {
+  test("a set never defaults to one subject; only a declared stages set is", () => {
+    expect(setRelation(plantParts())).toBe("parts");
+    expect(setRelation([{ shows: "A frog" }, { shows: "A butterfly" }])).toBe("matched");
+    // Words in common do not make cards one subject: only the layout's say-so does.
+    expect(setRelation([{ shows: "A bean seed" }, { shows: "A bean plant" }])).toBe("matched");
+    expect(setRelation(asks(3))).toBe("stages");
+  });
+  test("parts are read only from '<part> of <one whole>'", () => {
+    expect(partsOf(plantParts().map((a) => a.shows))?.map((p) => p.part)).toEqual([
+      "roots",
+      "stem",
+      "leaves",
+      "flower",
+    ]);
+    expect(partsOf(["Leaves of an oak", "Leaves of a holly"])).toBeUndefined();
+    expect(partsOf(["A glass of water", "A cup of water"])).toBeUndefined();
+    expect(partsOf(["A photo of a cat", "A picture of a cat"])).toBeUndefined();
+  });
+  test("a part card is made close up on its own, never whole", () => {
+    const [roots] = partsOf(plantParts().map((a) => a.shows)) ?? [];
+    const p = soloImagePrompt("Roots of a flowering plant", undefined, roots);
+    expect(p).toContain(
+      "Only the roots, close up and on its own, not the whole flowering plant: no stem, leaves or flower.",
+    );
+    expect(p).not.toMatch(/Every subject whole/);
+    // A matched or stages solo keeps base4's line.
+    expect(soloImagePrompt("A frog")).toContain("Every subject whole");
+  });
+  test("parts set: each card made and judged as its own part, no stages set judge", async () => {
+    const f = fakes({ strips: [stripPng([30])], set: { same: false, odd: [0, 1, 2, 3] } });
+    let setJudged = 0;
+    const briefs: string[] = [];
+    f.deps.judgeSet = async () => {
+      setJudged += 1;
+      return { same: false, odd: [0, 1, 2, 3], why: "different kinds of flowering plants" };
+    };
+    f.deps.judgePanel = async (ask) => {
+      briefs.push(`${panelBrief(ask, 1).subject} | ${panelBrief(ask, 1).request}`);
+      return { ok: true };
+    };
+    const out = await makePictureSet(plantParts(), f.deps);
+    expect(out.every(Boolean)).toBe(true);
+    expect(setJudged).toBe(0);
+    expect(f.made()).toBe(4);
+    expect(f.full.every((p) => !/Every subject whole|very same individual/.test(p))).toBe(true);
+    expect(f.full[1]).toContain("Only the stem, close up and on its own");
+    expect(briefs).toContain(
+      "stem | Stem of a flowering plant: only the stem, close up and on its own, not the whole flowering plant",
+    );
+    expect(f.logs.find((l) => l.ev === "set-start")?.relation).toBe("parts");
+    expect(f.logs.find((l) => l.ev === "set-attempt")?.same).toBe("skipped");
+  });
+  test("two part cards in one strip: the parts frame, not the same-subject frame", () => {
+    const parts = partsOf(["Roots of a bean plant", "Leaves of a bean plant"]);
+    const p = setImagePrompt(
+      ["Roots of a bean plant", "Leaves of a bean plant"],
+      undefined,
+      false,
+      parts,
+    );
+    expect(p).toContain(
+      "each panel shows only its own part, close up and on its own, never the whole bean plant",
+    );
+    expect(p).not.toMatch(/very same individual|each subject whole/);
+  });
+  test("stages set: one subject, judged by the set judge as before", async () => {
+    let setJudged = 0;
+    const f = fakes({ strips: [stripPng([30])] });
+    f.deps.judgeSet = async () => {
+      setJudged += 1;
+      return { same: true, odd: [] };
+    };
+    await makePictureSet(asks(3), f.deps);
+    expect(setJudged).toBe(1);
+    expect(f.logs.find((l) => l.ev === "set-start")?.relation).toBe("stages");
+    expect(setImagePrompt(["A chick", "A hen"], undefined, true)).toContain(
+      "very same individual subject",
+    );
   });
 });

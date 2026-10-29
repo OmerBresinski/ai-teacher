@@ -91,15 +91,75 @@ export function isSameSubjectSet(shows: string[], always = false): boolean {
 }
 
 /**
+ * TEACH-247 part ca: what a set's panels are to each other. `stages`: one individual at different
+ * stages (a picture sequence, a stages strip, a sequence activity whose cards name one subject).
+ * `matched`: different things to compare (match, sort and odd-one-out cards: the default).
+ * `parts`: the parts of one whole ("Roots of a flowering plant", "Stem of a flowering plant"): each
+ * card shows its own part close up, never the whole (Plants s5 drew four whole plants).
+ */
+export type SetRelation = "stages" | "matched" | "parts";
+
+/** One card of a parts set: its part, the whole it belongs to, and the other cards' parts. */
+export interface SetPart {
+  part: string;
+  whole: string;
+  others: string[];
+}
+
+/** "<part> of <whole>", articles aside. */
+const PART_OF = /^(?:(?:the|a|an|some)\s+)?(.+?)\s+of\s+(?:(?:the|a|an|one)\s+)?(.+?)$/i;
+/** Words before "of" that hold or frame a subject, never name a part of it. */
+const NOT_PART =
+  /\b(?:picture|photo|photograph|image|drawing|view|close-up|glass|cup|bowl|jar|bottle|pile|heap|bunch|bag|box|group|pair|row|lot|kind|type|sort|stage|piece|slice|handful|cross-section)s?$/i;
+
+/** "a, b or c". */
+const orList = (xs: string[]) =>
+  xs.length < 2 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`;
+
+/**
+ * The parts of a parts set, one per panel in order, or undefined when the panels are not all
+ * "<part> of <one whole>" with different parts. Read from the panels' own requests: the writer
+ * declares no relation yet (a later writer-pack field).
+ */
+export function partsOf(shows: string[]): SetPart[] | undefined {
+  if (shows.length < 2) return undefined;
+  const found = shows.map((s) => PART_OF.exec(s.replace(/\s+/g, " ").trim().replace(/[.!]$/, "")));
+  if (found.some((m) => !m)) return undefined;
+  const parts = found.map((m) => (m?.[1] ?? "").trim().toLowerCase());
+  const wholes = found.map((m) => (m?.[2] ?? "").trim().toLowerCase());
+  const whole = wholes[0] ?? "";
+  if (!whole || wholes.some((w) => w !== whole)) return undefined;
+  if (parts.some((x) => !x || NOT_PART.test(x)) || new Set(parts).size !== parts.length)
+    return undefined;
+  return parts.map((part, i) => ({ part, whole, others: parts.filter((_, j) => j !== i) }));
+}
+
+/**
+ * A set's relation. Only a set every panel of which says it is one subject (`sameSubject: true`:
+ * a picture sequence, a stages strip, a sequence of stages) is `stages`; anything else is distinct
+ * subjects, `parts` when the panels name parts of one whole. Never defaulted to `stages`.
+ */
+export function setRelation(asks: Pick<SetAsk, "shows" | "sameSubject">[]): SetRelation {
+  if (asks.length > 1 && asks.every((a) => a.sameSubject === true)) return "stages";
+  return partsOf(asks.map((a) => a.shows)) ? "parts" : "matched";
+}
+
+/** The solo frame's subject line: a part alone and close (a parts card), else every subject whole. */
+const soloSubjectLine = (part?: SetPart) =>
+  part
+    ? `Only the ${part.part}, close up and on its own, not the whole ${part.whole}: no ${orList(part.others)}. On a plain light background.`
+    : "Every subject whole, on a plain light background.";
+
+/**
  * One picture of a set made alone (the partial-set fallback): the panel's own request as a single
  * image, in the set's look. Code's frame, written from the set frame's own sentences: it is not a
  * strip, so a request naming two subjects ("an adult dog beside a puppy") is one scene, never two
  * panels (two Year 1 slides came out as diptychs when the one-panel set frame was used).
  */
-export function soloImagePrompt(shows: string, look?: LessonLook): string {
+export function soloImagePrompt(shows: string, look?: LessonLook, part?: SetPart): string {
   const body = [
     `One single photograph, not divided into panels: ${shows.replace(/\s+/g, " ").trim().replace(/\.$/, "")}.`,
-    "Every subject whole, on a plain light background.",
+    soloSubjectLine(part),
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ].join("\n");
   if (look?.style === "illustration")
@@ -140,12 +200,17 @@ export const TILE_GRID_OPENER = `One image divided into a 2 by 2 grid of {{n}} e
  * filled with a spare (its first picture again), then base4's same-subject or matched-set line and
  * the no-text line.
  */
-export function gridImagePrompt(shows: string[], look?: LessonLook, same = true): string {
+export function gridImagePrompt(
+  shows: string[],
+  look?: LessonLook,
+  same = true,
+  parts?: SetPart[],
+): string {
   const cells = [0, 1, 2, 3].map((j) => shows[j % shows.length] ?? "");
   const listed = cells
     .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
     .join("; ");
-  const strip = setImagePrompt(cells, undefined, same).split("\n");
+  const strip = setImagePrompt(cells, undefined, same, parts).split("\n");
   const body = [
     TILE_GRID_OPENER.trim().replaceAll("{{n}}", "4").replaceAll("{{panels}}", listed),
     ...strip.slice(1),
@@ -160,7 +225,12 @@ export function gridImagePrompt(shows: string[], look?: LessonLook, same = true)
  * same scale and view on one plain background, no text. An illustration lesson's locked look
  * leads it, as on every other generation.
  */
-export function setImagePrompt(shows: string[], look?: LessonLook, same = true): string {
+export function setImagePrompt(
+  shows: string[],
+  look?: LessonLook,
+  same = true,
+  parts?: SetPart[],
+): string {
   const n = shows.length;
   // One panel generated on its own (a partial set's missing stage): a single picture in the
   // strip's look, never a "1-panel strip" (that wording drew gutters and seams).
@@ -177,9 +247,11 @@ export function setImagePrompt(shows: string[], look?: LessonLook, same = true):
     `One image divided into ${n} equal side-by-side panels separated by thin pure white gaps. Left to right: ${shows
       .map((s, i) => `(${i + 1}) ${s.replace(/\s+/g, " ").trim().replace(/\.$/, "")}`)
       .join("; ")}.`,
-    same
-      ? "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint and camera distance, whole, so its size follows its stage, on the same plain light background."
-      : "The panels are a matched set to compare side by side: each subject whole, seen from the same viewpoint, at the same scale, in the same light, on the same plain light background.",
+    parts?.length
+      ? `The panels are a matched set of the parts of one ${parts[0]?.whole}: each panel shows only its own part, close up and on its own, never the whole ${parts[0]?.whole}, all in the same light on the same plain light background.`
+      : same
+        ? "Every panel shows the very same individual subject at a different stage: the same kind, colours and markings, seen from the same viewpoint and camera distance, whole, so its size follows its stage, on the same plain light background."
+        : "The panels are a matched set to compare side by side: each subject whole, seen from the same viewpoint, at the same scale, in the same light, on the same plain light background.",
     "No text anywhere in the image: no words, letters, labels, signs, captions or numbers.",
   ].join("\n");
   if (look?.style === "illustration") return lessonIllustrationPrompt(body, look);
@@ -228,8 +300,13 @@ export interface SetAsk {
   aspect?: number;
   /** A named real thing: never generated as a set (ruling 163). */
   named?: boolean;
-  /** False for compare cards of different things (a matched set, not one individual). */
+  /**
+   * True only for one subject at different stages (a picture sequence, a stages strip, a sequence
+   * of stages). False or absent: distinct subjects (TEACH-247 part ca: never defaulted to one).
+   */
   sameSubject?: boolean;
+  /** A parts set's card (`partsOf`): judged as that part alone, never the whole. */
+  part?: SetPart;
 }
 
 type Box = { item: string; left: number; top: number; right: number; bottom: number };
@@ -340,10 +417,15 @@ export function setLookFor(
 export function panelBrief(ask: SetAsk, aspect: number): ImageBrief {
   // Only the panel's subject: the writer's `mustSee` (lids on, a coffin lid nearby) is a stage
   // detail the set judge reads, so a real panel is never failed on it (LAYOUT-SEL Egypt s6).
+  // A part card (TEACH-247 part ca): the part alone is its subject, so a whole plant fails "Stem".
+  const part = ask.part;
   return {
-    subject: plainSubject(ask.shows).slice(0, 60),
-    request: ask.shows.slice(0, 400),
-    mustShow: mustShowOf(ask.shows).slice(0, 1),
+    subject: (part ? part.part : plainSubject(ask.shows)).slice(0, 60),
+    request: (part
+      ? `${ask.shows}: only the ${part.part}, close up and on its own, not the whole ${part.whole}`
+      : ask.shows
+    ).slice(0, 400),
+    mustShow: part ? [part.part] : mustShowOf(ask.shows).slice(0, 1),
     purpose: "context",
     specific: false,
     aspect: Math.round(aspect * 100) / 100,
@@ -377,17 +459,20 @@ export function setMode(n: number, grid = SET_GRID_DEFAULT): "strip" | "grid" | 
 
 /** Every panel of the set, placed or undefined (its slot stays empty). Never throws but an abort. */
 export async function makePictureSet(
-  asks: SetAsk[],
+  given: SetAsk[],
   deps: PictureSetDeps,
   look?: LessonLook,
 ): Promise<(SetPicture | undefined)[]> {
+  const relation = setRelation(given);
+  const parts = relation === "parts" ? partsOf(given.map((a) => a.shows)) : undefined;
+  const asks: SetAsk[] = parts ? given.map((a, k) => ({ ...a, part: parts[k] })) : given;
   const setKey = asks.map((a) => a.key).join("+");
   const slotAspect = asks[0]?.aspect ?? 4 / 3;
   /** A picture made alone takes its slot's shape (a 4:3 card is made 3:2, not square). */
   const soloSize = sizeForAspect(slotAspect).size;
   const style = setStyle(look);
   const shows = asks.map((a) => a.shows);
-  const same = asks.every((a) => a.sameSubject !== false);
+  const same = relation === "stages";
   const mode = setMode(asks.length, deps.grid);
   let capped = false;
   /** Generations each panel has had (a strip or grid counts once for every panel in it). */
@@ -470,7 +555,7 @@ export async function makePictureSet(
   // A budget stop or an abort (`isFatal`) stops the set: no more paid pictures once the budget is gone.
   const judge = (a: SetAsk, url: string) =>
     deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
-  deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, aspect: slotAspect });
+  deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, relation, aspect: slotAspect });
 
   // Partial-set fallback: each panel not placed is generated alone, in the lesson's look, judged
   // alone; placed panels are kept. Up to `SOLO_ATTEMPTS` solos, each carrying why the last failed.
@@ -479,9 +564,11 @@ export async function makePictureSet(
       async () => {
         const hint = reasons.get(k);
         if (hint?.reason === "refused-safety") safetyRetried.add(k);
-        const made = await generate(withRetryLine(soloImagePrompt(a.shows, look), hint), soloSize, [
-          k,
-        ]);
+        const made = await generate(
+          withRetryLine(soloImagePrompt(a.shows, look, a.part), hint),
+          soloSize,
+          [k],
+        );
         if (!made) return undefined;
         const verdict = await deps.judgePanel(a, dataUrl(made.bytes), slotAspect);
         deps.log({
@@ -547,7 +634,13 @@ export async function makePictureSet(
     early = false,
   ) => {
     const urls = panels.map(dataUrl);
-    const verdictP = deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined));
+    // The set judge (set-judge.v1) is a stages judge: one individual at every stage. A matched or
+    // parts set is never judged for sameness (Plants s5: its redo note turned four parts into four
+    // whole plants); each card is judged alone against its own subject, and one look is the
+    // generation's (a matched-set judge for style is a later prompt).
+    const verdictP = same
+      ? deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined))
+      : Promise.resolve(undefined);
     if (early) {
       judging.forEach((j, k) => {
         void j.then(
@@ -602,7 +695,7 @@ export async function makePictureSet(
       // Base4: one strip only (a second doubled the cost and failed the same way).
       for (let attempt = 0; attempt < STRIP_ATTEMPTS; attempt++) {
         const made = await generate(
-          setImagePrompt(shows, look, same),
+          setImagePrompt(shows, look, same, parts),
           setSize(asks.length),
           asks.map((_, k) => k),
         );
@@ -619,7 +712,7 @@ export async function makePictureSet(
       // One 2x2 grid; a set of 3 has a spare cell (its first picture again). Every cell is judged
       // against its picture; a picture takes its own cell when that passes, else its spare.
       const made = await generate(
-        gridImagePrompt(shows, look, same),
+        gridImagePrompt(shows, look, same, parts),
         GRID_SIZE,
         asks.map((_, k) => k),
       );
@@ -652,7 +745,7 @@ export async function makePictureSet(
       const made = await Promise.all(
         asks.map((a, k) =>
           nonFatal(
-            () => generate(soloImagePrompt(a.shows, look), soloSize, [k]),
+            () => generate(soloImagePrompt(a.shows, look, a.part), soloSize, [k]),
             (e) => {
               failed(k, { reason: imageFailReason(e) });
               deps.log({

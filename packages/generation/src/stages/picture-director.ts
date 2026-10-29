@@ -1617,6 +1617,11 @@ export interface WriterPhotoAsk {
   fixedShape?: boolean;
   /** A same-subject set's panel: made together by the generator (TEACH-237), not searched. */
   set?: string;
+  /**
+   * TEACH-247 part ca: true when the set is one subject at different stages (the writer stage
+   * reads it off the layout); absent or false, the panels are distinct subjects.
+   */
+  sameSubject?: boolean;
 }
 
 /** What the stage lays a picture slot out with (`materialise.ts` `VisualState`, photo part). */
@@ -2197,6 +2202,7 @@ export function createWriterPictures(opts: {
       mustSee: a.mustSee,
       named: a.named,
       ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
+      ...(a.sameSubject !== undefined ? { sameSubject: a.sameSubject } : {}),
     }));
     const set = (p: SetPicture | undefined, ask: WriterPhotoAsk, slot: Slot | undefined) => {
       opts.onOutcome?.(ask.key, {
