@@ -232,3 +232,40 @@ describe("template question slides reveal (hinge and question lists)", () => {
       expect(r.slide.question).toEqual({ type: "open-response", modelAnswer: "1. 4\n2. 6" });
     });
 });
+
+describe("group sort: a group's name stays on one line, above its answer line", () => {
+  // TEACH-247 part ce (plants s4, crayon Year 1): the group column was capped at 260, so "Not a
+  // plant" wrapped and its second line sat on the answer line drawn one line below the name's top.
+  for (const theme of ["crayon", "splash"]) {
+    test(theme, () => {
+      const pic = (n: string) => ({ photo: `/files/act/${n}.jpg`, alt: n, aspect: 1 });
+      const card = (text: string, group: number) => ({ text, figure: pic(text), group });
+      const r = layoutTemplate(
+        {
+          template: "group-sort",
+          heading: "Plant or Not?",
+          lead: "Sort each card into the right group.",
+          groups: ["Plant", "Not a plant"],
+          cards: [
+            card("Tree", 0),
+            card("Daisy", 0),
+            card("Grass", 0),
+            card("Cat", 1),
+            card("Rock", 1),
+            card("Shoe", 1),
+          ],
+        } as TemplateInput,
+        getTheme(theme),
+        "ks1",
+      );
+      expect(r.over).toEqual([]);
+      const names = r.slide.elements.filter((e) => e.name === "Group name");
+      const gaps = r.slide.elements.filter((e) => e.type === "gap-text");
+      expect(names).toHaveLength(2);
+      names.forEach((n, g) => {
+        const gap = gaps[g] as SlideElement;
+        expect(gap.y).toBeGreaterThanOrEqual(n.y + n.h);
+      });
+    });
+  }
+});

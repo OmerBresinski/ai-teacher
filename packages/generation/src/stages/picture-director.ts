@@ -1615,6 +1615,8 @@ export interface WriterPhotoAsk {
   named: boolean;
   aspect?: number;
   fixedShape?: boolean;
+  /** The picture shapes the slot shows filled (`SetAsk.fills`, TEACH-247 part ce). */
+  fills?: readonly [number, number];
   /** A same-subject set's panel: made together by the generator (TEACH-237), not searched. */
   set?: string;
   /**
@@ -2202,6 +2204,7 @@ export function createWriterPictures(opts: {
       mustSee: a.mustSee,
       named: a.named,
       ...(a.aspect !== undefined ? { aspect: a.aspect } : {}),
+      ...(a.fills ? { fills: a.fills } : {}),
       ...(a.sameSubject !== undefined ? { sameSubject: a.sameSubject } : {}),
     }));
     const set = (p: SetPicture | undefined, ask: WriterPhotoAsk, slot: Slot | undefined) => {

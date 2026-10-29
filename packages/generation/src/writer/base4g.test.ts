@@ -4,6 +4,7 @@ import { isThemeId } from "@tj/slides";
 import { writerObjectivesUser } from "../stages/objectives";
 import { writerBrief } from "../stages/write";
 import { sampleBriefLesson } from "../testing";
+import { isWriterActivity } from "./activities";
 import { WRITER_BUNDLE_ID, type WriterBundleId, writerBundle } from "./bundle";
 import { contractSystem, PINNED_LINES } from "./contract";
 import fixture from "./fixtures/activities/y1-animals.json" with { type: "json" };
@@ -248,7 +249,11 @@ describe("the compiled writer request, base4g against base4f-p123", () => {
     expect(on.out.slides.length).toBe(off.out.slides.length);
     const sf = on.events.filter((e) => e.ev === "slot-fill");
     expect(sf.length).toBeGreaterThan(0);
-    for (const e of sf) expect(e.breaches).toEqual(["fit: missing"]);
+    // An activity is one def with no fit (TEACH-247 part ce): checked against its def (this old
+    // output's `correct` predates answer-first), never "fit: missing".
+    for (const e of sf)
+      if (isWriterActivity(e.template)) expect(e.breaches ?? []).not.toContain("fit: missing");
+      else expect(e.breaches).toEqual(["fit: missing"]);
   });
 });
 

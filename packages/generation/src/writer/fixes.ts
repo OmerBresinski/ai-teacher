@@ -1,3 +1,4 @@
+import { isWriterActivity } from "./activities";
 import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
 import { gridFit } from "./cards-grid-fits";
@@ -452,6 +453,15 @@ export function asksVisual(s: S): boolean {
   if (["figure", "picture", "diagram"].some((k) => s[k] && typeof s[k] === "object")) return true;
   const cards = [...((s.columns as unknown[]) ?? []), ...((s.sequence as unknown[]) ?? [])];
   return cards.some((c) => !!c && typeof c === "object" && !!(c as S).picture);
+}
+/**
+ * True when a slide meets its flow `look`: no look, a slide that asks for a visual, or a cards look
+ * met by an activity's own cards (TEACH-247 part ce: a pair and a group sort were logged
+ * "look-unmet: cards" though they are cards).
+ */
+export function lookMet(s: S, look: { kind: string } | undefined): boolean {
+  if (!look || look.kind === "none" || asksVisual(s)) return true;
+  return look.kind === "cards" && isWriterActivity(s.template);
 }
 /** Layouts that take one picture in their own field: `figure` or `picture`. */
 const FIGURE_FIELD: Record<string, string> = {

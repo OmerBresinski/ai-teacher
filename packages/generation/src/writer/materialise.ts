@@ -5,10 +5,12 @@ import { iconFits, resolveIcon } from "@tj/slides/icons";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { layoutGroup } from "@tj/slides/relayout";
 import {
+  BLIND_CROP_KEEP,
   type Figure,
   isPointKind,
   layoutTemplate,
   motifOf,
+  PICTURE_RANGES,
   PLACEHOLDER_ICON,
   REASON_PENDING_ICON,
   type TemplateInput,
@@ -64,6 +66,8 @@ export type VisualAsk =
       named: boolean;
       aspect?: number;
       fixedShape?: boolean;
+      /** The picture shapes the slot shows filled (TEACH-247 part ce): see `slotShapes`. */
+      fills?: readonly [number, number];
       set?: string;
       /**
        * TEACH-247 part ca: the set is one subject at different stages (a picture sequence, a stages
@@ -438,22 +442,41 @@ const FIXED_SHAPE = new Set([
   "choose",
   "odd-one-out",
 ]);
-/** Each photo slot's shape on this slide, measured off the slide laid out with every slot open. */
+/**
+ * Each photo slot's shape on this slide, measured off the slide laid out with every slot open, and
+ * the picture shapes it shows filled (`fills`, TEACH-247 part ce): a ranged slot (a picture
+ * sequence, a compare) takes a picture at its own shape within its range; any other slot crops a
+ * picture to its own box, which a blind crop does only while it keeps `BLIND_CROP_KEEP` of the
+ * picture (`placePhoto`), else the picture sits contained on a wash panel, small.
+ */
 export function slotShapes(
   s: S,
   vctx: Omit<MaterialiseCtx, "visual">,
-): Record<string, { aspect: number; fixed: boolean }> {
+): Record<string, { aspect: number; fixed: boolean; fills: readonly [number, number] }> {
   const ctx: MaterialiseCtx = { ...vctx, visual: () => ({ status: "pending" }) };
   const input = toInput(s, ctx, true);
   const els = layoutTemplate(input, vctx.theme, vctx.stage).slide.elements;
-  const out: Record<string, { aspect: number; fixed: boolean }> = {};
-  for (const e of els) {
-    const r = (e as { request?: string }).request;
-    if (e.type === "image" && r?.startsWith("slot:"))
-      out[r.slice(5)] = {
-        aspect: Math.round((e.w / e.h) * 100) / 100,
-        fixed: FIXED_SHAPE.has(input.template),
-      };
+  const out: Record<string, { aspect: number; fixed: boolean; fills: readonly [number, number] }> =
+    {};
+  const slotted = els.filter(
+    (e) => e.type === "image" && !!(e as { request?: string }).request?.startsWith("slot:"),
+  );
+  const ranged = (PICTURE_RANGES as Record<string, unknown>)[input.template];
+  const range = (
+    Array.isArray(ranged)
+      ? ranged
+      : (ranged as Record<number, unknown> | undefined)?.[slotted.length]
+  ) as readonly [number, number] | undefined;
+  for (const e of slotted) {
+    const aspect = Math.round((e.w / e.h) * 100) / 100;
+    out[String((e as { request?: string }).request).slice(5)] = {
+      aspect,
+      fixed: FIXED_SHAPE.has(input.template),
+      fills: range ?? [
+        Math.round(aspect * BLIND_CROP_KEEP * 100) / 100,
+        Math.round((aspect / BLIND_CROP_KEEP) * 100) / 100,
+      ],
+    };
   }
   return out;
 }
@@ -1203,7 +1226,9 @@ export function visualsOf(
             shows: pictureShows(f, s),
             mustSee: f.must_see ?? [],
             named: f.subject === "named",
-            ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
+            ...(slots[key]
+              ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed, fills: slots[key].fills }
+              : {}),
             ...(setOf(key) ? { set: setOf(key), sameSubject: sameOf(setOf(key)) } : {}),
             ...(key.startsWith("icon.") ? { icon: true } : {}),
           },

@@ -298,6 +298,11 @@ export interface SetAsk {
   mustSee: string[];
   /** The slot's width over height; every panel of a set shares the first panel's. */
   aspect?: number;
+  /**
+   * The picture shapes (width over height) the slot shows filled: a ranged slot's range, else the
+   * shapes it crops to its own box (TEACH-247 part ce). Absent: any shape (a split ask's panels).
+   */
+  fills?: readonly [number, number];
   /** A named real thing: never generated as a set (ruling 163). */
   named?: boolean;
   /**
@@ -451,10 +456,26 @@ export function setStyle(look?: LessonLook): SetPicture["style"] {
       : "photo";
 }
 
-/** How a set is generated: one strip (2, or 5 and more), a 2x2 grid, or single pictures. */
-export function setMode(n: number, grid = SET_GRID_DEFAULT): "strip" | "grid" | "solo" {
-  if (n === 3 || n === 4) return grid ? "grid" : "solo";
-  return n >= 2 ? "strip" : "solo";
+/** The shape (width over height) of one panel of an `n`-panel strip or of a 2x2 grid. */
+export function panelAspect(n: number, size: ImageSize): number {
+  const [w, h] = size.split("x").map(Number) as [number, number];
+  return n === 4 && size === GRID_SIZE ? w / h : w / n / h;
+}
+
+/**
+ * How a set is generated: one strip (2, or 5 and more), a 2x2 grid, or single pictures. A strip
+ * or grid whose panels the slot cannot show filled (`fills`) is made as single pictures at the
+ * slot's shape instead (TEACH-247 part ce: a 6-card sort's strip cut 0.29 panels that sat as thin
+ * upright slivers in 1.57 cards).
+ */
+export function setMode(
+  n: number,
+  grid = SET_GRID_DEFAULT,
+  fills?: readonly [number, number],
+): "strip" | "grid" | "solo" {
+  const fit = (a: number) => !fills || (a >= fills[0] - 1e-6 && a <= fills[1] + 1e-6);
+  if (n === 3 || n === 4) return grid && fit(panelAspect(4, GRID_SIZE)) ? "grid" : "solo";
+  return n >= 2 && fit(panelAspect(n, setSize(n))) ? "strip" : "solo";
 }
 
 /** Every panel of the set, placed or undefined (its slot stays empty). Never throws but an abort. */
@@ -473,7 +494,7 @@ export async function makePictureSet(
   const style = setStyle(look);
   const shows = asks.map((a) => a.shows);
   const same = relation === "stages";
-  const mode = setMode(asks.length, deps.grid);
+  const mode = setMode(asks.length, deps.grid, asks[0]?.fills);
   let capped = false;
   /** Generations each panel has had (a strip or grid counts once for every panel in it). */
   const tries = asks.map(() => 0);
