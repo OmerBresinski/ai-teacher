@@ -2220,6 +2220,8 @@ export function createWriterPictures(opts: {
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
+    /** Panels already shown by `onPanel`: the set's end never sets them twice. */
+    const early = new Set<number>();
     const generateSet = (look: typeof setLook) =>
       makePictureSet(
         asks,
@@ -2235,11 +2237,25 @@ export function createWriterPictures(opts: {
             ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
           ]),
           log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
+          // TEACH-247 part cd (plants showcase s13): each panel is shown as it passes. The set used
+          // to land all at once, so the settle deadline that stopped one panel's second solo threw
+          // away its two judged, paid neighbours and the stages slide shipped as numbered text.
+          onPanel: (k, p) => {
+            const e = panels[k];
+            if (!e?.slot || e.slot.state.status !== "pending") return;
+            early.add(k);
+            set(p, e.ask, e.slot);
+            nonFatalSync(
+              () => opts.onPlaced?.(group.index, e.ask.key),
+              () => undefined,
+            );
+          },
         },
         look,
       ).then(
         (made) => {
-          for (const [i, { ask, slot }] of panels.entries()) set(made[i], ask, slot);
+          for (const [i, { ask, slot }] of panels.entries())
+            if (!early.has(i)) set(made[i], ask, slot);
           finish();
         },
         (error: unknown) => {

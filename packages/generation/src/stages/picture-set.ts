@@ -352,6 +352,13 @@ export interface PictureSetDeps {
   signal?: AbortSignal;
   /** Ids, counts, costs and reasons only: never a prompt (ADR 0015). */
   log(event: Record<string, unknown>): void;
+  /**
+   * A panel placed for good (judged and saved), as soon as it is, by its index in the asks
+   * (TEACH-247 part cd): the caller shows it then, so a deadline that stops a panel still being
+   * made again never takes its placed neighbours with it. Never for a strip attempt a later one
+   * may replace.
+   */
+  onPanel?(k: number, picture: SetPicture): void;
 }
 
 /**
@@ -552,6 +559,11 @@ export async function makePictureSet(
       ...(boxes?.length ? { boxes } : {}),
     };
   };
+  /** A panel placed for good, handed to the caller at once (`onPanel`). */
+  const placed = (k: number, p: SetPicture, final = true): SetPicture => {
+    if (final) deps.onPanel?.(k, p);
+    return p;
+  };
   // A budget stop or an abort (`isFatal`) stops the set: no more paid pictures once the budget is gone.
   const judge = (a: SetAsk, url: string) =>
     deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
@@ -584,7 +596,7 @@ export async function makePictureSet(
           failed(k, { reason: "judge", ...(verdict.why ? { why: verdict.why } : {}) });
           return "again";
         }
-        return await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`);
+        return placed(k, await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`));
       },
       (e) => {
         const reason = imageFailReason(e);
@@ -684,7 +696,9 @@ export async function makePictureSet(
     return Promise.all(
       asks.map((a, k) => {
         const bytes = panels[k];
-        return pass[k] && bytes ? place(a, bytes, judged[k]?.boxes, set) : undefined;
+        return pass[k] && bytes
+          ? place(a, bytes, judged[k]?.boxes, set).then((p) => placed(k, p, mode !== "strip"))
+          : undefined;
       }),
     );
   };

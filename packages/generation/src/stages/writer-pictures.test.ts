@@ -991,6 +991,49 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
   const saw = (item: string) =>
     verdict({ pick: "made", onSubject: true, clear: true, fits: true, visible: [item] });
 
+  test("a stages set shows its judged panels when the deadline stops one still being made (TEACH-247 part cd)", async () => {
+    const m = splitMaker();
+    let n = 0;
+    const inner = m.maker.generator;
+    // The fourth generation (stage 0 made again alone) runs past the deadline (plants showcase s13).
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: inner.model,
+      generate: (req) =>
+        n++ === 3
+          ? new Promise((_, reject) =>
+              req.signal?.addEventListener("abort", () =>
+                reject(Object.assign(new Error("stopped"), { name: "AbortError" })),
+              ),
+            )
+          : inner.generate(req),
+    };
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        // Stage 0's first picture shows the wrong thing: it is made again alone.
+        createFakeAi({ script: [saw("a cat"), saw("seed head"), saw("seeds"), odd] }),
+      ),
+      maker: { ...m.maker, generator },
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const seen = ["sunflower", "seed head", "seeds"];
+    for (const [k, s] of seen.entries())
+      pictures.start(
+        12,
+        ask({ key: `stage.${k}`, shows: `A ${s}`, mustSee: [s], named: false, set: "stages" }),
+        slide,
+      );
+    await pictures.settle(400);
+    expect(pictures.state(12, "stage.1").status).toBe("photo");
+    expect(pictures.state(12, "stage.2").status).toBe("photo");
+    expect(pictures.state(12, "stage.0").status).toBe("failed");
+  });
+
   test("a compound ask is one generated set joined into the slot's one picture", async () => {
     const m = splitMaker();
     const pictures = createWriterPictures({
