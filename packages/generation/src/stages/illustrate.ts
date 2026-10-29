@@ -696,6 +696,11 @@ export type DirectedPlacedPhoto = PlacedPhoto & {
   /** The photo's width over height, as the provider reports it. */
   aspect?: number;
   boxes?: DirectedVerdict["boxes"];
+  /**
+   * TEACH-247 part bt: the request the judge passed this photo against (`fits`), so a later check
+   * counts what it asked for as seen rather than whether `visible` echoed the writer's words.
+   */
+  judged?: string;
 };
 
 type DirectedOutcome =
@@ -936,6 +941,7 @@ export async function pickDirectedPhoto(args: {
       const withAbout: DirectedPlacedPhoto = {
         ...placed,
         about: picked.about || picked.alt,
+        ...(brief.request ? { judged: brief.request } : {}),
         ...(picked.width > 0 && picked.height > 0 ? { aspect: picked.width / picked.height } : {}),
       };
       return {

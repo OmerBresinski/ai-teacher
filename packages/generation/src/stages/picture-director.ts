@@ -2052,7 +2052,7 @@ export function createWriterPictures(opts: {
         // reroute or a fit) may paint it again.
         slot.won = true;
         refused.delete(index);
-        const p = photo as typeof photo & { about?: string; boxes?: Box[] };
+        const p = photo as typeof photo & { about?: string; boxes?: Box[]; judged?: string };
         slot.state = photoState(
           p,
           (photo as { aspect?: number }).aspect ?? ask.aspect ?? 1,
@@ -2065,6 +2065,7 @@ export function createWriterPictures(opts: {
         const seen = seenOf({
           alt: photo.alt,
           about: p.about,
+          judged: p.judged,
           request: requestOf(ask),
           provider: photo.source?.provider,
           source: photo.source,
