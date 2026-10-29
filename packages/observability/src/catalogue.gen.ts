@@ -64,6 +64,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_look_unmet: ["kind", "slide"],
   gen_lost_early: ["slide"],
   gen_lost_early_failed: ["slide"],
+  gen_lost_early_landed: ["slide"],
   gen_lost_fallback_early: ["slide"],
   gen_lost_library_undrawn: ["slide", "why"],
   gen_lost_picture: ["asked", "landed", "ok", "slide", "try"],
@@ -81,6 +82,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_on_flow_item_failed: [],
   gen_orphan6_drop: ["moved", "orphans", "slide"],
   gen_overflow_shipped: ["level"],
+  gen_picture_kind: ["ask", "outcome", "slide", "slideIndex", "stage"],
   gen_picture_last_resort: [
     "attempts",
     "group",

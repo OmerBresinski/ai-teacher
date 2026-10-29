@@ -2073,7 +2073,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       const job = nonFatal(
         async () => {
           await slideDone(i);
-          if (run.signal?.aborted || path.has(i) || !lostAsks(i).length) return;
+          if (run.signal?.aborted || path.has(i)) return;
+          // TEACH-247 part cc: pictures that landed while this wait ran past the settle (a group's
+          // repaint) are laid into the slide here: after the settle a landing relays nothing, so the
+          // slide shipped as text with its three paintings made (romans cc-proof s9).
+          if (!lostAsks(i).length) {
+            if (a0.some((a) => a.type === "photo" && visualState(i)(a.key).status === "photo")) {
+              relay(i);
+              path.set(i, "picture-placed");
+              log({ ev: "lost-early-landed", slide: i + 1 });
+            }
+            return;
+          }
           const now = plan.slides[i] as S;
           kept = { s: now, n: notes.get(i), a: asks.get(i) ?? [], p: path.get(i) };
           log({ ev: "lost-early", slide: i + 1 });
