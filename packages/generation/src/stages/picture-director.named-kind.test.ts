@@ -6,6 +6,8 @@ import type { DirectedPlacer } from "./illustrate";
 import type { BankRequest, PictureBank } from "./photo-bank";
 import {
   createWriterPictures,
+  kindBriefOf,
+  kindRequest,
   type PictureOutcome,
   placeWriterPicture,
   RECONSTRUCTION_CAPTION,
@@ -133,5 +135,30 @@ describe("a slide's group repaint (TEACH-247 part cc)", () => {
     for (const m of members) pictures.start(8, m, slide);
     await pictures.whenSlideDone(8, 40);
     for (const m of members) expect(pictures.state(8, m.key).status).toBe("photo");
+  });
+});
+
+describe("a kind's judge brief (TEACH-247 part cc)", () => {
+  test("is the kind and its must-see words, never the named place it stands in for", () => {
+    const req = {
+      text: "Remains of Milecastle 42 on Hadrian's Wall",
+      named: "Remains of Milecastle 42 on Hadrian's Wall",
+      route: "real" as const,
+      period: "Roman Britain, northern England",
+    };
+    const kind = kindRequest(req, ["small stone enclosure", "Hadrian's Wall remains"]);
+    if (!kind) throw new Error("no kind");
+    expect(kind.imagePrompt).not.toMatch(/as it looked in its own time/);
+    const brief = kindBriefOf(
+      {
+        subject: "Remains of Milecastle 42 on Hadrian's Wall",
+        named: "Remains of Milecastle 42 on Hadrian's Wall",
+        request: "Remains of Milecastle 42 on Hadrian's Wall",
+        mustShow: ["small stone enclosure", "Hadrian's Wall remains"],
+      } as never,
+      kind,
+    );
+    expect(JSON.stringify(brief)).not.toMatch(/Milecastle|Hadrian/);
+    expect(brief.mustShow).toContain("small stone enclosure");
   });
 });

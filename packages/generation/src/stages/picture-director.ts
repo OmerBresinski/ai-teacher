@@ -762,10 +762,13 @@ export async function findDirected(args: {
     : args.stockFallback
       ? { ...plan.request, stockFallback: true }
       : plan.request;
-  const brief: ImageBrief =
+  const placeBrief: ImageBrief =
     plan.kind === "photo"
       ? { ...b, ...plan.brief, specific: plan.brief.specific || b.specific === true }
       : b;
+  // TEACH-247 part cc: a kind's repaint is judged as the kind, never as the named place (romans
+  // cc-proof s9: all three kind paintings were refused for not showing Hadrian's Wall itself).
+  const brief: ImageBrief = kindPaint ? kindBriefOf(placeBrief, kindPaint) : placeBrief;
   // TEACH-251 part v: a "where" slide about a real place shows a map of where it is. A Commons
   // locator map is searched beside the place's own ladder (never before it, so the slot is no
   // slower), capped at LOCATOR_MAP_MS, and stored in the library like any picture; when one is
@@ -865,13 +868,9 @@ export async function findDirected(args: {
       : undefined;
   if (kindReq) {
     const t0 = Date.now();
-    const { named: _named, ...unnamed } = brief;
     const kindBrief: ImageBrief = {
-      ...unnamed,
-      subject: kindReq.text.slice(0, 60),
-      request: kindReq.text,
+      ...kindBriefOf(brief, kindReq),
       queries: kindQueries(req, brief.mustShow ?? []),
-      specific: true,
     };
     const got = await findPicture(
       kindReq,
@@ -1117,7 +1116,22 @@ export function kindRequest(
     realFallback: "illustration",
     style: "illustration",
     stockFirst: false,
-    imagePrompt: `A hand-painted reconstruction of ${what}${when}, as it looked in its own time, clearly a painting and not a photograph: a typical example of its kind, not any one particular real site.`,
+    imagePrompt: `A hand-painted reconstruction of ${what}${when}, clearly a painting and not a photograph: a typical example of its kind, not any one particular real site.`,
+  };
+}
+
+/** The brief a kind is searched and judged by: the kind's words and its must-see words, no name. */
+export function kindBriefOf(brief: ImageBrief, kind: BankRequest): ImageBrief {
+  const { named: _named, ...unnamed } = brief;
+  const mustShow = (brief.mustShow ?? [])
+    .map((m) => (withoutWords(m, brief.named ?? brief.subject) ?? "").trim())
+    .filter(Boolean);
+  return {
+    ...unnamed,
+    subject: kind.text.slice(0, 60),
+    request: kind.text,
+    mustShow,
+    specific: true,
   };
 }
 

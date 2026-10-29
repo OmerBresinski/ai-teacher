@@ -155,3 +155,53 @@ describe("a picture still pending when its early wait ends", () => {
     expect(JSON.stringify(out.slides)).toContain(src);
   });
 });
+
+describe("pictures that land after the settle, during the slide's early wait (TEACH-247 part cc)", () => {
+  test("are laid into the slide, not dropped because the settle had passed", async () => {
+    const rec = recordedVisuals(B);
+    let landed = false;
+    let settled: () => void = () => {};
+    const settledP = new Promise<void>((r) => {
+      settled = r;
+    });
+    const src = "/files/test/4-late.png";
+    const events: { ev?: string; slide?: number }[] = [];
+    const out = await runWriter({
+      brief: read("brief.json") as Brief,
+      objectives: (read("objectives.json") as { objectives: { teacher: string }[] }).objectives.map(
+        (o) => o.teacher,
+      ),
+      services: {
+        ...replayServices(B),
+        log: (e: { ev?: string; slide?: number }) => events.push(e),
+        writer: async () => ({
+          text: (read("main.json") as { text: string }).text,
+          finishReason: "stop",
+          usd: 0,
+          ms: 0,
+        }),
+      },
+      // Slide 5's picture failed at the settle; its group repaint lands after it.
+      visual: (i, key, a) =>
+        i === 4 && a.type === "photo"
+          ? landed
+            ? { status: "photo", photo: { src, alt: key, aspect: 1.5, request: key } }
+            : { status: "failed" }
+          : rec(i, key, a),
+      held: recordedHeld(B),
+      retryable: () => false,
+      editableAtWords: true,
+      slideDone: async (i) => {
+        if (i !== 4) return;
+        await settledP;
+        await new Promise((r) => setTimeout(r, 10));
+        landed = true;
+      },
+      beforeEditable: async () => {
+        settled();
+      },
+    });
+    expect(events.some((e) => e.ev === "lost-early-landed" && e.slide === 5)).toBe(true);
+    expect(JSON.stringify(out.slides)).toContain(src);
+  });
+});
