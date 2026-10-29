@@ -38,12 +38,17 @@ export function forms(w: string): Set<string> {
  * Round 6 metric fix (rootcause/pictures.md C), every arm: what a placed picture is known to show.
  * A stock pick carries the judge's `visible`; a generated or library pick passed the judge against its
  * brief but carries no `visible`, so its request (the must-see items it was judged on) counts as seen.
+ * A director-judged stock pick passed the judge's `fits` against the director's request (`judged`),
+ * so that request counts as seen too (TEACH-247 part bt: a husky pair dropped because `visible` never
+ * said "visible fur", which the request the judge passed asked for).
  * A director-split slot (b4-r1t3) shows its tiles too.
  */
 export type SeenPhoto = {
   alt?: string;
   about?: string;
   request?: string;
+  /** The director's request the judge passed the pick against (`fits`). */
+  judged?: string;
   provider?: string;
   source?: unknown;
   subjects?: { name: string }[];
@@ -60,6 +65,7 @@ export function seenOf(p: SeenPhoto): string[] {
     p.about ?? "",
     ...(p.subjects ?? []).map((x) => x.name),
     ...(judgedMade ? [p.request ?? ""] : []),
+    p.judged ?? "",
     ...(p.tiles ?? []).flatMap(seenOf),
   ];
 }

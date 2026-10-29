@@ -705,12 +705,14 @@ describe("writer pictures: match6, keepPic and a later round (BAKEOFF base4f)", 
         }),
       ],
     });
+  // TEACH-247 part bt: the request the judge passes (`fits`) counts as seen, so the director's
+  // request here never asks for the calf: the judge saw a cow and nothing said a calf is there.
   const cowDirection = async () =>
     direction({
       route: "pexels",
       pictures: [
         {
-          shows: "A cow and its calf",
+          shows: "A cow in a field",
           mustShow: ["cow"],
           queries: ["cow calf"],
           imagePrompt: "A cow and a calf.",
