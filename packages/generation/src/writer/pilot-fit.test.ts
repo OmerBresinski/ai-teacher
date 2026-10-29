@@ -711,8 +711,9 @@ describe("one source for the pilot caps: menu, schema and enforcer agree", () =>
       const slide = {
         ...fixedRow(),
         lead: null,
+        // Each name names its icon: a drawing its item does not name is dropped (TEACH-247 by).
         items: Array.from({ length: n }, (_, k) => ({
-          name: `Part ${k}`,
+          name: `Our ${["heart", "lungs", "muscles", "blood"][k] ?? "heart"}`,
           text: "Short line.",
           icon: ["heart", "lungs", "muscles", "blood"][k] ?? "heart",
         })),
