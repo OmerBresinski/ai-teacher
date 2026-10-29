@@ -1,3 +1,4 @@
+import { safeError } from "@tj/domain";
 import type { Finding, ImageBrief, Lesson, PhotoSource, SlideElement } from "@tj/domain/documents";
 import {
   isBlockedQuery,
@@ -858,7 +859,14 @@ export async function pickDirectedPhoto(args: {
   if (commonsFirst) {
     const got = await gather("commons").catch((error) => {
       rethrowStop(error);
-      deps.logger.warn({ stage: "illustrate", slideIndex: index, commons: "failed" });
+      // TEACH-247 part cc: the failure itself, so a failed search is never read as a miss.
+      deps.logger.warn({
+        stage: "illustrate",
+        slideIndex: index,
+        commons: "failed",
+        errorType: safeError(error).type,
+        err: error,
+      });
       return "busy" as const;
     });
     // The source follows the candidates: Commons stays the source while it gave any.
