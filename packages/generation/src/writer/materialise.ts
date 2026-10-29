@@ -1,7 +1,7 @@
 import "../icons-ready";
 import type { PhotoSource, Slide, Theme } from "@tj/domain/documents";
 // TEACH-75 part ad (C5).
-import { resolveIcon } from "@tj/slides/icons";
+import { iconFits, resolveIcon } from "@tj/slides/icons";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { layoutGroup } from "@tj/slides/relayout";
 import {
@@ -216,6 +216,38 @@ export function normalise(s: S): S {
         : "big-picture";
   if (!isDia(figure) && !isPic(figure)) return { ...rest, template: "explain" };
   return { ...rest, template, [dia ? "diagram" : "picture"]: figure };
+}
+
+/** Every string a slide (or one of its items) holds, bar its icon labels. */
+function textOf(o: unknown): string[] {
+  if (typeof o === "string") return [o];
+  if (Array.isArray(o)) return o.flatMap(textOf);
+  if (!o || typeof o !== "object") return [];
+  return Object.entries(o).flatMap(([k, v]) => (k === "icon" || k === "icons" ? [] : textOf(v)));
+}
+
+/**
+ * TEACH-247 part by: a writer's icon label is drawn only when it fits the words it sits beside
+ * (`iconFits`): its item's own words name it, or the slide and the lesson's topic name a drawing
+ * of its set. The writer picks from the whole library's list, so for a subject the library has no
+ * drawing of it can pick an unrelated one ("Fort" and "Milecastle" drew a volcano, Romans replay
+ * 29 Oct); a wrong drawing teaches the wrong thing, so it goes, and the layout shows the item with
+ * no icon (a numbered row where icons are all or none). A label that matches nothing, or a
+ * draft's pending icon, is left to the layout as before.
+ */
+export function groundIcons(s: S, topic = ""): S {
+  const around = [topic, ...textOf(s)].join("\n");
+  const unfit = (icon: unknown, own: string[]) =>
+    typeof icon === "string" && !!resolveIcon(icon) && !iconFits(icon, own.join("\n"), around);
+  let out = s;
+  if (unfit(s.icon, textOf(s))) out = { ...out, icon: null };
+  for (const [k, v] of Object.entries(s)) {
+    if (!Array.isArray(v)) continue;
+    const bad = (e: unknown) => !!e && typeof e === "object" && unfit((e as S).icon, textOf(e));
+    if (!v.some(bad)) continue;
+    out = { ...out, [k]: v.map((e) => (bad(e) ? { ...(e as S), icon: null } : e)) };
+  }
+  return out;
 }
 
 /**
@@ -481,7 +513,8 @@ export function toInput(
     return st === "photo" || st === "diagram" || st === "pending";
   };
   const raw = resolveAsks(raw0, placed);
-  const s = normalise(raw);
+  // A draft still streams the words an icon is judged by, so it is judged on the closed slide.
+  const s = ctx.draft ? normalise(raw) : groundIcons(normalise(raw), ctx.brief?.topic);
   const template = str(s.template) as TemplateInput["template"];
   const heading = str(s.heading);
   const fig = (k: string) => {
