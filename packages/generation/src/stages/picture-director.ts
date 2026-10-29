@@ -742,12 +742,19 @@ export async function findDirected(args: {
   }
   // A painted-only slot (its group is repainted together) skips every search: a real thing is a
   // period scene, anything else its own subject, painted (`lastResortRequest`).
+  // TEACH-247 part cc: a named place's panel, repainted judged, is its kind's reconstruction.
+  const kindPaint =
+    args.paintOnly && !args.unjudged && ask.named && direction?.named === "place"
+      ? kindRequest(plan.request, b.mustShow ?? [])
+      : undefined;
   const req = args.paintOnly
     ? lastResortRequest(
-        // A writer-named panel is a real thing: never painted itself, only a scene (ruling 299).
-        ask.named || args.unjudged
-          ? { ...plan.request, route: "real", realFallback: "none" }
-          : plan.request,
+        // A writer-named panel is a real thing: never painted itself, only its kind or a scene
+        // (ruling 299).
+        kindPaint ??
+          (ask.named || args.unjudged
+            ? { ...plan.request, route: "real", realFallback: "none" }
+            : plan.request),
         args.slide.heading,
         lesson.title,
         args.look,
@@ -843,6 +850,67 @@ export async function findDirected(args: {
     );
     if (got) out = { ...out, photo: got, via: "fetched", ms: out.ms + Date.now() - t0 };
   }
+  // TEACH-247 part cc: a named place the search missed (a failed search is retried instead) is
+  // shown by its kind (`kindRequest`): a real photo of that kind, else its painted reconstruction.
+  const kindReq =
+    !out.photo &&
+    plan.kind === "photo" &&
+    !args.paintOnly &&
+    direction?.named === "place" &&
+    req.route === "real" &&
+    (req.realFallback ?? "none") === "none" &&
+    !out.trace.stockFailure &&
+    !deps.signal.aborted
+      ? kindRequest(req, brief.mustShow ?? [])
+      : undefined;
+  if (kindReq) {
+    const t0 = Date.now();
+    const { named: _named, ...unnamed } = brief;
+    const kindBrief: ImageBrief = {
+      ...unnamed,
+      subject: kindReq.text.slice(0, 60),
+      request: kindReq.text,
+      queries: kindQueries(req, brief.mustShow ?? []),
+      specific: true,
+    };
+    const got = await findPicture(
+      kindReq,
+      args.bank,
+      (signal) => args.stock(kindBrief, signal),
+      deps.signal,
+      args.unjudged
+        ? undefined
+        : (made, reuse, onWhy) => args.judgeMade(kindBrief, made, reuse, onWhy),
+      Date.now,
+      sharedVerdictCache,
+      args.raceMs,
+    ).catch(whenNonFatal(() => undefined));
+    if (got?.photo)
+      out = {
+        ...out,
+        photo: got.photo,
+        via: got.via,
+        attempts: out.attempts + got.attempts,
+        ms: out.ms + Date.now() - t0,
+      };
+    const kindOutcome = got?.photo ? (got.via === "generated" ? "painted" : "photo") : "missed";
+    deps.logger.info(
+      { stage: "illustrate", ev: "picture-kind", slideIndex: args.index, outcome: kindOutcome },
+      "named place shown by its kind",
+    );
+    recordDebug(
+      deps.debug,
+      "event",
+      {
+        ev: "picture-kind",
+        slide: args.index + 1,
+        outcome: kindOutcome,
+        ask: kindReq.text,
+        queries: kindBrief.queries,
+      },
+      args.index,
+    );
+  }
   // TEACH-251 part ay (Greg, 27 Oct: "a planned picture is never missing"): a slot the search,
   // stock and painting all missed is painted once more as the last step: the same subject, or for
   // a real-only thing a period scene that shows no particular real person, place or object
@@ -913,9 +981,13 @@ export async function findDirected(args: {
     attempts: out.attempts,
     ...(out.reason ? { reason: out.reason } : {}),
   });
+  // TEACH-247 part cc: a search that failed is told apart from one that found nothing, so the
+  // slot is retried (`retryable`) instead of reported as a real miss (romans v5 s9: 30 ms, no try).
   const emptyReason =
     req.route === "real" && (req.realFallback ?? "none") === "none"
-      ? "real-miss-no-fallback"
+      ? out.trace.stockFailure
+        ? "real-search-failed"
+        : "real-miss-no-fallback"
       : "generation-refused-or-failed";
   // One line per picture (codes and counts only, ADR 0015), the same shape as a set frame's, so a
   // paid eval can count empty photos and why. `reason` is the last failure, also on a placed
@@ -1009,6 +1081,53 @@ export async function findDirected(args: {
         : "photo",
     ...(req.period && req.depicts ? { period: req.period } : {}),
   };
+}
+
+/** A picture search that failed or was busy: the ladder records it as a failure, not a miss. */
+export class RealSearchFailed extends Error {
+  override name = "RealSearchFailed";
+  constructor() {
+    super("The picture search failed or was busy.");
+  }
+}
+
+/**
+ * TEACH-247 part cc (Greg, 29 Oct: "a visual should never be lost"): a named place that the real
+ * search missed is shown by its kind, never as itself. The request is the place's kind of feature
+ * (the writer's must-see words and the period, with the place's own name cut): first a real photo
+ * of that kind (Commons, judged against the must-see words; its own caption names where it is),
+ * else a painted reconstruction of the kind, captioned "Artist's reconstruction" (ruling 300). A
+ * generic reconstruction is no particular real place, so ruling 163 allows it (ruling 299). Without
+ * must-see words there is no kind to show: undefined.
+ */
+export function kindRequest(
+  req: BankRequest,
+  mustShow: readonly string[],
+): BankRequest | undefined {
+  const cut = (t: string) => (withoutWords(t, req.named) ?? "").trim();
+  const what = mustShow.map(cut).filter(Boolean).join(", ");
+  if (!what) return undefined;
+  const period = req.period ? cut(req.period) : "";
+  const when = period ? ` in ${period}` : "";
+  return {
+    ...req,
+    text: `${what}${when}: a typical example of its kind, not one particular named site`,
+    named: null,
+    route: "real",
+    realFallback: "illustration",
+    style: "illustration",
+    stockFirst: false,
+    imagePrompt: `A reconstruction of ${what}${when}, as it looked in its own time: a typical example of its kind, not any one particular real site.`,
+  };
+}
+
+/** The kind's searches: each must-see phrase with the period's first part ("Roman Britain"). */
+export function kindQueries(req: BankRequest, mustShow: readonly string[]): string[] {
+  const head = req.period ? (withoutWords(req.period, req.named) ?? "").split(",")[0]?.trim() : "";
+  return mustShow
+    .map((m) => (withoutWords(m, req.named) ?? "").trim())
+    .filter(Boolean)
+    .map((m) => (head ? `${m} ${head}` : m));
 }
 
 /** Ruling 300's caption on a painting made because no real picture exists. */
@@ -1325,6 +1444,7 @@ export interface PictureOutcome {
     | "director-none"
     | "director-failed"
     | "real-miss-no-fallback"
+    | "real-search-failed"
     | "generation-refused-or-failed";
   /** Generations the ladder asked for (0: none ran). */
   attempts?: number;
@@ -1499,6 +1619,9 @@ export async function placeWriterPicture(args: {
         return { outcome: "empty" as const };
       }),
     );
+    // TEACH-247 part cc: a busy or failed search (Commons threw) is a failure on the ladder's trace
+    // (`stockFailed`), never a miss: a miss would end a named place's ladder with nothing tried.
+    if (r.outcome === "busy") throw new RealSearchFailed();
     return r.outcome === "placed" ? r.photo : undefined;
   };
   return nonFatal(
@@ -1752,6 +1875,7 @@ const MISS_LINE: Record<NonNullable<WriterPictureMiss>, string> = {
   "director-none": "The picture director chose no picture for this slide.",
   "director-failed": "The picture director could not be reached.",
   "real-miss-no-fallback": "No real photograph of this was found, and none is generated for it.",
+  "real-search-failed": "The search for a real photograph failed.",
   "generation-refused-or-failed": "No suitable picture was found.",
   "set-not-searched": "Picture sets are made by the generator, which is not on.",
   deadline: "The picture search ran out of time.",
@@ -2167,6 +2291,22 @@ export function createWriterPictures(opts: {
       );
     }
   };
+  /**
+   * TEACH-247 part cc: each slide's group repaints still running. `whenSlideDone` waits for them
+   * past its deadline, so a slide's fallback never runs while its pictures are being painted
+   * (romans v5 s9: three paintings landed 34 s after the slide was restaged as text).
+   */
+  const paints = new Map<number, Set<Promise<void>>>();
+  const tracked = (index: number, p: Promise<void>): Promise<void> => {
+    const mine = paints.get(index) ?? new Set<Promise<void>>();
+    paints.set(index, mine);
+    mine.add(p);
+    void p.then(
+      () => mine.delete(p),
+      () => mine.delete(p),
+    );
+    return p;
+  };
   /** A slide's group of single asks (`card.1`, `card.2`): their placements, for `paintGroup`. */
   const groups = new Map<
     string,
@@ -2251,10 +2391,13 @@ export function createWriterPictures(opts: {
         ),
       )
         .then(() =>
-          paintGroup(
+          tracked(
             group.index,
-            group.slide,
-            panels.flatMap(({ ask, slot }) => (slot ? [{ ask, slot }] : [])),
+            paintGroup(
+              group.index,
+              group.slide,
+              panels.flatMap(({ ask, slot }) => (slot ? [{ ask, slot }] : [])),
+            ),
           ),
         )
         .then(finish, finish);
@@ -2478,7 +2621,7 @@ export function createWriterPictures(opts: {
         g.painting = undefined;
         slot.done = placed.then(async () => {
           await Promise.allSettled(g.placed);
-          g.painting ??= paintGroup(index, slide, g.members);
+          g.painting ??= tracked(index, paintGroup(index, slide, g.members));
           await g.painting;
         });
       } else slot.done = placed;
@@ -2548,6 +2691,13 @@ export function createWriterPictures(opts: {
         if (ended || now.every((d) => mine.includes(d))) break;
       }
       if (timer) clearTimeout(timer);
+      // TEACH-247 part cc: a group repaint already running is waited for, past the deadline: its
+      // pictures land on the slide, never after the slide's fallback dropped them. A cancel ends it.
+      for (;;) {
+        const running = [...(paints.get(index) ?? [])];
+        if (!running.length || opts.deps.signal.aborted) break;
+        await Promise.allSettled(running);
+      }
     },
     async settleSlide(index, deadlineMs = WRITER_PICTURE_DEADLINE_MS) {
       const prefix = `${index}:`;
@@ -2596,7 +2746,8 @@ export function createWriterPictures(opts: {
     },
     retryable(index, key) {
       const miss = slots.get(id(index, key))?.miss;
-      return miss === "deadline" || miss === "error";
+      // TEACH-247 part cc: a real search that failed (an error or a busy Commons) is not a miss.
+      return miss === "deadline" || miss === "error" || miss === "real-search-failed";
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,

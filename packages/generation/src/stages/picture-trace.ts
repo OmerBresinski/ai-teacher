@@ -101,6 +101,7 @@ export const PICTURE_FAIL_REASONS = [
   "director-none",
   "director-failed",
   "real-miss-no-fallback",
+  "real-search-failed",
   "generation-refused-or-failed",
 ] as const;
 
