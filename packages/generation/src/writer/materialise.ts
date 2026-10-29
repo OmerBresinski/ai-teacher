@@ -675,8 +675,10 @@ export function toInput(
       // Steps with an ask line read as a lead and points beside the figure.
       const f = fig("figure");
       // Wave C (TEACH-110 part v): one step beside a library model (`steps~step-model`).
+      // TEACH-247 part cd (plants showcase s8): the step's words stay when its figure is not
+      // there (still coming or failed); they never go with the figure.
       const st = (s.step && typeof s.step === "object" ? s.step : null) as S | null;
-      if (st && f)
+      if (st)
         return {
           template,
           heading,
@@ -685,7 +687,7 @@ export function toInput(
             do: str(st.do),
             ...(typeof st.see === "string" && st.see.trim() ? { see: st.see } : {}),
           },
-          figure: f,
+          ...(f ? { figure: f } : {}),
         } as TemplateInput;
       const points = strs(s.points ?? s.steps);
       if (!lead) return { template, heading, points, figure: f };

@@ -165,3 +165,35 @@ describe("figure slide drafts: ids survive the hand-over", () => {
     );
   });
 });
+
+describe("a step with its model keeps its words (TEACH-247 part cd, plants showcase s8)", () => {
+  const stepSlide: S = {
+    template: "steps",
+    heading: "Water Travels Up",
+    step: {
+      n: null,
+      do: "Stand a stick of celery in blue water for one day.",
+      see: "The blue water climbs up the stem to the leaves.",
+    },
+    figure: { kind: "model", model: "plant_growth", intent: "celery in blue water" },
+  };
+  test("a failed model leaves the step's do and see on the slide", () => {
+    const i = toInput(
+      stepSlide,
+      ctx([{ template: "title" }, stepSlide], 1, () => ({ status: "failed" })),
+    );
+    expect(i.template).toBe("steps");
+    expect(i.step?.do).toBe("Stand a stick of celery in blue water for one day.");
+    expect(i.step?.see).toBe("The blue water climbs up the stem to the leaves.");
+    const laid = layoutTemplate(i, THEMES[0] as (typeof THEMES)[number], "ks2");
+    expect(JSON.stringify(laid.slide)).toContain("Stand a stick of celery");
+  });
+  test("a drawn model sits under the step", () => {
+    const i = toInput(
+      stepSlide,
+      ctx([{ template: "title" }, stepSlide], 1, () => drawn(2.2)),
+    );
+    expect(i.step?.do).toBe("Stand a stick of celery in blue water for one day.");
+    expect(i.figure && "drawn" in i.figure).toBe(true);
+  });
+});
