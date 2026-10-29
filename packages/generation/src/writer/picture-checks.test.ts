@@ -136,3 +136,30 @@ describe("keepPic fills only an empty slide (D48b, p123-2 y1 s6)", () => {
     expect(heldPhotoFills(findPairs, [])).toBe(true);
   });
 });
+
+// TEACH-247 part bt: genlab 20261028-235011-record-y1-animals-live1028, slide 6. The director's
+// request and the judge's verdict as recorded (cassette bodies 0011 and 0041).
+describe("match6 counts the request the judge passed (y1 live1028 s6 husky pair)", () => {
+  const mustSee = ["small puppy", "larger adult dog", "visible fur"];
+  const husky = {
+    alt: "Adorable husky puppy and adult dog",
+    provider: "pexels",
+    source: {
+      provider: "pexels",
+      evidence: { visible: ["small puppy", "larger adult dog", "same kind and colouring"] },
+    },
+  };
+  const judged =
+    "A small puppy sits beside a noticeably larger adult dog of the same breed, with both dogs’ fur clearly visible.";
+  test("before: the judge's list alone never says fur, so the photo was dropped", () => {
+    expect(unmatchedItems(mustSee, seenOf(husky))).toEqual(["visible fur"]);
+  });
+  test("the request the judge passed (fits) asked for the fur: the photo ships", () => {
+    expect(unmatchedItems(mustSee, seenOf({ ...husky, judged }))).toEqual([]);
+  });
+  test("a thing the passed request never asked for is still unmatched", () => {
+    expect(unmatchedItems([...mustSee, "kitten"], seenOf({ ...husky, judged }))).toEqual([
+      "kitten",
+    ]);
+  });
+});

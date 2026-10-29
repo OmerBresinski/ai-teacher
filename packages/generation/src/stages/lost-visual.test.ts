@@ -148,7 +148,18 @@ describe("match6 on any slide", () => {
           ],
         }),
       ),
-      direct: async () => direction({}),
+      // TEACH-247 part bt: the request the judge passed never asks for the calf, so it is unseen.
+      direct: async () =>
+        direction({
+          pictures: [
+            {
+              shows: "A cow in a field",
+              mustShow: ["cow"],
+              queries: ["cow"],
+              imagePrompt: "A cow.",
+            },
+          ],
+        }),
     });
     pictures.start(4, ask(), slide);
     await pictures.settle(1_000);
