@@ -1117,7 +1117,7 @@ export function kindRequest(
     realFallback: "illustration",
     style: "illustration",
     stockFirst: false,
-    imagePrompt: `A reconstruction of ${what}${when}, as it looked in its own time: a typical example of its kind, not any one particular real site.`,
+    imagePrompt: `A hand-painted reconstruction of ${what}${when}, as it looked in its own time, clearly a painting and not a photograph: a typical example of its kind, not any one particular real site.`,
   };
 }
 

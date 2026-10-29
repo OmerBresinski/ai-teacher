@@ -100,6 +100,8 @@ describe("a named place's search (TEACH-247 part cc)", () => {
     expect(kind?.text).toContain("small stone enclosure");
     expect(kind?.text).not.toMatch(/Milecastle|Hadrian/);
     expect(kind?.imagePrompt ?? "").not.toMatch(/Milecastle|Hadrian/);
+    // Honest on any route: the painting says it is one even with no style line wrapped round it.
+    expect(kind?.imagePrompt ?? "").toMatch(/clearly a painting and not a photograph/);
     expect(kind?.realFallback).toBe("illustration");
     expect(got?.source.caption).toBe(RECONSTRUCTION_CAPTION);
   });
