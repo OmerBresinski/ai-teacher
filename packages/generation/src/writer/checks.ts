@@ -89,6 +89,9 @@ export function referentFault(words: string, hasFigure: boolean): string | undef
 const POINTING =
   /\b(look at|look closely|in the (photo|picture|image|diagram|drawing)|(this|the) (photo|picture|image|diagram|drawing)( shows| below| above)?|on the (picture|photo|diagram)|can you see|what do you notice)\b/i;
 
+/** The least opacity a shape between words and a picture needs to be the words' ground. */
+export const GROUND_OPACITY = 0.6;
+
 export function checkSlide(a: {
   index: number;
   slide: Pick<Slide, "elements"> | undefined;
@@ -132,6 +135,25 @@ export function checkSlide(a: {
   const spans = shownSpans(s.elements);
   const at = (e: SlideElement) => s.elements.indexOf(e);
   const together = (a: SlideElement, b: SlideElement) => shownTogether(spans, at(a), at(b));
+  // TEACH-247 part cb: words read on a ground drawn between them and the picture (the hook's
+  // scrim over its full-bleed photo, ruling 203; a panel laid on a picture) are on that ground,
+  // not over the picture. The ground must cover all the words share with the picture, be shown
+  // with them and be dense enough to read on (`GROUND_OPACITY`); a faint tint is not one.
+  const onGround = (t: SlideElement, p: SlideElement) => {
+    const box = {
+      x: Math.max(t.x, p.x),
+      y: Math.max(t.y, p.y),
+      w: Math.min(t.x + t.w, p.x + p.w) - Math.max(t.x, p.x),
+      h: Math.min(t.y + t.h, p.y + p.h) - Math.max(t.y, p.y),
+    };
+    return s.elements.some((g) => {
+      if (g.type !== "shape" || at(g) <= at(p) || at(g) >= at(t) || !together(g, t)) return false;
+      const { fill, opacity } = g as { fill?: string; opacity?: number };
+      if (!fill || fill === "none" || fill === "transparent") return false;
+      if ((opacity ?? 1) < GROUND_OPACITY) return false;
+      return inter(g, box) >= box.w * box.h - 1;
+    });
+  };
   const texts = s.elements.filter((e) => e.type === "text");
   const pics = s.elements.filter((e) => e.type === "image");
   for (let i = 0; i < texts.length; i++)
@@ -142,7 +164,8 @@ export function checkSlide(a: {
     }
   for (const t of texts)
     for (const p of pics)
-      if (inter(t, p) > 4 && together(t, p)) faults.push(`overlap: ${label(t)} over a picture`);
+      if (inter(t, p) > 4 && together(t, p) && !onGround(t, p))
+        faults.push(`overlap: ${label(t)} over a picture`);
   for (let i = 0; i < pics.length; i++)
     for (let j = i + 1; j < pics.length; j++)
       if (

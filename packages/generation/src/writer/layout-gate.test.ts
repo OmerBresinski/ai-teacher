@@ -2,13 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { LAYOUT_FAULT, layoutGate } from "./layout-gate";
 
 /* TEACH-247 part af: the order of the layout gate's fallbacks and when each is undone. */
-const run = (o: { faults: string[][]; visuals: boolean; split: boolean }) => {
+const run = (o: { faults: string[][]; split: boolean }) => {
   const calls: string[] = [];
   let k = 0;
   const r = layoutGate({
     faults: () => o.faults[Math.min(k++, o.faults.length - 1)] ?? [],
-    dropVisuals: () => (calls.push("drop"), o.visuals),
-    undoDrop: () => void calls.push("undo"),
     split: () => (calls.push("split"), o.split),
     undoSplit: () => void calls.push("undo-split"),
   });
@@ -17,56 +15,52 @@ const run = (o: { faults: string[][]; visuals: boolean; split: boolean }) => {
 
 describe("layout gate (TEACH-247 part af)", () => {
   test("a clean slide is left alone", () => {
-    expect(run({ faults: [[]], visuals: true, split: true })).toEqual({
-      outcome: "clean",
-      faults: [],
-      calls: [],
-    });
+    expect(run({ faults: [[]], split: true })).toEqual({ outcome: "clean", faults: [], calls: [] });
   });
   test("a split that clears the faults keeps the visual", () => {
-    const r = run({ faults: [["overflow: x"], []], visuals: true, split: true });
+    const r = run({ faults: [["overflow: x"], []], split: true });
     expect(r.outcome).toBe("split");
     expect(r.calls).toEqual(["split"]);
   });
-  test("a split that leaves faults in any part is undone before the drop", () => {
+  test("a split that leaves faults in any part is undone and the faults reported", () => {
     const r = run({
-      faults: [["overlap: a and b"], ["part 2: overlap: c and d"], []],
-      visuals: true,
+      faults: [["overlap: a and b"], ["part 2: overlap: c and d"], ["overlap: a and b"]],
       split: true,
     });
-    expect(r.outcome).toBe("dropped-visual");
-    expect(r.calls).toEqual(["split", "undo-split", "drop"]);
-  });
-  test("no split: dropping the visual that clears the faults is kept", () => {
-    const r = run({ faults: [["overlap: a over a picture"], []], visuals: true, split: false });
-    expect(r.outcome).toBe("dropped-visual");
-    expect(r.calls).toEqual(["split", "drop"]);
-  });
-  test("a drop that does not clear is undone and the faults are reported", () => {
-    const r = run({ faults: [["overflow: x"]], visuals: true, split: false });
-    expect(r.outcome).toBe("left");
-    expect(r.calls).toEqual(["split", "drop", "undo"]);
+    expect(r).toEqual({
+      outcome: "left",
+      faults: ["overlap: a and b"],
+      calls: ["split", "undo-split"],
+    });
   });
   test("what nothing fixes is reported, never hidden", () => {
-    const r = run({ faults: [["clipped: x runs off the slide"]], visuals: false, split: false });
+    const r = run({ faults: [["clipped: x runs off the slide"]], split: false });
     expect(r).toEqual({
       outcome: "left",
       faults: ["clipped: x runs off the slide"],
-      calls: ["split", "drop"],
+      calls: ["split"],
     });
   });
-  // TEACH-251 part s: the other layout that keeps the visual comes before a split or a drop.
+  // TEACH-247 part cb (Plants s3, replay v5): a fault nothing clears never costs the slide its
+  // visual. The gate has no step that drops one, and keeps it when it reports the fault.
+  test("a picture overlap no step clears keeps the picture and is reported", () => {
+    const r = run({
+      faults: [['overlap: "What do plants need to grow?" over a picture']],
+      split: false,
+    });
+    expect(r.outcome).toBe("left");
+    expect(r.calls).not.toContain("drop");
+  });
+  // TEACH-251 part s: the other layout that keeps the visual comes before a split.
   test("a layout switch that clears the faults keeps the visual; one that does not is undone", () => {
     const calls: string[] = [];
     const steps = (afterSwitch: string[]) => {
       let k = 0;
-      const seq = [["clipped: lead runs off"], afterSwitch, []];
+      const seq = [["clipped: lead runs off"], afterSwitch, afterSwitch];
       return layoutGate({
         faults: () => seq[Math.min(k++, seq.length - 1)] ?? [],
         switchLayout: () => calls.push("switch") > 0,
         undoSwitch: () => void calls.push("undo-switch"),
-        dropVisuals: () => calls.push("drop") > 0,
-        undoDrop: () => void calls.push("undo"),
         split: () => calls.push("split") < 0,
         undoSplit: () => void calls.push("undo-split"),
       });
@@ -74,8 +68,8 @@ describe("layout gate (TEACH-247 part af)", () => {
     expect(steps([]).outcome).toBe("switched");
     expect(calls).toEqual(["switch"]);
     calls.length = 0;
-    expect(steps(["clipped: still"]).outcome).toBe("dropped-visual");
-    expect(calls).toEqual(["switch", "undo-switch", "split", "drop"]);
+    expect(steps(["clipped: still"]).outcome).toBe("left");
+    expect(calls).toEqual(["switch", "undo-switch", "split"]);
   });
   test("only layout faults go through the gate", () => {
     for (const f of ["overlap: a and b", "clipped: x", "off-slide: x"])

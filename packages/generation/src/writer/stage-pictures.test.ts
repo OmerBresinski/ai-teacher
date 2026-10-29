@@ -129,3 +129,34 @@ describe("a slide still holding a picture placeholder is a check fault", () => {
     expect(r.faults.filter((f) => f.startsWith("placeholder:"))).toHaveLength(3);
   });
 });
+
+/*
+ * TEACH-247 part ca (Plants s5): a pair activity's cards are distinct subjects, so the director
+ * never makes them one individual. Only stages, a picture sequence or a sequence of one subject are.
+ */
+describe("a set says whether it is one subject", () => {
+  const same = (s: S) =>
+    visualsOf(s, INDEX, base).map((a) => (a as { sameSubject?: boolean }).sameSubject);
+  const cards = (template: string, shows: string[]) => ({
+    template,
+    heading: "Plant parts",
+    instruction: "Match each picture to its name.",
+    cards: shows.map((x) => ({ label: x.split(" ")[0], picture: pic(x) })),
+  });
+  test("pair, group-sort and odd-one-out cards are distinct subjects", () => {
+    const parts = ["Roots of a flowering plant", "Stem of a flowering plant"];
+    for (const t of ["pair", "group-sort", "odd-one-out"])
+      expect(same(cards(t, parts))).toEqual([false, false]);
+  });
+  test("a sequence activity is one subject only when its cards name one", () => {
+    expect(
+      same(cards("sequence", ["A bean seed in soil", "A bean seedling", "A tall bean plant"])),
+    ).toEqual([true, true, true]);
+    expect(
+      same(cards("sequence", ["Bread on a plate", "A toaster", "Hot buttered toast"])),
+    ).toEqual([false, false, false]);
+  });
+  test("a stages strip is one subject", () => {
+    expect(same(stages)).toEqual([true, true, true]);
+  });
+});

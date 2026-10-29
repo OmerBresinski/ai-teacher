@@ -146,7 +146,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_set_panel_error: ["key", "reason", "set"],
   gen_set_solo: ["key", "ok", "set", "try", "usd"],
   gen_set_solo_error: ["key", "reason", "set", "try"],
-  gen_set_start: ["aspect", "mode", "n", "set"],
+  gen_set_start: ["aspect", "mode", "n", "relation", "set"],
   gen_slide_role: ["role", "slide", "template"],
   gen_slide_tail_failed: ["slide"],
   gen_slot_fill: ["fit", "route", "slide", "template", "waveCCountCaps"],
