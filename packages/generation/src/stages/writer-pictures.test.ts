@@ -1788,3 +1788,121 @@ describe("a generated picture waiting on its judge outlives the deadline (picq, 
     expect(pictures.state(4, "card.0").status).toBe("photo");
   });
 });
+
+describe("TEACH-247 part cf: a picture that lands after its round's deadline is kept", () => {
+  const sheep = (over: Partial<PictureDirection> = {}) =>
+    direction({
+      route: "pexels",
+      pictures: [
+        {
+          shows: "A sheep in a field",
+          mustShow: ["sheep"],
+          queries: ["sheep field"],
+          imagePrompt: "A sheep.",
+        },
+      ],
+      ...over,
+    });
+  const pick = () =>
+    verdict({
+      pick: "p7",
+      onSubject: true,
+      clear: true,
+      fits: true,
+      visible: ["sheep"],
+      count: "one",
+      boxes: [{ item: "sheep", left: 0.1, top: 0.2, right: 0.6, bottom: 0.9 }],
+    });
+  const sheepAsk = ask({ shows: "A sheep in a field", mustSee: ["sheep"], named: false });
+
+  test("a later round's ask past its deadline keeps running, and its picture fills the slot", async () => {
+    let release: (d: PictureDirection) => void = () => {};
+    const gate = new Promise<PictureDirection>((r) => {
+      release = r;
+    });
+    const placed: string[] = [];
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: images({ pexels: [photo("p7")] }),
+      deps: recordingDeps(createFakeAi({ script: [pick()] })),
+      direct: () => gate,
+      onPlaced: (i, key) => placed.push(`${i}:${key}`),
+    });
+    // romans v6 s7: the retry round's search started 27 s into its 45 s and was stopped.
+    pictures.start(6, sheepAsk, slide);
+    await pictures.settleSlide(6, 5);
+    expect(pictures.state(6, "picture").status).toBe("failed");
+    release(sheep());
+    await pictures.whenSlideDone(6, 5_000);
+    expect(pictures.state(6, "picture").status).toBe("photo");
+    expect(pictures.vetoed(6, "picture")).toBeUndefined();
+    expect(placed).toEqual(["6:picture"]);
+    expect(pictures.sources().size).toBe(1);
+  });
+
+  test("the editable round's ask that lands just after the settle is kept (romans v6 s11)", async () => {
+    let storeGo: () => void = () => {};
+    const storeGate = new Promise<void>((r) => {
+      storeGo = r;
+    });
+    const placed: string[] = [];
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: {
+        search: async () => [photo("p7")],
+        store: async (p: PhotoResult) => {
+          await storeGate;
+          return stored(p);
+        },
+      } as DirectedPlacer,
+      deps: recordingDeps(createFakeAi({ script: [pick()] })),
+      direct: async () => sheep(),
+      onPlaced: (i, key) => placed.push(`${i}:${key}`),
+    });
+    pictures.start(10, sheepAsk, slide);
+    // The judge has picked; the picture is still being stored when the round's deadline passes.
+    await new Promise((r) => setTimeout(r, 30));
+    await pictures.settle(1);
+    expect(pictures.state(10, "picture").status).toBe("failed");
+    storeGo();
+    await pictures.whenSlideDone(10, 5_000);
+    expect(pictures.state(10, "picture").status).toBe("photo");
+    expect(placed).toEqual(["10:picture"]);
+  });
+
+  test("a late picture fills the key's re-ask still running, which then stops", async () => {
+    let storeGo: () => void = () => {};
+    const storeGate = new Promise<void>((r) => {
+      storeGo = r;
+    });
+    let calls = 0;
+    const pictures = createWriterPictures({
+      lesson: sampleBriefLesson(),
+      country: "UK",
+      images: {
+        search: async () => [photo("p7")],
+        store: async (p: PhotoResult) => {
+          await storeGate;
+          return stored(p);
+        },
+      } as DirectedPlacer,
+      deps: recordingDeps(createFakeAi({ script: [pick()] })),
+      // The re-ask's director never answers: only the first placement can fill the slot.
+      direct: () =>
+        calls++ === 0
+          ? Promise.resolve(sheep())
+          : new Promise<PictureDirection | undefined>(() => {}),
+    });
+    pictures.start(8, sheepAsk, slide);
+    await new Promise((r) => setTimeout(r, 30));
+    await pictures.settle(1);
+    // The stage's retry asks the key again while the first placement is still storing.
+    pictures.start(8, sheepAsk, slide);
+    expect(pictures.state(8, "picture").status).toBe("pending");
+    storeGo();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(pictures.state(8, "picture").status).toBe("photo");
+  });
+});

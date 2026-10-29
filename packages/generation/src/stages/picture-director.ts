@@ -1818,7 +1818,7 @@ export interface WriterPictures {
   settle(deadlineMs?: number): Promise<void>;
   /**
    * Wait for one slide's started asks only, at most `deadlineMs`; an ask of that slide still
-   * running stops and counts as failed. Other slides' placements are left running, so two slides'
+   * running counts as failed but keeps running, and a picture it lands later is kept. Other slides' placements are left running, so two slides'
    * later rounds (lostPic, a diagram's picture fallback) never wait on or cancel each other.
    */
   settleSlide(index: number, deadlineMs?: number): Promise<void>;
@@ -2185,7 +2185,14 @@ export function createWriterPictures(opts: {
       ...(unjudged ? { unjudged: true } : {}),
     })
       .then((photo) => {
-        if (slot.state.status !== "pending") return;
+        // TEACH-247 part cf (romans v6 s11: Chesters fort's Commons photo landed 4.5 s after its
+        // round's deadline and was thrown away): a slot failed only by its deadline still takes the
+        // picture its placement lands; the stage lays it in (`onPlaced`) or reads it at its next look.
+        const late = slot.state.status === "failed" && slot.miss === "deadline";
+        if (slot.state.status !== "pending" && !late) return;
+        // A re-ask of the key that already holds a picture keeps it: this late one is not shown.
+        const now = slots.get(id(index, ask.key));
+        if (late && (!photo || (now && now !== slot && now.state.status === "photo"))) return;
         if (!photo) {
           slot.state = { status: "failed" };
           slot.miss = reason ?? "generation-refused-or-failed";
@@ -2240,6 +2247,19 @@ export function createWriterPictures(opts: {
             { stage: "generate", picture: k, unmatched: named },
             "writer picture dropped (match6)",
           );
+        }
+        if (!late || slot.state.status !== "photo") return;
+        slot.miss = undefined;
+        opts.deps.logger.info(
+          { stage: "illustrate", ev: "picture-late-kept", slideIndex: index, key: ask.key },
+          "writer picture landed after its deadline: kept",
+        );
+        // The key's re-ask still running (the stage's retry) takes this picture and stops.
+        if (now && now !== slot && now.state.status !== "photo") {
+          now.state = slot.state;
+          now.miss = undefined;
+          now.won = true;
+          now.stop.abort();
         }
       }, onError(slot))
       .then(() => {
@@ -2311,11 +2331,18 @@ export function createWriterPictures(opts: {
       "picture last resort",
     );
     if (!painted) return;
-    for (const [i, { ask, slot }] of members.entries()) {
+    for (const [i, { ask, slot: was }] of members.entries()) {
+      // TEACH-247 part cf (romans v6 s9: a repaint begun before the retry round re-asked the rows
+      // landed its three paintings on the replaced slots, and the slide read none): the paintings go
+      // to each key's slot now, stopping a re-ask still running.
+      const now = slots.get(id(index, ask.key));
+      const slot = now ?? was;
+      if (now && now !== was && now.state.status === "pending") now.stop.abort();
       // The real picture it replaces leaves the lesson's sources (no credit for a picture not shown).
       if (slot.state.status === "photo") sources.delete(slot.state.photo.src);
       slot.state = (stand[i] as Slot).state;
       slot.miss = undefined;
+      slot.won = true;
       nonFatalSync(
         () => opts.onPlaced?.(index, ask.key),
         () => undefined,
@@ -2772,7 +2799,10 @@ export function createWriterPictures(opts: {
         // This slide's round is over: its keys may be asked once more in a later round.
         reasked.delete(k);
         if (slot.state.status !== "pending") continue;
-        slot.stop.abort();
+        // TEACH-247 part cf (romans v6 s7: the retry's search started 27 s into its 45 s, and the
+        // deadline stopped it before the named place's kind rung and the last-resort painting ran):
+        // the slot counts as failed for the stage now, but its placement keeps climbing its ladder
+        // and a picture it lands is kept (`late`). The job's cancel still stops it.
         slot.state = { status: "failed" };
         slot.miss = "deadline";
       }
