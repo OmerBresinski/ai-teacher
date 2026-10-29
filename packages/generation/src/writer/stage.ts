@@ -2887,8 +2887,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   const pictureLost = async (i: number) => {
     if (path.has(i) || i < 2) return;
+    if (!lostAsks(i)[0]) return;
+    // TEACH-247 part cf (romans v6 s7, s9, s11: each slide was restaged as text while its pictures
+    // were still being found or painted, and they landed after): a placement of the slide still
+    // running past its round's deadline (it keeps climbing its ladder) is waited for before any
+    // fallback, and a picture it lands is laid on the slide.
+    await run.slideDone?.(i);
+    relay(i);
     const lost = lostAsks(i)[0];
-    if (!lost) return;
+    if (!lost) {
+      log({ ev: "lost-picture-landed", slide: i + 1 });
+      return;
+    }
     // lostPic (BAKEOFF base4f): a library diagram of the same thing, then one picture per subject,
     // before any rewrite; the slide is restored unless every new visual lands (a split: unless
     // splitOk holds, and then only its landed pictures ship).

@@ -68,6 +68,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_lost_fallback_early: ["slide"],
   gen_lost_library_undrawn: ["slide", "why"],
   gen_lost_picture: ["asked", "landed", "ok", "slide", "try"],
+  gen_lost_picture_landed: ["slide"],
   gen_main_incomplete: ["chars", "why"],
   gen_notes: ["attempt", "ms", "of", "slides", "usd"],
   gen_notes_error: ["attempt"],
@@ -97,6 +98,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
     "stage",
     "unjudged",
   ],
+  gen_picture_late_kept: ["key", "slideIndex", "stage"],
   gen_picture_outcome: [
     "attempts",
     "director",

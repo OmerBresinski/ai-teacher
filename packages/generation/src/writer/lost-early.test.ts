@@ -205,3 +205,50 @@ describe("pictures that land after the settle, during the slide's early wait (TE
     expect(JSON.stringify(out.slides)).toContain(src);
   });
 });
+
+describe("a picture still being placed when its slide's fallback would run (TEACH-247 part cf)", () => {
+  test("is waited for and laid in; the slide is not restaged as text", async () => {
+    const rec = recordedVisuals(B);
+    let landed = false;
+    let waits = 0;
+    const src = "/files/test/4-ladder.png";
+    const events: { ev?: string; slide?: number }[] = [];
+    const out = await runWriter({
+      brief: read("brief.json") as Brief,
+      objectives: (read("objectives.json") as { objectives: { teacher: string }[] }).objectives.map(
+        (o) => o.teacher,
+      ),
+      services: {
+        ...replayServices(B),
+        log: (e: { ev?: string; slide?: number }) => events.push(e),
+        writer: async () => ({
+          text: (read("main.json") as { text: string }).text,
+          finishReason: "stop",
+          usd: 0,
+          ms: 0,
+        }),
+      },
+      // romans v6 s7: slide 5's picture passed its round's deadline (failed for the stage) while
+      // its placement kept climbing the ladder; it lands only during the fallback's own wait.
+      visual: (i, key, a) =>
+        i === 4 && a.type === "photo"
+          ? landed
+            ? { status: "photo", photo: { src, alt: key, aspect: 1.5, request: key } }
+            : { status: "failed" }
+          : rec(i, key, a),
+      held: recordedHeld(B),
+      retryable: () => false,
+      editableAtWords: true,
+      slideDone: async (i) => {
+        if (i !== 4) return;
+        if (waits++ === 0) return;
+        await new Promise((r) => setTimeout(r, 10));
+        landed = true;
+      },
+      beforeEditable: async () => {},
+    });
+    expect(events.some((e) => e.ev === "lost-picture-landed" && e.slide === 5)).toBe(true);
+    expect(events.some((e) => e.ev === "restage-fallback" && e.slide === 5)).toBe(false);
+    expect(JSON.stringify(out.slides)).toContain(src);
+  });
+});
