@@ -22,6 +22,7 @@ import {
   FIGURE_WIDE_ASPECT,
   figureSlideAllowed,
 } from "@tj/slides/templates/figure-rules";
+import { isSameSubjectSet } from "../stages/picture-set";
 import { activityWords } from "./activities";
 import { labelsOf, writerSpecOf } from "./diagrams";
 import type { Brief, Stage } from "./fixes";
@@ -64,6 +65,11 @@ export type VisualAsk =
       aspect?: number;
       fixedShape?: boolean;
       set?: string;
+      /**
+       * TEACH-247 part ca: the set is one subject at different stages (a picture sequence, a stages
+       * strip, a sequence activity whose cards name one subject); false: distinct subjects.
+       */
+      sameSubject?: boolean;
       /** A cards grid's small square icon (ruling 203): one object, cut out, read at a glance. */
       icon?: boolean;
     }
@@ -1137,6 +1143,15 @@ export function visualsOf(
         : key.startsWith("stage.") && shows("stage.").length >= 2
           ? "stages"
           : undefined;
+  // TEACH-247 part ca: only stages are one subject. Match, sort and odd-one-out cards are distinct
+  // subjects (Plants s5's roots, stem, leaves and flower came out as four whole plants); a sequence
+  // activity's cards are one subject only when they name one (a bean seed, seedling and plant).
+  const sameOf = (set: string | undefined) =>
+    set === "seq" || set === "stages"
+      ? true
+      : set === "cards"
+        ? str(s.template) === "sequence" && isSameSubjectSet(shows("card."))
+        : undefined;
   // A myth's proof picture the template gave way (the fact needs its room, TEACH-247 part ae) has
   // no slot: it is never asked for, so no picture is searched for or lands without a place.
   // Likewise a panel list's row picture the template leaves off (TEACH-247 part aj: pictures on
@@ -1156,7 +1171,7 @@ export function visualsOf(
             mustSee: f.must_see ?? [],
             named: f.subject === "named",
             ...(slots[key] ? { aspect: slots[key].aspect, fixedShape: slots[key].fixed } : {}),
-            ...(setOf(key) ? { set: setOf(key) } : {}),
+            ...(setOf(key) ? { set: setOf(key), sameSubject: sameOf(setOf(key)) } : {}),
             ...(key.startsWith("icon.") ? { icon: true } : {}),
           },
   );
