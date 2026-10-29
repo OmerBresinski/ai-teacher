@@ -149,16 +149,21 @@ describe("a kind's judge brief (TEACH-247 part cc)", () => {
     const kind = kindRequest(req, ["small stone enclosure", "Hadrian's Wall remains"]);
     if (!kind) throw new Error("no kind");
     expect(kind.imagePrompt).not.toMatch(/as it looked in its own time/);
+    // A painting of a kind, never a reconstruction set against must-see words such as remains.
+    expect(kind.imagePrompt).toMatch(/^A hand-painted picture of /);
     const brief = kindBriefOf(
       {
         subject: "Remains of Milecastle 42 on Hadrian's Wall",
         named: "Remains of Milecastle 42 on Hadrian's Wall",
         request: "Remains of Milecastle 42 on Hadrian's Wall",
         mustShow: ["small stone enclosure", "Hadrian's Wall remains"],
+        avoid: ["modern visitors", "Hadrian's Wall"],
+        period: "Hadrian's Wall, AD 130",
       } as never,
       kind,
     );
     expect(JSON.stringify(brief)).not.toMatch(/Milecastle|Hadrian/);
     expect(brief.mustShow).toContain("small stone enclosure");
+    expect(brief.avoid).toEqual(["modern visitors"]);
   });
 });

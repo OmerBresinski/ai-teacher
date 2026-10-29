@@ -1116,7 +1116,7 @@ export function kindRequest(
     realFallback: "illustration",
     style: "illustration",
     stockFirst: false,
-    imagePrompt: `A hand-painted reconstruction of ${what}${when}, clearly a painting and not a photograph: a typical example of its kind, not any one particular real site.`,
+    imagePrompt: `A hand-painted picture of ${what}${when}, clearly a painting and not a photograph: a typical example of its kind, not any one particular real site.`,
   };
 }
 
@@ -1126,8 +1126,18 @@ export function kindBriefOf(brief: ImageBrief, kind: BankRequest): ImageBrief {
   const mustShow = (brief.mustShow ?? [])
     .map((m) => (withoutWords(m, brief.named ?? brief.subject) ?? "").trim())
     .filter(Boolean);
+  // The place's own avoid words and period are cut of its name too: "not Hadrian's Wall" would
+  // refuse every painting of the kind, and the judge never reads the name it stands in for.
+  const avoid = (brief.avoid ?? [])
+    .map((m) => (withoutWords(m, brief.named ?? brief.subject) ?? "").trim())
+    .filter(Boolean);
+  const period = brief.period
+    ? (withoutWords(brief.period, brief.named ?? brief.subject) ?? "").trim()
+    : "";
   return {
     ...unnamed,
+    avoid: avoid.length ? avoid : undefined,
+    period: period || undefined,
     subject: kind.text.slice(0, 60),
     request: kind.text,
     mustShow,
