@@ -28,6 +28,7 @@ async function run(
     template?: string;
     side?: boolean;
     points?: boolean;
+    step?: boolean;
     heading?: string;
     checks?: "act" | "log";
     model?: string;
@@ -48,6 +49,7 @@ async function run(
   if (!shape.side) first.template = shape.template ?? "big-visual";
   if (!shape.side && !shape.points) delete first.points;
   if (shape.heading) first.heading = shape.heading;
+  if (shape.step) first.step = { n: null, do: "Cut the circle into two equal parts.", see: null };
   first.figure = {
     kind: "model",
     model: shape.model ?? "fractions",
@@ -186,6 +188,18 @@ describe("writer stage: library models", () => {
     expect(fills.length).toBe(1);
     expect(events).not.toContainEqual(expect.objectContaining({ ev: "lib-side-slot" }));
     expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
+  }, 60_000);
+
+  test("a model on a step with its model is drawn by the library, not sent to the drawer (TEACH-247 part cd)", async () => {
+    const m = await loadModel("fractions");
+    const { fills, events, slide } = await run(() => m?.presets[0]?.params, {
+      template: "steps",
+      step: true,
+    });
+    expect(fills.length).toBe(1);
+    expect(events).not.toContainEqual(expect.objectContaining({ ev: "lib-side-slot" }));
+    expect(events).toContainEqual(expect.objectContaining({ ev: "diagram-done", via: "library" }));
+    expect(JSON.stringify(slide?.elements)).toContain("Cut the circle into two equal parts.");
   }, 60_000);
 
   test("a model off the lesson's menu (the schema lists the stage's whole catalogue) goes to the drawer, no fill", async () => {
