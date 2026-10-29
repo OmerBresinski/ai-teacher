@@ -9,6 +9,7 @@
   "overrides": {
     "happy-dom": "21.0.4",
     "image-size": "workspace:*",
+    "re2js": "2.8.7",
     "solid-js": "1.9.17",
     "source-map-js": "1.2.2"
   },
