@@ -16,7 +16,7 @@ type S = Record<string, unknown>;
 const SLIDES = FIXTURE.slides as S[];
 const STAGES = ["ks1", "ks2"] as const;
 
-const lay = (k: number, theme: string, stage: string, dropped: boolean) =>
+const lay = (k: number, theme: string, stage: string) =>
   materialise(
     SLIDES[k] as S,
     {
@@ -25,7 +25,7 @@ const lay = (k: number, theme: string, stage: string, dropped: boolean) =>
       stage,
       index: k + 2,
       plan: { flow: [], slides: SLIDES },
-      visual: () => (dropped ? { status: "failed" } : { status: "pending" }),
+      visual: () => ({ status: "pending" }),
     } as never,
   );
 
@@ -46,16 +46,8 @@ describe("the Great Fire lesson ships with no layout fault after the gate (TEACH
       test(`${t.id} ${stage}`, () => {
         const left: { slide: number; faults: string[] }[] = [];
         SLIDES.forEach((_s, k) => {
-          let dropped = false;
           const gate = layoutGate({
-            faults: () => faultsOf(k, lay(k, t.id, stage, dropped)),
-            dropVisuals: () => {
-              dropped = true;
-              return true;
-            },
-            undoDrop: () => {
-              dropped = false;
-            },
+            faults: () => faultsOf(k, lay(k, t.id, stage)),
             // No continuation here (the stage's split is covered by layout-gate-replay.test.ts).
             split: () => false,
             undoSplit: () => {},
