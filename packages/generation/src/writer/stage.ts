@@ -2179,11 +2179,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * (the deck-wide call or an earlier redo). One call per change: a redo for a slide as already
    * seen is skipped, never paid twice; a later change replaces a redo that saw an older slide.
    */
-  const redoNotes = (i: number, why?: string) => {
+  const redoNotes = (i: number) => {
     const shown = notesKey(i);
     if (i < 2 || shown === seenByNotes.get(i)) return;
     seenByNotes.set(i, shown);
-    log({ ev: "notes-redo", slide: i + 1, ...(why ? { why } : {}) });
+    log({ ev: "notes-redo", slide: i + 1 });
     notesRedone.set(i, notesCall(i + 1));
   };
 
@@ -3229,9 +3229,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     log({ ev: ok ? "fit-continued" : "fit-continue-failed", slide: i + 1 });
   }
   // TEACH-247 part af: the layout gate. A slide still carrying an overlap or clipped text falls back
-  // in code (no model call, in log mode too): a split over at most two continuation slides inside
-  // the tier's maximum (rulings 261, 295), else its visuals dropped. Every part is judged for every
-  // layout fault, and a step that leaves one is undone.
+  // in code (no model call, in log mode too): the other layout with the same visual, else a split
+  // over at most two continuation slides inside the tier's maximum (rulings 261, 295). Its visuals
+  // are never dropped (TEACH-247 part cb). Every part is judged for every layout fault, and a step
+  // that leaves one is undone.
   const layoutFaultsAt = (i: number) => [
     ...(check()[i]?.faults ?? []).filter((f) => LAYOUT_FAULT.test(f)),
     ...(continued.get(i) ?? []).flatMap((c, k) =>
@@ -3251,8 +3252,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const addedSlides = () => [...continued.values()].reduce((t, c) => t + c.length, 0);
   const gateSlide = (i: number, mayAddSlides = true) => {
     if (continued.has(i) || !repairable(plan.slides[i] as S, i)) return;
-    const keys = (asks.get(i) ?? []).map((a) => a.key);
-    const kept = keys.map((k) => [k, override.get(`${i}:${k}`)] as const);
     const s0 = plan.slides[i] as S;
     const n0 = notes.get(i);
     const asks0 = asks.get(i) ?? [];
@@ -3284,23 +3283,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         return false;
       },
       undoSplit: () => restore(i, s0, n0, asks0),
-      dropVisuals: () => {
-        if (!keys.length) return false;
-        for (const k of keys) override.set(`${i}:${k}`, { status: "failed" });
-        relay(i);
-        return true;
-      },
-      undoDrop: () => {
-        for (const [k, v] of kept)
-          if (v) override.set(`${i}:${k}`, v);
-          else override.delete(`${i}:${k}`);
-        relay(i);
-      },
     });
-    // TEACH-251 part t: the note was written for the slide with its visual. A gate that drops it
-    // before the notes are in writes that slide's note again, so no note sends pupils to a map
-    // or picture that is not there (romans verify3 s3: "locate it on a map", the map dropped).
-    if (gate.outcome === "dropped-visual" && mayAddSlides) redoNotes(i, "layout-gate");
     if (gate.outcome !== "clean")
       log({
         ev: "layout-gate",
