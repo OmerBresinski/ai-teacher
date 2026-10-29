@@ -434,16 +434,18 @@ export function drawGroups(c: Ctx, names: string[], r: Rect): string[] {
     const lw = r.w - d - 36;
     const lh = kit.measure(c, name, "lead", lw, 700);
     if (lh > lineH(c, "lead") + 1) c.over.push("group name 2 lines");
-    kit.text(
+    const label = kit.text(
       c,
       name,
       "lead",
       { x: r.x + d + 24, y: y + 6, w: lw },
       { weight: 700, color: c.t.colors.ink, name: "Group name" },
     );
-    if (6 + head + 2 + lineH(c, "body") + 6 > h) c.over.push(`group box ${h}pt`);
+    // The answer line sits under the name as drawn, never across a name that took two lines.
+    const top = Math.max(head, label.h);
+    if (6 + top + 2 + lineH(c, "body") + 6 > h) c.over.push(`group box ${h}pt`);
     const id = uid();
-    gapLine(c, "", id, { x: r.x + 16, y: y + 6 + head + 2, w: r.w - 32 }, "body");
+    gapLine(c, "", id, { x: r.x + 16, y: y + 6 + top + 2, w: r.w - 32 }, "body");
     return id;
   });
 }
@@ -579,9 +581,10 @@ function groupSort(c: Ctx, input: TemplateInput, area: Rect): QuestionData | und
   const order = shuffled(cards.length, seedOf(input), (o) =>
     LEAKS.groups(o.map((k) => cards[k]?.group ?? -1)),
   );
-  // The group column is as wide as its longest name needs (one line), within 200-260.
+  // The group column is as wide as its longest name needs on one line (at least 200), up to a
+  // third of the area (TEACH-247 part ce: a 260 cap wrapped a Year 1 "Not a plant" onto its line).
   const nameW = Math.max(...names.map((n) => textWidth(c, n)));
-  const colW = Math.min(260, Math.max(200, nameW + stripDisc(c, "lead") + 44));
+  const colW = Math.min(Math.round(area.w / 3), Math.max(200, nameW + stripDisc(c, "lead") + 44));
   const grid = { x: area.x, y: area.y, w: area.w - colW - 16, h: area.h };
   const cols = cards.length <= 6 ? 3 : 4;
   const role = denseRole(c);

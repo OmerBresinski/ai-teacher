@@ -1,4 +1,5 @@
 import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
+import { isWriterActivity } from "./activities";
 import { charsOver, fitTable } from "./fixes";
 import { capWords, fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
@@ -598,7 +599,10 @@ export function slotFillArrival(
   // A pilot layout (TEACH-110 part s) is one def with no per-fit variants: it carries no `fit`,
   // is checked against its own def here and measured at its drawn size later (pilot-fit.ts).
   const own = DEF_OF_TEMPLATE[layout] ?? layout;
-  const pilot = !key && PILOT_LAYOUTS.has(layout) && !!defs[own];
+  // An activity (pair, group sort, ...) is one def too, with no `fit` (TEACH-247 part ce: every
+  // pair and group sort was logged "fit: missing" and routed as a writer fault): its card words are
+  // held to the measured cell by `fromWriterActivity`, its pictures by their slots.
+  const pilot = !key && (PILOT_LAYOUTS.has(layout) || isWriterActivity(layout)) && !!defs[own];
   const def = key ? defs[variantDefName(layout, key)] : pilot ? defs[own] : undefined;
   const breaches: string[] = [];
   const cuts: string[] = [];

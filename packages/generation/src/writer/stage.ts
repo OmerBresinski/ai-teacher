@@ -71,7 +71,6 @@ import {
 import {
   answerFirst,
   applyRepair,
-  asksVisual,
   type Brief,
   charsOver,
   contextBlock,
@@ -85,6 +84,7 @@ import {
   layoutsFor,
   lineMatchesObjective,
   linkSteps,
+  lookMet,
   lookOf,
   lostFault,
   OVERFLOW,
@@ -1391,7 +1391,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
       s = added.slide;
       // A pilot layout draws its own visual (icons, medals, side pictures): its look is met.
-    } else if (look && look.kind !== "none" && !asksVisual(s) && !isPilot(s))
+    } else if (look && !lookMet(s, look) && !isPilot(s))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
     const one = titleOneThing(s);
     if (one.how) {
