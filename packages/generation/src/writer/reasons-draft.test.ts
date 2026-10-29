@@ -50,7 +50,7 @@ const SLIDES: Record<string, S> = {
     heading: "Why do we sweat?",
     lead: "Your skin makes sweat on hot days.",
     items: [
-      { head: "Moving makes us hot", line: "Running and playing warm us up.", icon: "exercise" },
+      { head: "Moving makes us hot", line: "Running or exercise warm us up.", icon: "exercise" },
       {
         head: "Our body must stay at 37 °C",
         line: "Our insides work best at this heat.",
