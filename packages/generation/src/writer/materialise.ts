@@ -302,6 +302,14 @@ function figures(s: S): { key: string; f: Pic | Dia }[] {
       const f = sideFigure((d as S)?.picture);
       if (f) out.push({ key: `side.${n}`, f });
     });
+  // Stages (TEACH-75 part ac; TEACH-247 part bx): one picture per stage. The template lays
+  // `stage.<n>` slots, so a stage picture never asked for shipped its grey placeholder (human
+  // writer y1 s7, chick to hen).
+  if (s.template === "stages")
+    (Array.isArray(s.items) ? s.items : []).forEach((i, n) => {
+      const p = (i as S)?.picture;
+      if (isPic(p)) out.push({ key: `stage.${n}`, f: p });
+    });
   // Myth and fact (TEACH-75 part ag): the proof's one picture is asked like any other (picq,
   // greatfire 26 Oct: it was never asked, so its slot stayed open and shipped the placeholder).
   if (s.template === "myth") {
@@ -1120,12 +1128,15 @@ export function visualsOf(
   // A sequence's panels are made together as one set; a compare card gets its own picture.
   // Activity cards are made as one set too: the director makes a generic set in one style and
   // sends a named or historical set down its ladder card by card (ruling 163).
+  // A stages strip's pictures are one set as well (one style from first stage to last).
   const setOf = (key: string) =>
     key.startsWith("seq.") && shows("seq.").length >= 2
       ? "seq"
       : key.startsWith("card.") && shows("card.").length >= 2
         ? "cards"
-        : undefined;
+        : key.startsWith("stage.") && shows("stage.").length >= 2
+          ? "stages"
+          : undefined;
   // A myth's proof picture the template gave way (the fact needs its room, TEACH-247 part ae) has
   // no slot: it is never asked for, so no picture is searched for or lands without a place.
   // Likewise a panel list's row picture the template leaves off (TEACH-247 part aj: pictures on

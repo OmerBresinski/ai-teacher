@@ -1,0 +1,198 @@
+[
+  {
+    "template": "question-set",
+    "heading": "Animals you know",
+    "items": [
+      {
+        "question": "Which farm animal says baa?",
+        "answer": "A sheep"
+      },
+      {
+        "question": "Which pet says meow?",
+        "answer": "A cat"
+      },
+      {
+        "question": "Which pet animal says woof?",
+        "answer": "A dog"
+      },
+      {
+        "question": "Which farm bird lays eggs?",
+        "answer": "A hen"
+      }
+    ]
+  },
+  {
+    "template": "panel-list",
+    "heading": "Young animal names",
+    "lead": "Many young animals have their own name.",
+    "panel": null,
+    "items": [
+      {
+        "name": "Puppy",
+        "text": "A puppy grows into a dog.",
+        "icon": null,
+        "picture": {
+          "shows": "a small puppy sitting next to its mother dog",
+          "must_see": ["small puppy", "adult dog"],
+          "subject": "generic"
+        }
+      },
+      {
+        "name": "Kitten",
+        "text": "A kitten grows into a cat.",
+        "icon": null,
+        "picture": {
+          "shows": "a small kitten curled up beside its mother cat",
+          "must_see": ["small kitten", "adult cat"],
+          "subject": "generic"
+        }
+      },
+      {
+        "name": "Lamb",
+        "text": "A lamb grows into a sheep.",
+        "icon": null,
+        "picture": {
+          "shows": "a small lamb standing next to its mother sheep in a field",
+          "must_see": ["small lamb", "adult sheep"],
+          "subject": "generic"
+        }
+      },
+      {
+        "name": "Chick",
+        "text": "A chick grows into a hen.",
+        "icon": null,
+        "picture": {
+          "shows": "a fluffy yellow chick standing next to an adult hen",
+          "must_see": ["fluffy yellow chick", "adult hen"],
+          "subject": "generic"
+        }
+      }
+    ]
+  },
+  {
+    "template": "pair",
+    "heading": "Match the young to adults",
+    "instruction": "Match each young animal to the animal it grows into.",
+    "cards": [
+      {
+        "label": "Dog",
+        "picture": "a small puppy on its own"
+      },
+      {
+        "label": "Cat",
+        "picture": "a small kitten on its own"
+      },
+      {
+        "label": "Hen",
+        "picture": "a fluffy yellow chick on its own"
+      }
+    ]
+  },
+  {
+    "template": "split-compare",
+    "heading": "From lamb to sheep",
+    "accentWord": null,
+    "sides": [
+      {
+        "title": "Lamb",
+        "text": "Small and drinks its mum's milk.",
+        "quote": null,
+        "picture": {
+          "shows": "a young lamb drinking milk from its mother in a field",
+          "must_see": ["small lamb", "drinking from mum"],
+          "subject": "generic"
+        }
+      },
+      {
+        "title": "Sheep",
+        "text": "Big, eats grass, has thick wool.",
+        "quote": null,
+        "picture": {
+          "shows": "a fully grown sheep with a thick woolly coat eating grass",
+          "must_see": ["thick woolly coat", "eating grass"],
+          "subject": "generic"
+        }
+      }
+    ]
+  },
+  {
+    "template": "stages",
+    "heading": "From chick to hen",
+    "accentWord": null,
+    "items": [
+      {
+        "name": "Chick",
+        "line": "Small, with soft yellow fluff, no feathers.",
+        "icon": "bird",
+        "picture": {
+          "shows": "a newly hatched chick covered in soft yellow fluff, with no feathers yet",
+          "must_see": ["soft yellow fluff", "no feathers yet", "very small"],
+          "subject": "generic"
+        }
+      },
+      {
+        "name": "Young hen",
+        "line": "Bigger, and grows its first real feathers.",
+        "icon": "bird feather",
+        "picture": {
+          "shows": "a half-grown young hen with patchy new feathers and a little fluff left, no comb yet",
+          "must_see": ["patchy new feathers", "some fluff left", "medium size"],
+          "subject": "generic"
+        }
+      },
+      {
+        "name": "Hen",
+        "line": "Fully grown, covered in feathers, lays eggs.",
+        "icon": "hen",
+        "picture": {
+          "shows": "a fully grown brown hen covered in feathers, standing next to an egg",
+          "must_see": ["full feathers", "red comb", "an egg"],
+          "subject": "generic"
+        }
+      }
+    ]
+  },
+  {
+    "template": "hinge",
+    "heading": "What does a chick grow as it becomes a hen?",
+    "options": [
+      {
+        "text": "Lots of feathers",
+        "icon": null,
+        "why": null
+      },
+      {
+        "text": "Thick wool",
+        "icon": null,
+        "why": "Mixes up the chick with the lamb, which grows thick wool as it becomes a sheep."
+      },
+      {
+        "text": "Soft fur",
+        "icon": null,
+        "why": "Brings in pets from home: thinks every young animal grows fur, like a kitten or puppy."
+      }
+    ]
+  },
+  {
+    "template": "practice",
+    "heading": "How animals grow",
+    "picture": null,
+    "items": [
+      {
+        "question": "A small animal has soft yellow fluff. What is it?",
+        "answer": "A chick",
+        "working": null
+      },
+      {
+        "question": "Which one lays eggs, a chick or a hen?",
+        "answer": "A hen",
+        "working": null
+      },
+      {
+        "question": "Draw a puppy and the dog it grows into.",
+        "answer": "A small puppy next to a much bigger dog.",
+        "working": null
+      }
+    ]
+  }
+]

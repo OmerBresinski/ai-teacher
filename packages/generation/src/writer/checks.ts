@@ -45,6 +45,23 @@ const realPicture = (e: SlideElement) =>
   !!(e as { src?: string }).src &&
   (e as { src: string }).src !== PLACEHOLDER_IMAGE;
 
+/**
+ * The picture placeholders (open slots) among a slide's elements, inside groups too: an adaptive
+ * pilot layout (stages, panel list, split compare) is one `layoutGroup` whose children hold its
+ * pictures (TEACH-247 part bx).
+ */
+export function placeholderSlots(
+  elements: readonly unknown[],
+): { request?: string; name?: string }[] {
+  return elements.flatMap((e) => {
+    const x = e as { type?: string; src?: string; children?: unknown[] };
+    if (x.type === "group" && Array.isArray(x.children)) return placeholderSlots(x.children);
+    return x.type === "image" && x.src === PLACEHOLDER_IMAGE
+      ? [e as { request?: string; name?: string }]
+      : [];
+  });
+}
+
 /** Words that point at data, a table or a graph (round 4). */
 export const DATA_POINTING =
   /\b(the (results|table|data|graph|curve|chart|tangent|readings|trend|values shown)|(this|that) (table|graph|chart|data|curve)|shown (above|below)|in the (table|graph|chart))\b/i;
@@ -91,6 +108,11 @@ export function checkSlide(a: {
   for (const o of a.over) faults.push(`overflow: ${o}`);
   if (a.diagram?.length)
     faults.push(`diagram: figure could not be drawn: ${a.diagram.slice(0, 3).join("; ")}`);
+  // TEACH-247 part bx: a picture slot still holding the grey placeholder is a hard fault, never a
+  // pass (human writer y1 s7 shipped three with `failing: 0`). Reported, never repaired: the fix
+  // is that every slot is asked for.
+  for (const e of placeholderSlots(s.elements))
+    faults.push(`placeholder: picture slot never filled (${e.request ?? e.name ?? "image"})`);
   // Clipping: anything past the slide's edge. A picture bleeding past an edge, still mostly on the
   // slide, and a wordless full-bleed `surface:` ground (the question set's answer column runs to
   // the foot) are drawn that way by design (TEACH-247 part af); a picture mostly off the slide,

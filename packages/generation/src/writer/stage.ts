@@ -34,6 +34,7 @@ import {
   checkSlide,
   duplicateFaults,
   offSlide,
+  placeholderSlots,
   referentFault,
   slideNoEmDash,
 } from "./checks";
@@ -1809,9 +1810,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Dangling and unanswerable are reported, never a repair trigger: the ask / ask_without pair is
   // the fix by construction.
   const VISUAL_DANGLING = /^(dangling|unanswerable):/;
+  // TEACH-247 part bx: a picture placeholder is reported (and logged at the end), never repaired.
+  const REPORT_ONLY = /^(dangling|unanswerable|placeholder):/;
   const failingNow = () =>
     checks
-      .map((c) => ({ ...c, faults: c.faults.filter((f) => !VISUAL_DANGLING.test(f)) }))
+      .map((c) => ({ ...c, faults: c.faults.filter((f) => !REPORT_ONLY.test(f)) }))
       .filter((c) => c.faults.length > 0 && repairable(plan.slides[c.slide - 1] as S, c.slide - 1));
   /** How each slide's figure ended (diagram, picture, words-…), logged for the run. */
   const path = new Map<number, string>();
@@ -3381,10 +3384,31 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return faults.length && id ? [{ slide: i + 1, id, faults }] : [];
   });
   for (const o of overflow) log({ ev: "overflow-shipped", level: "warn", ...o });
-  log({ ev: "summary", textOnlyTeach, dangling: dangling.length, coverage: unmet.length });
+  // TEACH-247 part bx: a slide that ends holding a picture placeholder is a hard fault, logged in
+  // every checks mode (continuation slides included). Never repaired here.
+  const finalDeck = deck();
+  const placeholders = finalDeck.flatMap((sl) => {
+    const open = placeholderSlots(sl.elements).length;
+    return open ? [{ id: sl.id, open }] : [];
+  });
+  for (const p of placeholders)
+    log({
+      ev: "placeholder-shipped",
+      level: "error",
+      fault: "placeholder",
+      id: p.id,
+      open: p.open,
+    });
+  log({
+    ev: "summary",
+    textOnlyTeach,
+    dangling: dangling.length,
+    coverage: unmet.length,
+    placeholders: placeholders.length,
+  });
   return {
     overflow,
-    slides: deck(),
+    slides: finalDeck,
     plan,
     checks,
     title: String((plan.slides[0] as S | undefined)?.heading ?? brief.topic),
