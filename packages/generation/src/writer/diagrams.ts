@@ -605,7 +605,7 @@ async function drawerCall(
   const parts = vp ? `\nParts of a ${vp.view}: ${vp.parts.join(", ")}` : "";
   const lettered =
     ask.question && LETTERED_KINDS.has(ask.kind)
-      ? "\nThis slide asks pupils: label each part with a letter (A, B, C) in place of its name, so the labels do not give the answers."
+      ? "\nThis is a question slide: still send a label (at least one) for each part pupils must name, with that part's id and a letter as its text (A, B, C, in order), so the labels do not give the answers."
       : "";
   const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}${parts}${lettered}\n\nThe slide:\n${ask.words}`;
   const sideFit = ask.slot?.name === "split-side" && deps.fitActs !== false;

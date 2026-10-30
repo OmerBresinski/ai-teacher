@@ -209,7 +209,9 @@ describe("A: a practice figure draws with lettered labels (Rivers v6 s7)", () =>
     const part = (items.properties as Record<string, S>).part;
     expect(part?.enum).toEqual(MEANDER);
     expect(reqs[0]?.user).toContain(`Parts of a meander-section: ${MEANDER.join(", ")}`);
-    expect(reqs[0]?.user).toContain("label each part with a letter (A, B, C) in place of its name");
+    expect(reqs[0]?.user).toContain(
+      "still send a label (at least one) for each part pupils must name",
+    );
     expect(reqs[1]?.user).toContain("Your last spec did not draw: labels:");
     expect(r).toMatchObject({ via: "drawer", fault: "" });
     expect(((r.spec as S).labels as S[]).map((l) => l.text)).toEqual(["A", "B"]);
