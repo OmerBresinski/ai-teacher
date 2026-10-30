@@ -227,7 +227,11 @@ describe("round 1: text fit and fallbacks", () => {
     // KS2 caps a flow at 4 steps: 8 long steps cannot draw readably in the half panel.
     const failed = lay(Array.from({ length: 8 }, (_, i) => `Stage number ${i + 1} of the process`));
     expect(failed.some((e) => e.name === "Diagram" || e.type === "image")).toBe(false);
-    expect(failed.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(false);
+    // The words-only sibling of a short slide is a statement (TEACH-247 part al): its accent edge
+    // is the one shape, never a panel or wash.
+    expect(
+      failed.some((e) => e.type === "shape" && e.name !== "Bullet" && e.name !== "Statement edge"),
+    ).toBe(false);
     const ok = lay(["Egg", "Chick", "Hen"]);
     expect(ok.some((e) => e.type === "image")).toBe(true);
     expect(ok.some((e) => e.type === "shape" && e.name !== "Bullet")).toBe(true);
