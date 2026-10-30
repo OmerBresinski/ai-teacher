@@ -1005,7 +1005,6 @@ export function toInput(
     case "figure": {
       const f = fig("figure") ?? fig("diagram") ?? fig("picture");
       const caption = str(s.caption ?? s.lead).trim();
-      const icon = str(s.icon).trim();
       const accent = s.accentWord ? { accentWord: str(s.accentWord) } : {};
       // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
       // TEACH-251 part ae (romans verify6 s4): the figure slide's caption is one line, and the
@@ -1037,13 +1036,16 @@ export function toInput(
               figure: f,
             }
           : { template: "explain", heading, lead: caption };
-      if (!f && !icon) return { template: "explain", heading, lead: caption };
+      // TEACH-251 part ab (romans verify5 s4): a figure that could not be made (no model, no
+      // picture) leaves the words standing alone, as picture-text does; the stage's icon medal read
+      // as a broken visual ("a big empty panel with a shield"), the worst slide of the lesson.
+      if (!f) return { template: "explain", heading, lead: caption };
       return {
         template,
         heading,
         ...accent,
         ...(caption ? { lead: caption } : {}),
-        ...(f ? { figure: f } : { icon }),
+        figure: f,
       };
     }
     // TEACH-75 part ad (C5): reasons. Icons are library labels (no picture ask). A draft whose
