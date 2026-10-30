@@ -11,6 +11,18 @@ export type Case = {
 };
 export const TARGETED: Case[] = [
   {
+    id: "photosynthesis",
+    label: "glucose drawn leaving the leaf as a gas",
+    expect: "refused",
+    params: { title: "Photosynthesis", outputs: [{ substance: "glucose", leavesAsGas: true }] },
+  },
+  {
+    id: "photosynthesis",
+    label: "oxygen as an input",
+    expect: "refused",
+    params: { title: "Photosynthesis", inputs: ["light", "carbon_dioxide", "water", "oxygen"] },
+  },
+  {
     id: "food_chain",
     label: "ocean: shark on the seal",
     expect: "drawn",

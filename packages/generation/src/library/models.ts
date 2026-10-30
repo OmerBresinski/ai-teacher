@@ -26,6 +26,7 @@ export const MODEL_LOADERS: Record<string, () => Promise<LibModel>> = {
   sort_venn_carroll: () => import("./vendor/models/sort_venn_carroll.js"),
   life_cycle: () => import("./vendor/models/life_cycle.js"),
   plant_growth: () => import("./vendor/models/plant_growth.js"),
+  photosynthesis: () => import("./vendor/models/photosynthesis.js"),
   food_chain: () => import("./vendor/models/food_chain.js"),
   body_map: () => import("./vendor/models/body_map.js"),
   heart_circulation: () => import("./vendor/models/heart_circulation.js"),

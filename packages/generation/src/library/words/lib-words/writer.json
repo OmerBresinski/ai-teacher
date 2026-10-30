@@ -54,7 +54,8 @@
     "cycle_wheel": "festivals, seasons or stages round a cycle",
     "movement_court": "a skill's phases, or moving into space in a game",
     "river_real": "a real river from map data: its whole course with tributaries and towns, a close-up of real meanders, ox-bow lakes or another feature, or several rivers across one country; the real example for a landforms lesson, even when the topic names no river",
-    "collision_theory": "particles colliding, and how concentration, temperature, surface area or a catalyst change the reaction rate, built one factor at a time"
+    "collision_theory": "particles colliding, and how concentration, temperature, surface area or a catalyst change the reaction rate, built one factor at a time",
+    "photosynthesis": "how a plant makes glucose from light, carbon dioxide and water: inputs, outputs and the word equation"
   },
   "fields": {
     "model": "A model's id from the Models list.",

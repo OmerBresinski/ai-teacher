@@ -17,8 +17,8 @@ const preset = async (id: string, n = 0) => {
 };
 
 describe("shipped models", () => {
-  test("52 models ship; none of the excluded ones does", () => {
-    expect(Object.keys(MODEL_LOADERS).length).toBe(52);
+  test("53 models ship; none of the excluded ones does", () => {
+    expect(Object.keys(MODEL_LOADERS).length).toBe(53);
     for (const id of Object.keys(EXCLUDED)) expect(MODEL_LOADERS[id]).toBeUndefined();
   });
 
