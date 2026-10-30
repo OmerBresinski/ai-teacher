@@ -264,7 +264,8 @@ void isPic;
 
 /**
  * Tile diagrams that could not be shown (TEACH-75 part d), each as a picture of the same thing:
- * `col.n` a compare card's visual, `seq.n` a sequence stage. Undefined when a lost tile is not a
+ * `col.n` a compare card's visual, `seq.n` a sequence stage, `side.n` a split compare side's
+ * (TEACH-247 part cg). Undefined when a lost tile is not a
  * diagram or its kind is not a thing or process (`pictureFallbackOk`): the slide then takes its
  * words-only form (text cards, numbered steps), never an empty tile.
  */
@@ -272,22 +273,30 @@ export function tilesAsPictures(raw: S, keys: string[]): S | undefined {
   const s: S = { ...raw };
   const cols = Array.isArray(s.columns) ? (s.columns as S[]).map((c) => ({ ...c })) : undefined;
   const seq = Array.isArray(s.sequence) ? (s.sequence as S[]).map((x) => ({ ...x })) : undefined;
+  const sides = Array.isArray(s.sides) ? (s.sides as S[]).map((x) => ({ ...x })) : undefined;
   for (const key of keys) {
-    const m = /^(col|seq)\.(\d+)$/.exec(key);
+    const m = /^(col|seq|side)\.(\d+)$/.exec(key);
     const n = Number(m?.[2]);
-    const host = m?.[1] === "col" ? cols?.[n] : m?.[1] === "seq" ? seq?.[n] : undefined;
-    const f = host ? (m?.[1] === "col" ? host.picture : host.diagram) : undefined;
+    const at = m?.[1];
+    const host =
+      at === "col" ? cols?.[n] : at === "seq" ? seq?.[n] : at === "side" ? sides?.[n] : undefined;
+    const own = at === "seq" ? host?.diagram : host?.picture;
+    // A side's drawing may be wrapped as `{diagram}` (materialise `sideFigure`).
+    const f = at === "side" && !isDia(own) ? (own as S | undefined)?.diagram : own;
     if (!host || !isDia(f) || !pictureFallbackOk(str(f.kind))) return undefined;
-    const labels = Array.isArray(f.labels) ? (f.labels as unknown[]).map(str) : [];
+    // A label is a string, or a part and its words (a river's `{part, text}`).
+    const labels = Array.isArray(f.labels)
+      ? (f.labels as unknown[]).map((l) => str(l) || str((l as S | null)?.text))
+      : [];
     const alone = f.ask_without ?? null;
     const pic: S = {
       shows: str(f.shows) || str(host.label) || str(host.caption),
       must_see: labels.filter((l) => l.trim()),
       subject: "generic",
-      ...(m?.[1] === "col" ? { ask: alone, ask_without: alone } : {}),
+      ...(at === "col" ? { ask: alone, ask_without: alone } : {}),
     };
     if (!pic.shows) return undefined;
-    if (m?.[1] === "col") host.picture = pic;
+    if (at === "col" || at === "side") host.picture = pic;
     else {
       delete host.diagram;
       Object.assign(host, pic);
@@ -295,6 +304,7 @@ export function tilesAsPictures(raw: S, keys: string[]): S | undefined {
   }
   if (cols) s.columns = cols;
   if (seq) s.sequence = seq;
+  if (sides) s.sides = sides;
   return s;
 }
 

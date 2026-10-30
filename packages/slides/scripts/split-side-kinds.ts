@@ -1,4 +1,5 @@
-// TEACH-110 part ad: which diagram kinds draw cleanly at a split compare side (SPLIT_SIDE_DIAGRAM_KINDS).
+// TEACH-110 part ad: which diagram kinds draw cleanly at a split compare side, by kind sample. Since
+// TEACH-247 part cg the template checks each spec itself (`splitSideDrawn`); this is a survey only.
 // Run: bun scripts/split-side-kinds.ts (W, H override the 360 x 230 side box).
 import { readFileSync } from "node:fs";
 import { drawDiagram } from "../src/diagrams";

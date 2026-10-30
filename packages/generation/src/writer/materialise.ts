@@ -297,12 +297,12 @@ const seqFigure = (x: unknown): Pic | Dia | undefined => {
  * was not made. Unwrapped here, so the side's diagram is asked for and drawn, never dropped.
  */
 const sideFigure = (x: unknown): Pic | Dia | undefined => (isPic(x) || isDia(x) ? x : seqFigure(x));
-/** The keys of a slide's tile diagrams (compare columns, sequence stages). */
+/** The keys of a slide's tile diagrams (compare columns, sequence stages, split sides). */
 export const tileDiagramKeys = (raw: S | undefined): string[] =>
   !raw || typeof raw !== "object"
     ? []
     : figures(normalise(raw))
-        .filter(({ key, f }) => /^(col|seq)\./.test(key) && isDia(f))
+        .filter(({ key, f }) => /^(col|seq|side)\./.test(key) && isDia(f))
         .map(({ key }) => key);
 
 /** The pictures and diagrams a slide holds, with stable keys. */
@@ -1326,8 +1326,10 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     const warned = layoutTemplate(toInput(s, ctx), ctx.theme, ctx.stage, { diagramWarnings: true });
     if (!warned.diagram?.length && warned.diagramWarnings?.length) r = warned;
   }
-  // A tile whose diagram the layout could not show (TEACH-75 part d), by its key.
-  const pre = str(normalise(s).template) === "compare" ? "col" : "seq";
+  // A tile whose diagram the layout could not show (TEACH-75 part d), by its key; a split side's
+  // (TEACH-247 part cg) too.
+  const tpl = str(normalise(s).template);
+  const pre = tpl === "compare" ? "col" : tpl === "split-compare" ? "side" : "seq";
   const lost = (r.lost ?? []).map((n) => `${pre}.${n}`);
   // A diagram the layout dropped is missing: the slide is laid out again with its `ask_without` lines.
   if (r.diagram?.length) {

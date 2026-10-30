@@ -188,7 +188,12 @@ describe("a bad writer spec falls back to the drawer (never an empty slot)", () 
     expect(r.via).toBe("drawer");
     expect((r.spec as J).view).toBe("v-valley");
     expect(user).toContain("River cliff");
-    expect(user).not.toContain("v-valley;");
+    // The view is no label (labelsOf); the fault names the view's own parts (TEACH-247 part cg).
+    expect(user).not.toMatch(/Labels: [^\n]*v-valley/);
+    expect(user).toContain("no river-cliff in a v-valley; its parts are valley-side, channel");
+    expect(user).toContain(
+      "Parts of a v-valley: valley-side, channel, river-bed, vertical-erosion",
+    );
   });
 
   test("a hydrograph with a negative value goes to the drawer", async () => {

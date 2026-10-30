@@ -27,11 +27,13 @@ import {
   mendSpec,
   parseDiagram,
   pileSpec,
+  RIVER_PARTS,
   SLOT_LIMITS,
   type StageGroup,
   slotBox,
   slotLimit,
   strictForm,
+  type TableSlot,
   UNSHARED_ASK,
   withAskedCounts,
   withBuilds,
@@ -172,7 +174,7 @@ export function capDrawerSchema(
  * (KS1 side carroll) or its minimum is over the slot's count. P2b freezes these as
  * `diagram-defs.gen.json`; a test holds the two equal.
  */
-export function r2Def(kind: R2Kind, stage: StageGroup, slot: DiagramSlot): J | undefined {
+export function r2Def(kind: R2Kind, stage: StageGroup, slot: TableSlot): J | undefined {
   const lim = SLOT_LIMITS.limits[stage][slot][kind];
   if (lim && lim.items <= 0) return undefined;
   const { $schema: _d, ...open } = drawerJsonSchema(kind as DiagramKind);
@@ -347,7 +349,14 @@ export function diagramFaultOf(out: unknown, parses: (o: unknown) => unknown): s
  * writer stage passes P2a's `layoutTemplate` probe; with none, the drawing is checked at the
  * slot's own box, which is the box the layout gives it.
  */
-export type SlotProbe = (spec: unknown, slot: DiagramSlot, stage: string, theme: Theme) => string[];
+export type SlotProbe = (
+  spec: unknown,
+  slot: DiagramSlot,
+  stage: string,
+  theme: Theme,
+  /** The slide's heading, where it sets the slot's box (a split side's height). */
+  heading?: string,
+) => string[];
 
 const boxProbe: SlotProbe = (spec, slot, stage, theme) => {
   const b = slotBox(stage, slot);
@@ -357,7 +366,8 @@ const boxProbe: SlotProbe = (spec, slot, stage, theme) => {
     { x: 0, y: 0, w: b.w, h: b.h },
     () => "probe",
   );
-  return r.ok ? [] : r.reasons;
+  // A split side takes no drawing with a readability warning (`splitSideDrawn`).
+  return r.ok ? (slot === "split-side" ? (r.warnings ?? []) : []) : r.reasons;
 };
 
 /** Why the spec does not draw in its own slot ("" when it does). Never throws. */
@@ -371,7 +381,8 @@ export function slotFault(
   if (!slot) return "";
   return nonFatalSync(
     () => {
-      const why = probe(spec, slot.name ?? "side", ask.stage ?? "ks3", theme);
+      const heading = ask.words.split("\n")[0]?.trim();
+      const why = probe(spec, slot.name ?? "side", ask.stage ?? "ks3", theme, heading);
       return why.length
         ? `it does not fit its slot (${slot.w} by ${slot.h} points): ${why.slice(0, 2).join("; ")}`
         : "";
@@ -421,11 +432,21 @@ export function acceptWriterSpec(
  * A question slide keeps its answer back (D16 rule 4): a bar model shows no combined total and no
  * filled bar total (a "?" total is the question, and stays); equal groups show "?" for the count
  * in each group (TEACH-247 part i: the drawer fallback of a library model on a question slide);
- * fraction shapes keep letter names but drop fraction names. Other kinds are returned as they are.
+ * fraction shapes keep letter names but drop fraction names; a river's labels are letters (A, B,
+ * in order; TEACH-247 part cg, Rivers v6 s7: its practice asked pupils to name the banks, so the
+ * writer put its one label on a part the view does not have, and the drawer sent none). Other kinds
+ * are returned as they are.
  */
 export function questionSafe<T>(spec: T): T {
   const s = spec as J;
   if (!s || typeof s !== "object") return spec;
+  if (LETTERED_KINDS.has(String(s.kind)) && Array.isArray(s.labels))
+    return {
+      ...s,
+      labels: (s.labels as J[]).map((l, n) =>
+        l && typeof l === "object" ? { ...l, text: String.fromCharCode(65 + n) } : l,
+      ),
+    } as T;
   if (s.kind === "equal-groups") return { ...s, unknown: true } as T;
   if (s.kind === "fraction-shapes" && Array.isArray(s.shapes))
     return {
@@ -527,13 +548,46 @@ export function withRequiredSubject(schema: J, kind: string): J {
   return out;
 }
 
+/** The kinds whose labels name a drawn part: on a question slide they are letters (A, B, ...). */
+const LETTERED_KINDS = new Set(["river"]);
+
+/**
+ * TEACH-247 part cg (Rivers v6 s7): the writer's river view and that view's own parts, or
+ * undefined for a spec with no view this kind knows. The drawer is held to them: its schema's view
+ * and part enums are narrowed to them and its request names them, so a retry cannot pick another
+ * view's part (it sent `river-bed` for a meander-section).
+ */
+export function viewPartsOf(spec: unknown): { view: string; parts: string[] } | undefined {
+  const s = spec as J | undefined;
+  if (s?.kind !== "river" || typeof s.view !== "string") return undefined;
+  const parts = RIVER_PARTS[s.view as keyof typeof RIVER_PARTS] as readonly string[] | undefined;
+  return parts ? { view: s.view, parts: [...parts] } : undefined;
+}
+
+/** The drawer's wire schema with the view and its part ids fixed to the writer's view. */
+export function withViewParts(schema: J, vp: { view: string; parts: string[] }): J {
+  const out = JSON.parse(JSON.stringify(schema)) as J;
+  const props = out.properties as J | undefined;
+  const view = props?.view as J | undefined;
+  if (view) view.enum = [vp.view];
+  const item = ((props?.labels as J | undefined)?.items as J | undefined)?.properties as
+    | J
+    | undefined;
+  const part = item?.part as J | undefined;
+  if (part) part.enum = [...vp.parts];
+  return out;
+}
+
 /**
  * base4's drawer fallback (`services.ts` specCallsRound5): the wire schema, the request with the
- * writer's spec and why it did not draw, one retry told the parse fault. Never throws.
+ * writer's spec and why it did not draw, one retry told the parse fault. A split side's spec is
+ * also held to its side's draw test (TEACH-247 part cg): there is no other room for it to take.
+ * `spec` is the writer's own spec, when it gave one (its view narrows the parts). Never throws.
  */
 async function drawerCall(
   ask: WriterDiagramAsk,
   deps: DrawDeps,
+  spec?: unknown,
 ): Promise<{ spec?: unknown; fault: string }> {
   if (!(DIAGRAM_KINDS as readonly string[]).includes(ask.kind))
     return { fault: `no drawer for the kind ${ask.kind}` };
@@ -543,10 +597,18 @@ async function drawerCall(
   // Probed 26 Oct: the strict form has no OpenAI schema faults, and 3 of 3 asks on gpt-6-luna low
   // tagged, parsed and routed as the non-strict call did.
   const strict = ask.kind === "labelled-diagram";
-  const wire = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  const vp = viewPartsOf(spec);
+  const wire0 = withRequiredSubject(diagramJsonSchema(ask.kind as DiagramKind), ask.kind);
+  const wire = vp ? withViewParts(wire0, vp) : wire0;
   const { $schema: _s, ...open } = wire;
   const schema = strict ? (strictForm(open) as J) : wire;
-  const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}\n\nThe slide:\n${ask.words}`;
+  const parts = vp ? `\nParts of a ${vp.view}: ${vp.parts.join(", ")}` : "";
+  const lettered =
+    ask.question && LETTERED_KINDS.has(ask.kind)
+      ? "\nThis slide asks pupils: label each part with a letter (A, B, C) in place of its name, so the labels do not give the answers."
+      : "";
+  const user = `${ask.yearGroup}\nKind: ${ask.kind}\nRequest: ${ask.shows}${ask.labels.length ? `\nLabels: ${ask.labels.join("; ")}` : ""}${parts}${lettered}\n\nThe slide:\n${ask.words}`;
+  const sideFit = ask.slot?.name === "split-side" && deps.fitActs !== false;
   let fault = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     // A budget or abort error stops the job (rethrown); any other failure is a fault.
@@ -584,6 +646,9 @@ async function drawerCall(
     fault = mended
       ? diagramFaultOf(mended, (o) => withLongLabels(() => parseDiagram(o)))
       : "no output";
+    // As drawn: a question slide's spec is drawn with its answers kept back (`questionSafe`).
+    if (!fault && sideFit)
+      fault = slotFault(ask.question ? questionSafe(mended) : mended, ask, deps.theme, deps.probe);
     const firstFault = out && !fault ? diagramFaultOf(out, parseDiagram) : "";
     deps.log?.({
       ev: "diagram-call",
@@ -655,7 +720,7 @@ export async function drawWriterDiagram(
           shows: `${ask.shows}\nThe writer's spec, which did not draw (${r.fault}): ${JSON.stringify(spec)}`,
         };
       }
-      const r = await drawerCall(ask, deps);
+      const r = await drawerCall(ask, deps, ask0.spec);
       // TEACH-247 parts ad, ay: a freehand drawing of a living body or a science process is never
       // rendered: the drawer's tag `living_body`, a missing tag, or a living word or process in
       // the ask or the spec (`freehandBan`).
@@ -718,7 +783,23 @@ export function writerDiagramElement(
  * The lab's slot check (`services.ts` slotFault): the spec laid out in a diagram-text (side) or
  * big-diagram (full) slide by the writer's own layout; its diagram faults, none when it fits.
  */
-export const layoutSlotProbe: SlotProbe = (spec, slot, stage, theme) => {
+export const layoutSlotProbe: SlotProbe = (spec, slot, stage, theme, heading) => {
+  // TEACH-247 part cg: a split side is laid out in the split compare itself, under the slide's own
+  // heading (it sets the side's height), so the template's side test is the one judge: a spec it
+  // would refuse is a fault here, at generation, and goes to the drawer with it.
+  if (slot === "split-side") {
+    const side = {
+      title: "Side",
+      text: "What this side shows.",
+      picture: { diagram: fromMeaning(spec) },
+    };
+    const r = layoutTemplate(
+      { template: "split-compare", heading: heading || "Heading", sides: [side, side] } as never,
+      atKeyStage(theme, stage),
+      stage as never,
+    ) as { diagram?: string[] };
+    return r.diagram ?? [];
+  }
   const r = layoutTemplate(
     {
       template: slot === "full" ? "big-diagram" : "diagram-text",

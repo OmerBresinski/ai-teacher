@@ -1,0 +1,75 @@
+{
+  "_source": "scratchpad/design-pass/out-v6/rivers-writer-plan1.content.json (genlab replay-v6-rivers, 30 Oct 2026): writer slides 3 and 4 (deck slides 6 and 7), as written",
+  "split": {
+    "template": "split-compare",
+    "heading": "Banks of a meander",
+    "accentWord": null,
+    "sides": [
+      {
+        "title": "Outer bend",
+        "text": "A steep river cliff forms at this bank.",
+        "quote": null,
+        "picture": {
+          "kind": "river",
+          "shows": "Cross-section highlighting the steep outer bank of a meander.",
+          "alt": "A meander cross-section highlights the steep river cliff on the outer bank.",
+          "title": null,
+          "view": "meander-section",
+          "labels": [
+            {
+              "part": "river-cliff",
+              "text": "River cliff"
+            }
+          ]
+        }
+      },
+      {
+        "title": "Inner bend",
+        "text": "A gentle slip-off slope forms at this bank.",
+        "quote": null,
+        "picture": {
+          "kind": "river",
+          "shows": "Cross-section highlighting the gentle inner bank of a meander.",
+          "alt": "A meander cross-section highlights the gentle slip-off slope on the inner bank.",
+          "title": null,
+          "view": "meander-section",
+          "labels": [
+            {
+              "part": "slip-off-slope",
+              "text": "Slip-off slope"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "practice": {
+    "template": "practice",
+    "heading": "Apply bank knowledge",
+    "picture": {
+      "kind": "river",
+      "shows": "A meander cross-section with its banks unlabelled.",
+      "alt": "A cross-section of a meander shows one steep bank and one gentle bank without labels.",
+      "title": null,
+      "view": "meander-section",
+      "labels": [
+        {
+          "part": "channel",
+          "text": "Channel"
+        }
+      ]
+    },
+    "items": [
+      {
+        "question": "A meander has a steep outer bank. What is this feature called?",
+        "answer": "River cliff",
+        "working": null
+      },
+      {
+        "question": "A meander has a gentle inner bank. What is this feature called?",
+        "answer": "Slip-off slope",
+        "working": null
+      }
+    ]
+  }
+}

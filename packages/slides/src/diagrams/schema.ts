@@ -642,10 +642,12 @@ export const RiverSchema = z
     const ok = RIVER_PARTS[r.view] as readonly string[];
     const seen = new Set<string>();
     r.labels.forEach((l, i) => {
+      // The view's own parts are named (TEACH-247 part cg, Rivers v6 s7): the retry this fault
+      // goes back with can only pick one of them, never invent another view's part.
       if (!ok.includes(l.part))
         ctx.addIssue({
           code: "custom",
-          message: `no ${l.part} in a ${r.view}`,
+          message: `no ${l.part} in a ${r.view}; its parts are ${ok.join(", ")}`,
           path: ["labels", i],
         });
       if (seen.has(l.part))

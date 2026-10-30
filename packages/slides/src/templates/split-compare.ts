@@ -248,33 +248,47 @@ function pictureOf(s: SplitSide): Pic | null {
 }
 
 /**
- * The diagram kinds a split compare side draws from a spec (TEACH-110 part ad): each drew with no
- * readability warning, as given (no simpler form), at the side's size (360 x 230) at KS2, KS3 and
- * KS4, with every label at the 24-character cap (`scripts/split-side-kinds.ts`). Labelled
- * drawings, flows, tables, charts, graphs, timelines, cycles and layers did not, so the writer menu
- * offers only these for a side.
- * TODO(TEACH-110): number-line, fraction-shapes and particles drew cleanly at sample labels, but
- * their padded specs did not parse; add them once verified at maximum labels.
+ * The one test a split compare side's diagram meets (TEACH-247 part cg), here at layout and at
+ * generation (the writer stage's `split-side` slot probe lays this template out): the spec draws
+ * at the side's picture box with no readability warning, as given or in a simpler form. Its faults,
+ * or the drawn picture. A per-kind list stood in for this before, measured on each kind's sample
+ * (Rivers v6 s6: two one-label river sections that drew cleanly were dropped by kind).
  */
-export const SPLIT_SIDE_DIAGRAM_KINDS: readonly string[] = ["equal-groups", "venn"];
+export function splitSideDrawn(
+  spec: unknown,
+  c: Pick<Ctx, "t" | "s">,
+  box: { w: number; h: number },
+): { drawn?: { src: string; aspect: number; alt: string }; faults: string[] } {
+  if (diagramFailed(spec)) return { faults: ["the drawing failed"] };
+  const r = drawDiagram(spec, c.t, { x: 0, y: 0, ...box, fs: c.s.small });
+  if (!r.ok) return { faults: r.reasons.length ? r.reasons : ["it did not draw"] };
+  if (r.warnings) return { faults: r.warnings };
+  if (!r.element.src || !(r.element.w > 0 && r.element.h > 0))
+    return { faults: ["it drew nothing"] };
+  return {
+    drawn: { src: r.element.src, aspect: r.element.w / r.element.h, alt: r.element.alt ?? "" },
+    faults: [],
+  };
+}
 
 /**
  * A side whose picture is a diagram spec (`{diagram}`, the form the live drawer hands back: no
- * pre-drawn SVG), drawn at the side's width when its kind draws cleanly there. Any other kind, or
- * a drawing with any readability warning, leaves the side with no picture, and the sides fall to
- * words (zones are all or none): a crowded sketch reads worse than the words.
+ * pre-drawn SVG), drawn at the side's picture box (`splitSideDrawn`). One that does not draw there
+ * leaves the side with no picture, and the sides fall to words (zones are all or none): a crowded
+ * sketch reads worse than the words. The drop is reported, never silent: its faults go to the
+ * result's `diagram` and the side's index to `lost`, so the writer stage takes its fallback (a
+ * picture of the same thing) instead of believing the drawing is on the slide.
  */
-function withDrawn(c: Ctx, s: SplitSide, box: { w: number; h: number }): SplitSide {
+function withDrawn(c: Ctx, s: SplitSide, n: number, box: { w: number; h: number }): SplitSide {
   const f = s.picture;
   if (!f || !("diagram" in f)) return s;
-  const kind = String((f.diagram as { kind?: unknown } | null)?.kind ?? "");
-  if (diagramFailed(f.diagram) || !SPLIT_SIDE_DIAGRAM_KINDS.includes(kind))
+  const r = splitSideDrawn(f.diagram, c, box);
+  if (!r.drawn) {
+    c.fails?.push(...r.faults);
+    c.lost = [...(c.lost ?? []), n];
     return { ...s, picture: null };
-  const r = drawDiagram(f.diagram, c.t, { x: 0, y: 0, ...box, fs: c.s.small });
-  if (!r.ok || r.warnings || !r.element.src || !(r.element.w > 0 && r.element.h > 0))
-    return { ...s, picture: null };
-  const drawn = { src: r.element.src, aspect: r.element.w / r.element.h, alt: r.element.alt ?? "" };
-  return { ...s, picture: { drawn } as Figure };
+  }
+  return { ...s, picture: { drawn: r.drawn } as Figure };
 }
 
 export function zoneOf(sides: SplitSide[]): SplitZone {
@@ -339,7 +353,7 @@ function run(c: Ctx, input: TemplateInput, useTable: boolean, look: SplitLook): 
   const frame = frameOf(look, n);
   const fw = frame.w;
   const cellW = frame.cellW;
-  const sides = given.map((s) => withDrawn(c, s, { w: cellW, h: Math.round(fh * PIC_GROW) }));
+  const sides = given.map((s, i) => withDrawn(c, s, i, { w: cellW, h: Math.round(fh * PIC_GROW) }));
   const zone = zoneOf(sides);
   const stageTop = zone === "quote" ? STAGE_TOP : TEXT_TOP;
   const stageH = fh - stageTop - (set ? SET_STAGE_FOOT : STAGE_FOOT);
