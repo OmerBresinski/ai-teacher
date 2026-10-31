@@ -214,6 +214,13 @@ export type LabelReq = {
   soft?: boolean;
 };
 
+/**
+ * A label that is one letter (A, B, C: a question slide's name for a part pupils must name;
+ * TEACH-247 part cg). A letter says nothing about where it stands, as a name beside its feature
+ * does, so it always stands off its point on a leader that ends at the part.
+ */
+export const isLetterLabel = (s: string): boolean => /^\p{L}$/u.test(s.trim());
+
 function boxAt(dir: Dir, px: number, py: number, d: number, bw: number, bh: number): Box {
   const k = 0.72;
   switch (dir) {
@@ -256,9 +263,12 @@ export function placeLabel(x: Ctx, sc: Scene, w: number, h: number, req: LabelRe
   ];
   const dirs = [...(req.prefer ?? []), ...ALL.filter((d) => !req.prefer?.includes(d))];
   const maxW = req.maxW ?? w * 0.4;
+  const letter = isLetterLabel(req.text);
   for (const fs of [...new Set(sizes)]) {
+    // A letter by its point would hide that it names it: it stands off far enough for a leader.
+    const least = Math.max(req.minDist ?? 0, letter ? 1.8 * fs : 0);
     for (const dist of [0.3, 0.9, 1.8, 3, 4.4, 6, 8, 10.5, 13.5].map((m) =>
-      Math.max(req.minDist ?? 0, m * fs),
+      Math.max(least, m * fs),
     )) {
       for (const maxLines of [1, 2, 3]) {
         const lines = fitLines(x, req.text, maxW, maxLines, fs, weight);
