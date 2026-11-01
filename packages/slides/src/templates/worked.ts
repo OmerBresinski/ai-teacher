@@ -245,9 +245,13 @@ export function workedLines(input: TemplateInput): WorkedLine[] {
 // ─── the panel's equation and its frames (TEACH-247 part ch) ─────────────────────────────────
 
 const NUM = String.raw`\d+(?:\.\d+)?`;
-/** "3x + 5 = 20" or "x/4 + 3 = 8" (÷ for /), anywhere in a line: [a, letter, over, b, c]. */
+/**
+ * "3x + 5 = 20" or "x/4 + 3 = 8" (÷ for /) as the whole equation: [a, letter, over, b, c]. It is
+ * the whole text, or ends it after words ("Solve 3x + 5 = 20", "Solve for x: …"), never a piece
+ * of a longer expression ("−3x + 5 = 20", "5 + 2x + 3 = 20", "3x + 5 = 20 + x" give none).
+ */
 const EQUATION = new RegExp(
-  String.raw`(?<![\w.])(\d*)\s*([a-z])\s*(?:(?:\/|÷)\s*(\d+))?\s*\+\s*(${NUM})\s*=\s*(${NUM})(?![\w.])`,
+  String.raw`^(?:.*(?:[a-z]{2,}|:)\s+)?(\d*)\s*([a-z])\s*(?:(?:\/|÷)\s*(\d+))?\s*\+\s*(${NUM})\s*=\s*(${NUM})$`,
   "i",
 );
 /** Plain text for matching: the math minus as ASCII, no spaces. */
@@ -259,7 +263,13 @@ const flat = (t: string) => t.replace(/[−–]/g, "-").replace(/\s+/g, "").toLo
  * The numbers are not checked here: the panel's guard says whether they draw.
  */
 export function equationPanelOf(text: string): { panel: WorkedPanel; unknown: string } | undefined {
-  const m = EQUATION.exec(text.replace(/[−–]/g, "-"));
+  // A closing full stop (or other closing mark) is not part of the equation.
+  const m = EQUATION.exec(
+    text
+      .replace(/[−–]/g, "-")
+      .trim()
+      .replace(/[.!?;:,]+$/, ""),
+  );
   if (!m) return undefined;
   const [, a0, u, d, b, c] = m;
   if (a0 && d) return undefined;
@@ -292,14 +302,51 @@ function panelOf(input: TemplateInput) {
   return barPanelOf(input.barPanel, unknown);
 }
 
+type Lin = { x: number; k: number };
+/**
+ * A linear equation in `u` as its two sides, each a sum of terms (numbers, kx, x/k, k/m), or
+ * undefined when the text is not one ("3x/3 = 15/3" is x = 5; "3(x + 1) = 9" does not parse).
+ */
+function linearOf(text: string, u: string): { l: Lin; r: Lin } | undefined {
+  const sides = flat(text)
+    .replace(/÷/g, "/")
+    .replace(/[.!?;:,]+$/, "")
+    .split("=");
+  if (sides.length !== 2) return undefined;
+  const side = (t: string): Lin | undefined => {
+    if (!t) return undefined;
+    const out: Lin = { x: 0, k: 0 };
+    for (const m of t.replace(/^(?=[^+-])/, "+").matchAll(/([+-])([^+-]+)/g)) {
+      const sign = m[1] === "-" ? -1 : 1;
+      const tm = new RegExp(String.raw`^(\d+(?:\.\d+)?)?(${u})?(?:\/(\d+(?:\.\d+)?))?$`).exec(
+        m[2] ?? "",
+      );
+      if (!tm || (!tm[1] && !tm[2])) return undefined;
+      const v = (tm[1] ? Number(tm[1]) : 1) / (tm[3] ? Number(tm[3]) : 1);
+      if (tm[2]) out.x += sign * v;
+      else out.k += sign * v;
+    }
+    const used =
+      t
+        .replace(/^(?=[^+-])/, "+")
+        .match(/([+-])([^+-]+)/g)
+        ?.join("") ?? "";
+    return used === t.replace(/^(?=[^+-])/, "+") ? out : undefined;
+  };
+  const l = side(sides[0] ?? "");
+  const r = side(sides[1] ?? "");
+  return l && r ? { l, r } : undefined;
+}
+
 const ORDER: EquationFrame[] = ["whole", "take", "share", "scale", "check"];
 const fmt = (v: number) => String(Math.round(v * 100) / 100);
 
 /**
  * Which frame of an equation panel pictures each row the slide shows (TEACH-247 part ch). A row
  * is the whole equation, b taken from both sides (ax = c − b, or x/a = c − b), the share into a
- * parts (x = (c − b)/a) or one part scaled up (x = a(c − b)); a row whose equation is none of
- * these is read from its move's verb (subtract, divide, multiply). The check row is the check.
+ * parts (x = (c − b)/a) or one part scaled up (x = a(c − b)), proven by its own equation. Only a
+ * row whose equation does not parse is read from its move (subtract b, divide or multiply by a);
+ * a row neither proves is not pictured, and the panel does not draw. The check row is the check.
  * Frames run in order (a row may hold the frame before it, as "3x/3 = 15/3" then "x = 5"). When
  * row 1 is not the whole, the panel opens on the whole with the heading (`lead`).
  */
@@ -312,26 +359,26 @@ export function workedFrames(
   const { a, b, c } = p;
   const over = !!p.over;
   const lines = workedLines(input);
-  const same = (eq: string) => {
-    const m = equationPanelOf(eq);
-    if (!m) return false;
-    const q = barPanelOf(m.panel);
-    return q?.model === "equation" && q.a === a && q.b === b && q.c === c && !!q.over === over;
-  };
-  const rest = fmt(c - b);
-  const ans = fmt(over ? a * (c - b) : (c - b) / a);
-  const take = over
-    ? [`${u}/${a}=${rest}`, `${u}÷${a}=${rest}`]
-    : [`${a === 1 ? "" : a}${u}=${rest}`];
+  // Each frame's equation as its two sides (x coefficient, constant): a row is proven to be a
+  // frame by its own equation, never by its move's words when that equation says otherwise.
+  const ax = over ? 1 / a : a;
+  const want: [EquationFrame, Lin, Lin][] = [
+    ["whole", { x: ax, k: b }, { x: 0, k: c }],
+    ["take", { x: ax, k: 0 }, { x: 0, k: c - b }],
+    [over ? "scale" : "share", { x: 1, k: 0 }, { x: 0, k: over ? a * (c - b) : (c - b) / a }],
+  ];
+  const eqLin = (l: Lin, m: Lin) => Math.abs(l.x - m.x) < 1e-9 && Math.abs(l.k - m.k) < 1e-9;
+  // A move read only when its row's equation does not parse, and only when it names the number
+  // it works with (subtract b, divide or multiply by a).
+  const named = (mv: string, v: number) =>
+    new RegExp(String.raw`(?<![\d.])${fmt(v)}(?![\d.])`).test(mv);
   const frameOf = (l: WorkedLine): EquationFrame | undefined => {
-    const eq = flat(l.eq);
-    if (same(l.eq)) return "whole";
-    if (take.includes(eq)) return "take";
-    if (eq === `${u}=${ans}`) return over ? "scale" : "share";
+    const e = linearOf(l.eq, u);
+    if (e) return want.find(([, L, R]) => eqLin(e.l, L) && eqLin(e.r, R))?.[0];
     const mv = l.move ?? "";
-    if (/\b(subtract|take away|minus|remove)/i.test(mv)) return "take";
-    if (!over && /\b(divide|share|split)/i.test(mv)) return "share";
-    if (over && /\b(multiply|times)/i.test(mv)) return "scale";
+    if (/\b(subtract|take away|minus|remove)\b/i.test(mv) && named(mv, b)) return "take";
+    if (!over && /\b(divide|share|split)\b/i.test(mv) && named(mv, a)) return "share";
+    if (over && /\b(multiply|times)\b/i.test(mv) && named(mv, a)) return "scale";
     return undefined;
   };
   const frames: EquationFrame[] = [];
