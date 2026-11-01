@@ -117,6 +117,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { hingeLeakFaults } from "./hinge-leak";
+import { routeIconMisses } from "./icon-route";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
@@ -1379,6 +1380,31 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       log({ ev: "hinge-first-unmet", slide: idx + 1, correct: s.correct ?? null });
     // The hinge's correct option lands at a seeded, uniform position.
     s = shuffleHinge(s, `${brief.id}:${idx}:${String(s.stem ?? s.heading ?? "")}`);
+    // TEACH-247 part ci: an icon the closed catalogue lacks goes to a real visual (the catalogue
+    // icon the item names, else the item's own picture in the lesson's look), never a near icon;
+    // one with no honest visual is a fault. Pictures that would push the writer's words past the
+    // layout's room are not routed (a cut word is a loss too): reported instead.
+    const routed = routeIconMisses(s, {
+      around: [brief.subject, brief.topic].filter(Boolean).join("\n"),
+      // A scoped term ("roots") reads its subject from the brief's subject or topic.
+      subject: [brief.subject, brief.topic].filter(Boolean).join(" "),
+      fits: (x) => {
+        const ctx = { ...base, index: idx, plan, visual: visualState(idx) };
+        const was = new Set(pilotOvers(s, ctx).overs.map((o) => o.path));
+        return !pilotOvers(x, ctx).overs.some((o) => !was.has(o.path));
+      },
+    });
+    if (routed.route) {
+      const { to, misses, why } = routed.route;
+      log({
+        ev: to === "none" ? "icon-miss" : "icon-routed",
+        slide: idx + 1,
+        to,
+        misses: misses.map((m) => `${m.slot} ${m.name}`),
+        ...(why ? { why } : {}),
+      });
+      s = routed.slide;
+    }
     // The flow's look is the writer's visual decision: a slide whose look names a picture but
     // which asks for none gets the picture from look's phrase.
     // The entry that plans this slide, by the template the writer wrote (not by index).
@@ -1391,8 +1417,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
       s = added.slide;
-      // A pilot layout draws its own visual (icons, medals, side pictures): its look is met.
-    } else if (look && !lookMet(s, look) && !isPilot(s))
+      // TEACH-247 part ci: a pilot layout's look is met only by the visual it draws (a full icon
+      // row, its pictures, its panel picture); an all-null icon row is not (`lookMet`).
+    } else if (look && !lookMet(s, look))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
     const one = titleOneThing(s);
     if (one.how) {
