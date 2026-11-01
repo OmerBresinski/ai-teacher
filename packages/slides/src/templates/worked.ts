@@ -12,8 +12,10 @@
  * - **Reveal:** row *i* (its badge, rail segment, move, equation and answer plate) is reveal step
  *   *i*; the check is the last step. Every worked example takes one click per row.
  * - **Panel:** a bar model (TEACH-75 part y) at panel size on a sand field; build *i* rides row *i*
- *   (TEACH-205 part c `buildFrom`). Its guard (`barPanelGuard`), or a frame count that is not the
- *   row count, falls back to the text-only base, which stands on its own.
+ *   (TEACH-205 part c `buildFrom`). An equation panel's frames are matched to the rows shown
+ *   (`workedFrames`, TEACH-247 part ch): each row pictures its own move, and when row 1 is not the
+ *   equation itself the panel opens on it with the heading. A panel whose guard fails, or whose
+ *   rows it cannot picture, falls back to the text-only base and says why (a `diagram` fault).
  * - **Maths:** a hyphen used as a minus becomes U+2212, units sit on no-break spaces, `M_r` is
  *   written "Mr" (subscripts are tech debt), variables are set in the theme's quote face.
  *
@@ -28,9 +30,15 @@ import {
   styledRun,
   type TextElement,
 } from "@tj/domain/documents";
-import { barPanelFrames, barPanelGuard, barPanelSpec } from "../diagrams/bar-model";
+import {
+  barPanelFrames,
+  barPanelGuard,
+  barPanelSpec,
+  type EquationFrame,
+} from "../diagrams/bar-model";
 import { withBuilds } from "../diagrams/builds";
 import { buildCount, diagramElement, svgDataUrl, svgOfDataUrl } from "../diagrams/index";
+import type { BarPanelInput } from "../diagrams/schema";
 import { uid } from "../factories";
 import { arrowCubic } from "../paths/arrow";
 import { countLines, exactWidth, lineWidth, mathFaceOf } from "../text-measure";
@@ -44,9 +52,13 @@ import CAPACITY from "./worked-capacity.json" with { type: "json" };
 
 /** One working line: the move that led to it (none on line 1), the equation, the answer line. */
 export type WorkedLine = { move?: string; eq: string; answer?: boolean };
-/** The writer's panel: ax + b = c as a bar, or p% of an amount by tenths. */
+/**
+ * The writer's panel: ax + b = c as a bar, or p% of an amount by tenths. `division-bar`
+ * (x/a + b = c) is set by code only (`workedPanelFrom`), never offered to the writer.
+ */
 export type WorkedPanel =
   | { model: "algebra-bar"; a: number; b: number; c: number }
+  | { model: "division-bar"; a: number; b: number; c: number }
   | { model: "percent-bar"; amount: number; percent: number };
 
 export const WORKED_MIN = 1;
@@ -204,9 +216,16 @@ const ageOf = (stage: Stage): AgeKey => ageProfileOf(stage) as AgeKey;
 const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
 /** The writer's panel as the bar model's panel input, or undefined when there is none. */
-export function barPanelOf(p: WorkedPanel | null | undefined) {
+export function barPanelOf(
+  p: WorkedPanel | null | undefined,
+  unknown?: string,
+): BarPanelInput | undefined {
   if (!p || typeof p !== "object") return undefined;
-  if (p.model === "algebra-bar") return { model: "equation" as const, a: p.a, b: p.b, c: p.c };
+  const u = unknown ? { unknown } : {};
+  if (p.model === "algebra-bar")
+    return { model: "equation" as const, a: p.a, b: p.b, c: p.c, ...u };
+  if (p.model === "division-bar")
+    return { model: "equation" as const, a: p.a, b: p.b, c: p.c, over: true, ...u };
   if (p.model === "percent-bar")
     return { model: "percent" as const, amount: p.amount, percent: p.percent };
   return undefined;
@@ -223,12 +242,181 @@ export function workedLines(input: TemplateInput): WorkedLine[] {
     }));
 }
 
-/** Whether the panel draws: its guard holds and it has one build per row (lines + check). */
-export function panelDraws(input: TemplateInput): boolean {
-  const p = barPanelOf(input.barPanel);
-  if (!p || !barPanelGuard(p).ok) return false;
+// ─── the panel's equation and its frames (TEACH-247 part ch) ─────────────────────────────────
+
+const NUM = String.raw`\d+(?:\.\d+)?`;
+/**
+ * "3x + 5 = 20" or "x/4 + 3 = 8" (÷ for /) as the whole equation: [a, letter, over, b, c]. It is
+ * the whole text, or ends it after words ("Solve 3x + 5 = 20", "Solve for x: …"), never a piece
+ * of a longer expression ("−3x + 5 = 20", "5 + 2x + 3 = 20", "3x + 5 = 20 + x" give none).
+ */
+const EQUATION = new RegExp(
+  String.raw`^(?:.*(?:[a-z]{2,}|:)\s+)?(\d*)\s*([a-z])\s*(?:(?:\/|÷)\s*(\d+))?\s*\+\s*(${NUM})\s*=\s*(${NUM})$`,
+  "i",
+);
+/** Plain text for matching: the math minus as ASCII, no spaces. */
+const flat = (t: string) => t.replace(/[−–]/g, "-").replace(/\s+/g, "").toLowerCase();
+
+/**
+ * The bar model an equation in `text` pictures, as the writer's panel: ax + b = c as
+ * `algebra-bar`, x/a + b = c as `division-bar`. Undefined when the text holds neither form.
+ * The numbers are not checked here: the panel's guard says whether they draw.
+ */
+export function equationPanelOf(text: string): { panel: WorkedPanel; unknown: string } | undefined {
+  // A closing full stop (or other closing mark) is not part of the equation.
+  const m = EQUATION.exec(
+    text
+      .replace(/[−–]/g, "-")
+      .trim()
+      .replace(/[.!?;:,]+$/, ""),
+  );
+  if (!m) return undefined;
+  const [, a0, u, d, b, c] = m;
+  if (a0 && d) return undefined;
+  const unknown = (u ?? "x").toLowerCase();
+  const nums = { b: Number(b), c: Number(c) };
+  if (d) return { panel: { model: "division-bar", a: Number(d), ...nums }, unknown };
+  return { panel: { model: "algebra-bar", a: a0 ? Number(a0) : 1, ...nums }, unknown };
+}
+
+/**
+ * The panel a worked example's maths gives when the writer set none (TEACH-247 part ch): the
+ * equation in its heading, else in its first line. Code fills the layout's own panel slot; it
+ * never picks a layout. Undefined when there is no equation the bar model has a form for.
+ */
+export function workedPanelFrom(input: {
+  heading?: string;
+  lines?: { eq?: string }[];
+}): WorkedPanel | undefined {
+  return (
+    equationPanelOf(input.heading ?? "")?.panel ??
+    equationPanelOf(input.lines?.[0]?.eq ?? "")?.panel
+  );
+}
+
+/** The panel input the slide draws: the writer's (or code's) panel, its letter from the maths. */
+function panelOf(input: TemplateInput) {
+  const unknown =
+    equationPanelOf(input.heading ?? "")?.unknown ??
+    equationPanelOf(input.lines?.[0]?.eq ?? "")?.unknown;
+  return barPanelOf(input.barPanel, unknown);
+}
+
+type Lin = { x: number; k: number };
+/**
+ * A linear equation in `u` as its two sides, each a sum of terms (numbers, kx, x/k, k/m), or
+ * undefined when the text is not one ("3x/3 = 15/3" is x = 5; "3(x + 1) = 9" does not parse).
+ */
+function linearOf(text: string, u: string): { l: Lin; r: Lin } | undefined {
+  const sides = flat(text)
+    .replace(/÷/g, "/")
+    .replace(/[.!?;:,]+$/, "")
+    .split("=");
+  if (sides.length !== 2) return undefined;
+  const side = (t: string): Lin | undefined => {
+    if (!t) return undefined;
+    const out: Lin = { x: 0, k: 0 };
+    for (const m of t.replace(/^(?=[^+-])/, "+").matchAll(/([+-])([^+-]+)/g)) {
+      const sign = m[1] === "-" ? -1 : 1;
+      const tm = new RegExp(String.raw`^(\d+(?:\.\d+)?)?(${u})?(?:\/(\d+(?:\.\d+)?))?$`).exec(
+        m[2] ?? "",
+      );
+      if (!tm || (!tm[1] && !tm[2])) return undefined;
+      const v = (tm[1] ? Number(tm[1]) : 1) / (tm[3] ? Number(tm[3]) : 1);
+      if (tm[2]) out.x += sign * v;
+      else out.k += sign * v;
+    }
+    const used =
+      t
+        .replace(/^(?=[^+-])/, "+")
+        .match(/([+-])([^+-]+)/g)
+        ?.join("") ?? "";
+    return used === t.replace(/^(?=[^+-])/, "+") ? out : undefined;
+  };
+  const l = side(sides[0] ?? "");
+  const r = side(sides[1] ?? "");
+  return l && r ? { l, r } : undefined;
+}
+
+const ORDER: EquationFrame[] = ["whole", "take", "share", "scale", "check"];
+const fmt = (v: number) => String(Math.round(v * 100) / 100);
+
+/**
+ * Which frame of an equation panel pictures each row the slide shows (TEACH-247 part ch). A row
+ * is the whole equation, b taken from both sides (ax = c − b, or x/a = c − b), the share into a
+ * parts (x = (c − b)/a) or one part scaled up (x = a(c − b)), proven by its own equation. Only a
+ * row whose equation does not parse is read from its move (subtract b, divide or multiply by a);
+ * a row neither proves is not pictured, and the panel does not draw. The check row is the check.
+ * Frames run in order (a row may hold the frame before it, as "3x/3 = 15/3" then "x = 5"). When
+ * row 1 is not the whole, the panel opens on the whole with the heading (`lead`).
+ */
+export function workedFrames(
+  input: TemplateInput,
+): { ok: true; frames: EquationFrame[]; lead: boolean } | { ok: false; reason: string } {
+  const p = panelOf(input);
+  if (p?.model !== "equation") return { ok: false, reason: "no equation panel" };
+  const u = (p.unknown ?? "x").toLowerCase();
+  const { a, b, c } = p;
+  const over = !!p.over;
+  const lines = workedLines(input);
+  // Each frame's equation as its two sides (x coefficient, constant): a row is proven to be a
+  // frame by its own equation, never by its move's words when that equation says otherwise.
+  const ax = over ? 1 / a : a;
+  const want: [EquationFrame, Lin, Lin][] = [
+    ["whole", { x: ax, k: b }, { x: 0, k: c }],
+    ["take", { x: ax, k: 0 }, { x: 0, k: c - b }],
+    [over ? "scale" : "share", { x: 1, k: 0 }, { x: 0, k: over ? a * (c - b) : (c - b) / a }],
+  ];
+  const eqLin = (l: Lin, m: Lin) => Math.abs(l.x - m.x) < 1e-9 && Math.abs(l.k - m.k) < 1e-9;
+  // A move read only when its row's equation does not parse, and only when it names the number
+  // it works with (subtract b, divide or multiply by a).
+  const named = (mv: string, v: number) =>
+    new RegExp(String.raw`(?<![\d.])${fmt(v)}(?![\d.])`).test(mv);
+  const frameOf = (l: WorkedLine): EquationFrame | undefined => {
+    const e = linearOf(l.eq, u);
+    if (e) return want.find(([, L, R]) => eqLin(e.l, L) && eqLin(e.r, R))?.[0];
+    const mv = l.move ?? "";
+    if (/\b(subtract|take away|minus|remove)\b/i.test(mv) && named(mv, b)) return "take";
+    if (!over && /\b(divide|share|split)\b/i.test(mv) && named(mv, a)) return "share";
+    if (over && /\b(multiply|times)\b/i.test(mv) && named(mv, a)) return "scale";
+    return undefined;
+  };
+  const frames: EquationFrame[] = [];
+  for (const [i, l] of lines.entries()) {
+    const f = frameOf(l);
+    if (!f) return { ok: false, reason: `the bar model cannot picture row ${i + 1} ("${l.eq}")` };
+    frames.push(f);
+  }
+  if (input.check?.trim()) frames.push("check");
+  for (let i = 1; i < frames.length; i++)
+    if (ORDER.indexOf(frames[i] as EquationFrame) < ORDER.indexOf(frames[i - 1] as EquationFrame))
+      return { ok: false, reason: "the rows do not follow the bar model's steps in order" };
+  const lead = frames[0] !== "whole";
+  return { ok: true, frames: lead ? ["whole", ...frames] : frames, lead };
+}
+
+/**
+ * Why the slide's panel does not draw, or undefined when it does (or there is none): its guard,
+ * rows it cannot picture, or (percent) a build count off the rows. A panel never drops silently.
+ */
+export function panelLost(input: TemplateInput): string | undefined {
+  const p = panelOf(input);
+  if (!p) return undefined;
+  const g = barPanelGuard(p);
+  if (!g.ok) return `worked panel: ${g.reason}`;
+  if (p.model === "equation") {
+    const f = workedFrames(input);
+    return f.ok ? undefined : `worked panel: ${f.reason}`;
+  }
   const rows = workedLines(input).length + (input.check?.trim() ? 1 : 0);
-  return barPanelFrames(p).length === rows;
+  return barPanelFrames(p).length === rows
+    ? undefined
+    : `worked panel: ${barPanelFrames(p).length} percent steps for ${rows} rows`;
+}
+
+/** Whether the panel draws: its guard holds and each row the slide shows has its build. */
+export function panelDraws(input: TemplateInput): boolean {
+  return !!panelOf(input) && panelLost(input) === undefined;
 }
 
 /** The most rows (lines + check) one slide holds at `stage`; more continue on a second slide. */
@@ -874,7 +1062,10 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
 
   // The panel: a sand field, the bar model at panel size, build i with row i.
   if (p.model) {
-    const bp = barPanelOf(input.barPanel);
+    const bp0 = panelOf(input);
+    const wf = bp0?.model === "equation" ? workedFrames(input) : undefined;
+    const bp = bp0 && wf?.ok ? { ...bp0, frames: wf.frames } : bp0;
+    const lead = !!wf?.ok && wf.lead;
     const made = bp ? barPanelSpec(bp, "Bar model of the working") : undefined;
     const field = paintSurface(
       { id: uid(), role: "field-b", box: { x: W - PANEL_W, y: 0, w: PANEL_W, h: H } },
@@ -884,10 +1075,13 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       // The gold (v12 worked.js): the bars centre 8px under the middle of the equation rows.
       const cy =
         (first + (input.check?.trim() ? (badgeY[lines.length - 1] ?? last) : last)) / 2 + pt(8);
-      const ph = Math.min(pt(560), H - 2 * pt(48));
+      // Under the heading (TEACH-247 part ch: two rows centre high, and the heading's box runs
+      // the slide's width), so the drawing never sits under the problem's words.
+      const top = Math.max(pt(24), headBottom + pt(12));
+      const ph = Math.min(pt(560), H - 2 * pt(48), H - pt(24) - top);
       const box = {
         x: W - PANEL_W + pt(16),
-        y: Math.max(pt(24), Math.min(H - ph - pt(24), cy - ph / 2)),
+        y: Math.max(top, Math.min(H - ph - pt(24), cy - ph / 2)),
         w: PANEL_W - 2 * pt(16),
         h: ph,
       };
@@ -895,10 +1089,20 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       if (img) {
         if (field) c.els.splice(0, 0, { ...field, name: WORKED_NAMES.field } as ShapeElement);
         // The opening frame is build 0: the panel shows with row 1, then build i with row i + 1.
+        // A panel that opens on the whole (row 1 is not the equation) shows it with the heading.
         const builds = buildCount(svgOfDataUrl(img.src) ?? "");
-        c.els.push({ ...img, revealStep: 1, reveal: "fade", buildFrom: 2, builds } as ImageElement);
+        c.els.push(
+          (lead
+            ? { ...img, buildFrom: 1, builds }
+            : { ...img, revealStep: 1, reveal: "fade", buildFrom: 2, builds }) as ImageElement,
+        );
       } else c.fails?.push("worked panel did not draw");
     } else if (made && !made.ok) c.fails?.push(made.reason);
+  } else {
+    // A panel that does not draw says why, never a silent drop (TEACH-247 part ch).
+    const why =
+      panelLost(input) ?? (panelDraws(input) ? "worked panel: no room beside the working" : "");
+    if (why) c.fails?.push(why);
   }
 
   c.fields = fieldsOf(input, lines, age, sayW, p.say);

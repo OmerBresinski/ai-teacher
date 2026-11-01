@@ -67,6 +67,16 @@ const EquationPanel = z.object({
     .trim()
     .regex(/^[a-z]$/i)
     .default("x"),
+  /** TEACH-247 part ch: x/a + b = c (one x bar cut into a equal parts) instead of ax + b = c. */
+  over: z.boolean().optional(),
+  /**
+   * TEACH-247 part ch: the frames the panel shows, one per working row (its first frame may ride
+   * the heading). Set by code from the rows (`workedFrames`); absent, every frame of the model.
+   */
+  frames: z
+    .array(z.enum(["whole", "take", "share", "scale", "check"]))
+    .min(1)
+    .optional(),
 });
 export const BarPanelSchema = z.discriminatedUnion("model", [PercentPanel, EquationPanel]);
 export type BarPanel = z.infer<typeof BarPanelSchema>;
@@ -89,6 +99,14 @@ export function barPanelGuard(p: BarPanelInput): { ok: true } | { ok: false; rea
     return { ok: false, reason: `a is not a whole number from 1 to ${EQUATION_MAX_A}` };
   if (!(p.b > 0) || !(p.c > p.b))
     return { ok: false, reason: "b is not positive or c is not above b" };
+  // x/a + b = c: x is a whole share times a, so only the share need be exact.
+  if (p.over) {
+    if (p.a < 2) return { ok: false, reason: "a is not a whole number from 2 to 6" };
+    const s = p.c - p.b;
+    if (Math.abs(Math.round(s * 100) - s * 100) > 1e-6)
+      return { ok: false, reason: "x/a is not a whole number or a decimal of at most 2 places" };
+    return { ok: true };
+  }
   // x may be a decimal (KS3 solves 2x + 3 = 8), but one the cells show exactly: at most two
   // decimal places. 10/3 would show as a rounded 3.33 that does not check.
   const x = (p.c - p.b) / p.a;

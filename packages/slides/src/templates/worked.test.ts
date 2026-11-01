@@ -1,15 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { type Slide, slideStepCount } from "@tj/domain/documents";
+import { barPanelSpec } from "../diagrams/bar-model";
+import { diagramElement, svgOfDataUrl } from "../diagrams/index";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
   mathText,
   moveHot,
   panelDraws,
+  panelLost,
   snap,
   splitWorked,
   WORKED_NAMES,
+  workedFrames,
   workedMax,
+  workedPanelFrom,
 } from "./worked";
 import { measureWorkedCapacity } from "./worked-capacity";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
@@ -142,7 +147,8 @@ describe("worked example: the bar-model panel", () => {
     for (const bad of [
       { ...base, barPanel: { model: "algebra-bar" as const, a: 9, b: 5, c: 20 } },
       { ...base, barPanel: { model: "percent-bar" as const, amount: 80, percent: 33 } },
-      { ...base, check: undefined },
+      // A row the bar model cannot picture (no move, an equation of another problem).
+      { ...base, lines: [{ eq: "3x + 5 = 20" }, { eq: "y = 7" }] },
     ]) {
       expect(panelDraws(bad)).toBe(false);
       const r = layoutTemplate(bad, getTheme("paper"), "ks3");
@@ -224,4 +230,377 @@ describe("worked example: boxes that touch share an edge", () => {
             });
       }
     });
+});
+
+/*
+ * TEACH-247 part ch: the equation panel's frames fit the rows the slide shows (2, 3 or 4), the
+ * panel is derived from the maths when the writer set none, x/a + b = c has its own bar, and a
+ * panel that cannot draw says why (a `diagram` fault) instead of dropping silently.
+ */
+describe("worked example: the bar model fits the rows shown (TEACH-247 part ch)", () => {
+  const solve = (over: Partial<TemplateInput> = {}): TemplateInput => ({
+    template: "worked",
+    heading: "Solve 3x + 5 = 20",
+    lines: [
+      { move: "Subtract 5 from both sides", eq: "3x = 15" },
+      { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+    ],
+    barPanel: { model: "algebra-bar", a: 3, b: 5, c: 20 },
+    ...over,
+  });
+  const panelOfSlide = (input: TemplateInput) => {
+    const r = layoutTemplate(input, getTheme("paper"), "ks3");
+    const img = r.slide.elements.find(
+      (e) => e.type === "image" && (e as { builds?: number }).builds,
+    ) as { revealStep?: number; buildFrom?: number; builds?: number; src: string } | undefined;
+    return { r, img };
+  };
+  const rowsOf = (input: TemplateInput) =>
+    (input.lines?.length ?? 0) + (input.check?.trim() ? 1 : 0);
+
+  test("2 rows (the equations-C slide): the whole opens with the heading, take then share", () => {
+    const input = solve();
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share"],
+      lead: true,
+    });
+    const { r, img } = panelOfSlide(input);
+    expect(r.diagram).toBeUndefined();
+    expect(r.over).toEqual([]);
+    // Shown from the start (no reveal step), build i with row i.
+    expect(img?.revealStep).toBeUndefined();
+    expect(img?.buildFrom).toBe(1);
+    expect(img?.builds).toBe(2);
+    expect(slideStepCount(r.slide as Slide)).toBe(rowsOf(input));
+    expect(named(r.slide.elements as El[], WORKED_NAMES.field)).toHaveLength(1);
+  });
+
+  test("3 rows (2 lines and the check): take, share, check after the opening whole", () => {
+    const input = solve({ check: "3 × *5* + 5 = 20" });
+    const f = workedFrames(input);
+    expect(f).toEqual({ ok: true, frames: ["whole", "take", "share", "check"], lead: true });
+    const { r, img } = panelOfSlide(input);
+    expect(r.diagram).toBeUndefined();
+    expect(img?.builds).toBe(3);
+    expect(slideStepCount(r.slide as Slide)).toBe(rowsOf(input));
+  });
+
+  test("3 rows starting on the equation: the panel shows with row 1, no opening frame", () => {
+    const input = solve({
+      lines: [
+        { eq: "3x + 5 = 20" },
+        { move: "Subtract 5 from both sides", eq: "3x = 15" },
+        { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+      ],
+    });
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share"],
+      lead: false,
+    });
+    const { img } = panelOfSlide(input);
+    expect(img?.revealStep).toBe(1);
+    expect(img?.buildFrom).toBe(2);
+    expect(img?.builds).toBe(2);
+  });
+
+  test("4 rows (the gold: equation, two moves, check) keep the four frames, one per row", () => {
+    const input = WORKED_CASES["y8-panel"]?.input as TemplateInput;
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share", "check"],
+      lead: false,
+    });
+  });
+
+  test("a row that restates the move (3x/3 = 15/3) holds the share frame before x = 5", () => {
+    const input = solve({
+      lines: [
+        { move: "Subtract 5 from both sides", eq: "3x = 15" },
+        { move: "Divide both sides by 3", eq: "3x/3 = 15/3" },
+        { eq: "x = 5", answer: true },
+      ],
+    });
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share", "share"],
+      lead: true,
+    });
+    expect(panelDraws(input)).toBe(true);
+  });
+
+  test("x/a + b = c draws its own bar: take 3, then scale one part up to x", () => {
+    const input = solve({
+      heading: "Solve x/4 + 3 = 8",
+      lines: [
+        { move: "Subtract 3 from both sides", eq: "x/4 = 5" },
+        { move: "Multiply both sides by 4", eq: "x = 20", answer: true },
+      ],
+      barPanel: { model: "division-bar", a: 4, b: 3, c: 8 },
+    });
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "scale"],
+      lead: true,
+    });
+    const { r, img } = panelOfSlide(input);
+    expect(r.diagram).toBeUndefined();
+    expect(img?.builds).toBe(2);
+    expect(decodeURIComponent(img?.src ?? "")).toContain("x/4");
+  });
+
+  test("the panel is derived from the maths when the writer set none", () => {
+    expect(workedPanelFrom({ heading: "Solve 3x + 5 = 20" })).toEqual({
+      model: "algebra-bar",
+      a: 3,
+      b: 5,
+      c: 20,
+    });
+    expect(workedPanelFrom({ heading: "Solve x/4 + 3 = 8" })).toEqual({
+      model: "division-bar",
+      a: 4,
+      b: 3,
+      c: 8,
+    });
+    expect(workedPanelFrom({ heading: "Solve for y", lines: [{ eq: "2y + 1 = 9" }] })).toEqual({
+      model: "algebra-bar",
+      a: 2,
+      b: 1,
+      c: 9,
+    });
+    // No bar-model form: brackets, x on both sides, a subtraction.
+    expect(workedPanelFrom({ heading: "Solve 4(x - 3) = 2x + 6" })).toBeUndefined();
+    expect(workedPanelFrom({ heading: "Solve 2x - 3 = 7" })).toBeUndefined();
+    expect(workedPanelFrom({ heading: "Find 35% of 80" })).toBeUndefined();
+  });
+
+  test("a panel that cannot draw says why: a diagram fault, never a silent drop", () => {
+    const tooMany = solve({ barPanel: { model: "algebra-bar", a: 9, b: 5, c: 50 } });
+    expect(panelLost(tooMany)).toContain("a is not a whole number");
+    expect(panelOfSlide(tooMany).r.diagram?.join()).toContain("worked panel:");
+    const thirds = solve({
+      heading: "Solve 3x + 5 = 15",
+      barPanel: { model: "algebra-bar", a: 3, b: 5, c: 15 },
+    });
+    expect(panelOfSlide(thirds).r.diagram?.join()).toContain("worked panel:");
+    const offRows = solve({ lines: [{ eq: "y = 7" }] });
+    expect(panelLost(offRows)).toContain("cannot picture row 1");
+    expect(panelOfSlide(offRows).img).toBeUndefined();
+    // No panel and no equation: nothing to say.
+    expect(panelLost(solve({ barPanel: undefined }))).toBeUndefined();
+  });
+});
+
+/*
+ * TEACH-247 part ch (review): every frame of the panel pictures the equation of the row it rides,
+ * both sides. Each frame is drawn alone and read back: a solid cell is a term (a number, the
+ * letter, or x/a; a cell holding a number reads as that number), a dashed cell is b taken from
+ * both sides and must stand on both bars. The top bar is the left side, the bottom the right.
+ */
+describe("worked example: each build pictures its row's equation (TEACH-247 part ch)", () => {
+  type Lin = { x: number; k: number };
+  const add = (a: Lin, b: Lin): Lin => ({ x: a.x + b.x, k: a.k + b.k });
+  const term = (t: string): Lin => {
+    const m = /^(\d*(?:\.\d+)?)([a-z])?(?:\/(\d+))?$/.exec(t);
+    if (!m) throw new Error(`term ${t}`);
+    const [, co, v, d] = m;
+    if (!v) return { x: 0, k: Number(co) };
+    return { x: (co ? Number(co) : 1) / (d ? Number(d) : 1), k: 0 };
+  };
+  const side = (s: string) =>
+    s.replace(/\s+/g, "").split("+").map(term).reduce(add, { x: 0, k: 0 });
+  const rowEq = (eq: string) => {
+    const [l, r] = eq.split("=");
+    return { l: side(l ?? ""), r: side(r ?? "") };
+  };
+  /** The bars of one frame, read back from its drawing. */
+  const picture = (panel: Record<string, unknown>, key: string) => {
+    const made = barPanelSpec({ ...panel, frames: [key] } as never, "t");
+    if (!made.ok) throw new Error(made.reason);
+    const img = diagramElement(made.spec, getTheme("paper"), { x: 0, y: 0, w: 300, h: 370 });
+    const svg = svgOfDataUrl(img?.src ?? "") ?? "";
+    // Each cell's outline (a solid cell) or dashed box (b taken), as x, y, w, h.
+    const rects = [...svg.matchAll(/<rect ([^>]*)\/>/g)]
+      .map((m) => m[1] as string)
+      .filter((r) => /fill="none"/.test(r) && /stroke=/.test(r));
+    const geo = (r: string) =>
+      ["x", "y", "width", "height"].map((k) => Number(new RegExp(`${k}="([\\d.]+)"`).exec(r)?.[1]));
+    const solid = rects.filter((r) => !/dasharray/.test(r)).map(geo);
+    const ghosts = rects.filter((r) => /dasharray/.test(r)).map(geo);
+    const texts = [...svg.matchAll(/<tspan x="([\d.]+)" y="([\d.]+)">([^<]+)<\/tspan>/g)].map(
+      (m) => ({ x: Number(m[1]), y: Number(m[2]), t: m[3] as string }),
+    );
+    const inside = (b: number[], t: { x: number; y: number }) =>
+      t.x > (b[0] ?? 0) &&
+      t.x < (b[0] ?? 0) + (b[2] ?? 0) &&
+      t.y > (b[1] ?? 0) &&
+      t.y < (b[1] ?? 0) + (b[3] ?? 0) + 2;
+    const ys = [...solid, ...ghosts].map((b) => b[1] ?? 0);
+    const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
+    const bars: Record<"top" | "bottom", Lin> = { top: { x: 0, k: 0 }, bottom: { x: 0, k: 0 } };
+    const taken = { top: [] as string[], bottom: [] as string[] } as Record<string, string[]>;
+    for (const b of solid) {
+      const ts = texts.filter((t) => inside(b, t)).map((t) => t.t);
+      const n = ts.find((t) => /^\d/.test(t));
+      const row = (b[1] ?? 0) > mid ? "bottom" : "top";
+      bars[row] = add(bars[row], term(n ?? (ts[0] as string)));
+    }
+    for (const b of ghosts) {
+      const row = (b[1] ?? 0) > mid ? "bottom" : "top";
+      taken[row]?.push(
+        texts
+          .filter((t) => inside(b, t))
+          .map((t) => t.t)
+          .join(""),
+      );
+    }
+    return { ...bars, taken, tick: svg.includes("stroke-linejoin") && key === "check" };
+  };
+  const cases: { name: string; input: TemplateInput; panel: Record<string, unknown>; x: number }[] =
+    [
+      {
+        name: "3x + 5 = 20, 2 rows",
+        input: {
+          template: "worked",
+          heading: "Solve 3x + 5 = 20",
+          lines: [
+            { move: "Subtract 5 from both sides", eq: "3x = 15" },
+            { move: "Divide both sides by 3", eq: "x = 5" },
+          ],
+          barPanel: { model: "algebra-bar", a: 3, b: 5, c: 20 },
+        },
+        panel: { model: "equation", a: 3, b: 5, c: 20 },
+        x: 5,
+      },
+      {
+        name: "3x + 5 = 20, gold 4 rows",
+        input: WORKED_CASES["y8-panel"]?.input as TemplateInput,
+        panel: { model: "equation", a: 3, b: 5, c: 20 },
+        x: 5,
+      },
+      {
+        name: "x/4 + 3 = 8, 2 rows + check",
+        input: {
+          template: "worked",
+          heading: "Solve x/4 + 3 = 8",
+          lines: [
+            { move: "Subtract 3 from both sides", eq: "x/4 = 5" },
+            { move: "Multiply both sides by 4", eq: "x = 20" },
+          ],
+          check: "*20*/4 + 3 = 8",
+          barPanel: { model: "division-bar", a: 4, b: 3, c: 8 },
+        },
+        panel: { model: "equation", a: 4, b: 3, c: 8, over: true },
+        x: 20,
+      },
+    ];
+  for (const k of cases)
+    test(`${k.name}: build i shows row i's equation, both sides`, () => {
+      const f = workedFrames(k.input);
+      if (!f.ok) throw new Error(f.reason);
+      const rows = [
+        ...(f.lead ? [k.input.heading] : []),
+        ...(k.input.lines ?? []).map((l) => l.eq),
+        ...(k.input.check ? ["check"] : []),
+      ];
+      expect(rows).toHaveLength(f.frames.length);
+      f.frames.forEach((key, i) => {
+        const pic = picture(k.panel, key);
+        // Whatever is taken is taken from both sides.
+        expect(pic.taken.top).toEqual(pic.taken.bottom);
+        const row = rows[i] as string;
+        if (row === "check") {
+          // Every term a number: the left side's values make the right side, ticked.
+          expect(pic.top?.x).toBe(0);
+          expect(pic.top?.k).toBe(pic.bottom?.k);
+          return;
+        }
+        const want = rowEq(row.replace(/^Solve\s+/, ""));
+        const got = { l: pic.top as Lin, r: pic.bottom as Lin };
+        if (key === "share" || key === "scale") {
+          // The share pictures the whole of x (or of ax) cut into its equal values: the row's
+          // equation times the number of cells, and the same answer.
+          const s = got.l.x / want.l.x;
+          expect(got.r.k).toBeCloseTo(want.r.k * s);
+          expect(got.l.k).toBe(0);
+          expect(got.r.k / got.l.x).toBeCloseTo(k.x);
+        } else expect(got).toEqual(want);
+      });
+    });
+});
+
+/*
+ * TEACH-247 part ch (review 2): a panel is derived only from a whole equation of a form the bar
+ * model draws, and a row's frame is proven from its own equation; anything else draws no panel.
+ */
+describe("worked example: no wrong bar model (TEACH-247 part ch)", () => {
+  test("only a whole ax + b = c or x/a + b = c derives a panel", () => {
+    for (const h of [
+      "Solve −3x + 5 = 20",
+      "Solve 10 − 3x + 5 = 20",
+      "Solve 5 + 2x + 3 = 20",
+      "Solve 3x + 5 = 20 + x",
+      "Solve x + 3 = 20 − 4",
+      "Solve 2x + 3 = 11 ÷ 2",
+      "−3x + 5 = 20",
+      "10 − 3x + 5 = 20",
+      "5 + 2x + 3 = 20",
+      "3x + 5 = 20 + x",
+      "x + 3 = 20 − 4",
+      "2x + 3 = 11 ÷ 2",
+    ])
+      expect({ h, p: workedPanelFrom({ heading: h }) }).toEqual({ h, p: undefined });
+    const bar = { model: "algebra-bar" as const, a: 3, b: 5, c: 20 };
+    expect(workedPanelFrom({ heading: "Solve 3x + 5 = 20." })).toEqual(bar);
+    expect(workedPanelFrom({ heading: "Solve for x: 3x + 5 = 20" })).toEqual(bar);
+    expect(workedPanelFrom({ heading: "3x + 5 = 20" })).toEqual(bar);
+    expect(workedPanelFrom({ heading: "Solve x ÷ 4 + 3 = 8!" })).toEqual({
+      model: "division-bar",
+      a: 4,
+      b: 3,
+      c: 8,
+    });
+  });
+  const slide = (
+    heading: string,
+    barPanel: TemplateInput["barPanel"],
+    lines: TemplateInput["lines"],
+  ) => ({ template: "worked", heading, barPanel, lines }) as TemplateInput;
+  test("a row whose own equation is another equation is never pictured from its move", () => {
+    const s = slide("Solve 2x + 3 = 11", { model: "algebra-bar", a: 2, b: 3, c: 11 }, [
+      { move: "Divide both sides by 2", eq: "x + 1.5 = 5.5" },
+      { move: "Subtract 1.5 from both sides", eq: "x = 4", answer: true },
+    ]);
+    expect(workedFrames(s).ok).toBe(false);
+    expect(panelDraws(s)).toBe(false);
+    expect(panelLost(s)).toContain("cannot picture row 1");
+    const r = layoutTemplate(s, getTheme("paper"), "ks3");
+    expect(r.diagram?.join()).toContain("worked panel:");
+  });
+  test("a move is read only when its row does not parse, and only with its own number", () => {
+    const base = { model: "algebra-bar" as const, a: 3, b: 5, c: 20 };
+    // "Subtract x" names no b: not the take.
+    const subX = slide("Solve 3x + 5 = 20", base, [
+      { move: "Subtract x from both sides", eq: "3x + 5 − x = 20 − x ..." },
+      { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+    ]);
+    expect(workedFrames(subX).ok).toBe(false);
+    // An unparsed row with "Subtract 5" is the take.
+    const sub5 = slide("Solve 3x + 5 = 20", base, [
+      { move: "Subtract 5 from both sides", eq: "3x + 5 − 5 = 20 − 5 (so 3x = 15)" },
+      { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+    ]);
+    expect(workedFrames(sub5)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share"],
+      lead: true,
+    });
+    // A parsed row that is the take by its equation, whatever its move says.
+    const ok = slide("Solve 3x + 5 = 20", base, [
+      { move: "Take 5 away", eq: "3x + 5 − 5 = 20 − 5" },
+      { eq: "x = 5", answer: true },
+    ]);
+    expect(workedFrames(ok)).toEqual({ ok: true, frames: ["whole", "take", "share"], lead: true });
+  });
 });

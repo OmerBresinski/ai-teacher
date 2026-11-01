@@ -15,6 +15,7 @@ import {
   REASON_PENDING_ICON,
   type TemplateInput,
   type TemplatePoint,
+  workedPanelFrom,
 } from "@tj/slides/templates";
 import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
 // TEACH-239 part b (C7): the figure slide's writer rules (a leaf: no drawing code).
@@ -980,23 +981,34 @@ export function toInput(
         }),
       } as TemplateInput;
     // TEACH-17 part b (C1): the worked example. The writer's `panel` is the layout's `barPanel`;
-    // its guard (and a build count off the rows) falls back to the text-only base in the layout.
+    // its guard (and rows it cannot picture) falls back to the text-only base in the layout, with
+    // a `diagram` fault. TEACH-247 part ch: with no panel from the writer, the maths gives one
+    // (the equation in the heading or line 1, when the bar model has a form for it): the visual
+    // is a function of the maths. It fills the layout's own panel slot; no layout is chosen.
     case "worked": {
       const ls = (Array.isArray(s.lines) ? s.lines : []) as (S | null)[];
+      const lines = ls.map((l0) => {
+        const l = (l0 ?? {}) as S;
+        return {
+          ...(typeof l.move === "string" && l.move.trim() ? { move: l.move } : {}),
+          eq: str(l.eq),
+          ...(l.answer === true ? { answer: true } : {}),
+        };
+      });
+      // A draft waits for the closed slide (its rows still stream), as the writer's panel does.
+      const barPanel =
+        s.panel && typeof s.panel === "object"
+          ? s.panel
+          : ctx.draft
+            ? undefined
+            : workedPanelFrom({ heading, lines });
       return {
         template,
         heading,
-        lines: ls.map((l0) => {
-          const l = (l0 ?? {}) as S;
-          return {
-            ...(typeof l.move === "string" && l.move.trim() ? { move: l.move } : {}),
-            eq: str(l.eq),
-            ...(l.answer === true ? { answer: true } : {}),
-          };
-        }),
+        lines,
         ...(typeof s.check === "string" && s.check.trim() ? { check: s.check } : {}),
         ...(Array.isArray(s.vars) ? { vars: s.vars.filter((v) => typeof v === "string") } : {}),
-        ...(s.panel && typeof s.panel === "object" ? { barPanel: s.panel } : {}),
+        ...(barPanel ? { barPanel } : {}),
       } as TemplateInput;
     }
     // TEACH-239 part b (C7): the figure slide. One model or photo, its caption (`caption` or
