@@ -61,12 +61,14 @@ export {
   measuredLabel,
   SLOT_LIMITS,
   type SlotLimit,
+  SPLIT_SIDE_BOX,
   type StageGroup,
   slotBox,
   slotLimit,
   slotLimitLine,
   slotOf,
   stageGroup,
+  type TableSlot,
   wordsFor,
 } from "./limits";
 export {

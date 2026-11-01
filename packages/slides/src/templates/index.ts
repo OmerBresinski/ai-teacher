@@ -84,7 +84,7 @@ export { blankRowItem, motifOf, PENDING_ICON, PLACEHOLDER_ICON, ROW_MOTIFS } fro
 // TEACH-75 part ag (G1).
 export { MYTH_NAMES, type MythInput, type MythProof } from "./myth";
 export { REASON_PENDING_ICON } from "./reasons";
-export { SPLIT_SIDE_DIAGRAM_KINDS } from "./split-compare";
+export { splitSideDrawn } from "./split-compare";
 // TEACH-75 part ac (C4).
 export { blankStage, STAGES_MAX, STAGES_MIN, type StageItem } from "./stages";
 export type {

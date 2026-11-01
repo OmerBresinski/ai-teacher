@@ -14,6 +14,7 @@ import {
   drawBlock,
   drawKey,
   fitLines,
+  isLetterLabel,
   type LabelReq,
   overlaps,
   placeAll,
@@ -1692,7 +1693,10 @@ function meanderSpots(s: River, x: Ctx, k: number) {
   for (let fs = x.fs; fs >= TYPE_FLOOR; fs -= 1) {
     const items = s.labels.map((l) => {
       const sp = MEANDER_SPOTS[l.part] as (typeof MEANDER_SPOTS)[string];
-      return { ...sp, text: l.text, bw: textWidth(l.text, x, fs, WEIGHT.name) };
+      // A letter names nothing where it stands: it points at its part (`isLetterLabel`).
+      const anchor = RIVERS["meander-section"].anchors[l.part]?.at;
+      const leader = sp.leader ?? (isLetterLabel(l.text) ? anchor : undefined);
+      return { ...sp, leader, text: l.text, bw: textWidth(l.text, x, fs, WEIGHT.name) };
     });
     if (items.every((it) => it.bw <= it.room * k)) return { fs, items };
   }
@@ -1871,7 +1875,12 @@ export function drawRiver(s: River, x0: Ctx, w: number, h: number): string {
         // A short leader from the label's nearest edge to its point.
         const [ax, ay] = t(sp.leader);
         const ex = Math.max(lx, Math.min(lx + sp.bw, ax));
-        const ey = ay < py - spots.fs * 0.6 ? py - spots.fs * 0.6 : py;
+        const ey =
+          ay < py - spots.fs * 0.6
+            ? py - spots.fs * 0.6
+            : ay > py + spots.fs * 0.6
+              ? py + spots.fs * 0.6
+              : py;
         const sx = ax < lx ? lx - 3 : ax > lx + sp.bw ? lx + sp.bw + 3 : ex;
         out.push(
           `<line x1="${n(sx)}" y1="${n(ey)}" x2="${n(ax)}" y2="${n(ay)}" stroke="${x.c.ink}" stroke-width="${STROKE.hair}" stroke-linecap="round"/>`,

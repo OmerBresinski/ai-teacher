@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { DIAGRAM_SAMPLES } from "@tj/slides/diagrams";
+import { DIAGRAM_SAMPLES, dropNulls, SPLIT_SIDE_BOX } from "@tj/slides/diagrams";
 import { ICON_CONCEPTS, resolveIcon } from "@tj/slides/icons";
 import type { FieldReport } from "@tj/slides/templates";
-import { SPLIT_SIDE_DIAGRAM_KINDS } from "@tj/slides/templates";
-import { getTheme } from "@tj/slides/themes";
+import { splitSideDrawn, templateScale } from "@tj/slides/templates";
+import { atKeyStage, getTheme } from "@tj/slides/themes";
 import { sampleBriefLesson } from "../testing";
 import {
   LAYOUT_WRITER_MENUS,
@@ -51,6 +51,10 @@ const ctxAt = (index: number, slides: S[] = []) => ({
 });
 const long =
   "The heart is a strong muscle that pumps blood around the whole body, through arteries, capillaries and veins, all day and all night without ever stopping to rest.";
+/** What `splitSideDrawn` reads of a layout's context: the theme at its stage and its scale. */
+const ctxOf = (t: ReturnType<typeof getTheme>, stage = "ks2") =>
+  ({ t: atKeyStage(t, stage as never), s: templateScale(t, stage as never) }) as never;
+const SIDE = { w: SPLIT_SIDE_BOX.w, h: SPLIT_SIDE_BOX.h };
 const pic = (shows: string) => ({ shows, must_see: [shows], subject: "generic" });
 
 const row: S = {
@@ -428,37 +432,48 @@ describe("the generation path reaches the editor as layout groups (TEACH-110 par
   });
 
   // TEACH-110 part ad: the live drawer hands back the spec itself (`{status: "diagram", spec}`, no
-  // pre-drawn `drawn`), so the side is `{diagram: spec}`. A side draws it only for a kind that reads
-  // cleanly at side size (SPLIT_SIDE_DIAGRAM_KINDS); the forces lesson's labelled drawings crowded
-  // there, so its sides stay words, as before, never a crowded sketch.
+  // pre-drawn `drawn`), so the side is `{diagram: spec}`. TEACH-247 part cg: a side draws any spec
+  // that draws cleanly at its picture box (`splitSideDrawn`, no kind list). One that does not is
+  // reported, its faults in `diagram` and its key in `lost`, never dropped silently.
   const live = JSON.parse(
     readFileSync(new URL("./fixtures/split-side-diagrams.json", import.meta.url), "utf8"),
   ) as Record<string, S>;
-  const sideSvgs = (s: S, specs: unknown[]) => {
+  const sideSvgs = (s: S, specs: unknown[], ctx = ctxAt(3)) => {
     const drawer = ((k: string) => ({
       status: "diagram",
       spec: specs[Number(k.split(".")[1])],
     })) as unknown as (k: string) => never;
-    const m = materialise(s, { ...ctxAt(3), visual: drawer });
-    expect(m.diagram).toBeUndefined();
-    const kids = (m.slide.elements as unknown as G[])[0]?.children ?? [];
-    return kids.filter(
-      (c) => c.type === "image" && (c.src ?? "").startsWith("data:image/svg"),
-    ) as unknown as { x: number; w: number }[];
+    const m = materialise(s, { ...ctx, visual: drawer });
+    const top = (m.slide.elements as unknown as G[])[0];
+    // Laid as a layout group, or flat when a side was dropped (materialise lays it out again).
+    const kids = (top?.children ?? m.slide.elements) as { type: string; src?: string }[];
+    return {
+      m,
+      pics: kids.filter(
+        (c) => c.type === "image" && (c.src ?? "").startsWith("data:image/svg"),
+      ) as unknown as { x: number; w: number }[],
+    };
   };
   for (const [name, s] of Object.entries(live))
-    test(`a-hinge-y9-forces ${name}: labelled drawings stay words at side size`, () => {
+    test(`a-hinge-y9-forces ${name}: a side drawing draws, or its drop is reported`, () => {
       const specs = (s.sides as S[]).map((d) => (d.picture as S).diagram);
       expect(visualsOf(s, 3, { ...ctxAt(3) } as never).map((a) => [a.key, a.type])).toEqual([
         ["side.0", "diagram"],
         ["side.1", "diagram"],
       ]);
-      expect(specs.every((d) => !SPLIT_SIDE_DIAGRAM_KINDS.includes(String((d as S).kind)))).toBe(
-        true,
-      );
-      expect(sideSvgs(s, specs)).toHaveLength(0);
+      const { m, pics } = sideSvgs(s, specs);
+      const ok = specs.map((d) => !!splitSideDrawn(d, ctxOf(base.theme), SIDE).drawn);
+      if (pics.length) {
+        expect(pics).toHaveLength(2);
+        expect(m.diagram).toBeUndefined();
+      } else {
+        expect(m.diagram?.length).toBeGreaterThan(0);
+        expect(m.lost?.length).toBeGreaterThan(0);
+        for (const k of m.lost ?? []) expect(k).toMatch(/^side\.\d$/);
+        expect(ok.some((x) => !x)).toBe(true);
+      }
     });
-  for (const kind of SPLIT_SIDE_DIAGRAM_KINDS.filter((k) => k === "venn" || k === "particles"))
+  for (const kind of ["venn"])
     test(`a ${kind} side pair is drawn, one in each half`, () => {
       const spec = DIAGRAM_SAMPLES[kind] as S;
       const s = {
@@ -468,12 +483,41 @@ describe("the generation path reaches the editor as layout groups (TEACH-110 par
           picture: { diagram: spec },
         })),
       };
-      const pics = sideSvgs(s, [spec, spec]);
+      const { pics } = sideSvgs(s, [spec, spec]);
       expect(pics).toHaveLength(2);
       const [a, b] = [...pics].sort((p, q) => p.x - q.x);
       expect((a?.x ?? 0) + (a?.w ?? 0)).toBeLessThanOrEqual(480);
       expect(b?.x ?? 0).toBeGreaterThanOrEqual(480);
     });
+  // TEACH-247 part cg (Rivers v6 s6, "Banks of a meander"): the writer's two one-label river
+  // sections drew cleanly at the side, yet the kind list dropped both and the slide shipped words.
+  const rivers = JSON.parse(
+    readFileSync(new URL("./fixtures/rivers-v6-lost-visuals.json", import.meta.url), "utf8"),
+  ) as { split: S; practice: S };
+  const ks3 = { ...ctxAt(3), theme: getTheme("paper", "ks3"), stage: "ks3" as never };
+  test("Rivers v6 s6: both river sides are drawn, one in each half", () => {
+    const specs = (rivers.split.sides as S[]).map((d) => dropNulls(d.picture));
+    const { m, pics } = sideSvgs(rivers.split, specs, ks3);
+    expect(m.diagram).toBeUndefined();
+    expect(m.lost).toBeUndefined();
+    expect(pics).toHaveLength(2);
+    const [a, b] = [...pics].sort((p, q) => p.x - q.x);
+    expect((a?.x ?? 0) + (a?.w ?? 0)).toBeLessThanOrEqual(480);
+    expect(b?.x ?? 0).toBeGreaterThanOrEqual(480);
+  });
+  test("a side that does not draw at its box is reported, with its key", () => {
+    // A forces drawing whose labels cross its lines and are cut short at side size.
+    const crowded = ((live["20261016-1221-s3"] as S).sides as S[])[0]?.picture as S;
+    const crowdedSpec = crowded.diagram as S;
+    const specs = [dropNulls((rivers.split.sides as S[])[0]?.picture), crowdedSpec];
+    const r = splitSideDrawn(crowdedSpec, ctxOf(getTheme("paper", "ks3"), "ks3"), SIDE);
+    expect(r.drawn).toBeUndefined();
+    expect(r.faults.length).toBeGreaterThan(0);
+    const { m, pics } = sideSvgs(rivers.split, specs, ks3);
+    expect(pics).toHaveLength(0);
+    expect(m.diagram?.length).toBeGreaterThan(0);
+    expect(m.lost).toEqual(["side.1"]);
+  });
 });
 
 describe("slot-fill reads a pilot slide as written, not as a writer fault (TEACH-110 part s)", () => {

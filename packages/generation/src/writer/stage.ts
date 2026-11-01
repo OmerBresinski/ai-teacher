@@ -1,7 +1,7 @@
 import { safeErrorWhere } from "@tj/domain";
 import { MAX_CONFIRMED_OBJECTIVES, type Slide, type Theme } from "@tj/domain/documents";
 import { textFaults } from "@tj/slides";
-import { slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
+import { type DiagramSlot, slotBox, slotOf, withBuilds } from "@tj/slides/diagrams";
 import { PLACEHOLDER_IMAGE } from "@tj/slides/layouts";
 import { listAnswers, modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
@@ -493,10 +493,7 @@ export function writerSystem(brief: Brief, P = writerBundle()): string {
  * side-slot ask (TEACH-251 part z, romans verify5 s4: a hist_map on a figure slide went to the
  * drawer, failed its schema twice and the slide shipped an icon).
  */
-export const writerSlot = (s: {
-  template?: unknown;
-  step?: unknown;
-}): ReturnType<typeof slotOf> => {
+export const writerSlot = (s: { template?: unknown; step?: unknown }): DiagramSlot => {
   const template = String(s.template ?? "");
   // TEACH-247 part cd (plants showcase s8): a step with its model (`steps~step-model`, a steps
   // slide with a `step`) is a whole-slide library slide too: its model fills the stage under the
@@ -504,6 +501,10 @@ export const writerSlot = (s: {
   // and the slide shipped blank.
   if (template === "figure") return "full";
   if (template === "steps" && s.step && typeof s.step === "object") return "full";
+  // TEACH-247 part cg (Rivers v6 s6): a split side's drawing is checked where it draws, at the
+  // side's own picture box with the template's test (`layoutSlotProbe`), never at the side slot of
+  // a diagram-text slide, which the template's own test then refused with nothing reported.
+  if (template === "split-compare") return "split-side";
   return slotOf(template);
 };
 

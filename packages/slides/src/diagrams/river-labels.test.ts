@@ -52,6 +52,21 @@ const SPECS: Record<string, unknown> = {
     ["slip-off-slope", "Slip-off slope"],
     ["inner-bank", "Inner bank"],
   ]),
+  // TEACH-247 part cg: a question slide's river, its parts lettered
+  "section-letters": {
+    kind: "river",
+    alt: "A meander in cross-section.",
+    view: "meander-section",
+    labels: [
+      { part: "outer-bank", text: "A" },
+      { part: "inner-bank", text: "B" },
+    ],
+  },
+  "plan-letters": plan([
+    ["outer-bank", "A"],
+    ["inner-bank", "B"],
+    ["river-cliff", "C"],
+  ]),
   ...Object.fromEntries(
     Object.entries(TEMPLATE_SPECS).filter(
       ([k]) => k.startsWith("river") || k.startsWith("hydrograph"),
@@ -87,6 +102,36 @@ describe("river and hydrograph labels stand clear of every path (part bf)", () =
         }
       expect([...new Set(hits)].slice(0, 6)).toEqual([]);
       // the check never leaves a view with nothing to ship
+      expect(shipped).toBeGreaterThan(0);
+    }, 60_000);
+});
+
+/*
+ * TEACH-247 part cg (Rivers v6 s7): a lettered label names nothing where it stands, so every one
+ * with a part id points at that part on a leader, as a name does (the letters A and B stood by the
+ * banks with no line to either).
+ */
+describe("a lettered river label points at its part (part cg)", () => {
+  for (const name of ["section-letters", "plan-letters"])
+    test(name, () => {
+      const spec = SPECS[name] as { labels: unknown[] };
+      let shipped = 0;
+      for (const t of THEMES)
+        for (const size of SIZES) {
+          if (diagramGeometryFaults(spec, t, size).length) continue;
+          const p = lastDiagramProbe();
+          if (!p) continue;
+          shipped++;
+          // One leader per part (the probe records a drawing's leaders once per pass it draws).
+          const parts = new Set(
+            ((p.leaders ?? []) as Seg[])
+              .filter((l) => Math.hypot(l[2] - l[0], l[3] - l[1]) >= 4)
+              .map((l) => l.map(Math.round).join()),
+          );
+          expect(`${t.id} ${size.w}x${size.h}: ${parts.size}`).toBe(
+            `${t.id} ${size.w}x${size.h}: ${spec.labels.length}`,
+          );
+        }
       expect(shipped).toBeGreaterThan(0);
     }, 60_000);
 });
