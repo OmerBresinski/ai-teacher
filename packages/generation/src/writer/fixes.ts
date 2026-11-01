@@ -460,8 +460,13 @@ export function asksVisual(s: S): boolean {
  * met by an activity's own cards (TEACH-247 part ce: a pair and a group sort were logged
  * "look-unmet: cards" though they are cards).
  */
-export function lookMet(s: S, look: { kind: string } | undefined): boolean {
-  if (!look || look.kind === "none" || asksVisual(s) || drawsOwnVisual(s)) return true;
+export function lookMet(
+  s: S,
+  look: { kind: string } | undefined,
+  /** The lesson's subject words, for a scoped icon term ("roots" is a plant part in science). */
+  subject?: string,
+): boolean {
+  if (!look || look.kind === "none" || asksVisual(s) || drawsOwnVisual(s, subject)) return true;
   return look.kind === "cards" && isWriterActivity(s.template);
 }
 
@@ -472,9 +477,10 @@ export function lookMet(s: S, look: { kind: string } | undefined): boolean {
  * picture on a split's side. An all-null icon row draws none: its look is unmet (a fault), where
  * every pilot slide was once exempt.
  */
-export function drawsOwnVisual(s: S): boolean {
+export function drawsOwnVisual(s: S, subject?: string): boolean {
   const isObj = (v: unknown): v is S => !!v && typeof v === "object";
-  const pic = (v: unknown) => isObj(v) && Object.keys(v).length > 0;
+  // A picture or diagram ask as the stage reads one: an object with a `shows` phrase.
+  const pic = (v: unknown) => isObj(v) && typeof v.shows === "string" && !!v.shows.trim();
   const tpl = String(s.template);
   if (tpl === "split-compare")
     return Array.isArray(s.sides) && s.sides.some((d) => isObj(d) && pic(d.picture));
@@ -483,7 +489,7 @@ export function drawsOwnVisual(s: S): boolean {
   const items = (Array.isArray(s.items) ? s.items : []).filter(isObj);
   if (!items.length) return false;
   if (items.every((i) => pic(i.picture))) return true;
-  return items.every((i) => typeof i.icon === "string" && !!resolveIcon(i.icon));
+  return items.every((i) => typeof i.icon === "string" && !!resolveIcon(i.icon, { subject }));
 }
 /** Layouts that take one picture in their own field: `figure` or `picture`. */
 const FIGURE_FIELD: Record<string, string> = {

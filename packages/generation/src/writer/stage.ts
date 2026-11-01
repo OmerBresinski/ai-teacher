@@ -117,7 +117,7 @@ import {
   words as wordsOfText,
 } from "./guards";
 import { hingeLeakFaults } from "./hinge-leak";
-import { routeIconMisses } from "./icon-route";
+import { fitsNoWorse, routeIconMisses } from "./icon-route";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
@@ -1384,14 +1384,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // icon the item names, else the item's own picture in the lesson's look), never a near icon;
     // one with no honest visual is a fault. Pictures that would push the writer's words past the
     // layout's room are not routed (a cut word is a loss too): reported instead.
+    // A scoped term ("roots") reads its subject from the brief's subject or topic.
+    const iconSubject = [brief.subject, brief.topic].filter(Boolean).join(" ");
     const routed = routeIconMisses(s, {
       around: [brief.subject, brief.topic].filter(Boolean).join("\n"),
-      // A scoped term ("roots") reads its subject from the brief's subject or topic.
-      subject: [brief.subject, brief.topic].filter(Boolean).join(" "),
+      subject: iconSubject,
       fits: (x) => {
         const ctx = { ...base, index: idx, plan, visual: visualState(idx) };
-        const was = new Set(pilotOvers(s, ctx).overs.map((o) => o.path));
-        return !pilotOvers(x, ctx).overs.some((o) => !was.has(o.path));
+        return fitsNoWorse(pilotOvers(s, ctx), pilotOvers(x, ctx));
       },
     });
     if (routed.route) {
@@ -1419,7 +1419,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       s = added.slide;
       // TEACH-247 part ci: a pilot layout's look is met only by the visual it draws (a full icon
       // row, its pictures, its panel picture); an all-null icon row is not (`lookMet`).
-    } else if (look && !lookMet(s, look))
+    } else if (look && !lookMet(s, look, iconSubject))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
     const one = titleOneThing(s);
     if (one.how) {

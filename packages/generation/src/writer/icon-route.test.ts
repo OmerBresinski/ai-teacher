@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolveIcon } from "@tj/slides/icons";
 import { drawsOwnVisual, lookMet } from "./fixes";
-import { routeIconMisses } from "./icon-route";
+import { fitsNoWorse, routeIconMisses } from "./icon-route";
 
 /*
  * TEACH-247 part ci: an icon the closed catalogue lacks is routed to a real visual (the catalogue
@@ -187,5 +187,69 @@ describe("lookMet on pilot layouts (the !isPilot exemption is gone)", () => {
     expect(lookMet(split, look)).toBe(true);
     expect(lookMet({ template: "split-compare", sides: [{ title: "a" }] }, look)).toBe(false);
     expect(lookMet(rivers, { kind: "none" })).toBe(true);
+  });
+});
+
+describe("review fixes", () => {
+  const over = (path: string, chars: number, room: number, clipped = false) => ({
+    path,
+    chars,
+    room,
+    clipped,
+  });
+  test("1: a routed row the layout would drop members from does not fit", () => {
+    expect(fitsNoWorse({ overs: [], tooMany: false }, { overs: [], tooMany: true })).toBe(false);
+    expect(fitsNoWorse({ overs: [], tooMany: false }, { overs: [], tooMany: false })).toBe(true);
+  });
+  test("2: an over that worsens or clips after routing does not fit; one unchanged does", () => {
+    const was = { overs: [over("items.0.text", 60, 50)], tooMany: false };
+    expect(fitsNoWorse(was, { overs: [over("items.0.text", 60, 40)], tooMany: false })).toBe(false);
+    expect(fitsNoWorse(was, { overs: [over("items.0.text", 60, 50, true)], tooMany: false })).toBe(
+      false,
+    );
+    expect(fitsNoWorse(was, { overs: [over("items.1.text", 30, 20)], tooMany: false })).toBe(false);
+    expect(fitsNoWorse(was, { overs: [over("items.0.text", 60, 50)], tooMany: false })).toBe(true);
+  });
+  test("3: a full row of scoped icons meets its look in its subject", () => {
+    const roots = resolveIcon("roots", { subject: "science" });
+    expect(roots).not.toBeNull();
+    const s = { ...rivers, items: items(rivers).map((i) => ({ ...i, icon: "roots" })) };
+    expect(lookMet(s, { kind: "picture" }, "Science Plants")).toBe(true);
+    expect(lookMet(s, { kind: "picture" })).toBe(false);
+  });
+  test("4: a hinge keeps its options' own icons and reports only the real misses", () => {
+    const s: S = {
+      template: "hinge",
+      heading: "Which part?",
+      options: [
+        { text: "Leaves", icon: "leaf" },
+        { text: "The stem", icon: null },
+      ],
+    };
+    const r = routeIconMisses(s, { subject: "Science" });
+    expect(r.route?.to).toBe("catalogue");
+    expect(r.route?.misses.map((m) => m.slot)).toEqual(["option.1"]);
+    expect((r.slide.options as S[])[0]?.icon).toBe("leaf");
+    const lacking: S = {
+      ...s,
+      options: [
+        { text: "Leaves", icon: "leaf" },
+        { text: "Abrasion", icon: null },
+      ],
+    };
+    expect(routeIconMisses(lacking).route).toMatchObject({
+      to: "none",
+      misses: [{ slot: "option.1", name: "Abrasion" }],
+    });
+  });
+  test("minor: a proof with a null among its icons is not met; pic needs a shows phrase", () => {
+    const s: S = {
+      template: "myth",
+      heading: "x",
+      myth: { claim: "c", fact: "f", proof: { line: "Leaves make food.", icons: ["leaf", null] } },
+    };
+    expect(routeIconMisses(s).route?.to).toBe("picture");
+    const bare = { ...rivers, items: items(rivers).map((i) => ({ ...i, picture: { alt: "x" } })) };
+    expect(drawsOwnVisual(bare)).toBe(false);
   });
 });

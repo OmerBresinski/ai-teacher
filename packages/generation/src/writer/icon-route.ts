@@ -129,8 +129,10 @@ export function routeIconMisses(
       const p = (m.proof && typeof m.proof === "object" ? m.proof : null) as S | null;
       const line = str(p?.line);
       if (!p || !line || isPic(p.picture)) return { slide: s };
-      const icons = (Array.isArray(p.icons) ? p.icons : []).filter(hasIcon).map(str);
-      if (icons.length && icons.every((i) => resolveIcon(i, { subject }))) return { slide: s };
+      // Met only when every listed icon is one the catalogue draws (["leaf", null] is not).
+      const icons = Array.isArray(p.icons) ? (p.icons as unknown[]) : [];
+      if (icons.length && icons.every((i) => hasIcon(i) && resolveIcon(str(i), { subject })))
+        return { slide: s };
       const proof = { ...p, icons: null, picture: pictureOf(line, "") };
       const m2 = { ...m, proof };
       const slide = nested ? { ...s, myth: m2 } : m2;
@@ -145,25 +147,34 @@ export function routeIconMisses(
       const opts0 = (Array.isArray(s.options) ? s.options : []) as unknown[];
       const options = opts0.map((o) => (o && typeof o === "object" ? (o as S) : { text: o }));
       if (!options.length || isPic(s.figure)) return { slide: s };
-      if (options.every((o) => hasIcon(o.icon) && resolveIcon(str(o.icon), { subject })))
-        return { slide: s };
+      // An option's own icon the catalogue draws is kept; only the rest are misses.
+      const resolved = options.map((o) =>
+        hasIcon(o.icon) && resolveIcon(str(o.icon), { subject }) ? str(o.icon) : null,
+      );
+      if (resolved.every(Boolean)) return { slide: s };
       const things = options.every((o) => {
         const t = article(str(o.text).replace(/[.!?]+$/, ""));
         return !!t && t.split(/\s+/).length <= 3 && !/[0-9=]/.test(t);
       });
-      if (!things) return { slide: s };
-      const named = options.map((o) => iconNamed(str(o.text), str(o.text), around, subject));
-      const misses = options.flatMap((o, n) =>
-        named[n] ? [] : [{ slot: `option.${n}`, name: str(o.text) }],
+      // A writer that gave some options icons meant tiles; otherwise only options that are things.
+      if (!things && !resolved.some(Boolean)) return { slide: s };
+      const named = options.map(
+        (o, n) => resolved[n] ?? iconNamed(str(o.text), str(o.text), around, subject),
       );
+      const missed = (n: number) => !resolved[n];
       if (named.every(Boolean))
         return {
           slide: { ...s, options: options.map((o, n) => ({ ...o, icon: named[n] })) },
           route: {
             to: "catalogue",
-            misses: options.map((o, n) => ({ slot: `option.${n}`, name: str(o.text) })),
+            misses: options.flatMap((o, n) =>
+              missed(n) ? [{ slot: `option.${n}`, name: str(o.text) }] : [],
+            ),
           },
         };
+      const misses = options.flatMap((o, n) =>
+        named[n] ? [] : [{ slot: `option.${n}`, name: str(o.text) }],
+      );
       // Options that are things, some the catalogue draws and some it lacks: the hinge has no
       // picture tile, so the tiles cannot be made honestly. Reported, never a near icon.
       return named.some(Boolean)
@@ -173,4 +184,22 @@ export function routeIconMisses(
     default:
       return { slide: s };
   }
+}
+
+type Fit = {
+  overs: readonly { path: string; chars: number; room: number; clipped: boolean }[];
+  tooMany: boolean;
+};
+/**
+ * Whether a routed slide fits no worse than the slide as written (both measured by `pilotOvers`):
+ * no members dropped (`tooMany`), nothing clipped, and no field newly over or over by more (its
+ * room shrank or its words grew), so a picture never costs the writer's words.
+ */
+export function fitsNoWorse(was: Fit, now: Fit): boolean {
+  if (now.tooMany || now.overs.some((o) => o.clipped)) return false;
+  const before = new Map(was.overs.map((o) => [o.path, o]));
+  return now.overs.every((o) => {
+    const b = before.get(o.path);
+    return !!b && o.chars - o.room <= b.chars - b.room;
+  });
 }
