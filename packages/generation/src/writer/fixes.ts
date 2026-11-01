@@ -1,3 +1,4 @@
+import { resolveIcon } from "@tj/slides/icons";
 import { isWriterActivity } from "./activities";
 import { bannerFit } from "./banner-text-fits";
 import { writerBundle } from "./bundle";
@@ -459,9 +460,36 @@ export function asksVisual(s: S): boolean {
  * met by an activity's own cards (TEACH-247 part ce: a pair and a group sort were logged
  * "look-unmet: cards" though they are cards).
  */
-export function lookMet(s: S, look: { kind: string } | undefined): boolean {
-  if (!look || look.kind === "none" || asksVisual(s)) return true;
+export function lookMet(
+  s: S,
+  look: { kind: string } | undefined,
+  /** The lesson's subject words, for a scoped icon term ("roots" is a plant part in science). */
+  subject?: string,
+): boolean {
+  if (!look || look.kind === "none" || asksVisual(s) || drawsOwnVisual(s, subject)) return true;
   return look.kind === "cards" && isWriterActivity(s.template);
+}
+
+/**
+ * TEACH-247 part ci: whether a pilot layout draws a visual of its own, which meets its look the way
+ * a figure does: a row whose every item has a catalogue icon (icons are all or none, so one miss
+ * numbers the row), or pictures on every row or stage, a panel list's title-panel picture, or a
+ * picture on a split's side. An all-null icon row draws none: its look is unmet (a fault), where
+ * every pilot slide was once exempt.
+ */
+export function drawsOwnVisual(s: S, subject?: string): boolean {
+  const isObj = (v: unknown): v is S => !!v && typeof v === "object";
+  // A picture or diagram ask as the stage reads one: an object with a `shows` phrase.
+  const pic = (v: unknown) => isObj(v) && typeof v.shows === "string" && !!v.shows.trim();
+  const tpl = String(s.template);
+  if (tpl === "split-compare")
+    return Array.isArray(s.sides) && s.sides.some((d) => isObj(d) && pic(d.picture));
+  if (!["items-row", "panel-list", "stages", "reasons"].includes(tpl)) return false;
+  if (tpl === "panel-list" && isObj(s.panel) && pic(s.panel.picture)) return true;
+  const items = (Array.isArray(s.items) ? s.items : []).filter(isObj);
+  if (!items.length) return false;
+  if (items.every((i) => pic(i.picture))) return true;
+  return items.every((i) => typeof i.icon === "string" && !!resolveIcon(i.icon, { subject }));
 }
 /** Layouts that take one picture in their own field: `figure` or `picture`. */
 const FIGURE_FIELD: Record<string, string> = {
