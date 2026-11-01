@@ -5,7 +5,7 @@
 // every draft.
 import type { Slide } from "@tj/domain/documents";
 import { resolveIcon } from "@tj/slides/icons";
-import { PENDING_ICON } from "@tj/slides/templates";
+import { PENDING_ICON, workedPanelFrom } from "@tj/slides/templates";
 import { FIGURE_NAMES } from "@tj/slides/templates/figure";
 import { fromWriterActivity, isWriterActivity } from "./activities";
 import { slideNoEmDash } from "./checks";
@@ -122,6 +122,26 @@ export function layDraft(
       if (s.template === "hinge" && typeof s.correct === "number")
         s = shuffleHinge(s, `${ctx.brief.id}:${ctx.index}:${String(s.stem ?? "")}`);
       s = iconsFromNames(s, draft.open);
+      // TEACH-247 part ch: a worked example's bar model comes from its maths once its rows are
+      // written (as the writer's own panel, which follows them), never while a row streams. A
+      // writer's panel still streaming is not yet a panel: the maths' one holds its place.
+      // The rows are written once a field after them (check, panel) has begun.
+      const rowsOpen = !("check" in s || "panel" in s) || draft.open?.[0] === "lines";
+      const wp = (draft.open?.[0] === "panel" ? undefined : s.panel) as S | null | undefined;
+      const writerPanel =
+        !!wp &&
+        typeof wp === "object" &&
+        (["a", "b", "c"].every((k) => typeof wp[k] === "number") ||
+          ["amount", "percent"].every((k) => typeof wp[k] === "number"));
+      if (s.template === "worked" && !writerPanel && !rowsOpen) {
+        const panel = workedPanelFrom({
+          heading: typeof s.heading === "string" ? s.heading : "",
+          lines: (Array.isArray(s.lines) ? s.lines : []).map((l) => ({
+            eq: typeof (l as S | null)?.eq === "string" ? String((l as S).eq) : "",
+          })),
+        });
+        if (panel) s = { ...s, panel };
+      }
       // `draft`: a picture still to come holds its slot while the slide fills. The plan holds this
       // slide as it stands, as it will when the slide closes: a rule that reads the deck (the one
       // figure slide a lesson may have) lays the draft as it will lay the closed slide, so the

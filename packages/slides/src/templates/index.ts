@@ -87,6 +87,8 @@ export { REASON_PENDING_ICON } from "./reasons";
 export { splitSideDrawn } from "./split-compare";
 // TEACH-75 part ac (C4).
 export { blankStage, STAGES_MAX, STAGES_MIN, type StageItem } from "./stages";
+/** TEACH-247 part ch: the bar model a worked example's maths gives (generation fills `barPanel`). */
+export { workedPanelFrom } from "./worked";
 export type {
   ActivityCard,
   ActivityId,

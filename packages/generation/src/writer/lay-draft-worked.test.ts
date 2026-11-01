@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme } from "@tj/slides/themes";
+import { checkSlide } from "./checks";
 import { peekPartial } from "./draft";
 import { layDraft, stableIds } from "./lay-draft";
 import { materialise } from "./materialise";
@@ -134,4 +135,68 @@ describe("worked example in draft mode", () => {
       );
     });
   }
+});
+
+/*
+ * TEACH-247 part ch: the equations-C slides (two rows, no check). The writer's panel draws with
+ * its frames fitted to the rows; with no panel, the maths gives one (x/a + b = c included).
+ */
+describe("worked example: the bar model from the maths (TEACH-247 part ch)", () => {
+  const closedOf = (slide: S) =>
+    materialise(slide, { ...(ctx as object), visual: () => ({ status: "pending" }) } as never).slide
+      .elements as unknown as El[];
+  const panelOf = (els: El[]) =>
+    flat(els).find((e) => e.type === "image" && (e as { builds?: number }).builds);
+  const two = (heading: string, l1: string, m2: string, l2: string, panel: S | null) => ({
+    template: "worked",
+    heading,
+    lines: [
+      { move: l1.split("|")[0], eq: l1.split("|")[1], answer: false },
+      { move: m2, eq: l2, answer: true },
+    ],
+    check: null,
+    panel,
+  });
+  test("the writer's 2-row algebra bar draws (it was dropped before part ch)", () => {
+    const s = two(
+      "Solve 3x + 5 = 20",
+      "Subtract 5 from both sides|3x = 15",
+      "Divide both sides by 3",
+      "x = 5",
+      { model: "algebra-bar", a: 3, b: 5, c: 20 },
+    );
+    const els = closedOf(s);
+    expect((panelOf(els) as { builds?: number } | undefined)?.builds).toBe(2);
+    // Two rows centre high: the drawing still sits under the heading, never under its words.
+    const faults = checkSlide({
+      index: INDEX,
+      slide: { kind: "content", elements: els } as never,
+      over: [],
+      questions: [],
+      answers: undefined,
+      notesChecked: true,
+      words: "",
+    }).faults;
+    expect(faults.filter((f) => f.startsWith("overlap"))).toEqual([]);
+  });
+  test("no writer panel: x/4 + 3 = 8 gets its division bar from the heading", () => {
+    const s = two(
+      "Solve x/4 + 3 = 8",
+      "Subtract 3 from both sides|x/4 = 5",
+      "Multiply both sides by 4",
+      "x = 20",
+      null,
+    );
+    expect((panelOf(closedOf(s)) as { builds?: number } | undefined)?.builds).toBe(2);
+  });
+  test("no equation the bar model has a form for: no panel, nothing invented", () => {
+    const s = two(
+      "Solve 4(x - 3) = 20",
+      "Divide both sides by 4|x - 3 = 5",
+      "Add 3 to both sides",
+      "x = 8",
+      null,
+    );
+    expect(panelOf(closedOf(s))).toBeUndefined();
+  });
 });

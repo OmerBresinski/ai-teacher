@@ -184,13 +184,19 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
 
 // ─── panel models (TEACH-75 part y) ──────────────────────────────────────────────────────────
 
+/** An equation panel's frames: the whole, take b from both, share into a parts (x/a + b = c: scale
+ * one part up to x), and the check. */
+export type EquationFrame = "whole" | "take" | "share" | "scale" | "check";
+
 /**
  * The builds a panel model shows, in order: one per working line it pictures. Percent: 10%, the
  * tens (when there are more than one), half a tenth (when p ends in 5), then the total (when
- * there was more than one step). Equation: the whole, take b from both, share into a parts, check.
+ * there was more than one step). Equation: its `frames` (TEACH-247 part ch: matched to the rows
+ * the slide shows), else the whole, take b from both, share into a parts (or scale up), check.
  */
 export function barPanelFrames(p: BarPanelInput): string[] {
-  if (p.model === "equation") return ["whole", "take", "share", "check"];
+  if (p.model === "equation")
+    return p.frames ?? ["whole", "take", p.over ? "scale" : "share", "check"];
   const t = Math.floor(p.percent / 10);
   const half = p.percent % 10 === 5;
   const out = t >= 1 ? ["unit"] : [];
@@ -220,18 +226,28 @@ export function barPanelSpec(
             total: num(p.amount),
           },
         ]
-      : [
-          {
-            parts: [
-              ...Array.from({ length: p.a }, () => ({
-                value: (p.c - p.b) / p.a,
-                label: p.unknown,
-              })),
-              { value: p.b, label: num(p.b) },
-            ],
-          },
-          { parts: [{ value: p.c, label: num(p.c) }] },
-        ];
+      : p.over
+        ? [
+            {
+              parts: [
+                { value: p.c - p.b, label: `${p.unknown}/${p.a}` },
+                { value: p.b, label: num(p.b) },
+              ],
+            },
+            { parts: [{ value: p.c, label: num(p.c) }] },
+          ]
+        : [
+            {
+              parts: [
+                ...Array.from({ length: p.a }, () => ({
+                  value: (p.c - p.b) / p.a,
+                  label: p.unknown,
+                })),
+                { value: p.b, label: num(p.b) },
+              ],
+            },
+            { parts: [{ value: p.c, label: num(p.c) }] },
+          ];
   return { ok: true, spec: { kind: "bar-model", alt, bars, panel: p } as BarModel };
 }
 
@@ -415,7 +431,11 @@ const MATH_FAMILY =
 /** One gold pixel (1440 wide) in the drawing's units (slide points). */
 const PX = 2 / 3;
 
-/** ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale. */
+/**
+ * ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale.
+ * x/a + b = c (TEACH-247 part ch, `over`): x is a bar of a equal parts, the last one (x/a) solid
+ * beside b and the rest dashed until the "scale" frame fills them, one share each.
+ */
 function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: number, h: number) {
   const { c } = x;
   const L = panelFs(x, w, h);
@@ -429,7 +449,10 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   if (used > h + 2) x.faults?.push("the equation bars run off the foot of the drawing");
   const top = Math.max(L * 1.1, (h - used) / 2);
   const bot = top + bh + gap;
-  const xv = (p.c - p.b) / p.a;
+  const over = !!p.over;
+  // The value in one x cell: x itself, or one share of it (x/a) when x is cut into parts.
+  const xv = over ? p.c - p.b : (p.c - p.b) / p.a;
+  const name = over ? `${p.unknown}/${p.a}` : p.unknown;
   const bLabel = num(p.b);
   const cut = x.tile?.gap ?? Math.max(2, look().gap * x.fs);
   const numW = x.tile?.weight ?? 600;
@@ -449,8 +472,12 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   const { bW, xw, inner } = cells(big);
   const xEnd = bx + p.a * xw;
   // The letter a step over the numbers when the cell has room for it.
-  const letterFs = Math.max(big, Math.min(big * 1.2, inner / textWidth(p.unknown, x, 1, 500)));
-  const need = Math.max(textWidth(num(xv), x, big, 700), textWidth(p.unknown, x, letterFs, 500));
+  const letterFs = Math.max(
+    over ? x.minFs : big,
+    // "x/4" is held clear of its cell's sides, not set edge to edge as one letter may be.
+    Math.min(big * 1.2, (over ? inner * 0.8 : inner) / textWidth(name, x, 1, 500)),
+  );
+  const need = Math.max(textWidth(num(xv), x, big, 700), textWidth(name, x, letterFs, 500));
   // Measured at the floor: a value that cannot stand in its cell (a 3-digit x in six cells) is
   // reported over, never drawn past its cell; `barPanelMinWidth` gives the box it needs.
   if (need > inner) x.faults?.push(`the ${p.unknown} cells are too narrow for "${num(xv)}"`);
@@ -469,7 +496,7 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   const ghost = (cx: number, cy: number, cw: number) =>
     `<rect x="${n(cx + cut / 2 + 2)}" y="${n(cy + 2)}" width="${n(cw - cut - 4)}" height="${n(bh - 4)}" rx="6" fill="none" stroke="${c.muted}" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.6"/>`;
   const letter = (x: Ctx, cx: number, cy: number, fs: number, fill = c.ink) =>
-    text(x, cx, cy, [p.unknown], {
+    text(x, cx, cy, [name], {
       fs,
       weight: 500,
       fill,
@@ -484,6 +511,11 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
     let g = "";
     for (let i = 0; i < p.a; i++) {
       const cx = bx + i * xw;
+      // x/a + b = c: the parts of x before the last stay dashed until the scale frame fills them.
+      if (over && i < p.a - 1 && key !== "scale") {
+        g += ghost(cx, top, xw);
+        continue;
+      }
       g += cell(cx, top, xw, x.tile?.fill ?? c.tint);
       if (key === "check") {
         // A small x tag in the cell's top-left corner (the gold), the value under it with clear
@@ -513,7 +545,7 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
         });
       } else g += letter(x, cx + xw / 2, mid(top), letterFs);
     }
-    const taken = key === "take" || key === "share";
+    const taken = key === "take" || key === "share" || key === "scale";
     if (taken)
       g +=
         ghost(xEnd, top, bW) +
@@ -522,23 +554,28 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
       g +=
         cell(xEnd, top, bW, c.surface) +
         text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW });
+    // The bottom bar under what equals c: all of the top bar, or (x/a) the last part and b.
+    const bx0 = over ? bx + (p.a - 1) * xw : bx;
+    const bwC = bx + bw - bx0;
+    const bwX = xEnd - bx0;
     if (key === "whole" || key === "check") {
-      g += cell(bx, bot, bw, c.surface);
+      g += cell(bx0, bot, bwC, c.surface);
       const cl = num(p.c);
       // A theme's own tile (Geometric) places the total and its tick as its gold does
       // (worked.js: the total 24px left of the middle, a 40px tick 48px right of it).
       const goldTick = !!x.tile && textWidth(cl, x, big, numW) / 2 - 24 * PX < 28 * PX;
       const off = key === "check" ? (goldTick ? 24 * PX : L * 0.8) : 0;
-      g += text(x, bx + bw / 2 - off, mid(bot), [cl], { fs: big, weight: numW });
+      const cm = bx0 + bwC / 2;
+      g += text(x, cm - off, mid(bot), [cl], { fs: big, weight: numW });
       if (key === "check")
         g += goldTick
-          ? tickMark(bx + bw / 2 + 48 * PX, mid(bot), 40 * PX, 0.16)
-          : tickMark(bx + bw / 2 + textWidth(cl, x, big, numW) / 2 + L * 0.4, mid(bot), L * 1.1);
+          ? tickMark(cm + 48 * PX, mid(bot), 40 * PX, 0.16)
+          : tickMark(cm + textWidth(cl, x, big, numW) / 2 + L * 0.4, mid(bot), L * 1.1);
     } else {
       if (key === "take")
         g +=
-          cell(bx, bot, p.a * xw, c.surface) +
-          text(x, bx + (p.a * xw) / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: numW });
+          cell(bx0, bot, bwX, c.surface) +
+          text(x, bx0 + bwX / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: numW });
       else
         for (let i = 0; i < p.a; i++)
           g +=
