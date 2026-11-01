@@ -6,9 +6,14 @@ import {
   fitsWithVisual,
   hasVisual,
   leakOf,
+  lentAsk,
+  lentKey,
   letteredSpec,
   NEUTRAL_ALT,
+  relend,
   safeForm,
+  stem,
+  visibleText,
 } from "./check-pictures";
 import { type MaterialiseCtx, materialise, type VisualState } from "./materialise";
 
@@ -104,7 +109,7 @@ describe("borrowCheckVisuals", () => {
   test("a practice slide takes the teaching photo that shares its words, under `picture`", () => {
     const slides = [undefined, undefined, buckets, pulling, practice];
     const states: Record<number, VisualState> = {
-      2: photo("Londoners passing buckets of water to a fire"),
+      2: photo("Londoners fighting a fire in 1666"),
       3: photo("Londoners pulling a house down"),
     };
     const r = borrowCheckVisuals({
@@ -275,8 +280,37 @@ describe("the answer-leak guard", () => {
     expect(r.skips[0]).toMatchObject({ slide: 3, template: "hinge", reason: "leak" });
   });
 
-  test("an application question is not a naming question: the picture is the context", () => {
-    expect(leakOf(practice, "Londoners passing buckets of water to a fire")).toBeUndefined();
+  test("any question counts: one answer word the question does not say is a leak", () => {
+    // "buckets" answers "How could people pass water to the fire?": the alt gives it.
+    expect(leakOf(practice, "Londoners passing buckets of water to a fire")).toContain("bucket");
+    // Words the question already says give nothing away.
+    expect(leakOf(practice, "Londoners at a fire")).toBeUndefined();
+  });
+
+  test("forms of a word meet (leaves and leaf, carries and carry, houses and house)", () => {
+    expect(["leaves", "leaf"].map(stem)).toEqual([stem("leaf"), stem("leaf")]);
+    expect(stem("carries")).toBe(stem("carry"));
+    expect(stem("houses")).toBe(stem("house"));
+    expect(stem("passing")).toBe(stem("pass"));
+    const q: S = {
+      template: "question-set",
+      heading: "Q",
+      items: [{ question: "Which part makes food?", answer: "The leaves" }],
+    };
+    expect(leakOf(q, "A plant with one leaf")).toBeDefined();
+  });
+
+  test("a diagram's data is read too: a number the answer is", () => {
+    const bar: VisualState = {
+      status: "diagram",
+      spec: { kind: "bar-model", bars: [{ values: [8, 3] }] },
+    };
+    const q: S = {
+      template: "exit-ticket",
+      heading: "Solve",
+      items: [{ question: "Solve x + 3 = 11.", answer: "x = 8" }],
+    };
+    expect(leakOf(q, visibleText(bar))).toContain("8");
   });
 
   test("a recall question whose short answer the alt gives is a leak", () => {
@@ -306,5 +340,93 @@ describe("fitsWithVisual", () => {
     expect(fitsWithVisual(wordy, next, ctx, "figure", photo("buckets"))).toBe(false);
     const short = { ...exit, figure: { shows: "buckets", must_see: ["bucket"] } };
     expect(fitsWithVisual(exit, short, ctxOf(3, failed), "figure", photo("buckets"))).toBe(true);
+  });
+});
+
+describe("review fixes (part cj)", () => {
+  test("the lent copy drops ask, ask_without, labels and must_see, and shares nothing", () => {
+    const ask: S = {
+      kind: "river",
+      shows: "A meander",
+      labels: [{ part: "cliff", text: "River cliff" }],
+      must_see: ["cliff"],
+      ask: "Name the cliff.",
+      ask_without: "Think of a meander.",
+      view: { plan: "meander" },
+    };
+    const lent = lentAsk(ask);
+    expect(Object.keys(lent).sort()).toEqual(["kind", "lent", "shows", "view"]);
+    expect(lent.view).toEqual(ask.view);
+    expect(lent.view).not.toBe(ask.view);
+    // Laid as the check slide, no ask line joins its instruction (resolveAsks).
+    const exitLent = { ...exit, figure: lent };
+    const m = materialise(
+      exitLent,
+      ctxOf(3, (k) => (k === "figure" ? photo("A meander") : failed())),
+    );
+    expect(JSON.stringify(m.slide.elements)).not.toMatch(/Name the cliff|Think of a meander/);
+    expect(lentKey(exitLent)).toBe("figure");
+  });
+
+  test("a writer-asked figure is not drawn by the exit ticket; a lent one is", () => {
+    const fig = { shows: "buckets", must_see: ["bucket"] };
+    const lay = (f: S) =>
+      materialise(
+        { ...exit, figure: f },
+        ctxOf(3, (k) => (k === "figure" ? photo("buckets") : failed())),
+      ).slide.elements.filter((e) => e.type === "image").length;
+    expect(lay(fig)).toBe(0);
+    expect(lay(lentAsk(fig))).toBe(1);
+  });
+
+  test("the reused state is the check slide's own copy", () => {
+    const st = photo("Londoners fighting a fire");
+    const safe = safeForm(practice, st) as { state: VisualState };
+    expect(safe.state).toEqual(st);
+    expect(safe.state).not.toBe(st);
+    const spec = { kind: "labelled", labels: [{ part: "a", text: "Flower" }], nodes: [{ n: 1 }] };
+    const lettered = letteredSpec(spec) as S;
+    expect(lettered.nodes).not.toBe(spec.nodes);
+    expect(spec.labels[0]?.text).toBe("Flower");
+  });
+
+  test("a neutral photo drops its request, subjects and note; credits that leak skip it", () => {
+    const st: VisualState = {
+      status: "photo",
+      photo: {
+        src: "/x.jpg",
+        alt: "The flower of a plant",
+        aspect: 1,
+        request: "a flower",
+        subjects: [{ name: "flower", x: 0, y: 0, w: 1, h: 1 }],
+        about: "flower close-up",
+      },
+    };
+    const safe = safeForm(hinge, st) as { state: VisualState; form: string };
+    expect(safe.form).toBe("neutral-alt");
+    const p = (safe.state as { photo: S }).photo;
+    expect(p.request).toBe(NEUTRAL_ALT);
+    expect(p.subjects).toBeUndefined();
+    expect(p.about).toBeUndefined();
+    const credited: VisualState = {
+      status: "photo",
+      photo: { ...(st as { photo: S }).photo, source: { photographer: "Flower Studio" } } as never,
+    };
+    expect(safeForm(hinge, credited)).toEqual({ leak: expect.stringContaining("credits") });
+  });
+
+  test("a repair's rewrite gets the lent visual back under its layout's key, or a logged skip", () => {
+    const before = { ...exit, figure: lentAsk({ shows: "buckets" }) };
+    const asPractice = { ...practice, picture: null };
+    const back = relend(before, asPractice, () => true);
+    expect(back).toMatchObject({ key: "picture", was: "figure" });
+    expect(((back as { slide: S }).slide.picture as S).lent).toBe(true);
+    expect(relend(before, exit, () => false)).toMatchObject({
+      skip: expect.stringContaining("fit"),
+    });
+    expect(relend(before, { ...buckets, figure: null }, () => true)).toMatchObject({
+      skip: expect.stringContaining("visual-text"),
+    });
+    expect(relend(exit, practice, () => true)).toBeUndefined();
   });
 });

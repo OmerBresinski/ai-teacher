@@ -24,7 +24,7 @@ describe("exit ticket with a picture", () => {
   };
 
   test("the picture's card sits left and the ticket narrows to its right, nothing over", () => {
-    const r = layoutTemplate({ ...input, figure: PHOTO }, theme, "ks2");
+    const r = layoutTemplate({ ...input, figure: PHOTO, checkFigure: true }, theme, "ks2");
     expect(r.over).toEqual([]);
     const img = images(r.slide.elements)[0] as { x: number; w: number } | undefined;
     expect(img).toBeDefined();
@@ -37,7 +37,7 @@ describe("exit ticket with a picture", () => {
   });
 
   test("its fields read the exit+picture caps; without a picture, the plain exit caps", () => {
-    const withIt = layoutTemplate({ ...input, figure: PHOTO }, theme, "ks2");
+    const withIt = layoutTemplate({ ...input, figure: PHOTO, checkFigure: true }, theme, "ks2");
     const without = layoutTemplate(input, theme, "ks2");
     expect(withIt.fields?.[0]?.cap).toBe(capOf("primary", "exit+picture", 2)?.cap);
     expect(without.fields?.[0]?.cap).toBe(capOf("primary", "exit", 2)?.cap);
@@ -50,7 +50,7 @@ describe("exit ticket with a picture", () => {
     const qs = [1, 2, 3].map(() => long.slice(0, max + 25));
     for (const t of THEMES) {
       const r = layoutTemplate(
-        { template: "exit-ticket", heading: "H", questions: qs, figure: PHOTO },
+        { template: "exit-ticket", heading: "H", questions: qs, figure: PHOTO, checkFigure: true },
         getTheme(t.id, "ks1"),
         "ks1",
       );
@@ -66,7 +66,28 @@ describe("quick check with a picture", () => {
     questions: ["Which street?", "Which year?", "Which building?"],
     answers: ["Pudding Lane", "1666", "A bakery"],
     figure: PHOTO,
+    checkFigure: true,
   };
+
+  test("a figure the writer asked for keeps the old layouts exactly", () => {
+    const { checkFigure: _, ...writers } = input;
+    const old = layoutTemplate(writers, theme, "ks2");
+    expect(old.slide.elements.some((e) => e.name === QUICK_NAMES.answer)).toBe(false);
+    const exitOld = layoutTemplate(
+      { template: "exit-ticket", heading: "H", questions: ["Q?"], figure: PHOTO },
+      theme,
+      "ks2",
+    );
+    const exitPlain = layoutTemplate(
+      { template: "exit-ticket", heading: "H", questions: ["Q?"] },
+      theme,
+      "ks2",
+    );
+    expect(images(exitOld.slide.elements)).toEqual([]);
+    expect(exitOld.slide.elements.map((e) => [e.name, e.x, e.y, e.w, e.h])).toEqual(
+      exitPlain.slide.elements.map((e) => [e.name, e.x, e.y, e.w, e.h]),
+    );
+  });
 
   test("stays the quick check (answers revealed one per click) with the card left of the badges", () => {
     const r = layoutTemplate(input, theme, "ks2");

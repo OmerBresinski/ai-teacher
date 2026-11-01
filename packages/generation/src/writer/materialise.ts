@@ -829,6 +829,13 @@ export function toInput(
         ...(quickWorking(s).some(Boolean) ? { working: quickWorking(s) } : {}),
         ...(s.instruction ? { instruction: str(s.instruction) } : {}),
         figure: tiled(s, fig("picture") ?? fig("figure"), ctx, mark),
+        // TEACH-247 part cj: a visual lent by a teaching slide (`check-pictures.ts`) is drawn in the
+        // quick check's and exit ticket's card; a figure the writer asked for keeps the old layouts.
+        ...([s.picture, s.figure].some(
+          (f) => !!f && typeof f === "object" && (f as S).lent === true,
+        )
+          ? { checkFigure: true }
+          : {}),
       };
     case "cards-grid":
       // Ruling 203: an icon still being found is an open slot; one that failed (after its one

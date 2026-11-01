@@ -52,7 +52,7 @@ const inputOf = (qs: string[], as: string[], picture = false): TemplateInput => 
   heading: "Quick check: the heart",
   questions: qs,
   answers: as,
-  ...(picture ? { figure: PHOTO } : {}),
+  ...(picture ? { figure: PHOTO, checkFigure: true } : {}),
 });
 
 /** Whether `input` fits (nothing over) and is comfortable (not tight) on every theme. */

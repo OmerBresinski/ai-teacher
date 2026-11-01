@@ -129,7 +129,8 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
     (s): s is string => typeof s === "string" && !!s.trim(),
   );
   const stageTop = Math.round(top + WA.exitGap);
-  const v = visualOf(c, input);
+  // Only a check slide's borrowed figure is drawn (part cj); any other is ignored, as before.
+  const v = input.checkFigure ? visualOf(c, input) : null;
   const plan = planExit(c, items, stageTop, v);
   c.tight = !plan.comfortable;
   c.fields = workFields(

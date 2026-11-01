@@ -111,7 +111,8 @@ export function isQuickCheck(input: TemplateInput): boolean {
   const as = input.answers ?? [];
   // A set the writer is still streaming may have answers for its first questions only: it lays
   // out as the quick check from its first answer, so nothing changes shape when the rest arrive.
-  return qs.length >= 1 && as.some((a) => !!a?.trim());
+  // A figure keeps the old numbered layout unless it is a check slide's borrowed one (part cj).
+  return (!input.figure || !!input.checkFigure) && qs.length >= 1 && as.some((a) => !!a?.trim());
 }
 
 type Fit = {
@@ -160,7 +161,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   // The quick check reveals each answer with its working after a dash; the question keeps them apart.
   const as = only.map((a, i) => (a && work[i] ? `${a} — ${work[i]}` : a));
   const n = qs.length;
-  const v = visualOf(c, input);
+  const v = input.checkFigure ? visualOf(c, input) : null;
   /** How far the badges sit right of the slide's pad: the visual's card and its gap. */
   const lead = v ? QUICK_VISUAL.w + QUICK_VISUAL.gap : 0;
   const head = kit.heading(c, input.heading);

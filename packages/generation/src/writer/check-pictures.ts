@@ -78,9 +78,21 @@ const STOP = new Set(
     "most some any all each other than so very just also our we he she his her him"
   ).split(" "),
 );
-/** A word's rough stem: plural, -ing and -ed endings off, so "passing" meets "pass". */
-const stem = (w: string) =>
-  w.length > 4 ? w.replace(/(ing|ed|es|s)$/, "") : w.length > 3 ? w.replace(/s$/, "") : w;
+/**
+ * A word's rough stem, the same for its forms: "leaves" and "leaf", "carries" and "carry",
+ * "houses" and "house", "passing" and "pass" each meet.
+ */
+export const stem = (w0: string): string => {
+  let w = w0.toLowerCase();
+  if (w.length > 4 && w.endsWith("ies")) w = `${w.slice(0, -3)}y`;
+  else if (w.length > 4 && w.endsWith("ves")) w = `${w.slice(0, -3)}f`;
+  else if (w.length > 4 && /(ches|shes|sses|xes)$/.test(w)) w = w.slice(0, -2);
+  else if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) w = w.slice(0, -1);
+  if (w.length > 5 && w.endsWith("ing")) w = w.slice(0, -3);
+  else if (w.length > 4 && w.endsWith("ed")) w = w.slice(0, -2);
+  if (w.length > 3 && w.endsWith("e")) w = w.slice(0, -1);
+  return w;
+};
 /** The content words of a text, stemmed. */
 export const terms = (text: string): string[] =>
   (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => !STOP.has(w)).map(stem);
@@ -143,7 +155,8 @@ export function sourceVisuals(raw: S): { key: string; ask: S }[] {
 const STRUCTURAL = new Set(["kind", "view", "part", "anchor", "id", "style", "subject"]);
 /** Every string a value holds (a diagram spec's labels, title, nodes, alt), data URLs aside. */
 function stringsIn(v: unknown, out: string[] = []): string[] {
-  if (typeof v === "string") {
+  if (typeof v === "number") out.push(String(v));
+  else if (typeof v === "string") {
     if (v.startsWith("data:image/svg")) out.push(...svgTexts(v));
     else if (!v.startsWith("data:") && !/^(https?:)?\//.test(v)) out.push(v);
   } else if (Array.isArray(v)) for (const x of v) stringsIn(x, out);
@@ -167,28 +180,26 @@ function svgTexts(src: string): string[] {
 
 /** The words a visual state puts in front of pupils (or a screen reader): what could leak. */
 export function visibleText(st: VisualState): string {
-  if (st.status === "photo") return [st.photo.alt].filter(Boolean).join(" ");
+  // A photo's alt, request, subjects, note and credits: any of them may reach a screen or a reader.
+  if (st.status === "photo") return stringsIn({ ...st.photo, src: "" }).join(" ");
   if (st.status === "diagram") return stringsIn(st.spec).join(" ");
   return "";
 }
 
-const NAMING =
-  /\b(name|names|label|labels|identify|which|what (?:is|are) (?:this|these|that|it|they|the [a-z]+) called|what (?:part|type|kind|word))\b/i;
-/** Answers this short are names, whatever the question's verb. */
-const SHORT_ANSWER = 4;
-
-/** Why the visual would give an answer away, or undefined when it does not. */
+/**
+ * Why the visual would give an answer away, or undefined when it does not. Every question counts,
+ * not only naming ones, and one telling answer word is enough: a word of the answer the question
+ * does not already say, found anywhere in the visual's text. A false skip costs a picture; a leak
+ * costs the question.
+ */
 export function leakOf(s: S, visible: string): string | undefined {
   const seen = new Set(terms(visible));
   if (!seen.size) return undefined;
   for (const p of checkPairs(s)) {
-    const a = terms(p.answer);
-    if (!a.length) continue;
-    const naming = NAMING.test(p.question) || a.length <= SHORT_ANSWER;
-    if (!naming) continue;
-    const hit = a.filter((w) => seen.has(w)).length;
-    if (a.length <= SHORT_ANSWER ? hit === a.length : hit / a.length >= 0.6)
-      return `"${p.question}" is answered by the visual ("${p.answer}")`;
+    const asked = new Set(terms(p.question));
+    const hit = terms(p.answer).filter((w) => !asked.has(w) && seen.has(w));
+    if (hit.length)
+      return `"${p.question}" is answered by the visual ("${p.answer}": ${[...new Set(hit)].join(", ")})`;
   }
   return undefined;
 }
@@ -201,10 +212,23 @@ const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export function letteredSpec(spec: unknown): S | undefined {
   if (!isObj(spec) || !Array.isArray(spec.labels) || !spec.labels.length) return undefined;
   if ("drawn" in spec) return undefined;
-  const labels = spec.labels.map((l, k) =>
+  const copy = structuredClone(spec) as S;
+  const labels = (copy.labels as unknown[]).map((l, k) =>
     isObj(l) ? { ...l, text: LETTERS[k] ?? String(k + 1) } : (LETTERS[k] ?? String(k + 1)),
   );
-  return { ...spec, labels, title: null, alt: "A diagram with lettered parts." };
+  return { ...copy, labels, title: null, alt: "A diagram with lettered parts." };
+}
+
+/** The ask fields that carry words or re-ask: never copied onto a check slide. */
+const NOT_LENT = new Set(["ask", "ask_without", "labels", "must_see"]);
+/**
+ * The check slide's own copy of a source's ask: marked `lent` (the layouts draw it in their card),
+ * without the fields that would join the slide's instruction or stem or name the answer.
+ */
+export function lentAsk(ask: S): S {
+  const out: S = { lent: true };
+  for (const [k, v] of Object.entries(ask)) if (!NOT_LENT.has(k)) out[k] = structuredClone(v);
+  return out;
 }
 
 /** The leak-safe form of a source's visual for a check slide, or why there is none. */
@@ -212,15 +236,25 @@ export function safeForm(
   s: S,
   st: VisualState,
 ): { state: VisualState; form: CheckForm } | { leak: string } {
-  const leak = leakOf(s, visibleText(st));
-  if (!leak) return { state: st, form: "as-is" };
-  if (st.status === "photo") {
-    // A photo draws no caption on these layouts: only its alt can name the answer.
-    const neutral: VisualState = { status: "photo", photo: { ...st.photo, alt: NEUTRAL_ALT } };
+  // Never the source's own object: the check slide's copy is its own (a later change to either
+  // slide's state never reaches the other).
+  const own = structuredClone(st);
+  const leak = leakOf(s, visibleText(own));
+  if (!leak) return { state: own, form: "as-is" };
+  if (own.status === "photo") {
+    // A photo draws no caption on these layouts: its words are its alt, request, subjects and
+    // note, all made neutral. Its credits stay (licences need them) and are checked once more.
+    const { subjects: _s, about: _a, ...photo } = own.photo;
+    const neutral: VisualState = {
+      status: "photo",
+      photo: { ...photo, alt: NEUTRAL_ALT, request: NEUTRAL_ALT },
+    };
+    const again = leakOf(s, visibleText(neutral));
+    if (again) return { leak: `${again}, in the photo's credits` };
     return { state: neutral, form: "neutral-alt" };
   }
-  if (st.status === "diagram") {
-    const lettered = letteredSpec(st.spec);
+  if (own.status === "diagram") {
+    const lettered = letteredSpec(own.spec);
     if (lettered) {
       const again = leakOf(s, stringsIn(lettered).join(" "));
       if (!again) return { state: { status: "diagram", spec: lettered }, form: "letters" };
@@ -330,7 +364,7 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
         continue;
       }
       const key = checkSlotKey(template);
-      const json: S = { ...s, [key]: { ...c.ask } };
+      const json: S = { ...s, [key]: lentAsk(c.ask) };
       if (!a.fits(i, json, key, safe.state)) {
         failed.push({
           reason: "fit",
@@ -355,4 +389,32 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
     skip(first.reason, failed.map((f) => f.why).join("; "));
   }
   return { routes, skips };
+}
+
+/** The key a slide's lent visual sits under (`lentAsk`'s mark), if it has one. */
+export function lentKey(s: S | undefined): string | undefined {
+  if (!s) return undefined;
+  return ["picture", "figure"].find((k) => isObj(s[k]) && (s[k] as S).lent === true);
+}
+
+/**
+ * A repair's rewrite of a check slide that held a lent visual: the visual goes back under the key
+ * the rewritten slide's layout reads it from, when its words still fit beside it (`fits`).
+ * Undefined when there is nothing to put back (no lent visual, or the rewrite has its own).
+ */
+export function relend(
+  before: S,
+  after: S,
+  fits: (next: S, key: string) => boolean,
+): { slide: S; key: string; was: string } | { skip: string; was: string } | undefined {
+  const was = lentKey(before);
+  if (!was || hasVisual(after)) return undefined;
+  const template = str(after.template);
+  if (!CHECK_TEMPLATES.has(template))
+    return { skip: `the rewrite made it a ${template || "different"} slide`, was };
+  const key = checkSlotKey(template);
+  const slide = { ...after, [key]: structuredClone(before[was]) };
+  return fits(slide, key)
+    ? { slide, key, was }
+    : { skip: "the rewritten words do not fit beside the lent visual", was };
 }

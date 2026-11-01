@@ -366,6 +366,12 @@ export type TemplateInput = RegisteredFields & {
    */
   kind?: "short" | "tf";
   /** Practice (TEACH-230 part b): the picture could not be made; its card shows the caption. */
+  /**
+   * TEACH-247 part cj: the figure is a check slide's borrowed teaching visual (code's, never the
+   * writer's). Only then do the quick check and the exit ticket draw it in their card; a figure
+   * the writer asked for keeps their old layouts exactly.
+   */
+  checkFigure?: boolean;
   tile?: boolean;
   // TEACH-17 part b (C1): the worked example.
   /** Worked example: the working, one row per click (`{ move?, eq, answer? }`). */

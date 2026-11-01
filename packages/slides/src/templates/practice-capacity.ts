@@ -49,7 +49,13 @@ export function workInput(variant: WorkVariant, n: number, chars: number): Templ
   const questions = Array.from({ length: n }, () => workSample(chars));
   if (variant === "exit") return { template: "exit-ticket", heading: "The heart", questions };
   if (variant === "exit+picture")
-    return { template: "exit-ticket", heading: "The heart", questions, figure: PHOTO };
+    return {
+      template: "exit-ticket",
+      heading: "The heart",
+      questions,
+      figure: PHOTO,
+      checkFigure: true,
+    };
   return {
     template: "practice",
     heading: "The heart",
