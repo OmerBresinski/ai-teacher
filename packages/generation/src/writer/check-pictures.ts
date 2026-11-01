@@ -1,7 +1,7 @@
 /*
  * TEACH-247 part cj (Greg, 1 Nov 2026): a check slide may show the picture of the thing its
  * question works from. The writer declines its optional picture on check slides 59 of 61 times, so
- * after the writer, code gives each practice, hinge, quick check and exit ticket that has no visual
+ * after the writer, code gives each practice, hinge and exit ticket that has no visual
  * the visual an earlier teaching slide showed for the same objective (the flow's `teaches`).
  *
  * - The source: an earlier slide that is not a check, teaches an objective the check slide checks,
@@ -28,13 +28,8 @@ import { pilotOvers } from "./pilot-fit";
 
 type S = Record<string, unknown>;
 
-/** The check layouts that may borrow a visual. */
-export const CHECK_TEMPLATES: ReadonlySet<string> = new Set([
-  "practice",
-  "hinge",
-  "question-set",
-  "exit-ticket",
-]);
+/** The check layouts that may borrow a visual (never the quick check: Greg, 1 Nov 2026). */
+export const CHECK_TEMPLATES: ReadonlySet<string> = new Set(["practice", "hinge", "exit-ticket"]);
 
 /** The field a check slide's visual sits in: practice's own `picture`, the others' `figure`. */
 export const checkSlotKey = (template: string): "picture" | "figure" =>

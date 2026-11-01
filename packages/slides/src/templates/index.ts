@@ -368,7 +368,7 @@ export type TemplateInput = RegisteredFields & {
   /** Practice (TEACH-230 part b): the picture could not be made; its card shows the caption. */
   /**
    * TEACH-247 part cj: the figure is a check slide's borrowed teaching visual (code's, never the
-   * writer's). Only then do the quick check and the exit ticket draw it in their card; a figure
+   * writer's). Only then does the exit ticket draw it in its card; a figure
    * the writer asked for keeps their old layouts exactly.
    */
   checkFigure?: boolean;

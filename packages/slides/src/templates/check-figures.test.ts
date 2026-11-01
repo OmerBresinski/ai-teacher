@@ -4,11 +4,10 @@ import { EXIT_VISUAL, ticketW } from "./exit-ticket";
 import { HINGE_CAPS } from "./hinge";
 import { layoutTemplate, type TemplateInput } from "./index";
 import { capOf } from "./practice";
-import { QUICK_NAMES, QUICK_VISUAL, quickCaps } from "./question-set";
 
 /*
  * TEACH-247 part cj (Greg, 1 Nov): check slides may show the picture of the thing the question
- * works from. The exit ticket and the quick check take practice's white card on the left, the hinge
+ * works from. The exit ticket takes practice's white card on the left, the hinge
  * its figure beside the cards; each reports its fields against caps measured beside a picture.
  */
 const PHOTO = { photo: "https://x.test/p.jpg", aspect: 4 / 3, alt: "A picture" };
@@ -59,20 +58,8 @@ describe("exit ticket with a picture", () => {
   });
 });
 
-describe("quick check with a picture", () => {
-  const input: TemplateInput = {
-    template: "question-set",
-    heading: "Quick check",
-    questions: ["Which street?", "Which year?", "Which building?"],
-    answers: ["Pudding Lane", "1666", "A bakery"],
-    figure: PHOTO,
-    checkFigure: true,
-  };
-
-  test("a figure the writer asked for keeps the old layouts exactly", () => {
-    const { checkFigure: _, ...writers } = input;
-    const old = layoutTemplate(writers, theme, "ks2");
-    expect(old.slide.elements.some((e) => e.name === QUICK_NAMES.answer)).toBe(false);
+describe("a figure the writer asked for", () => {
+  test("keeps the exit ticket's old layout exactly", () => {
     const exitOld = layoutTemplate(
       { template: "exit-ticket", heading: "H", questions: ["Q?"], figure: PHOTO },
       theme,
@@ -87,26 +74,6 @@ describe("quick check with a picture", () => {
     expect(exitOld.slide.elements.map((e) => [e.name, e.x, e.y, e.w, e.h])).toEqual(
       exitPlain.slide.elements.map((e) => [e.name, e.x, e.y, e.w, e.h]),
     );
-  });
-
-  test("stays the quick check (answers revealed one per click) with the card left of the badges", () => {
-    const r = layoutTemplate(input, theme, "ks2");
-    expect(r.over).toEqual([]);
-    const answers = r.slide.elements.filter((e) => e.name === QUICK_NAMES.answer);
-    expect(answers).toHaveLength(3);
-    expect(answers.every((a) => typeof a.revealStep === "number")).toBe(true);
-    const img = images(r.slide.elements)[0] as unknown as { x: number; w: number };
-    const qs = r.slide.elements.filter((e) => e.name === QUICK_NAMES.question) as { x: number }[];
-    expect(qs.every((q) => q.x > img.x + img.w)).toBe(true);
-    expect(img.w).toBeLessThanOrEqual(QUICK_VISUAL.w);
-  });
-
-  test("reports its questions against the picture caps", () => {
-    const r = layoutTemplate(input, theme, "ks2");
-    expect(r.fields?.find((f) => f.path === "questions.0")?.cap).toBe(
-      quickCaps("ks2", 3, true).questions.cap,
-    );
-    expect(quickCaps("ks2", 3, true).questions.cap).toBeLessThan(quickCaps("ks2", 3).questions.cap);
   });
 });
 

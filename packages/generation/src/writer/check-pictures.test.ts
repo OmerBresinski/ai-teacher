@@ -189,6 +189,18 @@ describe("borrowCheckVisuals", () => {
     expect(r.skips[0]).toMatchObject({ slide: 3, reason: "no-source" });
   });
 
+  test("a quick check never borrows (Greg, 1 Nov 2026): it is not a check layout here", () => {
+    const quick: S = { ...exit, template: "question-set" };
+    const r = borrowCheckVisuals({
+      slides: [undefined, undefined, buckets, quick],
+      teaches: () => [3],
+      state: () => () => photo("Londoners with buckets"),
+      fits: () => true,
+    });
+    expect(r.routes).toEqual([]);
+    expect(r.skips).toEqual([]);
+  });
+
   test("words that do not fit beside the visual: not placed, logged as fit", () => {
     const r = borrowCheckVisuals({
       slides: [undefined, undefined, buckets, practice],
@@ -200,9 +212,8 @@ describe("borrowCheckVisuals", () => {
     expect(r.skips[0]).toMatchObject({ slide: 3, reason: "fit" });
   });
 
-  test("hinge, quick check and exit ticket take it under `figure`", () => {
+  test("hinge and exit ticket take it under `figure`", () => {
     expect(checkSlotKey("hinge")).toBe("figure");
-    expect(checkSlotKey("question-set")).toBe("figure");
     expect(checkSlotKey("exit-ticket")).toBe("figure");
     const slides = [undefined, undefined, buckets, exit];
     const r = borrowCheckVisuals({

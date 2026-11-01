@@ -46,13 +46,11 @@ export const QUICK_COUNTS: Record<QuickAge, number[]> = {
 
 const SHORT_Q = "What is it?";
 const SHORT_A = "Plasma";
-const PHOTO = { photo: "https://x.test/p.jpg", aspect: 4 / 3, alt: "A picture" };
-const inputOf = (qs: string[], as: string[], picture = false): TemplateInput => ({
+const inputOf = (qs: string[], as: string[]): TemplateInput => ({
   template: "question-set",
   heading: "Quick check: the heart",
   questions: qs,
   answers: as,
-  ...(picture ? { figure: PHOTO, checkFigure: true } : {}),
 });
 
 /** Whether `input` fits (nothing over) and is comfortable (not tight) on every theme. */
@@ -101,7 +99,6 @@ export function measureQuickCaps(
   age: QuickAge,
   n: number,
   themes: readonly Theme[] = THEMES,
-  picture = false,
 ): QuickCaps {
   const stage = QUICK_AGES[age];
   const ks = Array.from({ length: n }, (_, i) => i);
@@ -112,7 +109,6 @@ export function measureQuickCaps(
         inputOf(
           ks.map((i) => sample(ch, i * 3)),
           ks.map(() => SHORT_A),
-          picture,
         ),
       themes,
     ),
@@ -122,7 +118,6 @@ export function measureQuickCaps(
         inputOf(
           ks.map(() => SHORT_Q),
           ks.map((i) => sample(ch, i * 3)),
-          picture,
         ),
       themes,
     ),
@@ -130,19 +125,10 @@ export function measureQuickCaps(
 }
 
 if (import.meta.main) {
-  // TEACH-247 part cj: `<age>+picture`, the same counts beside the visual's card.
   const table = Object.fromEntries(
-    (Object.keys(QUICK_AGES) as QuickAge[]).flatMap((age) => [
-      [
-        age,
-        Object.fromEntries(QUICK_COUNTS[age].map((n) => [String(n), measureQuickCaps(age, n)])),
-      ],
-      [
-        `${age}+picture`,
-        Object.fromEntries(
-          QUICK_COUNTS[age].map((n) => [String(n), measureQuickCaps(age, n, THEMES, true)]),
-        ),
-      ],
+    (Object.keys(QUICK_AGES) as QuickAge[]).map((age) => [
+      age,
+      Object.fromEntries(QUICK_COUNTS[age].map((n) => [String(n), measureQuickCaps(age, n)])),
     ]),
   );
   writeFileSync(

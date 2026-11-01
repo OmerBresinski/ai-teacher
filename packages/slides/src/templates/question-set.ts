@@ -24,10 +24,6 @@
  * Every painted part is a theme surface role (`field-b` with its own square corners, `badge`,
  * `chip`); the answers are the theme's accent, the only red on the slide.
  *
- * - **A picture or figure** (TEACH-247 part cj, Greg 1 Nov: a check slide may show the thing its
- *   questions work from) sits in practice's white card left of the badges; the questions narrow
- *   to the room between it and the field and are measured there (`<age>+picture` caps).
- *
  * The answers stay on the slide's question (`listAnswers`) for the worksheet, the answer drawer and
  * the PowerPoint key; Present does not reveal them a second time (`hasRevealableAnswer`: a slide
  * that reveals its own elements draws its own answer).
@@ -55,7 +51,6 @@ import {
   type Stage,
   type TemplateInput,
 } from "./index";
-import { cardHeight, drawCard, visualOf } from "./practice";
 import CAPACITY from "./question-set-capacity.json" with { type: "json" };
 
 const SLIDE_W = 960;
@@ -71,8 +66,6 @@ const ROWS_SHARE = 0.9;
 /** Gap between a badge and its question; between a question and the field. */
 const BADGE_GAP = 19;
 const FIELD_GAP = 32;
-/** The visual's card (TEACH-247 part cj): narrower than practice's, so the questions keep room. */
-export const QUICK_VISUAL = { w: 200, gap: 32 } as const;
 
 /** Element names: the editor's layout ref and the tests read them. */
 export const QUICK_NAMES = {
@@ -111,8 +104,7 @@ export function isQuickCheck(input: TemplateInput): boolean {
   const as = input.answers ?? [];
   // A set the writer is still streaming may have answers for its first questions only: it lays
   // out as the quick check from its first answer, so nothing changes shape when the rest arrive.
-  // A figure keeps the old numbered layout unless it is a check slide's borrowed one (part cj).
-  return (!input.figure || !!input.checkFigure) && qs.length >= 1 && as.some((a) => !!a?.trim());
+  return !input.figure && qs.length >= 1 && as.some((a) => !!a?.trim());
 }
 
 type Fit = {
@@ -161,9 +153,6 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   // The quick check reveals each answer with its working after a dash; the question keeps them apart.
   const as = only.map((a, i) => (a && work[i] ? `${a} — ${work[i]}` : a));
   const n = qs.length;
-  const v = input.checkFigure ? visualOf(c, input) : null;
-  /** How far the badges sit right of the slide's pad: the visual's card and its gap. */
-  const lead = v ? QUICK_VISUAL.w + QUICK_VISUAL.gap : 0;
   const head = kit.heading(c, input.heading);
   const headBottom = head.y + head.h;
   const titleGap = n <= 3 ? 43 : 29;
@@ -200,7 +189,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     const fx = SLIDE_W - fw;
     const badge = disc;
     const chip = badge;
-    const qx = PAD_X + lead + badge + BADGE_GAP;
+    const qx = PAD_X + badge + BADGE_GAP;
     const qw = fx - FIELD_GAP - qx;
     const aw = SLIDE_W - PAD_X / 2 - (fx + FIELD_IN);
     const cs = { ...c, s: { ...c.s, body: size, lead: aSize } };
@@ -214,9 +203,7 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
     const rowPad = Math.round((Math.round((size * 1.5 * (n <= 3 ? 0.4 : 0.22)) / 4) * 4) / 1.5);
     const rowH = qs.map((_, i) => Math.max(badge, chip, qH[i] as number, aH[i] as number));
     const total = rowH.reduce((s, h) => s + h + 2 * rowPad, 0);
-    const card = v ? cardHeight(v, QUICK_VISUAL.w) : 0;
-    const ok =
-      !tooTall && !wide && !twoLineAnswer && total <= stageH * ROWS_SHARE && card <= stageH;
+    const ok = !tooTall && !wide && !twoLineAnswer && total <= stageH * ROWS_SHARE;
     // Comfort follows each stage's gold (TEACH-215 part j): KS2's gold is one line ("<= 10 words,
     // one line"); the KS1 and KS3 golds set questions on two lines (KS1 51 chars, KS3 up to 16 words,
     // 65-76 chars), so two lines are comfortable there.
@@ -256,17 +243,9 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   const fx = SLIDE_W - fit.fw;
   const ax = fx + FIELD_IN;
   const aw = SLIDE_W - PAD_X / 2 - ax;
-  const qx = PAD_X + lead + fit.badge + BADGE_GAP;
+  const qx = PAD_X + fit.badge + BADGE_GAP;
   const qw = fx - FIELD_GAP - qx;
   const field = { x: fx, y: fieldTop, w: fit.fw, h: SLIDE_H - fieldTop };
-  if (v) {
-    const ch = cardHeight(v, QUICK_VISUAL.w);
-    drawCard(c, v, {
-      x: PAD_X,
-      y: Math.round(stageTop + Math.max(0, (stageH - ch) / 2)),
-      w: QUICK_VISUAL.w,
-    });
-  }
   // A theme whose gold sets the answers on a solid column (round 4 themes4.css `.qc`: Beacon's blue,
   // Poster's deep teal) paints the field in its `inverse` state, the answers in that state's ink.
   const solid = surfacesOf(c.t).states["field-b:inverse"];
@@ -281,12 +260,12 @@ export function layoutQuestionSet(c: Ctx, input: TemplateInput) {
   let y = stageTop + gap;
   let step = 0;
   const fields: FieldReport[] = [];
-  const caps = quickCaps(stage, n, !!v);
+  const caps = quickCaps(stage, n);
   qs.forEach((q, i) => {
     const h = fit.rowH[i] as number;
     const mid = y + h / 2;
     // Number badge (the worked-example rail's ink disc), at the list marker's size.
-    roleDisc(c, "badge", String(i + 1), PAD_X + lead, mid, fit.badge, surfaceName("badge"));
+    roleDisc(c, "badge", String(i + 1), PAD_X, mid, fit.badge, surfaceName("badge"));
     // The number is a label at the gold's badge size (`--t-badge`: KS1 30, KS2 26, KS3 24 px),
     // not reading text, so the reading floor does not hold it (TEACH-215 part j).
     const disc = c.els[c.els.length - 1] as ShapeElement;
@@ -393,14 +372,10 @@ function roleDisc(
 
 type Cap = { cap: number; hardMax: number };
 /** The measured limits for a stage and count (`question-set-capacity.json`), nearest count. */
-export function quickCaps(
-  stage: Stage,
-  n: number,
-  picture = false,
-): { questions: Cap; answers: Cap } {
+export function quickCaps(stage: Stage, n: number): { questions: Cap; answers: Cap } {
   const age = stage === "ks1" ? "early" : stage === "ks2" ? "primary" : "secondary";
-  const table = CAPACITY as Record<string, Record<string, { questions: Cap; answers: Cap }>>;
-  const t = (picture ? table[`${age}+picture`] : undefined) ?? table[age] ?? {};
+  const t =
+    (CAPACITY as Record<string, Record<string, { questions: Cap; answers: Cap }>>)[age] ?? {};
   const counts = Object.keys(t).map(Number);
   const k = Math.min(Math.max(n, Math.min(...counts)), Math.max(...counts));
   return t[String(k)] as { questions: Cap; answers: Cap };
