@@ -52,6 +52,11 @@
 [data-font="math"] {
   font-family: var(--td-font-math, var(--td-font-quote, inherit));
   font-style: var(--td-math-style, var(--td-quote-style, normal));
+  /* TEACH-247 part ch: the maths face's taller ascent and descent must not grow its line. At its
+     paragraph's line height a math run made the line a pixel taller than the box laid for it
+     ("3x" in a worked row: 53 px in a 51.5 px box), and the editor flagged the row as overflowing.
+     The paragraph's own strut still sets the line's height. */
+  line-height: 1;
 }
 [data-hl] {
   padding: 0.04em 0.14em;

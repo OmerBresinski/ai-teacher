@@ -433,8 +433,8 @@ const PX = 2 / 3;
 
 /**
  * ax + b = c as two equal bars (W-d3): the x cells at a neutral width, never to scale.
- * x/a + b = c (TEACH-247 part ch, `over`): x is a bar of a equal parts, the last one (x/a) solid
- * beside b and the rest dashed until the "scale" frame fills them, one share each.
+ * x/a + b = c (TEACH-247 part ch, `over`): one part (x/a) beside b over c, then the scale frame
+ * shows x over its a parts, one share each.
  */
 function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: number, h: number) {
   const { c } = x;
@@ -470,7 +470,6 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   while (big > x.minFs && textWidth(num(xv), x, big, 700) > cells(big).inner)
     big = Math.max(x.minFs, big - 0.5);
   const { bW, xw, inner } = cells(big);
-  const xEnd = bx + p.a * xw;
   // The letter a step over the numbers when the cell has room for it.
   const letterFs = Math.max(
     over ? x.minFs : big,
@@ -495,8 +494,8 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   };
   const ghost = (cx: number, cy: number, cw: number) =>
     `<rect x="${n(cx + cut / 2 + 2)}" y="${n(cy + 2)}" width="${n(cw - cut - 4)}" height="${n(bh - 4)}" rx="6" fill="none" stroke="${c.muted}" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.6"/>`;
-  const letter = (x: Ctx, cx: number, cy: number, fs: number, fill = c.ink) =>
-    text(x, cx, cy, [name], {
+  const letter = (x: Ctx, cx: number, cy: number, fs: number, fill = c.ink, label = name) =>
+    text(x, cx, cy, [label], {
       fs,
       weight: 500,
       fill,
@@ -509,63 +508,69 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
   const layer = (x: Ctx, k: number) => {
     const key = keys[k] as string;
     let g = "";
-    for (let i = 0; i < p.a; i++) {
-      const cx = bx + i * xw;
-      // x/a + b = c: the parts of x before the last stay dashed until the scale frame fills them.
-      if (over && i < p.a - 1 && key !== "scale") {
-        g += ghost(cx, top, xw);
-        continue;
+    // x/a + b = c (TEACH-247 part ch): every frame but the scale shows one part (x/a) beside b,
+    // over c: x/a + b = c, then x/a = c - b. The scale frame shows x itself over its a parts, one
+    // share each: x = a(c - b), with no b. Both centre in the drawing's width.
+    const scale = over && key === "scale";
+    const nx = over && !scale ? 1 : p.a;
+    const sx = scale ? bx + bW / 2 : over ? bx + ((p.a - 1) * xw) / 2 : bx;
+    const xe = sx + nx * xw;
+    if (scale)
+      g +=
+        cell(sx, top, p.a * xw, x.tile?.fill ?? c.tint) +
+        letter(x, sx + (p.a * xw) / 2, mid(top), letterFs, c.ink, p.unknown);
+    else
+      for (let i = 0; i < nx; i++) {
+        const cx = sx + i * xw;
+        g += cell(cx, top, xw, x.tile?.fill ?? c.tint);
+        if (key === "check") {
+          // A small x tag in the cell's top-left corner (the gold), the value under it with clear
+          // space between: the value steps down (never under the floor) in a short cell.
+          const tagH = x.minFs * 1.15;
+          const vfs = Math.max(x.minFs, Math.min(big, bh - tagH - x.minFs * 0.35));
+          if (tagH + x.minFs * 0.2 + vfs > bh)
+            x.faults?.push("the bars are too short for the check");
+          // A theme's own tile (Geometric) sets the tag and value where its gold does (worked.js:
+          // the tag's centre 22px in and 24px down, the value 6px under the cell's middle) when
+          // the two stay clear of each other.
+          const goldTag = { x: cx + 22 * PX, y: top + 24 * PX };
+          const goldVy = mid(top) + 6 * PX;
+          const gold =
+            !!x.tile &&
+            goldVy - vfs * 0.36 >= goldTag.y + x.minFs * 0.3 &&
+            goldVy + vfs * 0.36 <= top + bh;
+          g += gold
+            ? letter(x, goldTag.x, goldTag.y, x.minFs, c.muted)
+            : letter(x, cx + cut / 2 + x.minFs * 0.55, top + x.minFs * 0.7, x.minFs, c.muted);
+          const vy = gold
+            ? goldVy
+            : Math.max(mid(top) + tagH * 0.25, top + tagH + x.minFs * 0.2 + vfs * 0.5);
+          g += text(x, cx + xw / 2, Math.min(vy, top + bh - vfs * 0.55), [num(xv)], {
+            fs: vfs,
+            weight: 700,
+            fill: c.accent,
+          });
+        } else g += letter(x, cx + xw / 2, mid(top), letterFs);
       }
-      g += cell(cx, top, xw, x.tile?.fill ?? c.tint);
-      if (key === "check") {
-        // A small x tag in the cell's top-left corner (the gold), the value under it with clear
-        // space between: the value steps down (never under the floor) in a short cell.
-        const tagH = x.minFs * 1.15;
-        const vfs = Math.max(x.minFs, Math.min(big, bh - tagH - x.minFs * 0.35));
-        if (tagH + x.minFs * 0.2 + vfs > bh) x.faults?.push("the bars are too short for the check");
-        // A theme's own tile (Geometric) sets the tag and value where its gold does (worked.js:
-        // the tag's centre 22px in and 24px down, the value 6px under the cell's middle) when the
-        // two stay clear of each other.
-        const goldTag = { x: cx + 22 * PX, y: top + 24 * PX };
-        const goldVy = mid(top) + 6 * PX;
-        const gold =
-          !!x.tile &&
-          goldVy - vfs * 0.36 >= goldTag.y + x.minFs * 0.3 &&
-          goldVy + vfs * 0.36 <= top + bh;
-        g += gold
-          ? letter(x, goldTag.x, goldTag.y, x.minFs, c.muted)
-          : letter(x, cx + cut / 2 + x.minFs * 0.55, top + x.minFs * 0.7, x.minFs, c.muted);
-        const vy = gold
-          ? goldVy
-          : Math.max(mid(top) + tagH * 0.25, top + tagH + x.minFs * 0.2 + vfs * 0.5);
-        g += text(x, cx + xw / 2, Math.min(vy, top + bh - vfs * 0.55), [num(xv)], {
-          fs: vfs,
-          weight: 700,
-          fill: c.accent,
-        });
-      } else g += letter(x, cx + xw / 2, mid(top), letterFs);
-    }
-    const taken = key === "take" || key === "share" || key === "scale";
+    const taken = key === "take" || key === "share";
     if (taken)
       g +=
-        ghost(xEnd, top, bW) +
-        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW, fill: c.muted });
-    else
+        ghost(xe, top, bW) +
+        text(x, xe + bW / 2, mid(top), [bLabel], { fs: big, weight: numW, fill: c.muted });
+    else if (!scale)
       g +=
-        cell(xEnd, top, bW, c.surface) +
-        text(x, xEnd + bW / 2, mid(top), [bLabel], { fs: big, weight: numW });
-    // The bottom bar under what equals c: all of the top bar, or (x/a) the last part and b.
-    const bx0 = over ? bx + (p.a - 1) * xw : bx;
-    const bwC = bx + bw - bx0;
-    const bwX = xEnd - bx0;
+        cell(xe, top, bW, c.surface) +
+        text(x, xe + bW / 2, mid(top), [bLabel], { fs: big, weight: numW });
     if (key === "whole" || key === "check") {
-      g += cell(bx0, bot, bwC, c.surface);
+      // The bottom bar under all of the top bar: c.
+      const bwC = xe + bW - sx;
+      g += cell(sx, bot, bwC, c.surface);
       const cl = num(p.c);
       // A theme's own tile (Geometric) places the total and its tick as its gold does
       // (worked.js: the total 24px left of the middle, a 40px tick 48px right of it).
       const goldTick = !!x.tile && textWidth(cl, x, big, numW) / 2 - 24 * PX < 28 * PX;
       const off = key === "check" ? (goldTick ? 24 * PX : L * 0.8) : 0;
-      const cm = bx0 + bwC / 2;
+      const cm = sx + bwC / 2;
       g += text(x, cm - off, mid(bot), [cl], { fs: big, weight: numW });
       if (key === "check")
         g += goldTick
@@ -574,22 +579,23 @@ function drawEquation(p: Extract<BarPanel, { model: "equation" }>, x: Ctx, w: nu
     } else {
       if (key === "take")
         g +=
-          cell(bx0, bot, bwX, c.surface) +
-          text(x, bx0 + bwX / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: numW });
+          cell(sx, bot, xe - sx, c.surface) +
+          text(x, (sx + xe) / 2, mid(bot), [num(p.c - p.b)], { fs: big, weight: numW });
       else
-        for (let i = 0; i < p.a; i++)
+        for (let i = 0; i < nx; i++)
           g +=
-            cell(bx + i * xw, bot, xw, c.surface) +
-            text(x, bx + i * xw + xw / 2, mid(bot), [num(xv)], {
+            cell(sx + i * xw, bot, xw, c.surface) +
+            text(x, sx + i * xw + xw / 2, mid(bot), [num(xv)], {
               fs: big,
               weight: 700,
               fill: c.accent,
             });
-      g +=
-        ghost(xEnd, bot, bW) +
-        text(x, xEnd + bW / 2, mid(bot), [bLabel], { fs: big, weight: numW, fill: c.muted });
+      if (!scale)
+        g +=
+          ghost(xe, bot, bW) +
+          text(x, xe + bW / 2, mid(bot), [bLabel], { fs: big, weight: numW, fill: c.muted });
       if (key === "take")
-        g += `<line x1="${n(xEnd)}" x2="${n(xEnd)}" y1="${n(top - L * 0.6)}" y2="${n(bot + bh + L * 0.6)}" stroke="${c.accent}" stroke-width="3" stroke-linecap="round"/>`;
+        g += `<line x1="${n(xe)}" x2="${n(xe)}" y1="${n(top - L * 0.6)}" y2="${n(bot + bh + L * 0.6)}" stroke="${c.accent}" stroke-width="3" stroke-linecap="round"/>`;
     }
     return g;
   };

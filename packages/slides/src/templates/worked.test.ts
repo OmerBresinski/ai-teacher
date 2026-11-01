@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { type Slide, slideStepCount } from "@tj/domain/documents";
+import { barPanelSpec } from "../diagrams/bar-model";
+import { diagramElement, svgOfDataUrl } from "../diagrams/index";
 import { atKeyStage, getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
 import {
@@ -388,4 +390,142 @@ describe("worked example: the bar model fits the rows shown (TEACH-247 part ch)"
     // No panel and no equation: nothing to say.
     expect(panelLost(solve({ barPanel: undefined }))).toBeUndefined();
   });
+});
+
+/*
+ * TEACH-247 part ch (review): every frame of the panel pictures the equation of the row it rides,
+ * both sides. Each frame is drawn alone and read back: a solid cell is a term (a number, the
+ * letter, or x/a; a cell holding a number reads as that number), a dashed cell is b taken from
+ * both sides and must stand on both bars. The top bar is the left side, the bottom the right.
+ */
+describe("worked example: each build pictures its row's equation (TEACH-247 part ch)", () => {
+  type Lin = { x: number; k: number };
+  const add = (a: Lin, b: Lin): Lin => ({ x: a.x + b.x, k: a.k + b.k });
+  const term = (t: string): Lin => {
+    const m = /^(\d*(?:\.\d+)?)([a-z])?(?:\/(\d+))?$/.exec(t);
+    if (!m) throw new Error(`term ${t}`);
+    const [, co, v, d] = m;
+    if (!v) return { x: 0, k: Number(co) };
+    return { x: (co ? Number(co) : 1) / (d ? Number(d) : 1), k: 0 };
+  };
+  const side = (s: string) =>
+    s.replace(/\s+/g, "").split("+").map(term).reduce(add, { x: 0, k: 0 });
+  const rowEq = (eq: string) => {
+    const [l, r] = eq.split("=");
+    return { l: side(l ?? ""), r: side(r ?? "") };
+  };
+  /** The bars of one frame, read back from its drawing. */
+  const picture = (panel: Record<string, unknown>, key: string) => {
+    const made = barPanelSpec({ ...panel, frames: [key] } as never, "t");
+    if (!made.ok) throw new Error(made.reason);
+    const img = diagramElement(made.spec, getTheme("paper"), { x: 0, y: 0, w: 300, h: 370 });
+    const svg = svgOfDataUrl(img?.src ?? "") ?? "";
+    // Each cell's outline (a solid cell) or dashed box (b taken), as x, y, w, h.
+    const rects = [...svg.matchAll(/<rect ([^>]*)\/>/g)]
+      .map((m) => m[1] as string)
+      .filter((r) => /fill="none"/.test(r) && /stroke=/.test(r));
+    const geo = (r: string) =>
+      ["x", "y", "width", "height"].map((k) => Number(new RegExp(`${k}="([\\d.]+)"`).exec(r)?.[1]));
+    const solid = rects.filter((r) => !/dasharray/.test(r)).map(geo);
+    const ghosts = rects.filter((r) => /dasharray/.test(r)).map(geo);
+    const texts = [...svg.matchAll(/<tspan x="([\d.]+)" y="([\d.]+)">([^<]+)<\/tspan>/g)].map(
+      (m) => ({ x: Number(m[1]), y: Number(m[2]), t: m[3] as string }),
+    );
+    const inside = (b: number[], t: { x: number; y: number }) =>
+      t.x > (b[0] ?? 0) &&
+      t.x < (b[0] ?? 0) + (b[2] ?? 0) &&
+      t.y > (b[1] ?? 0) &&
+      t.y < (b[1] ?? 0) + (b[3] ?? 0) + 2;
+    const ys = [...solid, ...ghosts].map((b) => b[1] ?? 0);
+    const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
+    const bars: Record<"top" | "bottom", Lin> = { top: { x: 0, k: 0 }, bottom: { x: 0, k: 0 } };
+    const taken = { top: [] as string[], bottom: [] as string[] } as Record<string, string[]>;
+    for (const b of solid) {
+      const ts = texts.filter((t) => inside(b, t)).map((t) => t.t);
+      const n = ts.find((t) => /^\d/.test(t));
+      const row = (b[1] ?? 0) > mid ? "bottom" : "top";
+      bars[row] = add(bars[row], term(n ?? (ts[0] as string)));
+    }
+    for (const b of ghosts) {
+      const row = (b[1] ?? 0) > mid ? "bottom" : "top";
+      taken[row]?.push(
+        texts
+          .filter((t) => inside(b, t))
+          .map((t) => t.t)
+          .join(""),
+      );
+    }
+    return { ...bars, taken, tick: svg.includes("stroke-linejoin") && key === "check" };
+  };
+  const cases: { name: string; input: TemplateInput; panel: Record<string, unknown>; x: number }[] =
+    [
+      {
+        name: "3x + 5 = 20, 2 rows",
+        input: {
+          template: "worked",
+          heading: "Solve 3x + 5 = 20",
+          lines: [
+            { move: "Subtract 5 from both sides", eq: "3x = 15" },
+            { move: "Divide both sides by 3", eq: "x = 5" },
+          ],
+          barPanel: { model: "algebra-bar", a: 3, b: 5, c: 20 },
+        },
+        panel: { model: "equation", a: 3, b: 5, c: 20 },
+        x: 5,
+      },
+      {
+        name: "3x + 5 = 20, gold 4 rows",
+        input: WORKED_CASES["y8-panel"]?.input as TemplateInput,
+        panel: { model: "equation", a: 3, b: 5, c: 20 },
+        x: 5,
+      },
+      {
+        name: "x/4 + 3 = 8, 2 rows + check",
+        input: {
+          template: "worked",
+          heading: "Solve x/4 + 3 = 8",
+          lines: [
+            { move: "Subtract 3 from both sides", eq: "x/4 = 5" },
+            { move: "Multiply both sides by 4", eq: "x = 20" },
+          ],
+          check: "*20*/4 + 3 = 8",
+          barPanel: { model: "division-bar", a: 4, b: 3, c: 8 },
+        },
+        panel: { model: "equation", a: 4, b: 3, c: 8, over: true },
+        x: 20,
+      },
+    ];
+  for (const k of cases)
+    test(`${k.name}: build i shows row i's equation, both sides`, () => {
+      const f = workedFrames(k.input);
+      if (!f.ok) throw new Error(f.reason);
+      const rows = [
+        ...(f.lead ? [k.input.heading] : []),
+        ...(k.input.lines ?? []).map((l) => l.eq),
+        ...(k.input.check ? ["check"] : []),
+      ];
+      expect(rows).toHaveLength(f.frames.length);
+      f.frames.forEach((key, i) => {
+        const pic = picture(k.panel, key);
+        // Whatever is taken is taken from both sides.
+        expect(pic.taken.top).toEqual(pic.taken.bottom);
+        const row = rows[i] as string;
+        if (row === "check") {
+          // Every term a number: the left side's values make the right side, ticked.
+          expect(pic.top?.x).toBe(0);
+          expect(pic.top?.k).toBe(pic.bottom?.k);
+          return;
+        }
+        const want = rowEq(row.replace(/^Solve\s+/, ""));
+        const got = { l: pic.top as Lin, r: pic.bottom as Lin };
+        if (key === "share" || key === "scale") {
+          // The share pictures the whole of x (or of ax) cut into its equal values: the row's
+          // equation times the number of cells, and the same answer.
+          const s = got.l.x / want.l.x;
+          expect(got.r.k).toBeCloseTo(want.r.k * s);
+          expect(got.l.k).toBe(0);
+          expect(got.r.k / got.l.x).toBeCloseTo(k.x);
+        } else expect(got).toEqual(want);
+      });
+    });
 });
