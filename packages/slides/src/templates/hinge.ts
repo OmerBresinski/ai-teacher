@@ -537,7 +537,7 @@ export function layoutHinge(c: Ctx, input: TemplateInput) {
     };
   const notes = hingeNotes(choices, right || undefined, letters);
   if (notes) c.notes = notes;
-  c.fields = fieldsOf(choices, age);
+  c.fields = fieldsOf(choices, age, !!input.figure);
   c.tight =
     p.ok &&
     p.look === "rows" &&
@@ -732,14 +732,27 @@ function accent(c: Ctx, el: TextElement, word: string | null | undefined) {
 }
 
 type CapCell = { words: number; maxWords: number; chars: number; maxChars: number };
-type Caps = Record<Age, CapCell & { options: number; byCount?: Record<string, CapCell> }>;
+type Caps = Record<
+  Age,
+  CapCell & {
+    options: number;
+    byCount?: Record<string, CapCell>;
+    /** TEACH-247 part cj: the caps beside the question's picture. */
+    byCountPicture?: Record<string, CapCell>;
+  }
+>;
 /** The measured caps (`hinge-capacity.json`, written by `measureHingeCapacity`). */
 export const HINGE_CAPS = CAPACITY as Caps;
 
 /** One counter per option: its length against the measured comfortable cap and hard maximum. */
-function fieldsOf(choices: HingeChoice[], age: Age): FieldReport[] {
+function fieldsOf(choices: HingeChoice[], age: Age, picture = false): FieldReport[] {
   // Each option count is measured on its own (fewer cards hold longer options); else the most.
-  const cap = HINGE_CAPS[age].byCount?.[String(choices.length)] ?? HINGE_CAPS[age];
+  // Beside a picture the cards are narrower: their own caps (TEACH-247 part cj).
+  const caps = HINGE_CAPS[age];
+  const cap =
+    (picture ? caps.byCountPicture?.[String(choices.length)] : undefined) ??
+    caps.byCount?.[String(choices.length)] ??
+    caps;
   return choices.map((o, k) => {
     const chars = o.text.length;
     return {

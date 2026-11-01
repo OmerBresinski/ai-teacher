@@ -27,15 +27,19 @@ export const HINGE_CAP_STAGE: Record<Age, Stage> = {
 };
 export const HINGE_CAP_OPTIONS: Record<Age, number> = { early: 3, primary: 4, secondary: 4 };
 
+/** The picture a hinge's `byCountPicture` caps are measured beside (TEACH-247 part cj). */
+const PHOTO = { photo: "https://x.test/p.jpg", aspect: 4 / 3, alt: "A picture" };
 export const hingeCapInput = (
   age: Age,
   words: number,
   options = HINGE_CAP_OPTIONS[age],
+  picture = false,
 ): TemplateInput => ({
   template: "hinge",
   heading: HINGE_CAP_QUESTION,
   options: Array.from({ length: options }, (_, i) => hingeSample(words, i)),
   correct: 1,
+  ...(picture ? { figure: PHOTO } : {}),
 });
 
 /** Every theme holds `words` at comfort (not tight) or at all (not over). */
@@ -50,12 +54,13 @@ function holds(
   words: number,
   comfort: boolean,
   options = HINGE_CAP_OPTIONS[age],
+  picture = false,
 ): boolean {
-  return holdsInput(age, hingeCapInput(age, words, options), comfort);
+  return holdsInput(age, hingeCapInput(age, words, options, picture), comfort);
 }
 
 /** Every option exactly `chars` long (the pool cut mid-word if need be), each from its own offset. */
-const charInput = (options: number, chars: number): TemplateInput => ({
+const charInput = (options: number, chars: number, picture = false): TemplateInput => ({
   template: "hinge",
   heading: HINGE_CAP_QUESTION,
   options: Array.from({ length: options }, (_, i) =>
@@ -65,6 +70,7 @@ const charInput = (options: number, chars: number): TemplateInput => ({
       .trimEnd()}.`.replace(/^./, (c) => c.toUpperCase()),
   ),
   correct: 1,
+  ...(picture ? { figure: PHOTO } : {}),
 });
 
 /**
@@ -73,27 +79,29 @@ const charInput = (options: number, chars: number): TemplateInput => ({
  * so it sat under what renders (KS2 4 options: 49, where 52-54-character options render on one
  * line). Starts from the word search's figure; never lower.
  */
-function charsAt(age: Age, options: number, from: number, comfort: boolean): number {
+function charsAt(
+  age: Age,
+  options: number,
+  from: number,
+  comfort: boolean,
+  picture = false,
+): number {
   let c = from;
-  while (c < 200 && holdsInput(age, charInput(options, c + 1), comfort)) c += 1;
+  while (c < 200 && holdsInput(age, charInput(options, c + 1, picture), comfort)) c += 1;
   return c;
 }
 
 export type HingeCapCell = { words: number; maxWords: number; chars: number; maxChars: number };
 
 /** One option count's caps at an age: comfortable, then at all. */
-function measureAt(age: Age, options: number): HingeCapCell {
+function measureAt(age: Age, options: number, picture = false): HingeCapCell {
   let words = 0;
-  while (words < 30 && holds(age, words + 1, true, options)) words += 1;
+  while (words < 30 && holds(age, words + 1, true, options, picture)) words += 1;
   let maxWords = words;
-  while (maxWords < 30 && holds(age, maxWords + 1, false, options)) maxWords += 1;
-  const chars = charsAt(age, options, hingeSample(words).length, true);
-  return {
-    words,
-    maxWords,
-    chars,
-    maxChars: Math.max(chars, charsAt(age, options, hingeSample(maxWords).length, false)),
-  };
+  while (maxWords < 30 && holds(age, maxWords + 1, false, options, picture)) maxWords += 1;
+  const chars = charsAt(age, options, hingeSample(words).length, true, picture);
+  const most = charsAt(age, options, hingeSample(maxWords).length, false, picture);
+  return { words, maxWords, chars, maxChars: Math.max(chars, most) };
 }
 
 /**
@@ -103,13 +111,27 @@ function measureAt(age: Age, options: number): HingeCapCell {
 export function measureHingeCapacity() {
   const out: Record<
     string,
-    HingeCapCell & { options: number; byCount: Record<string, HingeCapCell> }
+    HingeCapCell & {
+      options: number;
+      byCount: Record<string, HingeCapCell>;
+      byCountPicture: Record<string, HingeCapCell>;
+    }
   > = {};
   for (const age of ["early", "primary", "secondary"] as Age[]) {
     const most = HINGE_CAP_OPTIONS[age];
     const byCount: Record<string, HingeCapCell> = {};
-    for (let n = 2; n <= most; n += 1) byCount[String(n)] = measureAt(age, n);
-    out[age] = { ...(byCount[String(most)] as HingeCapCell), options: most, byCount };
+    // TEACH-247 part cj: the same counts beside a picture of the thing the question works from.
+    const byCountPicture: Record<string, HingeCapCell> = {};
+    for (let n = 2; n <= most; n += 1) {
+      byCount[String(n)] = measureAt(age, n);
+      byCountPicture[String(n)] = measureAt(age, n, true);
+    }
+    out[age] = {
+      ...(byCount[String(most)] as HingeCapCell),
+      options: most,
+      byCount,
+      byCountPicture,
+    };
   }
   return out;
 }

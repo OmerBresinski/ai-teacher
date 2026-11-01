@@ -221,7 +221,7 @@ export function drawRule(c: Ctx, x: number, y: number, w: number) {
 /* Plan                                                                */
 /* ------------------------------------------------------------------ */
 
-type Visual = { figure: Figure; failed: boolean; caption: string };
+export type Visual = { figure: Figure; failed: boolean; caption: string };
 export type PracticePlan = {
   q: number;
   cols: number;
@@ -241,7 +241,7 @@ const captionOf = (f: Figure | undefined): string => {
   return String(d?.caption ?? d?.title ?? "").trim();
 };
 
-function visualOf(c: Ctx, input: TemplateInput): Visual | null {
+export function visualOf(c: Ctx, input: TemplateInput): Visual | null {
   const f = input.figure;
   if (!f) return null;
   let failed = Boolean(input.tile);
@@ -305,7 +305,7 @@ function stackHeight(c: Ctx, items: string[], q: number, visW: number): number |
 }
 
 /** The visual card's height at width `visW` (a 4:3 picture, the figure's caption above it). */
-function cardHeight(v: Visual, visW: number): number {
+export function cardHeight(v: Visual, visW: number): number {
   const inner = visW - 2 * WA.visPad;
   if (v.failed) return Math.round(visW * 0.75);
   return Math.round(2 * WA.visPad + inner * 0.75);
@@ -432,7 +432,7 @@ export function layoutPractice(c: Ctx, input: TemplateInput) {
 }
 
 /** The picture or figure in its white card; a failed one is a 4:3 caption card in the quote voice. */
-function drawCard(c: Ctx, v: Visual, at: { x: number; y: number; w: number }) {
+export function drawCard(c: Ctx, v: Visual, at: { x: number; y: number; w: number }) {
   const h = cardHeight(v, at.w);
   const rect = { ...at, h };
   const card = paintSurface({ role: "card", box: rect, own: cornersOf(c), id: uid() }, c.t);
@@ -552,7 +552,12 @@ export function splitPractice(input: TemplateInput): TemplateInput[] {
 
 /** One measured cap cell (`practice-capacity.json`): characters and words a task. */
 export type WorkCap = { n: number; cap: number; hardMax: number; words: number; hardWords: number };
-export type WorkVariant = "practice" | "practice+picture" | "practice+figure" | "exit";
+export type WorkVariant =
+  | "practice"
+  | "practice+picture"
+  | "practice+figure"
+  | "exit"
+  | "exit+picture";
 let TABLE = CAPACITY as unknown as Record<Age, Partial<Record<WorkVariant, WorkCap[]>>>;
 /** Lays out with no caps table, so the capacity script measures geometry alone. */
 export function withoutCaps<T>(f: () => T): T {

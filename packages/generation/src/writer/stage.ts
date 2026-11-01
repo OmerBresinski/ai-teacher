@@ -27,6 +27,7 @@ import {
 } from "./activities";
 import { BODY_MODELS } from "./body-figure";
 import { type WriterBundleId, writerBundle } from "./bundle";
+import { borrowCheckVisuals, fitsWithVisual } from "./check-pictures";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import {
   ANY_POINTING,
@@ -1752,6 +1753,59 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Slide i's text and cards past the slide's edge, as laid now. */
   const offSlideAt = (i: number) => offSlide(laid.get(i)?.slide.elements ?? []);
+  /**
+   * TEACH-247 part cj: each check slide with no visual borrows its objective's teaching visual
+   * (`check-pictures.ts`): the slide takes the visual's ask under its own key, the visual's state
+   * (or its leak-safe form) as an override, and is laid again. Every slide left without one is
+   * logged with its reason. `only`: a re-check of slides a rewrite left without theirs.
+   */
+  function borrowForChecks(only?: ReadonlySet<number>) {
+    if (only && !only.size) return;
+    const res = borrowCheckVisuals({
+      slides: plan.slides,
+      teaches: (i) =>
+        flowOf(i, String((plan.slides[i] as S | undefined)?.template ?? ""))?.teaches ?? [],
+      state: visualState,
+      fits: (i, next, key, st) =>
+        fitsWithVisual(
+          plan.slides[i] as S,
+          next,
+          { ...base, index: i, plan, visual: visualState(i) },
+          key,
+          st,
+        ),
+      ...(only ? { only } : {}),
+    });
+    for (const r of res.routes) {
+      plan.slides[r.slide] = r.json;
+      override.set(`${r.slide}:${r.key}`, r.state);
+      // Its ask joins the slide's, so a later rewrite that keeps the visual carries it.
+      const ask = visualsOf(r.json, r.slide, { ...base, plan }).find((x) => x.key === r.key);
+      if (ask)
+        asks.set(r.slide, [...(asks.get(r.slide) ?? []).filter((x) => x.key !== r.key), ask]);
+      borrowedChecks.set(r.slide, r.key);
+      relay(r.slide);
+      log({
+        ev: "check-visual",
+        slide: r.slide + 1,
+        from: r.from + 1,
+        key: r.fromKey,
+        status: r.state.status,
+        form: r.form,
+        ...(only ? { again: true } : {}),
+      });
+    }
+    for (const k of res.skips)
+      log({
+        ev: "check-visual-skip",
+        level: only ? "error" : "warn",
+        slide: k.slide + 1,
+        template: k.template,
+        reason: k.reason,
+        why: k.why,
+        ...(only ? { again: true } : {}),
+      });
+  }
   const swapSlide = (i: number, next0: S) => {
     dropContinued(i);
     states.save(i, plan.slides[i]);
@@ -2272,6 +2326,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     await run.onPicturesSettled?.(deck(true), deck());
   }
 
+  // TEACH-247 part cj: a check slide with no visual shows the one its objective was taught with,
+  // once the pictures have settled (only a landed one is reused), before the checks judge it.
+  const borrowedChecks = new Map<number, string>();
+  borrowForChecks();
+
   // ── code checks ──
   const baseCheck = () =>
     Array.from({ length: n }, (_, i) =>
@@ -2519,6 +2578,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       o2.slide = rest;
     }
     const before = plan.slides[i] as S;
+    // TEACH-247 part cj: a check slide's borrowed visual is code's, not the writer's: a repair
+    // rewords around it and it comes back as it was.
+    const lent = borrowedChecks.get(i);
+    if (lent && before[lent] && !o2.slide[lent]) o2.slide = { ...o2.slide, [lent]: before[lent] };
     const keyed = keepAnswerKey(
       before,
       keepAsksHonest(before, ro.schema ? carryFigures(before, o2.slide) : o2.slide),
@@ -3275,6 +3338,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
+  // TEACH-247 part cj: a check slide a repair rewrote without its borrowed visual gets it again
+  // when it still fits, or the loss is logged.
+  borrowForChecks(
+    new Set(
+      [...borrowedChecks]
+        .filter(([i, key]) => !(plan.slides[i] as S | undefined)?.[key])
+        .map(([i]) => i),
+    ),
+  );
   // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
   // or with none when checks only log) splits into continuation slides, as the restage's last
   // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a

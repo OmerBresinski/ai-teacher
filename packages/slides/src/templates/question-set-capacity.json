@@ -21,6 +21,28 @@
       }
     }
   },
+  "early+picture": {
+    "3": {
+      "questions": {
+        "cap": 38,
+        "hardMax": 38
+      },
+      "answers": {
+        "cap": 28,
+        "hardMax": 28
+      }
+    },
+    "4": {
+      "questions": {
+        "cap": 21,
+        "hardMax": 21
+      },
+      "answers": {
+        "cap": 17,
+        "hardMax": 17
+      }
+    }
+  },
   "primary": {
     "3": {
       "questions": {
@@ -63,6 +85,48 @@
       }
     }
   },
+  "primary+picture": {
+    "3": {
+      "questions": {
+        "cap": 26,
+        "hardMax": 48
+      },
+      "answers": {
+        "cap": 38,
+        "hardMax": 38
+      }
+    },
+    "4": {
+      "questions": {
+        "cap": 26,
+        "hardMax": 47
+      },
+      "answers": {
+        "cap": 37,
+        "hardMax": 37
+      }
+    },
+    "5": {
+      "questions": {
+        "cap": 26,
+        "hardMax": 27
+      },
+      "answers": {
+        "cap": 21,
+        "hardMax": 21
+      }
+    },
+    "6": {
+      "questions": {
+        "cap": 26,
+        "hardMax": 26
+      },
+      "answers": {
+        "cap": 20,
+        "hardMax": 20
+      }
+    }
+  },
   "secondary": {
     "3": {
       "questions": {
@@ -98,6 +162,48 @@
       "questions": {
         "cap": 41,
         "hardMax": 41
+      },
+      "answers": {
+        "cap": 17,
+        "hardMax": 17
+      }
+    }
+  },
+  "secondary+picture": {
+    "3": {
+      "questions": {
+        "cap": 53,
+        "hardMax": 53
+      },
+      "answers": {
+        "cap": 39,
+        "hardMax": 39
+      }
+    },
+    "4": {
+      "questions": {
+        "cap": 53,
+        "hardMax": 53
+      },
+      "answers": {
+        "cap": 39,
+        "hardMax": 39
+      }
+    },
+    "5": {
+      "questions": {
+        "cap": 29,
+        "hardMax": 29
+      },
+      "answers": {
+        "cap": 22,
+        "hardMax": 22
+      }
+    },
+    "6": {
+      "questions": {
+        "cap": 22,
+        "hardMax": 22
       },
       "answers": {
         "cap": 17,
