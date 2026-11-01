@@ -21,6 +21,7 @@
  * A new picture searched for the thing the question names (TEXT-ONLY-DIAG.md Fix 2, route b) is
  * not done here: a slide skipped `no-source` is where it would start.
  */
+import { parseDiagram } from "@tj/slides/diagrams";
 import { fitsNoWorse } from "./icon-route";
 import { type MaterialiseCtx, normalise, pilotFit, type VisualState } from "./materialise";
 import { pilotOvers } from "./pilot-fit";
@@ -216,7 +217,12 @@ export function letteredSpec(spec: unknown): S | undefined {
   const labels = (copy.labels as unknown[]).map((l, k) =>
     isObj(l) ? { ...l, text: LETTERS[k] ?? String(k + 1) } : (LETTERS[k] ?? String(k + 1)),
   );
-  return { ...copy, labels, title: null, alt: "A diagram with lettered parts." };
+  // No title at all (a null one does not parse: rivers r1's lettered meander was dropped as
+  // "the spec does not parse" and the exit ticket shipped without it).
+  const { title: _t, ...rest } = copy;
+  const out = { ...rest, labels, alt: "A diagram with lettered parts." };
+  // A spec that drew must still draw lettered; one the drawer cannot parse has no lettered form.
+  return parseDiagram(spec) && !parseDiagram(out) ? undefined : out;
 }
 
 /** The ask fields that carry words or re-ask: never copied onto a check slide. */

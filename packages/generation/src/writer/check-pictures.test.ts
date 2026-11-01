@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { getTheme } from "@tj/slides";
+import { parseDiagram } from "@tj/slides/diagrams";
 import {
   borrowCheckVisuals,
   checkSlotKey,
@@ -245,7 +246,7 @@ describe("the answer-leak guard", () => {
     expect(safe).toMatchObject({ form: "letters" });
     const spec = (safe as { state: { spec: S } }).state.spec;
     expect((spec.labels as S[]).map((l) => l.text)).toEqual(["A", "B", "C", "D"]);
-    expect(spec.title).toBeNull();
+    expect(spec.title).toBeUndefined();
     // The parts the letters point at stay (`part` is where a label goes, never drawn).
     expect((spec.labels as S[]).map((l) => l.part)).toEqual(["flower", "stem", "leaf", "root"]);
     expect(String(spec.alt)).not.toMatch(/flower/i);
@@ -428,5 +429,31 @@ describe("review fixes (part cj)", () => {
       skip: expect.stringContaining("visual-text"),
     });
     expect(relend(exit, practice, () => true)).toBeUndefined();
+  });
+
+  test("a lettered river still parses, so the exit ticket draws it (rivers r1 s11)", () => {
+    const river = {
+      kind: "river",
+      shows: "A meander viewed from above, showing its inner and outer banks.",
+      alt: "A curved river channel with the river cliff and the slip-off slope.",
+      view: "meander-plan",
+      labels: [
+        { part: "river-cliff", text: "River cliff" },
+        { part: "slip-off-slope", text: "Slip-off slope" },
+        { part: "flow-direction", text: "Flow" },
+      ],
+    };
+    expect(parseDiagram(river)).toBeDefined();
+    const lettered = letteredSpec(river) as S;
+    expect(parseDiagram(lettered)).toBeDefined();
+    expect("title" in lettered).toBe(false);
+    // Laid as a lent exit-ticket figure, it draws (no caption card, no lost visual).
+    const st: VisualState = { status: "diagram", spec: lettered };
+    const m = materialise(
+      { ...exit, figure: lentAsk({ kind: "river", shows: river.shows }) },
+      ctxOf(3, (k) => (k === "figure" ? st : failed())),
+    );
+    expect(m.diagram ?? []).toEqual([]);
+    expect(m.slide.elements.filter((e) => e.type === "image")).toHaveLength(1);
   });
 });

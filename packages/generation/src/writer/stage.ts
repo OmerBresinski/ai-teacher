@@ -3374,6 +3374,21 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   borrowForChecks(
     new Set([...borrowedChecks.keys()].filter((i) => !lentKey(plan.slides[i] as S | undefined))),
   );
+  // A lent visual still on the slide but not drawn (a drawing that no longer parses, a figure the
+  // checks restaged) is a loss too: logged, never silent.
+  for (const i of borrowedChecks.keys())
+    if (
+      lentKey(plan.slides[i] as S | undefined) &&
+      !laid.get(i)?.slide.elements.some((e) => e.type === "image")
+    )
+      log({
+        ev: "check-visual-skip",
+        level: "error",
+        slide: i + 1,
+        template: String((plan.slides[i] as S | undefined)?.template ?? ""),
+        reason: "fit",
+        why: "the lent visual is on the slide but was not drawn",
+      });
   // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
   // or with none when checks only log) splits into continuation slides, as the restage's last
   // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a
