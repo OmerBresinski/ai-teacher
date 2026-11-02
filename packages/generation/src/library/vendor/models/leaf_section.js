@@ -83,16 +83,31 @@ const MUST_NAME = {
   co2: /carbon dioxide|CO2|CO₂/i, o2: /oxygen|O2|O₂/i, water: /water/i,
 };
 const NAME = { cuticle: 'the cuticle', epidermis: 'the epidermis', palisade: 'the palisade layer', spongy: 'the spongy layer', vein: 'the vein', guard: 'the guard cells', stoma: 'the stoma', co2: 'carbon dioxide', o2: 'oxygen', water: 'water vapour' };
-// What a part is not, read from a reworded label's words.
+// What a part is not, read from a reworded label's words. Only a claim is refused: a match that a
+// negation qualifies ("no chloroplasts", "not gases", "few air spaces") states the truth, so it stands.
+const NEGATED = /\b(no|not|never|none|without|lacks?|lacking|isn't|doesn't|don't|does not|do not|free of)\b[^.;:]{0,24}$/i;
+const SCARCE = /\b(few|little|small|tiny|hardly any|very few|no)\s+$/i;
+/** Whether `t` claims `re`: some match of it that no negation (or, with `scarce`, no "few") qualifies. */
+function claims(t, re, scarce) {
+  const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+  for (const m of t.matchAll(g)) {
+    const before = t.slice(0, m.index);
+    if (NEGATED.test(before) || (scarce && SCARCE.test(before))) continue;
+    return true;
+  }
+  return false;
+}
 const WRONG = {
-  epidermis: [/chloroplast|photosynthes|chlorophyll/i, 'The upper epidermis has no chloroplasts and does not photosynthesise: it is thin and clear to let light through to the palisade cells.'],
-  spongy: [/most (of the )?(chloroplasts|photosynthes)|packed with chloroplasts/i, 'Most photosynthesis happens in the palisade layer, not the spongy layer: spongy cells have fewer chloroplasts and air spaces between them.'],
-  palisade: [/air spaces?|loosely|fewest|no chloroplasts/i, 'Palisade cells are tightly packed with the most chloroplasts; the air spaces are in the spongy layer.'],
-  stoma: [/water (in|enters)|absorbs? water|takes? in water/i, 'Water does not come in through the stomata: it comes up from the roots in the xylem. Stomata let gases in and out.'],
-  vein: [/oxygen|carbon dioxide|\bair\b/i, 'The vein carries water (xylem) and sugars (phloem), not gases: gases move through the stomata and air spaces.'],
+  epidermis: [[[/chloroplasts?|photosynthes\w*|chlorophyll/i]], 'The upper epidermis has no chloroplasts and does not photosynthesise: it is thin and clear to let light through to the palisade cells.'],
+  spongy: [[[/most (of the )?(chloroplasts|photosynthes\w*)|packed with chloroplasts/i]], 'Most photosynthesis happens in the palisade layer, not the spongy layer: spongy cells have fewer chloroplasts and air spaces between them.'],
+  palisade: [[[/air spaces?/i, true], [/loosely/i], [/\b(no|few|fewest|hardly any)\s+chloroplasts/i, false, true]], 'Palisade cells are tightly packed with the most chloroplasts; the air spaces are in the spongy layer.'],
+  stoma: [[[/water (comes )?(in|enters)|absorbs? water|takes? in water/i]], 'Water does not come in through the stomata: it comes up from the roots in the xylem. Stomata let gases in and out.'],
+  vein: [[[/oxygen|carbon dioxide|\bair\b|gases/i]], 'The vein carries water (xylem) and sugars (phloem), not gases: gases move through the stomata and air spaces.'],
 };
-const LEAVING = /\b(out|escap\w*|leav\w*|exit\w*|releas\w*|given off|gives? off|lost|evaporat\w*)\b/i;
-const ENTERING = /\b(in|into|enter\w*|absorb\w*|taken in|tak(e|es|ing) in)\b/i;
+// A direction is read from direction words: "in" counts only as "in through", "in via" or at the
+// end ("Oxygen in"), never in "made in photosynthesis".
+const LEAVING = /\b(out|escap\w*|leav\w*|exit\w*|releas\w*|given off|gives? off|evaporat\w*)\b/i;
+const ENTERING = /\b(into|enter\w*|absorb\w*|taken in|tak(e|es|ing) in|com(e|es|ing) in|go(es)? in|diffus\w* in|in (through|via|by))\b|\bin\s*$/i;
 const GAS_WAY = {
   co2: ['in', 'Carbon dioxide diffuses into the leaf through the stoma, not out of it.'],
   o2: ['out', 'Oxygen made in photosynthesis diffuses out of the leaf through the stoma, not in.'],
@@ -109,7 +124,8 @@ export function validate(raw) {
     if (t == null || t === '') continue;
     if (!re.test(t)) { R.push({ path: `text.label:${id}`, reason: `The label “${t}” no longer names ${NAME[id]}. Keep that word in it.` }); continue; }
     const w = WRONG[id];
-    if (w && w[0].test(t)) R.push({ path: `text.label:${id}`, reason: w[1] });
+    // a rule is [pattern, scarce, plain]: plain rules (a shortage stated as fact) skip the negation read
+    if (w && w[0].some(([re, scarce, plain]) => (plain ? re.test(t) : claims(t, re, scarce)))) R.push({ path: `text.label:${id}`, reason: w[1] });
     const g = GAS_WAY[id];
     if (g && (g[0] === 'in' ? LEAVING.test(t) : ENTERING.test(t) && !LEAVING.test(t))) R.push({ path: `text.label:${id}`, reason: g[1] });
   }

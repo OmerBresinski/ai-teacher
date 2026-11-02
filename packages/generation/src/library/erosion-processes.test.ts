@@ -97,6 +97,29 @@ describe("erosion_processes refuses a process described as another", () => {
   });
 });
 
+describe("erosion_processes captions and notes", () => {
+  test("coast captions name waves and the cliff, in good grammar", async () => {
+    const m = await model();
+    const P = (await kit()).withDefaults(m.params, { setting: "coast" });
+    const caps = (m.builds?.(P).steps ?? []).map((s) => s.caption ?? "");
+    expect(caps[1]).toMatch(/Waves squeeze air into cracks/);
+    expect(caps.join(" ")).not.toMatch(/Waves squeezes/);
+    expect(caps[2]).toMatch(/at the cliff/);
+    const river = (m.builds?.((await kit()).withDefaults(m.params, {})).steps ?? []).map(
+      (s) => s.caption ?? "",
+    );
+    expect(river[1]).toMatch(/Fast water squeezes air into cracks/);
+  });
+
+  test("notes make no universal claim of 'most'", async () => {
+    const m = (await model()) as unknown as { notes: (p: J) => { steps: string[] } };
+    for (const view of ["erosion", "transport"]) {
+      const P = (await kit()).withDefaults((await model()).params, { view });
+      for (const n of m.notes(P).steps) expect(n).not.toMatch(/\b(does|carries) most\b/);
+    }
+  });
+});
+
 describe("erosion_processes on a KS3 slide (the writer's path)", () => {
   test("every preset draws in Studio and Night Lab at the label floor, never falling back", async () => {
     for (const id of ["studio", "night-lab"]) {
@@ -192,6 +215,31 @@ describe("erosion_processes in the writer's menu and on question slides", () => 
     expect(await questionStep("erosion_processes", (await kit()).withDefaults(m.params, {}))).toBe(
       0,
     );
+  });
+
+  test("KS4 lists it; Year 8 science does not (the menu filters by subject)", async () => {
+    const ks4 = await catalogue("KS3-5", { yearGroup: "Year 10", subject: "Geography" });
+    expect(ks4.map((e) => e.id)).toContain("erosion_processes");
+    const sci = await catalogue("KS3-5", { yearGroup: "Year 8", subject: "Science" });
+    expect(sci.map((e) => e.id)).not.toContain("erosion_processes");
+  });
+
+  test("question slides in the coast and transport views open on letters only", async () => {
+    const m = await model();
+    const K = await kit();
+    for (const sent of [{ setting: "coast" }, { view: "transport" }]) {
+      const P = K.withDefaults(m.params, sent);
+      const q = await questionStep("erosion_processes", P);
+      expect(q).toBe(0);
+      const d = await renderLibraryModel("erosion_processes", P, { step: q });
+      const doc = new Window().document;
+      doc.body.innerHTML = d.svg.replace(/<style>[\s\S]*?<\/style>/g, "");
+      const open = [...doc.querySelectorAll("text")]
+        .filter((t) => !t.closest("[data-reveal]"))
+        .map((t) => (t.textContent ?? "").trim())
+        .filter(Boolean);
+      expect(open, JSON.stringify(sent)).toEqual(["A", "B", "C", "D"]);
+    }
   });
 
   test("what it cannot draw", () => {

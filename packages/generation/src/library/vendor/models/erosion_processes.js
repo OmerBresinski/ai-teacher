@@ -109,7 +109,7 @@ export function validate(raw) {
 
 /* ------------------------------------------------------------------ builds */
 const CAPTION = {
-  hydraulic: s => `Hydraulic action: the force of the water. ${s === 'coast' ? 'Waves' : 'Fast water'} squeezes air into cracks; the pressure breaks the rock apart.`,
+  hydraulic: s => `Hydraulic action: the force of the water. ${s === 'coast' ? 'Waves squeeze' : 'Fast water squeezes'} air into cracks; the pressure breaks the rock apart.`,
   abrasion: s => s === 'coast' ? 'Abrasion: waves hurl rocks and pebbles at the cliff, which chip and wear it away.' : 'Abrasion: rocks and pebbles carried by the river scrape and wear away the bed and banks, like sandpaper.',
   attrition: () => 'Attrition: rocks in the water knock into each other, so they break into smaller, rounder pieces.',
   solution: () => 'Solution: the water slowly dissolves rocks such as limestone and chalk, carrying them away unseen.',
@@ -120,12 +120,12 @@ const CAPTION = {
 };
 const NOTE = {
   hydraulic: 'The pressure of the water and the air trapped in cracks loosens and breaks off pieces of rock. Strongest where the water is fast.',
-  abrasion: 'Abrasion does most of the erosion in a river. The more load and the faster the water, the more abrasion.',
+  abrasion: 'Abrasion is often the main way a river erodes. The more load and the faster the water, the more abrasion.',
   attrition: 'Attrition wears down the load, not the bed or banks. That is why stones further downstream are smaller and rounder.',
   solution: 'Solution is a chemical process: slightly acidic water reacts with rocks such as limestone and chalk. It is sometimes called corrosion.',
   traction: 'Only the fastest water (floods) can roll the largest boulders.',
   saltation: 'Saltation needs less energy than traction but more than suspension.',
-  suspension: 'Suspension carries most of a river\'s load, and the faster the river, the more it carries.',
+  suspension: 'Suspension usually carries the largest share of a river\'s load, and the faster the river, the more it carries.',
   dissolved: 'Dissolved load comes from rocks such as limestone and chalk; it travels whatever the speed of the river.',
 };
 function plan(P) {

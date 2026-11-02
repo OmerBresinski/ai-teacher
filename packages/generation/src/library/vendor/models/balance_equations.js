@@ -20,7 +20,7 @@ export const meta = {
   // KS3 (TEACH-247 part cl): linear equations with whole positive answers, unknowns on one or both
   // sides, solved by doing the same to both sides; a minus term is refused with its reason.
   years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'KS3'],
-  teaches: 'That = means both sides have the same value, how to find a missing number by matching cubes (Year 1 and 2) or by doing the same to both sides, and how inverse operations undo a function machine.',
+  teaches: 'That = means both sides have the same value, how to find a missing number by matching cubes (Year 1 and 2) or by doing the same to both sides, and how inverse operations undo a function machine. At KS3, introductory equations only: positive whole numbers, + only, solved by doing the same to both sides (no minus terms, brackets or fractions).',
 };
 
 const OPS = ['+', '−', '×', '÷'];

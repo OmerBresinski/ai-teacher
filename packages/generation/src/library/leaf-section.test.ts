@@ -108,6 +108,41 @@ describe("leaf_section refuses false science", () => {
     ).toMatch(/transpiration/);
   });
 
+  test("a true rewording is kept; only a false claim is refused (review of #743)", async () => {
+    const fine: [string, string][] = [
+      ["epidermis", "Upper epidermis: no chloroplasts"],
+      ["epidermis", "Upper epidermis: does not photosynthesise"],
+      ["palisade", "Palisade layer: few air spaces"],
+      ["palisade", "Palisade cells: not loosely packed"],
+      ["spongy", "Spongy layer: not most of the photosynthesis"],
+      ["stoma", "Stoma: no water comes in here"],
+      ["vein", "Vein: carries water, not gases like oxygen"],
+      ["o2", "Oxygen made in photosynthesis"],
+      ["o2", "Oxygen made in the leaf goes out"],
+      ["co2", "Carbon dioxide used in photosynthesis"],
+      ["water", "Water vapour lost in transpiration"],
+    ];
+    for (const [id, words] of fine)
+      expect(await refusals({ text: { [`label:${id}`]: words } }), words).toEqual([]);
+    const bad: [string, string][] = [
+      ["epidermis", "Upper epidermis: full of chloroplasts"],
+      ["palisade", "Palisade layer: big air spaces"],
+      ["palisade", "Palisade layer: loosely packed"],
+      ["palisade", "Palisade layer: few chloroplasts"],
+      ["spongy", "Spongy layer: most photosynthesis"],
+      ["stoma", "Stoma: takes in water"],
+      ["vein", "Vein: carries oxygen"],
+      ["o2", "Oxygen diffuses in"],
+      ["o2", "Oxygen taken in through the stoma"],
+      ["co2", "Carbon dioxide given off"],
+      ["water", "Water vapour enters the leaf"],
+    ];
+    for (const [id, words] of bad)
+      expect((await refusals({ text: { [`label:${id}`]: words } })).join("\n"), words).toMatch(
+        new RegExp(`text.label:${id}`),
+      );
+  });
+
   test("the fill path refuses the same (what the writer's filler sends)", async () => {
     const r = await checkParams("leaf_section", {
       text: { "label:epidermis": "Upper epidermis: chloroplasts" },
@@ -227,6 +262,36 @@ describe("leaf_section in the writer's menu and on question slides", () => {
       .map((t) => (t.textContent ?? "").trim())
       .filter(Boolean);
     expect(open).toEqual(["A", "B", "C", "D", "E", "F"]);
+  });
+
+  test("KS4 lists it; Year 8 geography does not (the menu filters by subject)", async () => {
+    const ks4 = await catalogue("KS3-5", { yearGroup: "Year 10", subject: "Biology" });
+    expect(ks4.map((e) => e.id)).toContain("leaf_section");
+    const geo = await catalogue("KS3-5", { yearGroup: "Year 8", subject: "Geography" });
+    expect(geo.map((e) => e.id)).not.toContain("leaf_section");
+  });
+
+  test("question slides stay lettered at KS4, without the vein and without the gases", async () => {
+    const m = await model();
+    const K = await kit();
+    const cases: [J, string[]][] = [
+      [{ level: "ks4" }, ["A", "B", "C", "D", "E", "F", "G"]],
+      [{ vein: false }, ["A", "B", "C", "D", "E"]],
+      [{ gases: false }, ["A", "B", "C", "D", "E", "F"]],
+    ];
+    for (const [sent, letters] of cases) {
+      const P = K.withDefaults(m.params, sent);
+      const q = await questionStep("leaf_section", P);
+      expect(q).toBe(0);
+      const d = await renderLibraryModel("leaf_section", P, { step: q });
+      const doc = new Window().document;
+      doc.body.innerHTML = d.svg.replace(/<style>[\s\S]*?<\/style>/g, "");
+      const open = [...doc.querySelectorAll("text")]
+        .filter((t) => !t.closest("[data-reveal]"))
+        .map((t) => (t.textContent ?? "").trim())
+        .filter(Boolean);
+      expect(open, JSON.stringify(sent)).toEqual(letters);
+    }
   });
 
   test("what it cannot draw, and the gases only when the intent asks for them", () => {
