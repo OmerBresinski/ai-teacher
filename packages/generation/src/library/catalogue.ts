@@ -6,6 +6,7 @@
  * only places them: the menu line and the catalogue after base4's "Diagram kinds:" list, and a
  * `dg-model-full` def beside the full slot's kinds. Library models are full slides only.
  */
+import { CURRICULUM, curriculumYear } from "../curriculum";
 import type { WriterStage } from "../writer/schema";
 import { MODEL_LOADERS } from "./models";
 import type { J } from "./types";
@@ -104,9 +105,15 @@ export function subjectToken(subject: string): string[] | undefined {
 
 /**
  * The lesson a catalogue is filtered for (flag `libraryMenuFilter`); with `objectives` (flag
- * `libraryMenuRank`) the kept models are also ordered by relevance to them.
+ * `libraryMenuRank`) the kept models are also ordered by relevance to them. With `topic`, a
+ * subject the code cannot read is read from the topic and objectives instead (`inferSubjects`).
  */
-export type MenuFilter = { yearGroup: string; subject: string; objectives?: string[] };
+export type MenuFilter = {
+  yearGroup: string;
+  subject: string;
+  objectives?: string[];
+  topic?: string;
+};
 
 const STOP = new Set(
   "a an and are as at be by can for from how in into is it its of on or that the their them they this to use using what when where which why with will pupils pupil learners children understand know identify describe explain recognise show work out find able".split(
@@ -145,6 +152,95 @@ export function rankByObjectives<T extends { id: string; teaches: string; name?:
     .map((x) => x.e);
 }
 
+/** A word names a subject only when the year's vocabulary uses it for at most this many. */
+export const TELLING_WORD_SUBJECTS = 2;
+/** Fewer telling words than this in the whole lesson is too little to narrow the menu on. */
+export const MIN_TELLING_WORDS = 2;
+
+/**
+ * The lesson's subjects as the models' `meta.subjects` name them, read from its topic and
+ * objectives when the brief has no subject (TEACH-247 part cu: blank in 63 of 63 runs).
+ * Deterministic, no model call. The vocabulary is the year's statutory curriculum statements plus
+ * the teaches lines of the models for that year, each word tagged with the subjects that use it. A
+ * lesson word is telling when at most `TELLING_WORD_SUBJECTS` subjects use it ("meander":
+ * geography and science; "number" or "start": many, so neither counts). Every subject with a
+ * telling word is kept, so a cross-curricular lesson keeps all of them and a subject is dropped
+ * only when no word points at it. Undefined (filter nothing, as before) when the lesson has fewer
+ * than `MIN_TELLING_WORDS` telling words. English and languages count for telling but are never
+ * returned: no model carries them, and a teacher who picks them gets an unfiltered menu.
+ */
+export async function inferSubjects(lesson: {
+  topic: string;
+  objectives: readonly string[];
+  yearGroup: string;
+}): Promise<string[] | undefined> {
+  const want = contentWords([lesson.topic, ...lesson.objectives].join(" "));
+  if (want.size === 0) return undefined;
+  const vocab = await subjectVocab(lesson.yearGroup);
+  const hits = new Map<string, number>();
+  let telling = 0;
+  for (const w of want) {
+    const subs = vocab.get(w);
+    if (!subs || subs.size > TELLING_WORD_SUBJECTS) continue;
+    telling++;
+    for (const s of subs) hits.set(s, (hits.get(s) ?? 0) + 1);
+  }
+  if (telling < MIN_TELLING_WORDS) return undefined;
+  const out = [...hits.keys()].filter((s) => !NO_MODEL_SUBJECTS.has(s));
+  if (out.includes("Art")) out.push("Art and design");
+  return out.length ? out : undefined;
+}
+/** Curriculum subjects no model carries: they make a word less telling, never a menu subject. */
+const NO_MODEL_SUBJECTS = new Set(["English", "Languages"]);
+
+const vocabByYear = new Map<string, Promise<Map<string, Set<string>>>>();
+/** word -> subjects using it, for one year: its curriculum statements and its models' lines. */
+function subjectVocab(yearGroup: string): Promise<Map<string, Set<string>>> {
+  const year = yearToken(yearGroup) ?? "";
+  const hit = vocabByYear.get(year);
+  if (hit) return hit;
+  const built = (async () => {
+    const vocab = new Map<string, Set<string>>();
+    const add = (text: string, subjects: readonly string[]) => {
+      for (const w of contentWords(text)) {
+        const v = vocab.get(w) ?? new Set<string>();
+        for (const s of subjects) v.add(s);
+        vocab.set(w, v);
+      }
+    };
+    const n = curriculumYear(yearGroup);
+    if (n !== undefined)
+      for (const s of CURRICULUM) {
+        if (n < s.years[0] || n > s.years[1]) continue;
+        add(s.text, curriculumModelSubjects(s.subject));
+      }
+    const { loadModel } = await import("./render");
+    for (const id of GALLERY_ORDER) {
+      if (GENERAL_MODELS.includes(id)) continue;
+      const m = await loadModel(id);
+      if (!m?.meta.years.includes(year)) continue;
+      add(`${id.replace(/_/g, " ")} ${m.meta.name} ${m.meta.teaches}`, modelSubjects(m.meta));
+    }
+    return vocab;
+  })();
+  vocabByYear.set(year, built);
+  return built;
+}
+/** A curriculum subject as the models name it ("mathematics" -> Maths); English stays English. */
+function curriculumModelSubjects(subject: string): string[] {
+  if (/^english$/i.test(subject)) return ["English"];
+  if (/^languages$/i.test(subject)) return ["Languages"];
+  return foldArt(subjectToken(subject) ?? [subject]);
+}
+/** A model's subjects, art folded as below. */
+function modelSubjects(meta: { subjects?: string[] }): string[] {
+  return foldArt(meta.subjects ?? []);
+}
+/** "Art and design" folded into "Art", so the two names count as one subject. */
+function foldArt(subjects: readonly string[]): string[] {
+  return [...new Set(subjects.map((s) => (s === "Art and design" ? "Art" : s)))];
+}
+
 /**
  * Shipped models whose years meet the stage's, in the library's gallery order. With `filter`
  * (flag `libraryMenuFilter`, CROSSCHECK point 1): only models for the lesson's year, and for its
@@ -159,7 +255,16 @@ export async function catalogue(
   const { loadModel } = await import("./render");
   const want = STAGE_YEARS[stage];
   const year = filter && yearToken(filter.yearGroup);
-  const subjects = filter && subjectToken(filter.subject);
+  const subjects =
+    filter &&
+    (subjectToken(filter.subject) ??
+      (filter.topic !== undefined && !filter.subject.trim()
+        ? await inferSubjects({
+            topic: filter.topic,
+            objectives: filter.objectives ?? [],
+            yearGroup: filter.yearGroup,
+          })
+        : undefined));
   const out: CatalogueEntry[] = [];
   const names = new Map<string, string>();
   for (const id of GALLERY_ORDER) {
