@@ -105,7 +105,7 @@ describe("the questions-and-answers shape (review of #752): recorded slides, rec
   const notes = JSON.parse(readFileSync(join(dir, "notes.json"), "utf8")) as {
     slides: { n: number; answers: string[] | null }[];
   };
-  const slide = {
+  const slide: S = {
     ...(main.slides[8] as S),
     answers: notes.slides.find((x) => x.n === 11)?.answers,
   };
