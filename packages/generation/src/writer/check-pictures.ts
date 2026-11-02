@@ -200,6 +200,59 @@ export function leakOf(s: S, visible: string): string | undefined {
   return undefined;
 }
 
+/*
+ * TEACH-247 part cw (CODE-NOTE v4.21 item 2): a picture or diagram the writer chose for a check
+ * slide (written on the slide, or added from its flow look by `withLook`) passes the same answer-
+ * leak test a lent one does. Its request is all there is when the slide closes (the photo lands
+ * after editable), so the request is what is read: an answer word in it means the picture is
+ * searched for, or drawn, as the answer. A leaking pick is never asked for: it is dropped and
+ * logged (`check-look-leak`), and the slide goes on to cj (`borrowForChecks`), which lends a
+ * leak-safe teaching visual or logs its own skip. A quick check never borrows: it ships text-only.
+ */
+/** The check layouts whose own picture is screened: cj's, and the quick check (its figure draws). */
+export const PICK_TEMPLATES: ReadonlySet<string> = new Set([...CHECK_TEMPLATES, "question-set"]);
+
+/**
+ * The words a visual ask sends to the picture search or the drawer, and so may put on screen: its
+ * request (`shows`, `must_see`), labels, title and alt. Not `ask` / `ask_without`, which are the
+ * slide's own lines (a leak in them is the slide's words, not its picture).
+ */
+export function askWords(ask: S): string {
+  const { ask: _a, ask_without: _w, ...rest } = ask;
+  return stringsIn(rest).join(" ");
+}
+
+export type PickLeak = {
+  key: "picture" | "figure" | "diagram";
+  /** `look`: added from the flow's look at close; `writer`: on the slide as the writer wrote it. */
+  origin: "writer" | "look";
+  why: string;
+};
+
+/**
+ * A check slide with every visual the writer chose whose request names an answer taken off (the
+ * key set to null, as the schema's "no picture"), and each one taken off. A lent visual is cj's
+ * and already screened; any other slide is returned as it is.
+ */
+export function dropLeakingPicks(
+  s: S,
+  /** The key `withLook` filled from the flow's look, if any. */
+  looked?: string,
+): { slide: S; dropped: PickLeak[] } {
+  if (!PICK_TEMPLATES.has(str(s.template))) return { slide: s, dropped: [] };
+  let out = s;
+  const dropped: PickLeak[] = [];
+  for (const key of ["picture", "figure", "diagram"] as const) {
+    const ask = s[key];
+    if (!isVisual(ask) || ask.lent === true) continue;
+    const leak = leakOf(s, askWords(ask));
+    if (!leak) continue;
+    out = { ...out, [key]: null };
+    dropped.push({ key, origin: key === looked ? "look" : "writer", why: leak });
+  }
+  return { slide: out, dropped };
+}
+
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 /**
  * A diagram spec with letters in place of its labels' words, its title and alt neutral: the same

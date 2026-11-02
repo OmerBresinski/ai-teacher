@@ -27,7 +27,14 @@ import {
 } from "./activities";
 import { BODY_MODELS } from "./body-figure";
 import { type WriterBundleId, writerBundle } from "./bundle";
-import { borrowCheckVisuals, fitsWithVisual, lentKey, relend } from "./check-pictures";
+import {
+  borrowCheckVisuals,
+  CHECK_TEMPLATES,
+  dropLeakingPicks,
+  fitsWithVisual,
+  lentKey,
+  relend,
+} from "./check-pictures";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import {
   ANY_POINTING,
@@ -1436,6 +1443,24 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // row, its pictures, its panel picture); an all-null icon row is not (`lookMet`).
     } else if (look && !lookMet(s, look, iconSubject))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
+    // TEACH-247 part cw (CODE-NOTE v4.21 item 2): a check slide's picture the writer chose (on
+    // the slide, or from its look just above) passes cj's answer-leak test before it is asked for.
+    // One whose request names an answer is dropped, never searched for or drawn, and logged; the
+    // slide then goes to cj like any check slide with no visual (`borrowForChecks`: a leak-safe
+    // teaching visual, or its own logged skip). A quick check never borrows: it ships text-only.
+    const screened = dropLeakingPicks(s, added.how?.replace(/-from-look$/, ""));
+    for (const d of screened.dropped)
+      log({
+        ev: "check-look-leak",
+        level: "warn",
+        slide: idx + 1,
+        template: String(s.template),
+        key: d.key,
+        origin: d.origin,
+        why: d.why,
+        next: CHECK_TEMPLATES.has(String(s.template)) ? "cj" : "text-only",
+      });
+    s = screened.slide;
     const one = titleOneThing(s);
     if (one.how) {
       log({
