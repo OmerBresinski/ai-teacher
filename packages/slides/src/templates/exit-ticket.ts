@@ -9,6 +9,9 @@
  * - The `where` line (`instruction`) is kept in the data and never drawn (Greg, 15 Oct).
  * - Fit: the body step, then the one step under it (`tight`); more than 3 questions is over
  *   (ruling 108), drawn at the floor.
+ * - With a picture or figure (TEACH-247 part cj, Greg 1 Nov: a check slide may show the thing its
+ *   question works from), practice's white card holds it on the left and the ticket narrows to the
+ *   right of it, its questions measured at that width (`exit+picture` caps).
  * - A title that already says "Exit ticket" (case and punctuation aside) drops the kicker, and the
  *   hairline over the first question with it: the label is never said twice (TEACH-247 part ck).
  */
@@ -18,12 +21,14 @@ import { resolveFontSize } from "../text-style";
 import { v2Profile } from "../theme-v2";
 import { keyStageOf, MIN_FONT_SIZE } from "../themes";
 import { paintSurface } from "../themes/surfaces";
-import { type Ctx, kit, listAnswers, type Stage, type TemplateInput } from "./index";
+import { type Ctx, G, kit, listAnswers, type Stage, type TemplateInput } from "./index";
 import {
   ageOf,
   badgeSize,
+  cardHeight,
   comfortAt,
   drawBadge,
+  drawCard,
   drawRule,
   drawTask,
   isCalc,
@@ -32,6 +37,8 @@ import {
   plainTask,
   taskLH,
   taskSteps,
+  type Visual,
+  visualOf,
   WA,
   WA_NAMES,
   workFields,
@@ -66,13 +73,25 @@ export const TICKET = { w: 746, top: 24, side: 43, bottom: 27, kickGap: 16, floo
  */
 const kickerSize = (c: Ctx) => resolveFontSize(c.t, "body", MIN_FONT_SIZE.body);
 
-const textW = (c: Ctx) => TICKET.w - 2 * TICKET.side - badgeSize(c) - WA.badgeGap;
+const textW = (c: Ctx, tw: number) => tw - 2 * TICKET.side - badgeSize(c) - WA.badgeGap;
+
+/** The card beside a ticket with a visual: practice's card at its narrowest width, then the gap. */
+export const EXIT_VISUAL = { w: WA.visW.min, gap: WA.visGap } as const;
+/** The ticket's width: the gold's 746, or what is left beside the visual's card. */
+export const ticketW = (visual: boolean): number =>
+  visual ? G.right - (G.margin + EXIT_VISUAL.w + EXIT_VISUAL.gap) : TICKET.w;
 
 /** The ticket's height at size `q`, or null when a question breaks its line limit. */
-export function ticketHeight(c: Ctx, items: string[], q: number, label = true): number | null {
+export function ticketHeight(
+  c: Ctx,
+  items: string[],
+  q: number,
+  tw: number = TICKET.w,
+  label = true,
+): number | null {
   const n = items.length;
   const b = badgeSize(c);
-  const w = textW(c);
+  const w = textW(c, tw);
   const pad = Math.round(q * (n === 3 ? 0.5 : 0.7));
   let h = TICKET.top + (label ? kickerSize(c) + TICKET.kickGap : 0);
   for (const [i, s] of items.entries()) {
@@ -89,12 +108,20 @@ export function ticketHeight(c: Ctx, items: string[], q: number, label = true): 
 
 export type ExitPlan = { q: number; comfortable: boolean; fits: boolean; height: number };
 
-export function planExit(c: Ctx, items: string[], stageTop: number, label = true): ExitPlan {
+export function planExit(
+  c: Ctx,
+  items: string[],
+  stageTop: number,
+  v: Visual | null = null,
+  label = true,
+): ExitPlan {
   const room = WA.foot - stageTop;
   const steps = taskSteps(c);
+  const tw = ticketW(!!v);
+  const card = v ? cardHeight(v, EXIT_VISUAL.w) : 0;
   for (const q of steps) {
-    const h = ticketHeight(c, items, q, label);
-    if (h !== null && h <= room && items.length <= EXIT_MAX)
+    const h = ticketHeight(c, items, q, tw, label);
+    if (h !== null && h <= room && card <= room && items.length <= EXIT_MAX)
       return { q, comfortable: comfortAt(c, q), fits: true, height: h };
   }
   const q = steps[steps.length - 1] as number;
@@ -102,7 +129,7 @@ export function planExit(c: Ctx, items: string[], stageTop: number, label = true
     q,
     comfortable: false,
     fits: false,
-    height: ticketHeight(c, items, q, label) ?? room + 1,
+    height: ticketHeight(c, items, q, tw, label) ?? room + 1,
   };
 }
 
@@ -123,17 +150,25 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
     (s): s is string => typeof s === "string" && !!s.trim(),
   );
   const stageTop = Math.round(top + WA.exitGap);
+  // Only a check slide's borrowed figure is drawn (part cj); any other is ignored, as before.
+  const v = input.checkFigure ? visualOf(c, input) : null;
   const label = !echoesLabel(input.heading, EXIT_LABEL);
-  const plan = planExit(c, items, stageTop, label);
+  const plan = planExit(c, items, stageTop, v, label);
   c.tight = !plan.comfortable;
-  c.fields = workFields(ageOf((keyStageOf(c.t) ?? "ks2") as Stage), "exit", items);
+  c.fields = workFields(
+    ageOf((keyStageOf(c.t) ?? "ks2") as Stage),
+    v ? "exit+picture" : "exit",
+    items,
+  );
   if (items.length > EXIT_MAX) c.over.push(`exit ticket ${items.length}/${EXIT_MAX} questions`);
   else if (!plan.fits) c.over.push(`exit ticket ${plan.height}/${WA.foot - stageTop}pt`);
 
   const room = WA.foot - stageTop;
+  const tw = ticketW(!!v);
+  const card = v ? cardHeight(v, EXIT_VISUAL.w) : 0;
   const h = plan.height;
-  const x = Math.round((960 - TICKET.w) / 2);
-  const y = Math.round(stageTop + Math.max(0, (room - h) / 2));
+  const x = v ? G.right - tw : Math.round((960 - TICKET.w) / 2);
+  const y = Math.round(stageTop + Math.max(0, (room - Math.max(h, card)) / 2));
   // The sand floor first, rising to behind the ticket's middle, edge to edge and to the foot.
   const floorY = Math.round(y + h * TICKET.floorAt);
   const floor = paintSurface(
@@ -143,13 +178,14 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   if (floor) c.els.push(squareFloor(floor));
   const r = Math.round(v2Profile(c.t).radius.bubble);
   const ticket = paintSurface(
-    { role: "card", box: { x, y, w: TICKET.w, h }, own: [r, r, r, r], id: uid() },
+    { role: "card", box: { x, y, w: tw, h }, own: [r, r, r, r], id: uid() },
     c.t,
   );
   if (ticket) c.els.push(ticket);
+  if (v) drawCard(c, v, { x: G.margin, y, w: EXIT_VISUAL.w });
 
   const ix = x + TICKET.side;
-  const iw = TICKET.w - 2 * TICKET.side;
+  const iw = tw - 2 * TICKET.side;
   let cy = y + TICKET.top;
   if (label) {
     const saved = c.s;

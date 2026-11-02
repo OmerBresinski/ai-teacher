@@ -42,11 +42,20 @@ export const VARIANT_COUNTS: Record<WorkVariant, number[]> = {
   "practice+picture": [2, 3, 4],
   "practice+figure": [2, 3, 4],
   exit: [1, 2, 3],
+  "exit+picture": [1, 2, 3],
 };
 
 export function workInput(variant: WorkVariant, n: number, chars: number): TemplateInput {
   const questions = Array.from({ length: n }, () => workSample(chars));
   if (variant === "exit") return { template: "exit-ticket", heading: "The heart", questions };
+  if (variant === "exit+picture")
+    return {
+      template: "exit-ticket",
+      heading: "The heart",
+      questions,
+      figure: PHOTO,
+      checkFigure: true,
+    };
   return {
     template: "practice",
     heading: "The heart",

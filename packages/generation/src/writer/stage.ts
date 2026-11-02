@@ -27,6 +27,7 @@ import {
 } from "./activities";
 import { BODY_MODELS } from "./body-figure";
 import { type WriterBundleId, writerBundle } from "./bundle";
+import { borrowCheckVisuals, fitsWithVisual, lentKey, relend } from "./check-pictures";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import {
   ANY_POINTING,
@@ -1752,6 +1753,65 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   };
   /** Slide i's text and cards past the slide's edge, as laid now. */
   const offSlideAt = (i: number) => offSlide(laid.get(i)?.slide.elements ?? []);
+  /**
+   * TEACH-247 part cj: each check slide with no visual borrows its objective's teaching visual
+   * (`check-pictures.ts`): the slide takes the visual's ask under its own key, the visual's state
+   * (or its leak-safe form) as an override, and is laid again. Every slide left without one is
+   * logged with its reason. `only`: a re-check of slides a rewrite left without theirs.
+   */
+  function borrowForChecks(only?: ReadonlySet<number>) {
+    if (only && !only.size) return;
+    // The final deck's flow entries, matched afresh in order: the stream's `flowOf` is keyed by
+    // the index a slide opened at, which an off-plan drop moves (rivers r1: the exit ticket read
+    // the dropped practice's entry and "checked no objective").
+    const fresh = flowMatcher(() => plan.flow);
+    const taught = plan.slides.map((x, i) =>
+      i < 2 || !x ? [] : (fresh(i, String((x as S).template ?? ""))?.teaches ?? []),
+    );
+    const res = borrowCheckVisuals({
+      slides: plan.slides,
+      teaches: (i) => taught[i] ?? [],
+      state: visualState,
+      fits: (i, next, key, st) =>
+        fitsWithVisual(
+          plan.slides[i] as S,
+          next,
+          { ...base, index: i, plan, visual: visualState(i) },
+          key,
+          st,
+        ),
+      ...(only ? { only } : {}),
+    });
+    for (const r of res.routes) {
+      plan.slides[r.slide] = r.json;
+      override.set(`${r.slide}:${r.key}`, r.state);
+      // Its ask joins the slide's, so a later rewrite that keeps the visual carries it.
+      const ask = visualsOf(r.json, r.slide, { ...base, plan }).find((x) => x.key === r.key);
+      if (ask)
+        asks.set(r.slide, [...(asks.get(r.slide) ?? []).filter((x) => x.key !== r.key), ask]);
+      borrowedChecks.set(r.slide, r.state);
+      relay(r.slide);
+      log({
+        ev: "check-visual",
+        slide: r.slide + 1,
+        from: r.from + 1,
+        key: r.fromKey,
+        status: r.state.status,
+        form: r.form,
+        ...(only ? { again: true } : {}),
+      });
+    }
+    for (const k of res.skips)
+      log({
+        ev: "check-visual-skip",
+        level: only ? "error" : "warn",
+        slide: k.slide + 1,
+        template: k.template,
+        reason: k.reason,
+        why: k.why,
+        ...(only ? { again: true } : {}),
+      });
+  }
   const swapSlide = (i: number, next0: S) => {
     dropContinued(i);
     states.save(i, plan.slides[i]);
@@ -2272,6 +2332,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     await run.onPicturesSettled?.(deck(true), deck());
   }
 
+  /** TEACH-247 part cj: each check slide's lent visual state, by slide (`borrowForChecks`). */
+  const borrowedChecks = new Map<number, VisualState>();
+
   // ── code checks ──
   const baseCheck = () =>
     Array.from({ length: n }, (_, i) =>
@@ -2341,6 +2404,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       else relay(i);
     log({ ev: "theme-now", from, to: base.theme.id });
   }
+  // TEACH-247 part cj: a check slide with no visual shows the one its objective was taught with,
+  // once the pictures have settled (only a landed one is reused) and in the theme the deck is
+  // drawn in (its fit is measured there), before the checks judge it.
+  borrowForChecks();
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
   // TEACH-247 part ap: words on words and words broken inside, measured in the deck's theme. Log
@@ -2519,6 +2586,33 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       o2.slide = rest;
     }
     const before = plan.slides[i] as S;
+    // TEACH-247 part cj: a check slide's lent visual is code's, not the writer's: a repair rewords
+    // around it and it goes back under the key the rewrite's layout reads, when the new words
+    // still fit beside it; otherwise the loss is logged (and the guard below judges the rewrite).
+    const lentState = borrowedChecks.get(i);
+    const back = lentState
+      ? relend(before, o2.slide, (next, key) =>
+          fitsWithVisual(
+            o2.slide as S,
+            next,
+            { ...base, index: i, plan, visual: visualState(i) },
+            key,
+            lentState,
+          ),
+        )
+      : undefined;
+    if (back && "slide" in back) {
+      o2.slide = back.slide;
+      if (back.key !== back.was) override.set(`${i}:${back.key}`, lentState as VisualState);
+    } else if (back)
+      log({
+        ev: "check-visual-skip",
+        level: "error",
+        slide: i + 1,
+        template: String(o2.slide.template ?? ""),
+        reason: "fit",
+        why: `repair: ${back.skip}`,
+      });
     const keyed = keepAnswerKey(
       before,
       keepAsksHonest(before, ro.schema ? carryFigures(before, o2.slide) : o2.slide),
@@ -3275,6 +3369,26 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     settleOrKeep,
   );
   phaseSlides = undefined;
+  // TEACH-247 part cj: a check slide a repair rewrote without its borrowed visual gets it again
+  // when it still fits, or the loss is logged.
+  borrowForChecks(
+    new Set([...borrowedChecks.keys()].filter((i) => !lentKey(plan.slides[i] as S | undefined))),
+  );
+  // A lent visual still on the slide but not drawn (a drawing that no longer parses, a figure the
+  // checks restaged) is a loss too: logged, never silent.
+  for (const i of borrowedChecks.keys())
+    if (
+      lentKey(plan.slides[i] as S | undefined) &&
+      !laid.get(i)?.slide.elements.some((e) => e.type === "image")
+    )
+      log({
+        ev: "check-visual-skip",
+        level: "error",
+        slide: i + 1,
+        template: String((plan.slides[i] as S | undefined)?.template ?? ""),
+        reason: "fit",
+        why: "the lent visual is on the slide but was not drawn",
+      });
   // Greg 70 B (20 Oct): a slide whose text or a card still runs off the slide (after the rewords,
   // or with none when checks only log) splits into continuation slides, as the restage's last
   // resort does. This one check acts when the others only log. Only off-slide overflow (71 A): a

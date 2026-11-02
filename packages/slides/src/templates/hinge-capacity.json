@@ -18,6 +18,20 @@
         "chars": 46,
         "maxChars": 89
       }
+    },
+    "byCountPicture": {
+      "2": {
+        "words": 8,
+        "maxWords": 8,
+        "chars": 48,
+        "maxChars": 48
+      },
+      "3": {
+        "words": 5,
+        "maxWords": 8,
+        "chars": 27,
+        "maxChars": 48
+      }
     }
   },
   "primary": {
@@ -45,6 +59,26 @@
         "chars": 51,
         "maxChars": 51
       }
+    },
+    "byCountPicture": {
+      "2": {
+        "words": 11,
+        "maxWords": 11,
+        "chars": 59,
+        "maxChars": 59
+      },
+      "3": {
+        "words": 11,
+        "maxWords": 11,
+        "chars": 59,
+        "maxChars": 59
+      },
+      "4": {
+        "words": 5,
+        "maxWords": 5,
+        "chars": 30,
+        "maxChars": 30
+      }
     }
   },
   "secondary": {
@@ -71,6 +105,26 @@
         "maxWords": 21,
         "chars": 62,
         "maxChars": 122
+      }
+    },
+    "byCountPicture": {
+      "2": {
+        "words": 11,
+        "maxWords": 12,
+        "chars": 64,
+        "maxChars": 68
+      },
+      "3": {
+        "words": 11,
+        "maxWords": 12,
+        "chars": 64,
+        "maxChars": 68
+      },
+      "4": {
+        "words": 5,
+        "maxWords": 12,
+        "chars": 35,
+        "maxChars": 68
       }
     }
   }
