@@ -12,8 +12,9 @@ import { runWriter } from "./stage";
  * TEACH-247 part cx (CODE-NOTE v4.21 item 4, its fit half): a picture `withLook` adds to a check
  * slide from the flow's look gets cj's fit test (`fitsWithVisual`): placed only when the writer's
  * words still fit beside it no worse than without it. Code never cuts a word to make room, so one
- * that does not fit is not asked for: logged `look-unfit`, and the slide goes on to cj like any
- * check slide with no visual. One that fits is asked for and drawn (practice reads `figure`).
+ * that does not fit is taken off the slide: logged `look-unfit`, and the slide goes on to cj like
+ * any check slide with no visual. One that fits is drawn (practice reads `figure`). The fit is
+ * measured once the theme has settled, in the theme the deck is drawn in.
  */
 type S = Record<string, unknown>;
 const B = "y1-science-animals-young";
@@ -23,7 +24,8 @@ const read = (f: string) => JSON.parse(readFileSync(join(DIR, f), "utf8"));
 const LONG =
   "Look closely at every animal in the picture and say which young one belongs with which adult";
 
-async function replay(edit: (slides: S[]) => void) {
+const LOOK_SRC = "/files/test/look-picture.png";
+async function replay(edit: (slides: S[]) => void, themeNow?: string) {
   const main = JSON.parse((read("main.json") as { text: string }).text) as { slides: S[] };
   edit(main.slides);
   const events: S[] = [];
@@ -41,9 +43,15 @@ async function replay(edit: (slides: S[]) => void) {
     },
     visual: (i: number, key: string, a: VisualAsk): VisualState => {
       asked.push(`${i}:${key}:${a.shows ?? ""}`);
+      if (a.shows === LOOK)
+        return {
+          status: "photo",
+          photo: { src: LOOK_SRC, alt: LOOK, aspect: 4 / 3, request: LOOK },
+        };
       return rec(i, key, a);
     },
     held: recordedHeld(B),
+    ...(themeNow ? { themeNow: async () => themeNow } : {}),
   });
   return { out, events, asked };
 }
@@ -51,8 +59,8 @@ async function replay(edit: (slides: S[]) => void) {
 const LOOK = "Three adults and three young animals in mixed order";
 
 describe("a check picture added from the flow's look gets cj's fit test", () => {
-  test("words that fit beside it: the look's picture is asked for", async () => {
-    const { events, asked } = await replay((slides) => {
+  test("words that fit beside it: the look's picture is asked for and drawn", async () => {
+    const { events, asked, out } = await replay((slides) => {
       expect(slides[3]?.template).toBe("practice");
       (slides[3] as S).picture = null;
     });
@@ -60,10 +68,11 @@ describe("a check picture added from the flow's look gets cj's fit test", () => 
     expect(added).toHaveLength(1);
     expect(events.filter((e) => e.ev === "look-unfit")).toEqual([]);
     expect(asked.some((a) => a.endsWith(LOOK))).toBe(true);
+    expect(JSON.stringify(out.slides)).toContain(LOOK_SRC);
   });
 
-  test("words that do not fit beside it: not asked for, `look-unfit` logged, then cj", async () => {
-    const { events, asked } = await replay((slides) => {
+  test("words that do not fit beside it: off the slide, `look-unfit` logged, then cj", async () => {
+    const { events, out } = await replay((slides) => {
       const s = slides[3] as S;
       s.picture = null;
       s.questions = [1, 2, 3].map((n) => `${LONG} (${n}).`);
@@ -71,12 +80,26 @@ describe("a check picture added from the flow's look gets cj's fit test", () => 
     const unfit = events.filter((e) => e.ev === "look-unfit");
     expect(unfit).toHaveLength(1);
     expect(unfit[0]).toMatchObject({ template: "practice", key: "figure", next: "cj" });
-    expect(asked.some((a) => a.endsWith(LOOK))).toBe(false);
+    expect(JSON.stringify(out.slides)).not.toContain(LOOK_SRC);
     const slide = (unfit[0] as S).slide;
+    expect(events.filter((e) => e.ev === "look-unmet" && e.slide === slide)).toHaveLength(1);
     const cj = events.filter(
       (e) => (e.ev === "check-visual" || e.ev === "check-visual-skip") && e.slide === slide,
     );
     expect(cj).toHaveLength(1);
+  });
+
+  test("the fit is decided after the theme settles, in the theme the deck is drawn in", async () => {
+    // A teacher switches the theme while the job writes (`themeNow`, TEACH-247 part ap): the slides
+    // are laid again in it, and only then is the look's picture measured.
+    const { events } = await replay((slides) => {
+      const s = slides[3] as S;
+      s.picture = null;
+      s.questions = [1, 2, 3].map((n) => `${LONG} (${n}).`);
+    }, "poster");
+    const at = (ev: string) => events.findIndex((e) => e.ev === ev);
+    expect(events[at("theme-now")]).toMatchObject({ to: "poster" });
+    expect(at("look-unfit")).toBeGreaterThan(at("theme-now"));
   });
 });
 

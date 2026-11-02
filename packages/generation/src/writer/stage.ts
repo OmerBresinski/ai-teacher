@@ -666,6 +666,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** noTableText: a table that could not be shown, as note lines, held by the slide object as `relaid` is. */
   const tableNotes = new Map<number, { slide: unknown; lines: string[] }>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
+  /** TEACH-247 part cx: check slides whose picture the flow's look added, by the key it sits under. */
+  const lookAdded = new Map<number, string>();
+  const isCheckLayout = (t: string) => CHECK_TEMPLATES.has(t) || t === "question-set";
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
   /** Diagrams drawn in this run, by `<slide>:<key>` (TEACH-247). */
@@ -1434,38 +1437,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const byIndex = plan.flow?.find((x) => x.slide === idx + 1);
     if (byIndex !== entry && lookOf(byIndex)?.kind === "picture")
       log({ ev: "look-other-slide", slide: idx + 1, written, planned: byIndex?.layout ?? null });
-    const looked = withLook(s, look);
-    // TEACH-247 part cx (CODE-NOTE v4.21 item 4): a picture the look adds to a check slide gets
-    // cj's fit test, measured at the drawn size with the picture's room held (pending): placed
-    // only when the writer's words fit beside it no worse than without it. Code never cuts a word
-    // to make room, so one that does not fit is not asked for: logged `look-unfit` (and the look
-    // `look-unmet` below), and the slide goes on to cj like any check slide with no visual
-    // (`borrowForChecks`: a lent visual that fits, or its own logged skip). A quick check never
-    // borrows: it ships text-only.
-    const lookKey = looked.how?.match(/^(\w+)-from-look$/)?.[1];
-    const lookTpl = String(s.template);
-    const lookCheck = CHECK_TEMPLATES.has(lookTpl) || lookTpl === "question-set";
-    const lookFits =
-      !lookKey ||
-      !lookCheck ||
-      fitsWithVisual(
-        s,
-        looked.slide,
-        { ...base, index: idx, plan, visual: visualState(idx) },
-        lookKey,
-        { status: "pending" },
-      );
-    if (!lookFits)
-      log({
-        ev: "look-unfit",
-        level: "warn",
-        slide: idx + 1,
-        template: lookTpl,
-        key: lookKey,
-        shows: look?.shows ?? null,
-        next: CHECK_TEMPLATES.has(lookTpl) ? "cj" : "text-only",
-      });
-    const added = lookFits ? looked : { slide: s };
+    const added = withLook(s, look);
+    // TEACH-247 part cx: a picture the look adds to a check slide is fit-tested once the theme
+    // has settled (`lookFitCheck`, before cj), never here: a teacher may change the theme while
+    // the job writes, and the fit is measured in the theme the deck is drawn in.
+    const lookKey = added.how?.match(/^(\w+)-from-look$/)?.[1];
+    if (lookKey && isCheckLayout(String(s.template))) lookAdded.set(idx, lookKey);
+    else lookAdded.delete(idx);
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
       s = added.slide;
@@ -1810,6 +1788,47 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * (or its leak-safe form) as an override, and is laid again. Every slide left without one is
    * logged with its reason. `only`: a re-check of slides a rewrite left without theirs.
    */
+  /**
+   * TEACH-247 part cx (CODE-NOTE v4.21 item 4): a picture the flow's look added to a check slide
+   * gets cj's fit test, in the deck's final theme and with the picture as it stands (landed, or its
+   * room held while pending): kept only when the writer's words fit beside it no worse than
+   * without it. Code never cuts a word to make room, so one that does not fit is taken off the
+   * slide and its ask dropped: logged `look-unfit`, and the slide then goes to cj like any check
+   * slide with no visual (a lent visual that fits, or its own logged skip). A quick check never
+   * borrows: it ships text-only.
+   */
+  function lookFitCheck() {
+    for (const [i, key] of lookAdded) {
+      const s1 = plan.slides[i] as S | undefined;
+      const ask = s1?.[key];
+      if (!s1 || !ask || typeof ask !== "object") continue;
+      const bare: S = { ...s1, [key]: null };
+      const now = visualState(i)(key);
+      const st: VisualState =
+        now.status === "photo" || now.status === "diagram" ? now : { status: "pending" };
+      const ctx = { ...base, index: i, plan, visual: visualState(i) };
+      if (fitsWithVisual(bare, s1, ctx, key, st)) continue;
+      const template = String(s1.template);
+      plan.slides[i] = bare;
+      asks.set(
+        i,
+        (asks.get(i) ?? []).filter((x) => x.key !== key),
+      );
+      relay(i);
+      log({
+        ev: "look-unfit",
+        level: "warn",
+        slide: i + 1,
+        template,
+        key,
+        shows: String((ask as S).shows ?? ""),
+        status: now.status,
+        next: CHECK_TEMPLATES.has(template) ? "cj" : "text-only",
+      });
+      // The look planned a picture the slide does not ship: counted as unmet, as at close.
+      log({ ev: "look-unmet", slide: i + 1, kind: "picture" });
+    }
+  }
   function borrowForChecks(only?: ReadonlySet<number>) {
     if (only && !only.size) return;
     // The final deck's flow entries, matched afresh in order: the stream's `flowOf` is keyed by
@@ -2458,7 +2477,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   }
   // TEACH-247 part cj: a check slide with no visual shows the one its objective was taught with,
   // once the pictures have settled (only a landed one is reused) and in the theme the deck is
-  // drawn in (its fit is measured there), before the checks judge it.
+  // drawn in (its fit is measured there), before the checks judge it. A picture the look added to
+  // a check slide is fit-tested first, in the same theme (TEACH-247 part cx).
+  lookFitCheck();
   borrowForChecks();
   let checks = check();
   log({ ev: "checks", failing: checks.filter((c) => c.faults.length).length });
