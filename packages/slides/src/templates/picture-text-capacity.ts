@@ -132,15 +132,15 @@ export function measurePictureTextCaps(): Record<PtGroup, { words: number; comfo
  * count, the most words the lead and each card's meaning may hold at the same time, every field
  * full at once, on the landscape field (the widest picture, so the narrowest column; the picture
  * is not known when the writer writes), on every theme and stage of the group, with each card
- * kind at its other caps: a word card (a 3-word term and the meaning), a fact card and an
- * examples card with every pair. A count with no room for a 4-word lead and 4-word meanings is
+ * kind at its other caps: a word card and a rule card (a 3-word term and the meaning), a fact
+ * card and an examples card with every pair. A count with no room for a 4-word lead and 4-word meanings is
  * not offered (0).
  */
 const KEY_TERM = "Thick sticky magma";
 const KEY_FACT = { num: "100000", unit: "people" };
 const KEY_PAIR: [string, string] = ["Thick magma", "Big blast"];
 /** The fewest words a lead and a meaning hold for a card count to be offered. */
-const KEY_MIN_WORDS = 4;
+export const KEY_MIN_WORDS = 4;
 const words = (n: number) => (n > 0 ? `${ALL.slice(0, n).join(" ")}.` : "");
 
 /** The key card look with a lead of `n` words and `count` cards of `kind`, each meaning `n` words. */
@@ -163,7 +163,7 @@ export function keyCardInput(n: number, count: number, kind: KeyCard["kind"]) {
 export function keyCardFits(stages: readonly Stage[], n: number, count: number): boolean {
   for (const theme of THEMES)
     for (const stage of stages)
-      for (const kind of ["word", "fact", "examples"] as const) {
+      for (const kind of ["word", "rule", "fact", "examples"] as const) {
         const r = layoutTemplate(keyCardInput(n, count, kind), theme, stage);
         if (r.over.some((o) => o.startsWith("picture-text column "))) return false;
       }

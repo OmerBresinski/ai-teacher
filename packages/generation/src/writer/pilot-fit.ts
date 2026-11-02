@@ -22,6 +22,8 @@ export type PilotOver = {
   room: number;
   /** Past the hard maximum: the frame would hide words. */
   clipped: boolean;
+  /** The fault line itself, for a room that is not a field's words (a key card count, TEACH-247 part co). */
+  line?: string;
 };
 
 export const isPilot = (s: S | undefined): boolean =>
@@ -45,27 +47,78 @@ export function writerPath(laid: string, writerTemplate: string, path: string): 
 export const isKeyCardSlide = (s: S | undefined): boolean =>
   !!s && s.template === "visual-text" && Array.isArray(s.cards) && s.cards.length > 0;
 
+const COLUMN = "picture-text column ";
+const columnOver = (over: string[]) => over.some((o) => o.startsWith(COLUMN));
+const firstWords = (t: string, n: number) => t.trim().split(/\s+/).slice(0, n).join(" ");
+
 /**
- * A key card slide whose column runs past its foot: the lead and each meaning past the card
- * count's measured room (every field full at once), for the writer's repair. On the slide, so never
- * clipped: code cuts nothing here. A column that fits reports nothing, whatever the counts.
+ * A key card slide whose column runs past its foot (`picture-text column`), told to the writer by
+ * what drives the column's height, measured on this slide as laid (its theme, stage and picture):
+ * - more cards than the column holds beside a picture (`KEY_FIT.cards`, 1 at every stage): a count
+ *   fault, in the pilot layouts' own words for a count ("more than the layout holds"). Never
+ *   `tooMany`: that re-lays the members as a panel list, a layout code does not choose here.
+ * - the lead and each meaning, all held to the same share of their words, the least share (in 5%
+ *   steps) at which the column fits. This is the room this slide has, so a word card is never told
+ *   to cut to the sweep's worst case (KEY_FIT's words are sized for the widest picture).
+ * - when no share of those words fits, the cards' own height (terms, example rows): each card
+ *   named by the field that sets it.
+ * On the slide, so never clipped: code cuts nothing. A column that fits reports nothing.
  */
 function keyCardOvers(s: S, ctx: MaterialiseCtx, over: string[]): PilotOver[] {
-  if (!over.some((o) => o.startsWith("picture-text column "))) return [];
+  if (!columnOver(over)) return [];
   const cards = s.cards as S[];
-  const fit = KEY_FIT[groupOf(ctx.stage as Stage)];
-  const room = fit.words[String(cards.length) as "1" | "2"] || fit.words["1"];
-  const fields: [string, unknown][] = [
-    ["lead", s.lead],
-    ...cards.map((c, i): [string, unknown] => [`cards.${i}.meaning`, c?.meaning]),
-  ];
-  return fields.flatMap(([path, t]): PilotOver[] => {
-    if (typeof t !== "string") return [];
-    const words = wordCount(t);
-    if (words <= room) return [];
-    const chars = t.trim().length;
-    return [{ path, chars, words, room: Math.ceil((chars * room) / words), clipped: false }];
-  });
+  const room = KEY_FIT[groupOf(ctx.stage as Stage)].cards;
+  const out: PilotOver[] = [];
+  let base = s;
+  if (cards.length > room) {
+    out.push({
+      path: "cards",
+      chars: cards.length,
+      words: cards.length,
+      room,
+      clipped: false,
+      line: `overflow: cards more than the layout holds (${cards.length} key cards, room ${room} beside the picture)`,
+    });
+    base = { ...s, cards: cards.slice(0, Math.max(1, room)) };
+    if (!columnOver(pilotFit(base, ctx).over)) return out;
+  }
+  const kept = base.cards as S[];
+  const fields = [
+    ["lead", base.lead] as const,
+    ...kept.map((c, i) => [`cards.${i}.meaning`, c?.meaning] as const),
+  ].flatMap(([path, t]) => (typeof t === "string" && wordCount(t) > 0 ? [{ path, t }] : []));
+  for (let share = 95; share >= 5 && fields.length; share -= 5) {
+    const cut = fields.map((f) => ({
+      ...f,
+      n: Math.max(1, Math.floor((wordCount(f.t) * share) / 100)),
+    }));
+    const trial = cut.reduce((x, f) => setPath(x, f.path, firstWords(f.t, f.n)), base);
+    if (columnOver(pilotFit(trial, ctx).over)) continue;
+    for (const f of cut) {
+      const words = wordCount(f.t);
+      if (f.n < words)
+        out.push({
+          path: f.path,
+          chars: f.t.trim().length,
+          words,
+          room: firstWords(f.t, f.n).length,
+          clipped: false,
+        });
+    }
+    return out;
+  }
+  for (const [i, c] of kept.entries()) {
+    const field = Array.isArray(c?.examples) && c.examples.length ? "examples" : "term";
+    out.push({
+      path: `cards.${i}.${field}`,
+      chars: 0,
+      words: 0,
+      room: 0,
+      clipped: false,
+      line: `overflow: cards.${i}.${field} more than the layout holds (the card is taller than the column beside the picture)`,
+    });
+  }
+  return out;
 }
 
 /** Fields past their room, plus how many members the layout holds when there are too many. */
@@ -99,6 +152,7 @@ export function pilotOvers(s: S, ctx: MaterialiseCtx): { overs: PilotOver[]; too
  * words, the unit of the pack's menu.
  */
 export const overFault = (o: PilotOver, words = false) => {
+  if (o.line) return o.line;
   const hidden = o.clipped ? " (words hidden)" : "";
   if (!words) return `overflow: ${o.path} is ${o.chars} characters, room ${o.room}${hidden}`;
   const w = wordsOver(o.words, o.chars, o.room);
@@ -123,6 +177,7 @@ export function sentenceCut(text: string, room: number): string | undefined {
  * the same budget in words.
  */
 export const budgetFault = (o: PilotOver, words = false) => {
+  if (o.line) return o.line;
   if (!words)
     return `overflow: ${o.path} is ${o.chars} characters: rewrite it whole, as a complete sentence, in at most ${o.room} characters`;
   const w = wordsOver(o.words, o.chars, o.room);

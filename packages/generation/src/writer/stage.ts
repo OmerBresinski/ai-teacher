@@ -3094,12 +3094,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const pilotSlides = plan.slides.flatMap((s0, i) =>
     (isPilot(s0 as S) || isKeyCardSlide(s0 as S)) && repairable(s0 as S, i) ? [i] : [],
   );
+  /** Key card slides whose column went to the fit's one writer call (not to fitLoop as well). */
+  const keyCardFitted = new Set<number>();
   await eachBounded(pilotSlides, TAIL_CONCURRENCY, async (i) => {
     const s0 = plan.slides[i] as S;
     const keyCard = isKeyCardSlide(s0);
     const pctx = { ...base, index: i, plan, visual: visualState(i) };
     const at = pilotOvers(s0, pctx);
     if (!at.overs.length && !at.tooMany && (keyCard || !pilotSlips(s0).length)) return;
+    if (keyCard) keyCardFitted.add(i);
     const repair = run.services
       ? async (_s: S, faults: string[]) => {
           // A key card slide's own fit is a variant of visual-text: the general repair schema. Its
@@ -3145,7 +3148,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   });
   if (pilotSlides.length) {
     checks = check();
-    failing = failingNow();
+    // TEACH-247 part co: a key card column has one writer call, the fit's, in both modes: its
+    // column line does not go on to fitLoop's rewords as well (act mode would add two more).
+    failing = failingNow().flatMap((c) => {
+      if (!keyCardFitted.has(c.slide - 1)) return [c];
+      const faults = c.faults.filter((f) => !f.startsWith("overflow: picture-text column "));
+      return faults.length ? [{ ...c, faults }] : [];
+    });
   }
   // UX ruling 307 (28 Oct): with checks only logging, a hinge whose answer alone repeats a
   // question word still goes to the one-slide repair, on its leak fault alone; every other fault

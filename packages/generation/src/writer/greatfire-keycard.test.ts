@@ -1,13 +1,18 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { KEY_FIT } from "@tj/slides/templates/picture-text";
 import { getTheme, THEMES } from "@tj/slides/themes";
 import { libSchema } from "../library/catalogue";
 import { writerBundle } from "./bundle";
+import type { Brief } from "./fixes";
 import { materialise } from "./materialise";
 import { fitPilot, overFault, pilotOvers } from "./pilot-fit";
 import { PILOT_PACK_ID, pilotRequest } from "./pilot-pack";
+import { recordedVisuals, replayServices } from "./replay-fixture";
 import { writerSchema } from "./schema";
 import { slotFillArrival } from "./slot-fill";
+import { runWriter } from "./stage";
 
 /*
  * TEACH-247 part co: genlab run 20261102-171639-record-y2-greatfire-r1-v421a (Year 2, Crayon Box)
@@ -116,18 +121,33 @@ describe("TEACH-247 part co: a key card slide fits the column it is written for"
       expect(over).toEqual([]);
     });
 
-  test("the fit sends the lead and meaning back to the writer once; code cuts nothing", async () => {
+  /** The overs' rooms applied: each field cut to its room's first words, for measuring only. */
+  const atRooms = (s: S, overs: { path: string; room: number }[]) => {
+    const out = structuredClone(s) as S & { cards: S[] };
+    for (const o of overs) {
+      const m = /^cards\.(\d+)\.meaning$/.exec(o.path);
+      const holder = m ? (out.cards[Number(m[1])] as S) : o.path === "lead" ? out : undefined;
+      const key = m ? "meaning" : "lead";
+      if (holder) holder[key] = String(holder[key]).slice(0, o.room);
+    }
+    return out;
+  };
+  const fieldsOf = (o: { path: string }[]) => o.map((x) => x.path);
+
+  test("the fit sends the lead and meaning back once, each held to the room this slide measures", async () => {
     const ctx = ctxFor(S9, "crayon", "ks1", 395 / 418);
     const at = pilotOvers(S9, ctx);
+    expect(at.tooMany).toBe(false);
     expect(at.overs.map((o) => [o.path, o.words, o.clipped])).toEqual([
       ["lead", 10, false],
       ["cards.0.meaning", 10, false],
     ]);
-    const room = KEY_FIT.KS1.words["1"];
-    // Faults in words, as a pack's repair reads them.
-    expect(overFault(at.overs[0] as never, true)).toBe(
-      `overflow: lead is 10 words, room about ${room}`,
-    );
+    // Measured on the slide as laid (theme, stage, picture), not the sweep's worst case: the rooms
+    // fit, and no field is told to cut more than one share step past what it needs.
+    expect(columnOver(lay(atRooms(S9, at.overs), "crayon", "ks1", 395 / 418))).toEqual([]);
+    for (const o of at.overs) expect(o.room).toBeGreaterThan(0);
+    const roomWords = Number(/room about (\d+)/.exec(overFault(at.overs[0] as never, true))?.[1]);
+    expect(roomWords).toBeGreaterThanOrEqual(KEY_FIT.KS1.words["1"]);
     let asked: string[] = [];
     const rewritten = {
       ...S9,
@@ -152,8 +172,121 @@ describe("TEACH-247 part co: a key card slide fits the column it is written for"
     expect(kept.cut ?? []).toEqual([]);
   });
 
-  test("a key card slide that fits is never sent back, whatever its counts", () => {
-    const fits = { ...S9, lead: "Houses came down." };
-    expect(pilotOvers(fits, ctxFor(fits, "crayon", "ks1", 395 / 418)).overs).toEqual([]);
+  test("two key cards beside a picture: the writer is told one card fits, never re-laid by code", async () => {
+    const card = (S9.cards as S[])[0] as S;
+    const two: S = {
+      ...S9,
+      lead: "Houses came down.",
+      cards: [
+        card,
+        { ...card, term: "Fire hook", meaning: "A long pole that pulled houses down." },
+      ],
+    };
+    expect(KEY_FIT.KS1.cards).toBe(1);
+    // KS3 holds these two short cards beside a picture (its column is wider); KS1 and KS2 do not.
+    for (const ks of ["ks1", "ks2"] as const) {
+      const ctx = ctxFor(two, "crayon", ks);
+      expect(columnOver(lay(two, "crayon", ks))).not.toEqual([]);
+      const at = pilotOvers(two, ctx);
+      expect(at.tooMany).toBe(false);
+      const faults = at.overs.map((o) => overFault(o as never, true));
+      expect(faults[0]).toBe(
+        "overflow: cards more than the layout holds (2 key cards, room 1 beside the picture)",
+      );
+    }
+    let asked: string[] = [];
+    const r = await fitPilot(
+      two,
+      ctxFor(two, "crayon", "ks1"),
+      async (_s, f) => {
+        asked = f;
+        return undefined;
+      },
+      true,
+    );
+    expect(asked[0]).toContain("cards more than the layout holds");
+    // Kept as written: no panel-list re-lay, no cut.
+    expect(r.slide).toEqual(two);
+    expect(r.path).not.toBe("relaid");
   });
+
+  test("a column over with every field inside KEY_FIT still goes back, named by what drives it", () => {
+    // Lead and meaning at KS1's measured room (7 words each), but a three-word term longer than
+    // the sweep's wraps onto more lines: the column runs past its foot all the same.
+    const n = KEY_FIT.KS1.words["1"];
+    const tall: S = {
+      ...S9,
+      lead: "Londoners pulled down houses to make gaps.",
+      cards: [
+        {
+          ...(S9.cards as S[])[0],
+          term: "Extraordinarily devastating conflagration",
+          meaning: "A gap that stops flames reaching houses.",
+        },
+      ],
+    };
+    for (const f of [tall.lead, ((tall.cards as S[])[0] as S).meaning])
+      expect(String(f).split(" ").length).toBeLessThanOrEqual(n);
+    const ctx = ctxFor(tall, "crayon", "ks1");
+    expect(columnOver(lay(tall, "crayon", "ks1"))).toEqual(["picture-text column 518/497pt"]);
+    const at = pilotOvers(tall, ctx);
+    expect(fieldsOf(at.overs).length).toBeGreaterThan(0);
+    // Held to the room this slide has: at those rooms the column fits.
+    expect(columnOver(lay(atRooms(tall, at.overs), "crayon", "ks1"))).toEqual([]);
+  });
+
+  test("the run's own words fit beside a portrait picture: over KEY_FIT, never sent back", () => {
+    // 10 + 10 words is past KS1's measured room (sized for the widest picture); this slide's
+    // column fits, so nothing is asked of the writer.
+    expect(KEY_FIT.KS1.words["1"]).toBeLessThan(10);
+    const ctx = ctxFor(S9, "crayon", "ks1", 0.75);
+    expect(columnOver(lay(S9, "crayon", "ks1", 0.75))).toEqual([]);
+    expect(pilotOvers(S9, ctx).overs).toEqual([]);
+  });
+
+  test("act mode: the key card column takes one writer call in all, not a further fit loop", async () => {
+    const B = "y2-maths-halves-quarters";
+    const read = (f: string) =>
+      readFileSync(join(import.meta.dir, "fixtures/replay", B, f), "utf8");
+    const brief = JSON.parse(read("brief.json")) as Brief;
+    const objectives = (
+      JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
+    ).objectives.map((o) => o.teacher);
+    const main = JSON.parse(read("main.json")) as { text: string; finishReason?: string };
+    const out = JSON.parse(main.text) as { slides: unknown[] };
+    out.slides[2] = structuredClone(S9);
+    const rec = recordedVisuals(B);
+    const base = replayServices(B);
+    let calls = 0;
+    const events: Record<string, unknown>[] = [];
+    await runWriter({
+      brief,
+      objectives,
+      services: {
+        ...base,
+        log: (e) => events.push(e as Record<string, unknown>),
+        chat: async (r) => {
+          if (r.name === "slide" && r.user.includes("Londoners")) {
+            calls += 1;
+            return { out: undefined, usd: 0, ms: 0 };
+          }
+          return base.chat(r);
+        },
+      },
+      visual: Object.assign(
+        (i: number, key: string, ask: never) =>
+          JSON.stringify(ask).includes("firebreak")
+            ? ({
+                status: "photo",
+                photo: { src: "/files/fire.png", alt: "fire", aspect: 1.5 },
+              } as never)
+            : rec(i, key, ask),
+        rec,
+      ),
+      recordedWriter: { text: JSON.stringify(out), finishReason: main.finishReason ?? null },
+      checks: "act",
+    });
+    expect(events).toContainEqual(expect.objectContaining({ ev: "pilot-fit" }));
+    expect(calls).toBe(1);
+  }, 60_000);
 });
