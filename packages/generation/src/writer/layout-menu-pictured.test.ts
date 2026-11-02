@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { SLIDE_TIER_RANGES } from "@tj/domain/documents";
 import {
   assembleWriterSystem,
   ITEMS_ROW_WRITER_MENU,
@@ -14,6 +15,14 @@ import {
   PICTURED_MIN_ITEM,
   panelListWriterMenu,
 } from "./layout-menu";
+import {
+  capPilotDefs,
+  PILOT_PACK_ID,
+  PILOT_PACKS,
+  type PilotPack,
+  pilotRequest,
+} from "./pilot-pack";
+import { writerSchema } from "./schema";
 import { MIN_SHOWN_WORDS } from "./shown-cap";
 
 /*
@@ -25,6 +34,10 @@ import { MIN_SHOWN_WORDS } from "./shown-cap";
  * every pack without it keeps its request byte for byte.
  */
 const ON = { picturedFloor: true } as const;
+const must = (m: RegExpExecArray | null): RegExpExecArray => {
+  if (!m) throw new Error("no match");
+  return m;
+};
 
 describe("KS1 pictured floor (TEACH-247 part cv)", () => {
   test("off by default: the menu constants and offers are unchanged", () => {
@@ -130,5 +143,39 @@ describe("KS1 pictured floor (TEACH-247 part cv)", () => {
     expect(assembleWriterSystem(template, "KS2", {}, ON)).toBe(
       assembleWriterSystem(template, "KS2"),
     );
+  });
+});
+
+describe("a pack's picturedFloor is one switch for its menu and its caps (TEACH-247 part cv)", () => {
+  const prod = writerSchema("KS1", SLIDE_TIER_RANGES.standard);
+  const live = PILOT_PACKS[PILOT_PACK_ID] as PilotPack;
+  const switched: PilotPack = { ...live, picturedFloor: true };
+  const off = pilotRequest(PILOT_PACK_ID, "KS1", prod, (s) => s);
+  const on = pilotRequest(PILOT_PACK_ID, "KS1", prod, (s) => s, switched);
+
+  test("the system text carries the switched KS1 counts and Fits, and nothing else changes", () => {
+    const fits = (line: string) => must(/ Fits: .*$/.exec(line))[0];
+    const rowOn = fits(itemsRowWriterMenu("KS1", ON));
+    const panelOn = fits(panelListWriterMenu("KS1", ON));
+    expect(on.system).toContain(rowOn);
+    expect(on.system).toContain(panelOn);
+    expect(on.system).toContain("- panel-list: a set of 2 to 4 kinds");
+    expect(off.system).not.toContain(rowOn);
+    expect(
+      on.system
+        .replace(rowOn, fits(ITEMS_ROW_WRITER_MENU.KS1))
+        .replace(panelOn, fits(PANEL_LIST_WRITER_MENU.KS1))
+        .replace("a set of 2 to 4 kinds", "a set of 2 kinds"),
+    ).toBe(off.system);
+  });
+
+  test("the caps code checks come from the same switch", () => {
+    const defs = (on.caps as { $defs: Record<string, unknown> }).$defs;
+    const want = capPilotDefs(on.schema.$defs, "KS1", ON);
+    for (const k of ["items-row", "panel-list"]) expect(defs[k]).toEqual(want[k]);
+  });
+
+  test("without the switch the live request is untouched", () => {
+    expect(pilotRequest(PILOT_PACK_ID, "KS1", prod, (s) => s, live)).toEqual(off);
   });
 });

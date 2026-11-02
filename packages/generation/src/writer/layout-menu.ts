@@ -871,6 +871,44 @@ export function assembleWriterSystem(
   return out;
 }
 
+/** The generated pieces of the two list lines a switch can move (counts, length, Fits). */
+function listPieces(stage: WriterStage, m: Vns): Record<"items-row" | "panel-list", string[]> {
+  const a = MENU_AGE[stage];
+  return {
+    "items-row": [`- items-row: ${countWords("items-row", a, m)} named`, `Fits: ${fitsRow(a, m)}.`],
+    "panel-list": [
+      `- panel-list: a set of ${countWords("panel-list", a, m)} kinds`,
+      `in ${itemLength("panel-list", a, m)}, when`,
+      `Fits: ${fitsItems("panel-list", a, "", m)}. With a picture on every item: ${fitsPics(a, m)}.`,
+    ],
+  };
+}
+/**
+ * A pack's assembled system text with its menu switches applied (`MenuOpts`). In the items-row and
+ * panel-list lines, each generated piece (count, length, Fits) is found exactly once and becomes
+ * the switched one, so a pack's own wording edits around them stay. `pilotRequest` calls this with
+ * the same switch it gives the caps: a pack sets `picturedFloor` once and its menu and caps follow.
+ */
+export function withMenuOpts(system: string, stage: WriterStage, o: MenuOpts = {}): string {
+  if (!o.picturedFloor) return system;
+  const from = listPieces(stage, VNS);
+  const to = listPieces(stage, vnsOf(o));
+  let out = system;
+  for (const layout of ["items-row", "panel-list"] as const) {
+    const start = out.indexOf(`\n- ${layout}: `);
+    if (start < 0) throw new Error(`writer system: no ${layout} line for a menu switch`);
+    const end = out.indexOf("\n", start + 1);
+    let line = out.slice(start, end < 0 ? undefined : end);
+    from[layout].forEach((piece, k) => {
+      if (line.split(piece).length !== 2)
+        throw new Error(`writer system: ${layout} needs "${piece.slice(0, 30)}" once for a switch`);
+      line = line.replace(piece, () => to[layout][k] as string);
+    });
+    out = out.slice(0, start) + line + (end < 0 ? "" : out.slice(end));
+  }
+  return out;
+}
+
 /** A field's caps, keyed by the writer's field name (`heading`, `lead`, `name`, `text`, `title`, `quote`). */
 export type LayoutFieldCaps = Record<"items-row" | "panel-list" | "split-compare", Fields>;
 

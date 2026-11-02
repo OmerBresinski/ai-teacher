@@ -68,6 +68,7 @@ import {
   type MenuOpts,
   questionFieldCaps,
   questionOffer,
+  withMenuOpts,
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
@@ -142,7 +143,7 @@ export type PilotPack = {
   /**
    * KS1 offers items that carry their own picture or icon down to `PICTURED_MIN_ITEM` words
    * (TEACH-247 part cv): panel-list with 3 or 4 pictures, items-row with 4 icons. The pack's system
-   * text must be assembled with the same switch (`assembleWriterSystem(..., { picturedFloor: true })`).
+   * text is assembled as usual: `pilotRequest` applies the switch to its menu lines and its caps.
    */
   picturedFloor?: boolean;
   /**
@@ -698,9 +699,13 @@ export function pilotRequest(
   stageKey: string,
   prod: J,
   withLibrary: (schema: J) => J,
+  /** The pack itself, for a test of a pack's switches; production always reads `PILOT_PACKS[id]`. */
+  pack: PilotPack = PILOT_PACKS[id],
 ): { schema: J; system: string; caps?: J } {
-  const pack: PilotPack = PILOT_PACKS[id];
   const ks = ksOf(stageKey);
+  // One switch, read once: the menu lines and the caps code checks follow it together.
+  const menuOpts: MenuOpts = { picturedFloor: pack.picturedFloor };
+  const system = withMenuOpts(pack.system[ks], writerStageOf(ks), menuOpts);
   const schema = structuredClone(
     withLibrary(withPatches(structuredClone(pack.base[ks]), pack.layouts.basePatches)),
   ) as J;
@@ -810,7 +815,7 @@ export function pilotRequest(
           $defs: {
             ...capped.$defs,
             ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
-            ...capPilotDefs(schema.$defs, writerStageOf(ks), { picturedFloor: pack.picturedFloor }),
+            ...capPilotDefs(schema.$defs, writerStageOf(ks), menuOpts),
             ...(pack.waveC
               ? waveCWordCaps(schema.$defs, writerStageOf(ks), headingWords(writerStageOf(ks)))
               : {}),
@@ -819,9 +824,9 @@ export function pilotRequest(
       : undefined;
     if (caps && pack.writerTemplates)
       Object.assign(caps, withWriterTemplates(caps, writerStageOf(ks)));
-    return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
+    return { schema: stripStringCaps(schema), system, ...(caps ? { caps } : {}) };
   }
-  return { schema, system: pack.system[ks] };
+  return { schema, system };
 }
 
 /**
