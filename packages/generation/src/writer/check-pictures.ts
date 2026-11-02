@@ -103,11 +103,20 @@ export function checkPairs(s: S): { question: string; answer: string }[] {
     return [{ question: str(s.stem) || str(s.heading), answer }];
   }
   const items = Array.isArray(s.items) ? s.items : [];
-  return items.map((i) =>
-    isObj(i)
-      ? { question: str(i.question), answer: str(i.answer) }
-      : { question: str(i), answer: "" },
-  );
+  if (items.length)
+    return items.map((i) =>
+      isObj(i)
+        ? { question: str(i.question), answer: str(i.answer) }
+        : { question: str(i), answer: "" },
+    );
+  // TEACH-247 part cw (review): the other shape materialise reads (`quickAnswers`): `questions`
+  // with an `answers` list by the same index. Read as items saw no answer at all there.
+  const qs = Array.isArray(s.questions) ? s.questions : [];
+  const as = Array.isArray(s.answers) ? s.answers : [];
+  return qs.map((q, k) => ({
+    question: isObj(q) ? str(q.question) : str(q),
+    answer: isObj(as[k]) ? str((as[k] as S).answer) : str(as[k]),
+  }));
 }
 
 /**
@@ -224,8 +233,11 @@ export function askWords(ask: S): string {
 
 export type PickLeak = {
   key: "picture" | "figure" | "diagram";
-  /** `look`: added from the flow's look at close; `writer`: on the slide as the writer wrote it. */
-  origin: "writer" | "look";
+  /**
+   * `look`: added from the flow's look at close; `writer`: on the slide as the writer wrote it;
+   * `repair`: on a repair's rewrite of the slide.
+   */
+  origin: "writer" | "look" | "repair";
   why: string;
 };
 
@@ -238,6 +250,8 @@ export function dropLeakingPicks(
   s: S,
   /** The key `withLook` filled from the flow's look, if any. */
   looked?: string,
+  /** The slide is a repair's rewrite. */
+  repair = false,
 ): { slide: S; dropped: PickLeak[] } {
   if (!PICK_TEMPLATES.has(str(s.template))) return { slide: s, dropped: [] };
   let out = s;
@@ -248,7 +262,11 @@ export function dropLeakingPicks(
     const leak = leakOf(s, askWords(ask));
     if (!leak) continue;
     out = { ...out, [key]: null };
-    dropped.push({ key, origin: key === looked ? "look" : "writer", why: leak });
+    dropped.push({
+      key,
+      origin: repair ? "repair" : key === looked ? "look" : "writer",
+      why: leak,
+    });
   }
   return { slide: out, dropped };
 }

@@ -32,6 +32,7 @@ import {
   CHECK_TEMPLATES,
   dropLeakingPicks,
   fitsWithVisual,
+  hasVisual,
   lentKey,
   relend,
 } from "./check-pictures";
@@ -667,6 +668,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** noTableText: a table that could not be shown, as note lines, held by the slide object as `relaid` is. */
   const tableNotes = new Map<number, { slide: unknown; lines: string[] }>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
+  /** TEACH-247 part cw: check slides whose repaired picture leaked and was dropped. */
+  const repairDropped = new Set<number>();
   /** A repaired slide keeps the visual of a figure it still asks for, under its new key. */
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
   /** Diagrams drawn in this run, by `<slide>:<key>` (TEACH-247). */
@@ -2628,6 +2631,26 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       o2.slide = rest;
     }
     const before = plan.slides[i] as S;
+    // TEACH-247 part cw (review): a repair may keep or add a check slide's own picture; it passes
+    // the same leak test as at close. A leaking one is dropped and logged, and the slide is left
+    // to cj: first its lent visual, put back below when the slide had one, else cj's re-check after
+    // the repairs (`borrowForChecks` over `repairDropped`).
+    const rescreened = dropLeakingPicks(o2.slide, undefined, true);
+    for (const d of rescreened.dropped)
+      log({
+        ev: "check-look-leak",
+        level: "warn",
+        slide: i + 1,
+        template: String(o2.slide.template),
+        key: d.key,
+        origin: d.origin,
+        why: d.why,
+        next: CHECK_TEMPLATES.has(String(o2.slide.template)) ? "cj" : "text-only",
+      });
+    if (rescreened.dropped.length) {
+      o2.slide = rescreened.slide;
+      repairDropped.add(i);
+    }
     // TEACH-247 part cj: a check slide's lent visual is code's, not the writer's: a repair rewords
     // around it and it goes back under the key the rewrite's layout reads, when the new words
     // still fit beside it; otherwise the loss is logged (and the guard below judges the rewrite).
@@ -3515,7 +3538,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // TEACH-247 part cj: a check slide a repair rewrote without its borrowed visual gets it again
   // when it still fits, or the loss is logged.
   borrowForChecks(
-    new Set([...borrowedChecks.keys()].filter((i) => !lentKey(plan.slides[i] as S | undefined))),
+    new Set([
+      ...[...borrowedChecks.keys()].filter((i) => !lentKey(plan.slides[i] as S | undefined)),
+      // TEACH-247 part cw (review): a check slide whose repaired picture leaked and was dropped.
+      ...[...repairDropped].filter((i) => !hasVisual(plan.slides[i] as S)),
+    ]),
   );
   // A lent visual still on the slide but not drawn (a drawing that no longer parses, a figure the
   // checks restaged) is a loss too: logged, never silent.

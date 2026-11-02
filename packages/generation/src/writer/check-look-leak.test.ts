@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { dropLeakingPicks, lentAsk } from "./check-pictures";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { checkPairs, dropLeakingPicks, leakOf, lentAsk } from "./check-pictures";
 import { withLook } from "./fixes";
 
 /*
@@ -89,5 +91,38 @@ describe("dropLeakingPicks: a writer-chosen check picture that names its answer 
   test("a lent visual is cj's, already screened: left alone", () => {
     const s = { ...bean, picture: lentAsk(pic("A bean plant's stem")) };
     expect(dropLeakingPicks(s).dropped).toEqual([]);
+  });
+});
+
+describe("the questions-and-answers shape (review of #752): recorded slides, recorded answers", () => {
+  // y2 halves and quarters, writer slide 9 (lesson slide 11): practice written as `questions`,
+  // its answers ["9", "2", "5"] from the recorded notes call, the shape materialise reads as
+  // `answers`. Before this, `checkPairs` read `items` only and saw no answer on such a slide.
+  const dir = join(import.meta.dir, "fixtures/replay/y2-maths-halves-quarters");
+  const main = JSON.parse(
+    (JSON.parse(readFileSync(join(dir, "main.json"), "utf8")) as { text: string }).text,
+  ) as { slides: S[] };
+  const notes = JSON.parse(readFileSync(join(dir, "notes.json"), "utf8")) as {
+    slides: { n: number; answers: string[] | null }[];
+  };
+  const slide = {
+    ...(main.slides[8] as S),
+    answers: notes.slides.find((x) => x.n === 11)?.answers,
+  };
+
+  test("questions pair with their answers by position", () => {
+    expect(slide.template).toBe("practice");
+    const pairs = checkPairs(slide);
+    expect(pairs.map((p) => p.answer)).toEqual(["9", "2", "5"]);
+    expect(pairs[0]?.question).toBe((slide.questions as string[])[0]);
+  });
+
+  test("a picture whose request names one of those answers is dropped; cj's guard sees it too", () => {
+    const r = dropLeakingPicks({ ...slide, picture: pic("9 strawberries on a plate") });
+    expect(r.dropped).toHaveLength(1);
+    expect(leakOf(slide, "9 strawberries on a plate")).toBeDefined();
+    expect(dropLeakingPicks({ ...slide, picture: pic("A plate of strawberries") }).dropped).toEqual(
+      [],
+    );
   });
 });
