@@ -369,6 +369,12 @@ function renderBalance(root, P, ctx) {
   // items into rows no wider than the pan
   const wrapRows = list => { const out = []; let cr = []; for (const it of list) { if (cr.length && cr.reduce((s2, i) => s2 + i.w + 8, 0) + it.w > PAN_W) { out.push({ items: cr }); cr = []; } cr.push(it); } if (cr.length) out.push({ items: cr }); return out; };
   const chunk = (arr, n) => { const o = []; for (let i = 0; i < arr.length; i += n) o.push(arr.slice(i, i + n)); return o; };
+  // the build an item leaves at (Infinity: it stays); rows pack bottom-up, so what stays longest goes
+  // first and nothing is ever left standing on a mark that has gone (TEACH-247 part cr)
+  const goneAt = (it, side) => it.kind === 'bag' ? (it.take ? kU : -1) : !it.take ? -1 : it.kind === 'cube' ? kC : kC >= 0 ? kC : isO(side) ? kS : -1;
+  const leaves = side => it => { const k = goneAt(it, side); return k >= 0 ? k : Infinity; };
+  const lastFirst = (list, at) => list.map((x, i) => [x, i]).sort((a, b) => at(b[0]) - at(a[0]) || a[1] - b[1]).map(([x]) => x);
+  const rowLeaves = side => r => Math.max(...r.items.map(leaves(side)));
   const wW = v => Math.max(96, measure(root, fmtNum(v), 'ts-big') + 40);
   // the largest cube that keeps the tallest pile inside the slide (tilt included)
   const pile = (S, side, cu) => {
@@ -420,9 +426,9 @@ function renderBalance(root, P, ctx) {
         for (let gi = 0; gi < groups; gi++) chunk(Array.from({ length: M.x }, () => ({ kind: 'cube', w: CUBE, h: CUBE, grp: gi })), PER_ROW).forEach((r, ri) => rows.push({ items: r, sp: CG, gap: ri === 0 && gi > 0 ? 18 : CG, grp: gi }));
       } else if (!isU(side)) chunk(Array.from({ length: S.b }, () => ({ kind: 'cube', w: CUBE, h: CUBE })), PER_ROW).forEach(r => rows.push({ items: r, sp: CG }));
       chunk(Array.from({ length: take }, () => ({ kind: 'cube', w: CUBE, h: CUBE, take: true })), PER_ROW).forEach((r, ri) => rows.push({ items: r, sp: CG, gap: ri === 0 && rows.length ? 14 : CG }));
-      const { items: placed } = packRows(rows, ex, PAN_Y);
+      const { items: placed } = packRows(lastFirst(rows, rowLeaves(side)), ex, PAN_Y);
       placed.forEach((it, j) => {
-        const gone = it.kind === 'bag' ? (it.take ? kU : -1) : (it.take ? kC : -1);
+        const gone = goneAt(it, side);
         const a = { s: k0, cls: 'pop', delay: 60 + j * 35, hide: gone >= 0 ? gone : null };
         if (it.kind === 'bag') drawBag(cont, it, a); else drawCube(cont, it, a);
       });
@@ -435,10 +441,10 @@ function renderBalance(root, P, ctx) {
     } else {
       // number weights: one weight per number the teacher wrote; after a step, the new amount
       const nums = S.terms.filter(t => t.k === 'num').map(t => ({ kind: 'wt', v: t.v, w: wW(t.v), h: WT_H, take: isU(side) || isO(side) }));
-      const rowsW = wrapRows([...bags, ...nums]);
+      const rowsW = wrapRows(lastFirst([...bags, ...nums], leaves(side)));
       const { items: placed } = packRows(rowsW, ex, PAN_Y);
       placed.forEach((it, j) => {
-        const gone = it.kind === 'bag' ? (it.take ? kU : -1) : (it.take ? (kC >= 0 ? kC : isO(side) ? kS : -1) : -1);
+        const gone = goneAt(it, side);
         const a = { s: k0, cls: 'pop', delay: 60 + j * 80, hide: gone >= 0 ? gone : null };
         if (it.kind === 'bag') drawBag(cont, it, a); else drawWeight(cont, it, a, path);
       });
