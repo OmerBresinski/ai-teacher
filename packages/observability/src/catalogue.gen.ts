@@ -6,6 +6,8 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_activity_fixed: ["fixes", "slide"],
   gen_body_figure: ["key", "kind", "slide", "to"],
   gen_card_retry: ["asked", "slide", "still"],
+  gen_check_visual: ["form", "from", "key", "slide", "status"],
+  gen_check_visual_skip: ["level", "reason", "slide", "template", "why"],
   gen_checks: ["failing"],
   gen_close_missing: ["level", "why"],
   gen_count_miss: ["level"],
