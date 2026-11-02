@@ -156,6 +156,30 @@ describe("exit ticket", () => {
     expect(kick.style.color).toBe(atKeyStage(paper, "ks1").colors.accent);
   });
 
+  test("a title that already says Exit ticket drops the kicker and the top hairline", () => {
+    const k = caseOf("exit-ks2-3-static");
+    for (const heading of ["Exit ticket", "Exit Ticket:", "  EXIT TICKET! "]) {
+      const r = lay({ ...k.input, heading }, "ks2");
+      expect(named(r.slide.elements, WA_NAMES.kicker)).toHaveLength(0);
+      expect(named(r.slide.elements, WA_NAMES.rule)).toHaveLength(2);
+      expect(named(r.slide.elements, WA_NAMES.badge)).toHaveLength(3);
+      expect(r.over).toEqual([]);
+      // The first question starts at the ticket's top padding, not under a missing label.
+      const ticket = named(r.slide.elements, WA_NAMES.card)[0] as SlideElement;
+      const first = named(r.slide.elements, WA_NAMES.task)[0] as SlideElement;
+      expect(first.y).toBe(ticket.y + TICKET.top);
+    }
+  });
+
+  test("a title that says something else keeps the kicker", () => {
+    const k = caseOf("exit-ks2-3-static");
+    for (const heading of ["Check your learning", "Exit ticket: fractions"]) {
+      const r = lay({ ...k.input, heading }, "ks2");
+      expect(named(r.slide.elements, WA_NAMES.kicker)).toHaveLength(1);
+      expect(named(r.slide.elements, WA_NAMES.rule)).toHaveLength(3);
+    }
+  });
+
   test("questions stack inside under hairlines; no answers on the slide", () => {
     const k = caseOf("exit-ks2-3-static");
     const r = lay(k.input, "ks2");

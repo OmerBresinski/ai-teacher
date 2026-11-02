@@ -12,6 +12,8 @@
  * - With a picture or figure (TEACH-247 part cj, Greg 1 Nov: a check slide may show the thing its
  *   question works from), practice's white card holds it on the left and the ticket narrows to the
  *   right of it, its questions measured at that width (`exit+picture` caps).
+ * - A title that already says "Exit ticket" (case and punctuation aside) drops the kicker, and the
+ *   hairline over the first question with it: the label is never said twice (TEACH-247 part ck).
  */
 import type { PathElement, ShapeElement } from "@tj/domain/documents";
 import { uid } from "../factories";
@@ -46,6 +48,18 @@ import {
 export const EXIT_MAX = 3;
 export const EXIT_LABEL = "Exit ticket";
 
+const plainWords = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+/**
+ * True when a title says the same words as a fixed label, case and punctuation aside ("Exit
+ * Ticket:" echoes "Exit ticket"; "Check your learning" does not): the label is then not drawn.
+ */
+export const echoesLabel = (title: string, label: string) =>
+  !!plainWords(title) && plainWords(title) === plainWords(label);
+
 /**
  * The gold's ticket, px at 1440 x 2/3, except the top and bottom padding (27 / 29 in the gold):
  * 5 pt is given back to the kicker, which the reading floor makes 4-8 pt taller than the gold's.
@@ -73,12 +87,13 @@ export function ticketHeight(
   items: string[],
   q: number,
   tw: number = TICKET.w,
+  label = true,
 ): number | null {
   const n = items.length;
   const b = badgeSize(c);
   const w = textW(c, tw);
   const pad = Math.round(q * (n === 3 ? 0.5 : 0.7));
-  let h = TICKET.top + kickerSize(c) + TICKET.kickGap;
+  let h = TICKET.top + (label ? kickerSize(c) + TICKET.kickGap : 0);
   for (const [i, s] of items.entries()) {
     const t = measureTask(c, s, q, w);
     const lines = Math.round(t / (q * taskLH(c)));
@@ -86,7 +101,7 @@ export function ticketHeight(
       isCalc(s) ? lines > 1 : lines > WA.lines || !kit.wordsFit(c, plainTask(s), "body", w, q, 500)
     )
       return null;
-    h += WA.rule + pad + Math.max(b, t) + (i < n - 1 ? pad : 0);
+    h += (label || i > 0 ? WA.rule + pad : 0) + Math.max(b, t) + (i < n - 1 ? pad : 0);
   }
   return h + TICKET.bottom;
 }
@@ -98,18 +113,24 @@ export function planExit(
   items: string[],
   stageTop: number,
   v: Visual | null = null,
+  label = true,
 ): ExitPlan {
   const room = WA.foot - stageTop;
   const steps = taskSteps(c);
   const tw = ticketW(!!v);
   const card = v ? cardHeight(v, EXIT_VISUAL.w) : 0;
   for (const q of steps) {
-    const h = ticketHeight(c, items, q, tw);
+    const h = ticketHeight(c, items, q, tw, label);
     if (h !== null && h <= room && card <= room && items.length <= EXIT_MAX)
       return { q, comfortable: comfortAt(c, q), fits: true, height: h };
   }
   const q = steps[steps.length - 1] as number;
-  return { q, comfortable: false, fits: false, height: ticketHeight(c, items, q, tw) ?? room + 1 };
+  return {
+    q,
+    comfortable: false,
+    fits: false,
+    height: ticketHeight(c, items, q, tw, label) ?? room + 1,
+  };
 }
 
 /**
@@ -131,7 +152,8 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
   const stageTop = Math.round(top + WA.exitGap);
   // Only a check slide's borrowed figure is drawn (part cj); any other is ignored, as before.
   const v = input.checkFigure ? visualOf(c, input) : null;
-  const plan = planExit(c, items, stageTop, v);
+  const label = !echoesLabel(input.heading, EXIT_LABEL);
+  const plan = planExit(c, items, stageTop, v, label);
   c.tight = !plan.comfortable;
   c.fields = workFields(
     ageOf((keyStageOf(c.t) ?? "ks2") as Stage),
@@ -164,30 +186,35 @@ export function layoutExitTicket(c: Ctx, input: TemplateInput) {
 
   const ix = x + TICKET.side;
   const iw = tw - 2 * TICKET.side;
-  const saved = c.s;
-  c.s = { ...saved, body: kickerSize(c) };
-  const kick = kit.text(
-    c,
-    EXIT_LABEL.toUpperCase(),
-    "body",
-    { x: ix, y: y + TICKET.top, w: iw },
-    {
-      weight: 700,
-      color: c.t.colors.accent,
-      name: WA_NAMES.kicker,
-    },
-  );
-  c.s = saved;
-  // The kicker is set solid (line height 1), as the gold's.
-  kick.style = { ...kick.style, lineHeight: 1 };
-  kick.h = kickerSize(c);
+  let cy = y + TICKET.top;
+  if (label) {
+    const saved = c.s;
+    c.s = { ...saved, body: kickerSize(c) };
+    const kick = kit.text(
+      c,
+      EXIT_LABEL.toUpperCase(),
+      "body",
+      { x: ix, y: y + TICKET.top, w: iw },
+      {
+        weight: 700,
+        color: c.t.colors.accent,
+        name: WA_NAMES.kicker,
+      },
+    );
+    c.s = saved;
+    // The kicker is set solid (line height 1), as the gold's.
+    kick.style = { ...kick.style, lineHeight: 1 };
+    kick.h = kickerSize(c);
+    cy = kick.y + kick.h + TICKET.kickGap;
+  }
   const q = plan.q;
   const b = badgeSize(c);
   const pad = Math.round(q * (items.length === 3 ? 0.5 : 0.7));
-  let cy = kick.y + kick.h + TICKET.kickGap;
   items.forEach((s, i) => {
-    drawRule(c, ix, cy, iw);
-    cy += WA.rule + pad;
+    if (label || i > 0) {
+      drawRule(c, ix, cy, iw);
+      cy += WA.rule + pad;
+    }
     const tw = iw - b - WA.badgeGap;
     drawBadge(c, i, ix, cy + Math.max(0, (q * taskLH(c) - b) / 2), b);
     const el = drawTask(c, s, q, { x: ix + b + WA.badgeGap, y: cy, w: tw });
