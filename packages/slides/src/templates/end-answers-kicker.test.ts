@@ -67,3 +67,22 @@ describe("answers rail: the kicker never prints over the source title", () => {
     expect(wraps).toEqual([]);
   });
 });
+
+describe("answers rail: a source title that says the kicker's words drops the kicker", () => {
+  test('"Exit ticket" / "Practice:" titles: no kicker, the title at the band top', () => {
+    const t = atKeyStage(ALL_THEMES[0] as (typeof ALL_THEMES)[0], "ks2");
+    const groups: AnswerGroup[] = [
+      { kind: "practice", title: "Practice:", items: [{ n: 1, a: "4 counters" }] },
+      { kind: "exit", title: "Exit Ticket", items: [{ n: 1, a: "12" }] },
+      { kind: "exit", title: "Check your learning", items: [{ n: 1, a: "7" }] },
+    ];
+    const els = endAnswerSlides(groups, t, "ks2").flatMap((s: Slide) => s.elements);
+    const kickers = named(els, ANSWERS_NAMES.kicker);
+    expect(kickers.map((k) => k.doc.content?.[0]?.content?.[0]?.text)).toEqual(["EXIT TICKET"]);
+    const titles = named(els, ANSWERS_NAMES.source);
+    expect(titles).toHaveLength(3);
+    // The kept kicker sits over the one title that says something else.
+    const kept = kickers[0] as TextElement;
+    expect(kept.y + kept.h).toBeLessThanOrEqual((titles[2] as TextElement).y);
+  });
+});

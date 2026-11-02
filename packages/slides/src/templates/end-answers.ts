@@ -37,6 +37,7 @@ import {
   surfaceStyle,
   surfacesOf,
 } from "../themes/surfaces";
+import { echoesLabel } from "./exit-ticket";
 import { type Ctx, G, kit, type Stage, templateScale } from "./index";
 
 /* ------------------------------------------------------------------ */
@@ -213,9 +214,11 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const sub = z.sub;
   const railTitleH = measureAt(c, g.title, RAIL.w, sub, 500, 1.2);
   // The source title stacks under the kicker's measured lines, so a kicker that wraps pushes the
-  // title down rather than printing over it.
-  const kickH = kickerHeight(t, kickerWord(g));
-  const railH = kickH + 6 + railTitleH;
+  // title down rather than printing over it. A title that already says the kicker's words ("Exit
+  // ticket", "Practice") drops the kicker: the label is never said twice (TEACH-247 part ck).
+  const kicked = !echoesLabel(g.title, kickerWord(g));
+  const kickH = kicked ? kickerHeight(t, kickerWord(g)) + 6 : 0;
+  const railH = kickH + railTitleH;
   const cols = answerColumns(t, stage, g.items);
   const line = Math.round(z.size * 1.3);
   const lineH = Math.max(line, z.badge);
@@ -262,8 +265,8 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const ansH = rows.reduce((a, b) => a + b, 0) + Math.max(0, rows.length - 1) * z.rowGap;
   const h = Math.max(railH, ansH);
   const draw = (y: number, stepOf: StepOf = () => undefined) => {
-    kicker(c, kickerWord(g), y, kickH);
-    text(c, g.title, { x: RAIL.x, y: y + kickH + 6, w: RAIL.w }, sub, 500, 1.2, {
+    if (kicked) kicker(c, kickerWord(g), y, kickH - 6);
+    text(c, g.title, { x: RAIL.x, y: y + kickH, w: RAIL.w }, sub, 500, 1.2, {
       color: t.colors.ink,
       name: ANSWERS_NAMES.source,
     });
