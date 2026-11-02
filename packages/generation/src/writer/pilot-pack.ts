@@ -65,8 +65,10 @@ import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   layoutFieldCaps,
+  type MenuOpts,
   questionFieldCaps,
   questionOffer,
+  withMenuOpts,
 } from "./layout-menu";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
@@ -138,6 +140,12 @@ export type PilotPack = {
    * against the picture cells (reasons-picture-capacity.json). Only with menu wording that offers it.
    */
   reasonsPicture?: boolean;
+  /**
+   * KS1 offers items that carry their own picture or icon down to `PICTURED_MIN_ITEM` words
+   * (TEACH-247 part cv): panel-list with 3 or 4 pictures, items-row with 4 icons. The pack's system
+   * text is assembled as usual: `pilotRequest` applies the switch to its menu lines and its caps.
+   */
+  picturedFloor?: boolean;
   /**
    * The writer specs the river and hydrograph templates itself (`withWriterTemplates`), as it
    * did in the early-Oct lab runs, instead of naming them `{kind, shows, labels}` for the drawer.
@@ -691,9 +699,13 @@ export function pilotRequest(
   stageKey: string,
   prod: J,
   withLibrary: (schema: J) => J,
+  /** The pack itself, for a test of a pack's switches; production always reads `PILOT_PACKS[id]`. */
+  pack: PilotPack = PILOT_PACKS[id],
 ): { schema: J; system: string; caps?: J } {
-  const pack: PilotPack = PILOT_PACKS[id];
   const ks = ksOf(stageKey);
+  // One switch, read once: the menu lines and the caps code checks follow it together.
+  const menuOpts: MenuOpts = { picturedFloor: pack.picturedFloor };
+  const system = withMenuOpts(pack.system[ks], writerStageOf(ks), menuOpts);
   const schema = structuredClone(
     withLibrary(withPatches(structuredClone(pack.base[ks]), pack.layouts.basePatches)),
   ) as J;
@@ -803,7 +815,7 @@ export function pilotRequest(
           $defs: {
             ...capped.$defs,
             ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
-            ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+            ...capPilotDefs(schema.$defs, writerStageOf(ks), menuOpts),
             ...(pack.waveC
               ? waveCWordCaps(schema.$defs, writerStageOf(ks), headingWords(writerStageOf(ks)))
               : {}),
@@ -812,9 +824,9 @@ export function pilotRequest(
       : undefined;
     if (caps && pack.writerTemplates)
       Object.assign(caps, withWriterTemplates(caps, writerStageOf(ks)));
-    return { schema: stripStringCaps(schema), system: pack.system[ks], ...(caps ? { caps } : {}) };
+    return { schema: stripStringCaps(schema), system, ...(caps ? { caps } : {}) };
   }
-  return { schema, system: pack.system[ks] };
+  return { schema, system };
 }
 
 /**
@@ -863,8 +875,8 @@ function capString(node: J | undefined, cap: number | undefined): J | undefined 
  * at this stage (`layoutFieldCaps`, the measured capacity tables). Code reads a field's room from
  * these; the writer never sees them (v4.6 is uncapped). Never hand-typed.
  */
-export function capPilotDefs(defs: J, stage: WriterStage): J {
-  const caps = layoutFieldCaps(stage);
+export function capPilotDefs(defs: J, stage: WriterStage, opts: MenuOpts = {}): J {
+  const caps = layoutFieldCaps(stage, opts);
   const out: J = {};
   for (const [layout, f] of Object.entries(PILOT_FIELDS) as [
     keyof typeof PILOT_FIELDS,

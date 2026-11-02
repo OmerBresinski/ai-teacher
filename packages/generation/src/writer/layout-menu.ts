@@ -65,6 +65,22 @@ const MIN_ITEM: Record<Age, number> = {
   primary: MIN_SHOWN_WORDS,
   secondary: MIN_SHOWN_WORDS,
 };
+/**
+ * The floor for an item that carries its own picture or icon (panel-list with a picture on every
+ * item, items-row with an icon on every part; TEACH-247 part cv). At KS1 the picture or icon shows
+ * the thing and the line is a short label, so a 3-word line is honest teaching for 5- to 7-year-olds;
+ * the 5-word floor dropped KS1's pictured sets of 3 and 4, and a Year 1 set of four plant parts took
+ * four slides (first-principles/4-unused-layouts-rootcause.md, C5). The words offered are still the
+ * measured cell's shown words, never more. KS2 and KS3-5 keep the body floor. Offered only by a pack
+ * that sets `picturedFloor` (`MenuOpts`).
+ */
+export const PICTURED_MIN_ITEM: Record<Age, number> = {
+  early: 3,
+  primary: MIN_SHOWN_WORDS,
+  secondary: MIN_SHOWN_WORDS,
+};
+/** Menu switches a pack turns on; every pack without one keeps its request byte for byte. */
+export type MenuOpts = { picturedFloor?: boolean };
 const MIN_SIDE = MIN_SHOWN_WORDS;
 /** A quote is a few words in a person's voice, a label more than body text. */
 const MIN_QUOTE = 3;
@@ -197,8 +213,8 @@ function itemBudget(c: ListLayout, a: Age, n: number, lead = false, v: ListVaria
   const need = needOf(`${c}.item`, STAGE_OF[a]) ?? 0;
   return Math.min(Math.max(edit, need), menuShown(caps.text ?? 0, a, `${c}.item`));
 }
-const okCount = (c: ListLayout, a: Age, n: number, v: ListVariant = "") =>
-  allPositive(listCaps(c, a, n, false, v)) && itemBudget(c, a, n, false, v) >= MIN_ITEM[a];
+const okCount = (c: ListLayout, a: Age, n: number, v: ListVariant = "", floor = MIN_ITEM[a]) =>
+  allPositive(listCaps(c, a, n, false, v)) && itemBudget(c, a, n, false, v) >= floor;
 /** The counts in `ns` (ascending) whose shown item budget is offerable: floor and no cliff. */
 const offeredCounts = (
   c: ListLayout,
@@ -207,10 +223,13 @@ const offeredCounts = (
   lead = false,
   v: ListVariant = "",
   ok: (n: number) => boolean = (n) => okCount(c, a, n, v),
+  floor = MIN_ITEM[a],
+  waive?: (w: number) => boolean,
 ) =>
   offerable(
     ns.map((n): [number, number] => [n, ok(n) ? itemBudget(c, a, n, lead, v) : 0]),
-    MIN_ITEM[a],
+    floor,
+    waive,
   ).map(([n]) => n);
 const range = (lo: number, hi: number) =>
   Array.from({ length: Math.max(0, hi - lo + 1) }, (_, i) => lo + i);
@@ -240,9 +259,28 @@ for (const a of AGES) {
   if (VNS.get(key("panel-list", a, ""))?.[0] !== 2)
     throw new Error(`layout menu: panel-list at ${a} must start at 2`);
 }
-const NS = (c: ListLayout, a: Age, v: ListVariant = "") => VNS.get(key(c, a, v)) ?? [];
-const allNs = (c: ListLayout, a: Age) =>
-  [...new Set([...NS(c, a), ...NS(c, a, c === "items-row" ? "num" : "pics")])].sort(
+/**
+ * The counts with the pictured floor (`PICTURED_MIN_ITEM`): items-row with an icon on every part and
+ * panel-list with a picture on every item. Where the floor is lowered (KS1) the no-cliff rule is
+ * waived for these cells: a shorter label beside its picture is the point, not a squeeze. The
+ * numbered row (every icon null) and every text-only or lead cell keep the body floor.
+ */
+const PVNS = new Map(VNS);
+for (const a of AGES) {
+  const floor = PICTURED_MIN_ITEM[a];
+  if (floor >= MIN_ITEM[a]) continue;
+  const waive = () => true;
+  const pictured = (c: ListLayout, v: ListVariant, hi: number) =>
+    offeredCounts(c, a, range(2, hi), false, v, (n) => okCount(c, a, n, v, floor), floor, waive);
+  PVNS.set(key("items-row", a, ""), pictured("items-row", "", EDIT_COUNTS["items-row"][1]));
+  PVNS.set(key("panel-list", a, "pics"), pictured("panel-list", "pics", ROWPIC_MAX[a]));
+}
+/** The count table a menu reads: the pictured floor's when the pack turns it on. */
+type Vns = ReadonlyMap<string, number[]>;
+const vnsOf = (o: MenuOpts = {}): Vns => (o.picturedFloor ? PVNS : VNS);
+const NS = (c: ListLayout, a: Age, v: ListVariant = "", m: Vns = VNS) => m.get(key(c, a, v)) ?? [];
+const allNs = (c: ListLayout, a: Age, m: Vns = VNS) =>
+  [...new Set([...NS(c, a, "", m), ...NS(c, a, c === "items-row" ? "num" : "pics", m)])].sort(
     (x, y) => x - y,
   );
 const leadOk = (c: ListLayout, a: Age, n: number, v: ListVariant = "") => {
@@ -253,18 +291,18 @@ const leadOk = (c: ListLayout, a: Age, n: number, v: ListVariant = "") => {
     itemBudget(c, a, n, true, v) >= MIN_ITEM[a]
   );
 };
-const leadNs = (c: ListLayout, a: Age, v: ListVariant = "") =>
-  offeredCounts(c, a, NS(c, a, v), true, v, (n) => leadOk(c, a, n, v));
-const leadWords = (c: ListLayout, a: Age, v: ListVariant = "") =>
+const leadNs = (c: ListLayout, a: Age, v: ListVariant = "", m: Vns = VNS) =>
+  offeredCounts(c, a, NS(c, a, v, m), true, v, (n) => leadOk(c, a, n, v));
+const leadWords = (c: ListLayout, a: Age, v: ListVariant = "", m: Vns = VNS) =>
   Math.min(
-    ...leadNs(c, a, v).map((n) =>
+    ...leadNs(c, a, v, m).map((n) =>
       menuShown(must(listCaps(c, a, n, true, v), c).lead ?? 0, a, `${c}.lead`),
     ),
   );
-const headWords = (c: ListLayout, a: Age, lead = false, v: ListVariant = "") =>
+const headWords = (c: ListLayout, a: Age, lead = false, v: ListVariant = "", m: Vns = VNS) =>
   Math.min(
     HEAD_WORDS[a],
-    ...(lead ? leadNs(c, a, v) : NS(c, a, v)).map((n) =>
+    ...(lead ? leadNs(c, a, v, m) : NS(c, a, v, m)).map((n) =>
       menuWords(must(listCaps(c, a, n, lead, v), c).heading ?? 0, a),
     ),
   );
@@ -337,23 +375,23 @@ const fmt = (pairs: [number, number][], unit: string) =>
   runs(pairs)
     .map(([x, y, w]) => `${span(x, y)} ${unit}: up to ${w} words each`)
     .join("; ");
-const headNote = (c: ListLayout, a: Age, v: ListVariant = "") => {
-  const hw = headWords(c, a, false, v);
+const headNote = (c: ListLayout, a: Age, v: ListVariant = "", m: Vns = VNS) => {
+  const hw = headWords(c, a, false, v, m);
   return hw < HEAD_WORDS[a] ? `heading up to ${hw} words; ` : "";
 };
-function fitsItems(c: ListLayout, a: Age, v: ListVariant = ""): string {
+function fitsItems(c: ListLayout, a: Age, v: ListVariant = "", m: Vns = VNS): string {
   let s =
-    headNote(c, a, v) +
+    headNote(c, a, v, m) +
     fmt(
-      NS(c, a, v).map((n) => [n, itemBudget(c, a, n, false, v)]),
+      NS(c, a, v, m).map((n) => [n, itemBudget(c, a, n, false, v)]),
       "items",
     );
-  const ln = leadNs(c, a, v);
+  const ln = leadNs(c, a, v, m);
   if (ln.length) {
-    const hl = headWords(c, a, true, v);
+    const hl = headWords(c, a, true, v, m);
     s +=
-      `; with a lead of up to ${leadWords(c, a, v)} words` +
-      (hl < headWords(c, a, false, v) ? ` (heading up to ${hl})` : "") +
+      `; with a lead of up to ${leadWords(c, a, v, m)} words` +
+      (hl < headWords(c, a, false, v, m) ? ` (heading up to ${hl})` : "") +
       `: ${fmt(
         ln.map((n) => [n, itemBudget(c, a, n, true, v)]),
         "items",
@@ -361,11 +399,11 @@ function fitsItems(c: ListLayout, a: Age, v: ListVariant = ""): string {
   }
   return s;
 }
-function fitsRow(a: Age): string {
-  let s = fitsItems("items-row", a);
-  const num = NS("items-row", a, "num");
+function fitsRow(a: Age, m: Vns = VNS): string {
+  let s = fitsItems("items-row", a, "", m);
+  const num = NS("items-row", a, "num", m);
   if (num.length) {
-    const hn = headWords("items-row", a, false, "num");
+    const hn = headWords("items-row", a, false, "num", m);
     s += `; ${num
       .map(
         (n) =>
@@ -375,25 +413,25 @@ function fitsRow(a: Age): string {
   }
   return s;
 }
-function fitsPics(a: Age): string {
+function fitsPics(a: Age, m: Vns = VNS): string {
   const c = "panel-list";
   const d: string[] = [];
-  const hp = headWords(c, a, false, "pics");
-  if (hp !== headWords(c, a)) d.push(`heading up to ${hp} words`);
-  const pn = NS(c, a);
-  const pp = NS(c, a, "pics");
+  const hp = headWords(c, a, false, "pics", m);
+  if (hp !== headWords(c, a, false, "", m)) d.push(`heading up to ${hp} words`);
+  const pn = NS(c, a, "", m);
+  const pp = NS(c, a, "pics", m);
   for (const n of pp)
     if (!pn.includes(n) || itemBudget(c, a, n, false, "pics") !== itemBudget(c, a, n))
       d.push(`${n} items: up to ${itemBudget(c, a, n, false, "pics")} words each`);
-  const ln = leadNs(c, a);
-  const lp = leadNs(c, a, "pics");
-  const lw = lp.length ? leadWords(c, a, "pics") : 0;
+  const ln = leadNs(c, a, "", m);
+  const lp = leadNs(c, a, "pics", m);
+  const lw = lp.length ? leadWords(c, a, "pics", m) : 0;
   const ld = lp
     .filter(
       (n) => !ln.includes(n) || itemBudget(c, a, n, true, "pics") !== itemBudget(c, a, n, true),
     )
     .map((n) => `${n} items: up to ${itemBudget(c, a, n, true, "pics")} words each`);
-  if (lp.length && (ld.length || lw !== leadWords(c, a)))
+  if (lp.length && (ld.length || lw !== leadWords(c, a, "", m)))
     d.push(`with a lead of up to ${lw} words${ld.length ? `: ${ld.join("; ")}` : ""}`);
   const gone = pn.filter((n) => !pp.includes(n));
   if (gone.length) d.push(`${span(gone[0] ?? 0, gone.at(-1) ?? 0)} items: not offered`);
@@ -450,38 +488,39 @@ const lengthSpan = (budgets: number[]) => {
   return lo === hi ? lo : `${lo} to ${hi}`;
 };
 /** Every item budget a list layout's Fits offer at an age: plain, row variant, and with a lead. */
-const itemLength = (c: ListLayout, a: Age) =>
+const itemLength = (c: ListLayout, a: Age, m: Vns = VNS) =>
   lengthSpan(
     (["", c === "items-row" ? "num" : "pics"] as const).flatMap((v) => [
-      ...NS(c, a, v).map((n) => itemBudget(c, a, n, false, v)),
-      ...leadNs(c, a, v).map((n) => itemBudget(c, a, n, true, v)),
+      ...NS(c, a, v, m).map((n) => itemBudget(c, a, n, false, v)),
+      ...leadNs(c, a, v, m).map((n) => itemBudget(c, a, n, true, v)),
     ]),
   );
 /** Every side budget split-compare's Fits offer at an age. */
 const sideLength = (a: Age) =>
   lengthSpan(SC_KEYS[a].map((k) => sideBudget(a, Number(k[0]), k.slice(1) as SideZone)));
 const NUMW: Record<number, string> = { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
-const countWords = (c: ListLayout, a: Age) => {
-  const ns = allNs(c, a);
+const countWords = (c: ListLayout, a: Age, m: Vns = VNS) => {
+  const ns = allNs(c, a, m);
   return span(ns[0] ?? 0, ns.at(-1) ?? 0);
 };
 
 /** What each layout offers at a stage, as the menu states it: part s sizes the schema's arrays from it. */
-export function layoutOffer(stage: WriterStage) {
+export function layoutOffer(stage: WriterStage, o: MenuOpts = {}) {
   const a = MENU_AGE[stage];
+  const m = vnsOf(o);
   return {
     "items-row": {
-      counts: allNs("items-row", a),
-      icons: NS("items-row", a),
-      numbered: NS("items-row", a, "num"),
-      lead: leadNs("items-row", a),
+      counts: allNs("items-row", a, m),
+      icons: NS("items-row", a, "", m),
+      numbered: NS("items-row", a, "num", m),
+      lead: leadNs("items-row", a, "", m),
     },
     "panel-list": {
-      counts: allNs("panel-list", a),
-      plain: NS("panel-list", a),
-      pictures: NS("panel-list", a, "pics"),
-      lead: leadNs("panel-list", a),
-      picturesLead: leadNs("panel-list", a, "pics"),
+      counts: allNs("panel-list", a, m),
+      plain: NS("panel-list", a, "", m),
+      pictures: NS("panel-list", a, "pics", m),
+      lead: leadNs("panel-list", a, "", m),
+      picturesLead: leadNs("panel-list", a, "pics", m),
     },
     "split-compare": { sides: SC_KEYS[a] },
   };
@@ -490,16 +529,27 @@ export function layoutOffer(stage: WriterStage) {
 const byStage = (line: (a: Age) => string) =>
   Object.fromEntries(AGES.map((a) => [STAGE_OF[a], line(a)])) as Record<WriterStage, string>;
 
+/** The items-row menu line at a stage, with a pack's switches (`MenuOpts`). */
+export function itemsRowWriterMenu(stage: WriterStage, o: MenuOpts = {}): string {
+  const a = MENU_AGE[stage];
+  const m = vnsOf(o);
+  const more = NUMW[(allNs("items-row", a, m).at(-1) ?? 0) + 1] ?? "";
+  return `- items-row: ${countWords("items-row", a, m)} named parts of one whole that work together (flow shape parts of a whole), in a row on a connecting line, each a name pupils learn and its job in one short line. ${more} or more parts go to a labelled diagram or two slides. Never the steps of a method or calculation, even in order (steps or equation-hero), or the stages of a process (steps or picture-sequence); not for an idea with its reasons (explain), a set of kinds or examples (panel-list), or a contrast (split-compare). motif: vessel for circulation, stem for a plant, else null (a plain line). Fits: ${fitsRow(a, m)}.`;
+}
 // writer-prompt: owned by TEACH-110 s
-export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) => {
-  const more = NUMW[(allNs("items-row", a).at(-1) ?? 0) + 1] ?? "";
-  return `- items-row: ${countWords("items-row", a)} named parts of one whole that work together (flow shape parts of a whole), in a row on a connecting line, each a name pupils learn and its job in one short line. ${more} or more parts go to a labelled diagram or two slides. Never the steps of a method or calculation, even in order (steps or equation-hero), or the stages of a process (steps or picture-sequence); not for an idea with its reasons (explain), a set of kinds or examples (panel-list), or a contrast (split-compare). motif: vessel for circulation, stem for a plant, else null (a plain line). Fits: ${fitsRow(a)}.`;
-});
+export const ITEMS_ROW_WRITER_MENU: Record<WriterStage, string> = byStage((a) =>
+  itemsRowWriterMenu(STAGE_OF[a]),
+);
 
+/** The panel-list menu line at a stage, with a pack's switches (`MenuOpts`). */
+export function panelListWriterMenu(stage: WriterStage, o: MenuOpts = {}): string {
+  const a = MENU_AGE[stage];
+  const m = vnsOf(o);
+  return `- panel-list: a set of ${countWords("panel-list", a, m)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact, in ${itemLength("panel-list", a, m)}, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons. Fits: ${fitsItems("panel-list", a, "", m)}. With a picture on every item: ${fitsPics(a, m)}. Each limit holds only for its own item count and whether the items carry pictures.`;
+}
 // writer-prompt: owned by TEACH-110 s
-export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage(
-  (a) =>
-    `- panel-list: a set of ${countWords("panel-list", a)} kinds, examples or rules of one group (flow shape a set of kinds or examples), as a list beside a title panel, each a name and one fact, in ${itemLength("panel-list", a)}, when order does not matter. Three or more kinds of one group always come here, even when each fact differs on the same feature; two members come here when the point is the set, not how they differ. Parts that work together go to items-row, and the steps of a method, numbered or not, go to steps or equation-hero; a set whose members each need a paragraph takes a slide each; more members take two slides. When each member is a thing pupils need to see (an organism, a rock, a place, an object), every item gets a picture of it alone, one object or simple scene with no labels (a small tile), and the panel is null. Otherwise the panel holds a pie when the items are shares of one known whole, else a photo of the whole group whenever a camera can show the members together; null only when neither fits. Rules, reasons and ideas take picture null and icons. Fits: ${fitsItems("panel-list", a)}. With a picture on every item: ${fitsPics(a)}. Each limit holds only for its own item count and whether the items carry pictures.`,
+export const PANEL_LIST_WRITER_MENU: Record<WriterStage, string> = byStage((a) =>
+  panelListWriterMenu(STAGE_OF[a]),
 );
 
 // writer-prompt: owned by TEACH-110 s
@@ -788,13 +838,19 @@ export function assembleWriterSystem(
   template: string,
   stage: WriterStage,
   waveCOpts: WaveCMenuOpts = {},
+  menuOpts: MenuOpts = {},
 ): string {
   let out = template;
-  for (const [layout, menu] of Object.entries(LAYOUT_WRITER_MENUS)) {
+  const lines: Record<string, string> = {
+    ...Object.fromEntries(Object.entries(LAYOUT_WRITER_MENUS).map(([l, m]) => [l, m[stage]])),
+    "items-row": itemsRowWriterMenu(stage, menuOpts),
+    "panel-list": panelListWriterMenu(stage, menuOpts),
+  };
+  for (const [layout, line] of Object.entries(lines)) {
     const slot = `{{menu:${layout}}}`;
     if (out.split(slot).length !== 2)
       throw new Error(`writer system: ${slot} must appear exactly once`);
-    out = out.replace(slot, () => menu[stage]);
+    out = out.replace(slot, () => line);
   }
   // Wave C (TEACH-110 part v): its lines as one block, in a template that offers it (v4.8).
   const block = "{{menu:wave-c}}";
@@ -815,6 +871,44 @@ export function assembleWriterSystem(
   return out;
 }
 
+/** The generated pieces of the two list lines a switch can move (counts, length, Fits). */
+function listPieces(stage: WriterStage, m: Vns): Record<"items-row" | "panel-list", string[]> {
+  const a = MENU_AGE[stage];
+  return {
+    "items-row": [`- items-row: ${countWords("items-row", a, m)} named`, `Fits: ${fitsRow(a, m)}.`],
+    "panel-list": [
+      `- panel-list: a set of ${countWords("panel-list", a, m)} kinds`,
+      `in ${itemLength("panel-list", a, m)}, when`,
+      `Fits: ${fitsItems("panel-list", a, "", m)}. With a picture on every item: ${fitsPics(a, m)}.`,
+    ],
+  };
+}
+/**
+ * A pack's assembled system text with its menu switches applied (`MenuOpts`). In the items-row and
+ * panel-list lines, each generated piece (count, length, Fits) is found exactly once and becomes
+ * the switched one, so a pack's own wording edits around them stay. `pilotRequest` calls this with
+ * the same switch it gives the caps: a pack sets `picturedFloor` once and its menu and caps follow.
+ */
+export function withMenuOpts(system: string, stage: WriterStage, o: MenuOpts = {}): string {
+  if (!o.picturedFloor) return system;
+  const from = listPieces(stage, VNS);
+  const to = listPieces(stage, vnsOf(o));
+  let out = system;
+  for (const layout of ["items-row", "panel-list"] as const) {
+    const start = out.indexOf(`\n- ${layout}: `);
+    if (start < 0) throw new Error(`writer system: no ${layout} line for a menu switch`);
+    const end = out.indexOf("\n", start + 1);
+    let line = out.slice(start, end < 0 ? undefined : end);
+    from[layout].forEach((piece, k) => {
+      if (line.split(piece).length !== 2)
+        throw new Error(`writer system: ${layout} needs "${piece.slice(0, 30)}" once for a switch`);
+      line = line.replace(piece, () => to[layout][k] as string);
+    });
+    out = out.slice(0, start) + line + (end < 0 ? "" : out.slice(end));
+  }
+  return out;
+}
+
 /** A field's caps, keyed by the writer's field name (`heading`, `lead`, `name`, `text`, `title`, `quote`). */
 export type LayoutFieldCaps = Record<"items-row" | "panel-list" | "split-compare", Fields>;
 
@@ -824,9 +918,9 @@ export type LayoutFieldCaps = Record<"items-row" | "panel-list" | "split-compare
  * schema's string caps come from here; each count's own cap is the layout's to enforce at the
  * drawn size (pilot-fit.ts), and it reads the same tables.
  */
-export function layoutFieldCaps(stage: WriterStage): LayoutFieldCaps {
+export function layoutFieldCaps(stage: WriterStage, opts: MenuOpts = {}): LayoutFieldCaps {
   const a = MENU_AGE[stage];
-  const o = layoutOffer(stage);
+  const o = layoutOffer(stage, opts);
   const top = (cells: (Fields | undefined)[]): Fields => {
     const out: Fields = {};
     for (const c of cells)
@@ -863,19 +957,22 @@ const countCaps = (pairs: [number, number][]): CountCaps => Object.fromEntries(p
  * against the cap the writer was shown without parsing prompt prose. A heading cap is the one the
  * menu states for that variant, or the stage's `HEAD_WORDS` where it states none.
  */
-export function menuWordCaps(stage: WriterStage) {
+export function menuWordCaps(stage: WriterStage, o: MenuOpts = {}) {
   const a = MENU_AGE[stage];
+  const m = vnsOf(o);
   const listOf = (c: ListLayout, v: ListVariant, lead: boolean) =>
     countCaps(
-      (lead ? leadNs(c, a, v) : NS(c, a, v)).map((n): [number, number] => [
+      (lead ? leadNs(c, a, v, m) : NS(c, a, v, m)).map((n): [number, number] => [
         n,
         itemBudget(c, a, n, lead, v),
       ]),
     );
   const leadCap = (c: ListLayout, v: ListVariant = "") =>
-    leadNs(c, a, v).length ? leadWords(c, a, v) : null;
+    leadNs(c, a, v, m).length ? leadWords(c, a, v, m) : null;
   const headCap = (c: ListLayout, v: ListVariant, lead: boolean) =>
-    (lead ? leadNs(c, a, v) : NS(c, a, v)).length ? headWords(c, a, lead, v) : HEAD_WORDS[a];
+    (lead ? leadNs(c, a, v, m) : NS(c, a, v, m)).length
+      ? headWords(c, a, lead, v, m)
+      : HEAD_WORDS[a];
   const p = practiceOffer(a);
   const h = hingeOffer(a);
   const q = quickOffer(a);
@@ -939,13 +1036,14 @@ export type ShownCell = { cell: string; shown: number; room: number; need: strin
  * (CAP-NEED-AUDIT.md, 18 Oct 2026). For the test that no shown cap exceeds its room and none sits
  * under its need where the room allows it.
  */
-export function shownCells(stage: WriterStage): ShownCell[] {
+export function shownCells(stage: WriterStage, o: MenuOpts = {}): ShownCell[] {
   const a = MENU_AGE[stage];
+  const m = vnsOf(o);
   const out: ShownCell[] = [];
   for (const c of ["items-row", "panel-list"] as const)
     for (const v of (c === "items-row" ? ["", "num"] : ["", "pics"]) as ListVariant[])
       for (const lead of [false, true])
-        for (const n of lead ? leadNs(c, a, v) : NS(c, a, v)) {
+        for (const n of lead ? leadNs(c, a, v, m) : NS(c, a, v, m)) {
           const caps = must(listCaps(c, a, n, lead, v), `${c} ${a} ${n}`);
           out.push({
             cell: `${c} ${n}${v}${lead ? "+lead" : ""} item`,

@@ -62,6 +62,19 @@ describe("shown caps hold the room and the need", () => {
       for (const c of cells) check(c.cell, stage, c.shown, c.room, c.need);
     });
 
+    test(`${stage}: with the pictured floor (TEACH-247 part cv), the same rule holds`, () => {
+      const on = shownCells(stage, { picturedFloor: true });
+      const off = new Set(shownCells(stage).map((c) => c.cell));
+      const added = on.filter((c) => !off.has(c.cell)).map((c) => c.cell);
+      // Only KS1 gains cells: 4 iconed parts and 3 or 4 pictured kinds, each checked below.
+      expect(added).toEqual(
+        stage === "KS1"
+          ? ["items-row 4 item", "panel-list 3pics item", "panel-list 4pics item"]
+          : [],
+      );
+      for (const c of on) check(c.cell, stage, c.shown, c.room, c.need);
+    });
+
     test(`${stage}: fit layouts, every offered fit's body fields`, () => {
       const offer = fitOffer(stage);
       for (const layout of FIT_LAYOUTS)
