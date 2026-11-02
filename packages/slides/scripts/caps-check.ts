@@ -142,6 +142,7 @@ const ALSO_WRITES: Record<string, string[]> = {
   "reasons-capacity.json": ["reasons-picture-capacity.json"],
   "items-row-capacity.json": ["items-row-pictures-capacity.json"],
   "figure-capacity.json": ["figure-two-line-capacity.json"],
+  "picture-text-capacity.json": ["picture-text-key-capacity.json"],
 };
 
 async function main() {

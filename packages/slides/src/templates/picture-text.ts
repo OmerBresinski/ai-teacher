@@ -54,6 +54,7 @@ import {
 } from "./index";
 import { iconSrc, matchIcon } from "./panel-list-deps";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
+import KEY_CAPACITY from "./picture-text-key-capacity.json" with { type: "json" };
 import { restyleModelSvg } from "./steps-model";
 
 export type KeyCardKind = "word" | "rule" | "examples" | "fact";
@@ -123,6 +124,14 @@ export const KEY_CAPS = {
   num: 6,
   unit: 1,
 };
+
+/**
+ * The key card look's measured room (TEACH-247 part co, `picture-text-key-capacity.json`): the most
+ * cards beside a picture, and per count the words the lead and each card's meaning may hold with
+ * every field full at once. `KEY_CAPS` stays the gold's per-field ceiling; these are what render.
+ */
+export const KEY_FIT: Record<Group, { cards: number; words: Record<"1" | "2", number> }> =
+  KEY_CAPACITY;
 
 const words = (s: string | undefined | null) =>
   (s ?? "").trim().split(/\s+/).filter(Boolean).length;

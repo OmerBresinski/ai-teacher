@@ -4,9 +4,16 @@ import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, THEMES } from "../themes";
 import { drawnPicture, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import { type KeyCard, PT_CAPS, PT_NAMES } from "./picture-text";
-import { measurePictureTextCaps } from "./picture-text-capacity";
+import {
+  KEY_MIN_WORDS,
+  keyCardFits,
+  keyCardInput,
+  measureKeyCardCaps,
+  measurePictureTextCaps,
+} from "./picture-text-capacity";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
 import { PT_CASES, photo, SVG } from "./picture-text-fixtures";
+import KEY_CAPACITY from "./picture-text-key-capacity.json" with { type: "json" };
 
 /*
  * TEACH-75 part ae (C6): picture and text, the v13 gold B "tucked field", and its key card look.
@@ -289,6 +296,32 @@ describe("picture and text: old slides and capacity", () => {
   });
   test("picture-text-capacity.json is what the renderer measures", () => {
     expect(measurePictureTextCaps()).toEqual(CAPACITY);
+  });
+  // TEACH-247 part co: the key card look measured with the lead, every field full at once.
+  test("picture-text-key-capacity.json is what the renderer measures", () => {
+    expect(measureKeyCardCaps()).toEqual(KEY_CAPACITY);
+  });
+  test("the gold's caps together overflow the KS1 column; each group's room fits, one more does not", () => {
+    const over = (n: number) =>
+      layoutTemplate(keyCardInput(n, 1, "word"), getTheme("crayon", "ks1"), "ks1").over;
+    expect(over(16).some((o) => o.startsWith("picture-text column "))).toBe(true);
+    const groups: Record<keyof typeof KEY_CAPACITY, Stage[]> = {
+      KS1: ["ks1"],
+      KS2: ["ks2"],
+      "KS3-5": ["ks3", "ks4", "ks5"],
+    };
+    for (const [g, stages] of Object.entries(groups) as [keyof typeof KEY_CAPACITY, Stage[]][]) {
+      const n = KEY_CAPACITY[g].words["1"];
+      expect([g, n >= KEY_MIN_WORDS]).toEqual([g, true]);
+      expect([g, keyCardFits(stages, n, 1)]).toEqual([g, true]);
+      expect([g, keyCardFits(stages, n + 1, 1)]).toEqual([g, false]);
+      // Two cards beside a picture: not even the fewest words fit, so one card is offered.
+      expect([g, keyCardFits(stages, KEY_MIN_WORDS, 2), KEY_CAPACITY[g].cards]).toEqual([
+        g,
+        false,
+        1,
+      ]);
+    }
   });
 });
 
