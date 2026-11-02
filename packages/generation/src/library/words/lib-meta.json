@@ -178,6 +178,90 @@
           "when": ["\\bcounts?\\b", "how many", "tally", "number of", "population"]
         }
       ]
+    },
+    "leaf_section": {
+      "answerKeys": ["epidermis", "palisade", "spongy", "vein", "stomata", "gases"],
+      "cannot": [
+        {
+          "what": "a single plant cell and its parts",
+          "when": [
+            "\\bnucleus\\b",
+            "\\bvacuole\\b",
+            "cell membrane",
+            "cell wall",
+            "a plant cell",
+            "animal cell"
+          ]
+        },
+        {
+          "what": "the photosynthesis inputs, outputs or word equation",
+          "when": ["word equation", "\\bglucose\\b", "\\bstarch\\b", "what (goes in|comes out)"]
+        },
+        {
+          "what": "a transpiration rate experiment or graph",
+          "when": ["potometer", "rate of transpiration", "\\bgraph\\b"]
+        }
+      ],
+      "optionalPanels": [
+        {
+          "param": "gases",
+          "what": "the gases through the stoma",
+          "when": [
+            "\\bgas",
+            "carbon dioxide",
+            "oxygen",
+            "diffus",
+            "transpir",
+            "exchange",
+            "stomata? (open|close|let)"
+          ]
+        }
+      ]
+    },
+    "erosion_processes": {
+      "answerKeys": [
+        "hydraulic",
+        "abrasion",
+        "attrition",
+        "solution",
+        "traction",
+        "saltation",
+        "suspension",
+        "dissolved"
+      ],
+      "cannot": [
+        {
+          "what": "river landforms (meanders, waterfalls, ox-bow lakes)",
+          "when": [
+            "meander",
+            "waterfall",
+            "ox-?bow",
+            "\\bgorge",
+            "v-shaped",
+            "flood ?plain",
+            "levee"
+          ]
+        },
+        {
+          "what": "coastal landforms (caves, arches, stacks)",
+          "when": [
+            "\\bcaves?\\b",
+            "\\barch(es)?\\b",
+            "\\bstacks?\\b",
+            "\\bstumps?\\b",
+            "headland",
+            "wave-cut"
+          ]
+        },
+        {
+          "what": "weathering",
+          "when": ["weathering", "freeze[- ]thaw"]
+        },
+        {
+          "what": "deposition",
+          "when": ["\\bdeposit"]
+        }
+      ]
     }
   }
 }

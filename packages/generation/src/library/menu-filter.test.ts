@@ -1,5 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
+import { modelBodyRect } from "@tj/slides/templates";
+import { getTheme } from "@tj/slides/themes";
 import { catalogue, libSchema, libSystem, subjectToken, yearToken } from "./catalogue";
+import { libraryDiagram } from "./fill";
+import { endDrawThread } from "./guard";
+import { loadModel } from "./render";
 
 /*
  * Library turn-on step 4 (CROSSCHECK point 1, flag `libraryMenuFilter`): a Y1 science prompt
@@ -37,6 +42,38 @@ describe("menu filter by year and subject", () => {
     expect(await ids("KS2", "Year 5", "Maths")).toContain("fractions");
     expect(await ids("KS2", "Year 4", "Geography")).toContain("rivers_coasts");
   });
+  test("y8 maths keeps the balance (TEACH-247 part cl): a KS3 equations lesson had no maths model", async () => {
+    expect(await ids("KS3-5", "Year 8", "Maths")).toContain("balance_equations");
+    expect(await ids("KS3-5", "Year 8", "Science")).not.toContain("balance_equations");
+    expect(await ids("KS3-5", "Year 12", "Maths")).not.toContain("balance_equations"); // KS3 only
+  });
+  test("the KS3 balance preset draws at KS3 slide size through the writer's path", async () => {
+    const theme = getTheme("studio", "ks3" as never);
+    const place = modelBodyRect("Solve 3x + 2 = x + 10", undefined, theme, "ks3" as never);
+    const m = await loadModel("balance_equations");
+    const pre = m?.presets.find((p) => p.id === "ks3-both-sides");
+    expect(pre).toBeDefined();
+    const r = await libraryDiagram(
+      {
+        key: "d",
+        model: "balance_equations",
+        intent: "Solve an equation with the unknown on both sides",
+        words: "",
+        heading: "",
+        caption: "",
+        yearGroup: "Year 7",
+        lesson: "Maths: solving equations",
+        labelOverlap: true,
+        labelFloor: true,
+        font: theme.fonts.body,
+        place,
+      },
+      async () => ({ ...(pre?.params ?? {}) }),
+    );
+    expect(r.ok ? "ok" : r.reason).toBe("ok");
+    // the working ends by dividing both sides by 2 (x = 4 is drawn as separate runs)
+    if (r.ok) expect(r.drawing.svg).toContain("÷ 2 on both sides");
+  }, 60_000);
   test("y12 psychology: empty, so no Models block and no model schema branch", async () => {
     const e = await catalogue("KS3-5", { yearGroup: "Year 12", subject: "Psychology" });
     expect(e).toEqual([]);
@@ -61,3 +98,5 @@ describe("menu filter by year and subject", () => {
     expect(s.$defs["dg-model-full"]?.properties?.model?.enum).toEqual(e.map((x) => x.id));
   });
 });
+
+afterAll(() => endDrawThread());

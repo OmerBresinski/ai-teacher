@@ -11,6 +11,18 @@ export type Case = {
 };
 export const TARGETED: Case[] = [
   {
+    id: "leaf_section",
+    label: "chloroplasts in the upper epidermis",
+    expect: "refused",
+    params: { title: "Inside a leaf", text: { "label:epidermis": "Upper epidermis: full of chloroplasts" } },
+  },
+  {
+    id: "erosion_processes",
+    label: "attrition described as wearing the banks",
+    expect: "refused",
+    params: { title: "How rivers erode", text: { "label:line:attrition": "Rocks wear away the banks" } },
+  },
+  {
     id: "food_chain",
     label: "ocean: shark on the seal",
     expect: "drawn",
