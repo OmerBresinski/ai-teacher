@@ -30,7 +30,9 @@ import { type WriterBundleId, writerBundle } from "./bundle";
 import {
   borrowCheckVisuals,
   CHECK_TEMPLATES,
+  dropLeakingPicks,
   fitsWithVisual,
+  hasVisual,
   lentKey,
   relend,
 } from "./check-pictures";
@@ -666,6 +668,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** noTableText: a table that could not be shown, as note lines, held by the slide object as `relaid` is. */
   const tableNotes = new Map<number, { slide: unknown; lines: string[] }>();
   const notes = new Map<number, { notes: string; answers: string[] }>();
+  /** TEACH-247 part cw: check slides whose repaired picture leaked and was dropped. */
+  const repairDropped = new Set<number>();
   /** TEACH-247 part cx: check slides whose picture the flow's look added, by the key it sits under. */
   const lookAdded = new Map<number, string>();
   const isCheckLayout = (t: string) => CHECK_TEMPLATES.has(t) || t === "question-set";
@@ -1451,6 +1455,24 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // row, its pictures, its panel picture); an all-null icon row is not (`lookMet`).
     } else if (look && !lookMet(s, look, iconSubject))
       log({ ev: "look-unmet", slide: idx + 1, kind: look.kind });
+    // TEACH-247 part cw (CODE-NOTE v4.21 item 2): a check slide's picture the writer chose (on
+    // the slide, or from its look just above) passes cj's answer-leak test before it is asked for.
+    // One whose request names an answer is dropped, never searched for or drawn, and logged; the
+    // slide then goes to cj like any check slide with no visual (`borrowForChecks`: a leak-safe
+    // teaching visual, or its own logged skip). A quick check never borrows: it ships text-only.
+    const screened = dropLeakingPicks(s, added.how?.replace(/-from-look$/, ""));
+    for (const d of screened.dropped)
+      log({
+        ev: "check-look-leak",
+        level: "warn",
+        slide: idx + 1,
+        template: String(s.template),
+        key: d.key,
+        origin: d.origin,
+        why: d.why,
+        next: CHECK_TEMPLATES.has(String(s.template)) ? "cj" : "text-only",
+      });
+    s = screened.slide;
     const one = titleOneThing(s);
     if (one.how) {
       log({
@@ -2661,6 +2683,26 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       o2.slide = rest;
     }
     const before = plan.slides[i] as S;
+    // TEACH-247 part cw (review): a repair may keep or add a check slide's own picture; it passes
+    // the same leak test as at close. A leaking one is dropped and logged, and the slide is left
+    // to cj: first its lent visual, put back below when the slide had one, else cj's re-check after
+    // the repairs (`borrowForChecks` over `repairDropped`).
+    const rescreened = dropLeakingPicks(o2.slide, undefined, true);
+    for (const d of rescreened.dropped)
+      log({
+        ev: "check-look-leak",
+        level: "warn",
+        slide: i + 1,
+        template: String(o2.slide.template),
+        key: d.key,
+        origin: d.origin,
+        why: d.why,
+        next: CHECK_TEMPLATES.has(String(o2.slide.template)) ? "cj" : "text-only",
+      });
+    if (rescreened.dropped.length) {
+      o2.slide = rescreened.slide;
+      repairDropped.add(i);
+    }
     // TEACH-247 part cj: a check slide's lent visual is code's, not the writer's: a repair rewords
     // around it and it goes back under the key the rewrite's layout reads, when the new words
     // still fit beside it; otherwise the loss is logged (and the guard below judges the rewrite).
@@ -3548,7 +3590,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // TEACH-247 part cj: a check slide a repair rewrote without its borrowed visual gets it again
   // when it still fits, or the loss is logged.
   borrowForChecks(
-    new Set([...borrowedChecks.keys()].filter((i) => !lentKey(plan.slides[i] as S | undefined))),
+    new Set([
+      ...[...borrowedChecks.keys()].filter((i) => !lentKey(plan.slides[i] as S | undefined)),
+      // TEACH-247 part cw (review): a check slide whose repaired picture leaked and was dropped.
+      ...[...repairDropped].filter((i) => !hasVisual(plan.slides[i] as S)),
+    ]),
   );
   // A lent visual still on the slide but not drawn (a drawing that no longer parses, a figure the
   // checks restaged) is a loss too: logged, never silent.
