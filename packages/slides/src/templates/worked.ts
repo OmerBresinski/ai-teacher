@@ -11,6 +11,11 @@
  *   apart), and the type shrinks only when rows have to get closer.
  * - **Reveal:** row *i* (its badge, rail segment, move, equation and answer plate) is reveal step
  *   *i*; the check is the last step. Every worked example takes one click per row.
+ * - **Every move is drawn** (TEACH-247 part cm): the writer writes each row as the move and the
+ *   equation it gives, so its row 1 carries a move. The working then opens on the problem's own
+ *   equation (`problemEquation`, read from the heading) and each move sits on the row it leads to.
+ *   A move with no row above it (the heading holds no equation, a continued slide, or row 1 is the
+ *   problem itself) leads from the heading to row 1. A written move is never dropped.
  * - **Panel:** a bar model (TEACH-75 part y) at panel size on a sand field; build *i* rides row *i*
  *   (TEACH-205 part c `buildFrom`). An equation panel's frames are matched to the rows shown
  *   (`workedFrames`, TEACH-247 part ch): each row pictures its own move, and when row 1 is not the
@@ -50,8 +55,11 @@ import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
 
-/** One working line: the move that led to it (none on line 1), the equation, the answer line. */
-export type WorkedLine = { move?: string; eq: string; answer?: boolean };
+/**
+ * One working line: the move that led to it, the equation, the answer line. `at` is the line's
+ * index in the input (`lines.<at>`); the problem's opening row (`problemEquation`) has none.
+ */
+export type WorkedLine = { move?: string; eq: string; answer?: boolean; at?: number };
 /**
  * The writer's panel: ax + b = c as a bar, or p% of an amount by tenths. `division-bar`
  * (x/a + b = c) is set by code only (`workedPanelFrom`), never offered to the writer.
@@ -101,6 +109,8 @@ const ARROW_W = pt(70);
 const PANEL_W = pt(480);
 const EQ_LH = 1.2;
 const SAY_LH = 1.12;
+/** Heading bottom to row 1's middle when row 1's move leads from the heading (two move lines). */
+const LEAD_GAP = pt(100);
 /** The narrowest move column (two lines of a six-word move). */
 const MOVE_MIN_W = pt(200);
 /**
@@ -231,15 +241,52 @@ export function barPanelOf(
   return undefined;
 }
 
-/** The lines the slide shows: only lines with words, their maths set (`mathText`). */
+/**
+ * The equation the problem states (TEACH-247 part cm): the heading's maths after its last word
+ * ("Solve 3x + 5 = 20", "Solve for x: 3x − 4 = −10", "Check x = 6 in 2x + 3 = 15"), one "=" with
+ * both sides. Undefined when the heading ends in words or holds a quantity, not an equation
+ * ("Find ⅔ of 24", "… in 20 s", "(continued)").
+ */
+export function problemEquation(heading: string): string | undefined {
+  const words = heading
+    .trim()
+    .replace(/[.!?;,]+$/, "")
+    .split(/\s+/);
+  const tail: string[] = [];
+  for (let i = words.length - 1; i >= 0; i--) {
+    const w = words[i] as string;
+    // A word (two letters running) or a lead-in ending in a colon ends the maths.
+    if (/\p{L}{2,}/u.test(w) || w.endsWith(":")) break;
+    tail.unshift(w);
+  }
+  const eq = tail.join(" ");
+  const sides = eq.split("=");
+  if (sides.length !== 2 || !sides.every((x) => /[\p{L}\p{N}]/u.test(x))) return undefined;
+  return eq;
+}
+
+type RawLine = { move?: string; eq: string; answer?: boolean; at?: number };
+/**
+ * The input's lines with words, and before them the problem's equation when line 1 carries a move
+ * and is not that equation itself (TEACH-247 part cm): each move then has the row it leads from.
+ */
+function rowsOf(input: TemplateInput): RawLine[] {
+  const raw: RawLine[] = (input.lines ?? []).flatMap((l, at) =>
+    l && typeof l.eq === "string" && l.eq.trim() ? [{ ...l, at }] : [],
+  );
+  const first = raw[0];
+  const start = first?.move?.trim() ? problemEquation(input.heading ?? "") : undefined;
+  return first && start && flat(start) !== flat(first.eq) ? [{ eq: start }, ...raw] : raw;
+}
+
+/** The rows the slide shows: the problem's opening row if any, then lines with words, maths set. */
 export function workedLines(input: TemplateInput): WorkedLine[] {
-  return (input.lines ?? [])
-    .filter((l) => l && typeof l.eq === "string" && l.eq.trim())
-    .map((l) => ({
-      ...(l.move?.trim() ? { move: mathText(l.move.trim()) } : {}),
-      eq: mathText(l.eq.trim()),
-      ...(l.answer ? { answer: true } : {}),
-    }));
+  return rowsOf(input).map((l) => ({
+    ...(l.move?.trim() ? { move: mathText(l.move.trim()) } : {}),
+    eq: mathText(l.eq.trim()),
+    ...(l.answer ? { answer: true } : {}),
+    ...(l.at !== undefined ? { at: l.at } : {}),
+  }));
 }
 
 // ─── the panel's equation and its frames (TEACH-247 part ch) ─────────────────────────────────
@@ -432,17 +479,21 @@ export function workedMax(stage: Stage, panel = false): number {
  * slides are text only.
  */
 export function splitWorked(input: TemplateInput, stage: Stage): TemplateInput[] {
-  const lines = input.lines ?? [];
+  // The rows the slide shows (the problem's opening row among them, TEACH-247 part cm).
+  const lines = rowsOf(input).map(({ at: _at, ...l }) => l);
   const check = input.check?.trim() ? 1 : 0;
   const max = workedMax(stage, panelDraws(input));
   if (lines.length + check <= max) return [input];
   const out: TemplateInput[] = [];
   const { barPanel: _p, ...plain } = input;
+  const most = workedMax(stage);
   for (let i = 0; i < lines.length; ) {
-    const room = workedMax(stage) - (lines.length - i <= workedMax(stage) - check ? check : 0);
-    let n = Math.min(room, lines.length - i);
+    const left = lines.length - i;
+    // All that is left when it fits with the check; else at most a slide's rows, and never all of
+    // them when the check would then have no room (6 lines and a check at KS3 was one 7-row slide).
+    let n = left + check <= most ? left : Math.min(most, left - 1);
     // Never leave one line alone on the last slide.
-    if (lines.length - i - n === 1 && n > 2) n -= 1;
+    if (left - n === 1 && n > 2) n -= 1;
     const last = i + n >= lines.length;
     out.push({
       ...plain,
@@ -533,10 +584,13 @@ function plan(
   noPanel = false,
 ): Plan {
   const age = ageOf(stage);
-  const nEq = Math.max(1, workedLines(input).length);
+  const rows = workedLines(input);
+  const nEq = Math.max(1, rows.length);
   const check = !!input.check?.trim();
   const model = !noPanel && panelDraws(input);
-  const row1 = Math.max(ROW1, headBottom + pt(56));
+  // A move on row 1 leads from the heading (TEACH-247 part cm): row 1 sits low enough under the
+  // heading for its two lines.
+  const row1 = Math.max(ROW1, headBottom + (rows[0]?.move ? LEAD_GAP : pt(56)));
   const checkH = nEq > 3 ? pt(100) : pt(116);
   const checkTop = H - FOOT - checkH;
   const lastY = check ? checkTop - pt(70) : H - FOOT - pt(60);
@@ -696,7 +750,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   let p = plan(c, input, headBottom, stage);
   if (!lines.length) return;
   const floor = eqFloorOf(stage);
-  const hasMoves = lines.some((l, i) => i > 0 && l.move);
+  const hasMoves = lines.some((l) => l.move);
   // The geometry at an equation size: the "=" column on the widest left side, the moves just right
   // of the widest right side.
   const geom = (eq: number, model: boolean) => {
@@ -753,11 +807,18 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const sayW = Math.max(60, p.right - sayL);
   if (hasMoves && sayW < MOVE_MIN_W) c.over.push("worked moves have no room");
   const eqH = p.eq * EQ_LH;
-  // A move takes one line if it fits, else two; type steps down only when two will not fit the pitch.
+  // A move's band: from the row above to its own row. Row 1's move leads from the heading, from
+  // just under it to row 1 (TEACH-247 part cm), never over the heading.
+  const band = (i: number) => {
+    const top = i > 0 ? yOf(i - 1) : Math.max(headBottom + pt(6), yOf(0) - p.pitch);
+    return { top, h: yOf(i) - top };
+  };
+  // A move takes one line if it fits, else two; type steps down only when two will not fit its band.
   const moveLines = (m: string, size: number) => countLines(m, "body", c.t, sayW, 600, size);
-  const roomFor = (size: number) => Math.min(2, Math.floor((p.pitch + 4) / (size * SAY_LH)));
-  for (const s of rungs(p.say, sayMin, pt(1)).slice(1))
-    if (lines.some((l) => l.move && moveLines(l.move, p.say) > roomFor(p.say))) p.say = s;
+  const roomFor = (size: number, h: number) => Math.min(2, Math.floor((h + 4) / (size * SAY_LH)));
+  const crowded = (size: number) =>
+    lines.some((l, i) => l.move && moveLines(l.move, size) > roomFor(size, band(i).h));
+  for (const s of rungs(p.say, sayMin, pt(1)).slice(1)) if (crowded(p.say)) p.say = s;
 
   // The rail of badges: ghosts from the start, each row's badge and rail segment on its step.
   const badgeY = lines.map((_, i) => yOf(i));
@@ -961,12 +1022,12 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       );
   });
 
-  // The moves: a red bracket arrow from the line above to this one, the instruction beside it.
+  // The moves: a red bracket arrow from the line above to this one (row 1's from the heading), the
+  // instruction beside it. Every written move is drawn (TEACH-247 part cm).
   lines.forEach((l, i) => {
-    if (!l.move || i === 0) return;
+    if (!l.move) return;
     const R = i + 1;
-    const top = yOf(i - 1);
-    const h = p.pitch;
+    const { top, h } = band(i);
     const t = h * 0.12;
     const arrow = arrowCubic(
       [pt(8), t],
@@ -986,7 +1047,8 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       R,
     );
     if (wordCount(l.move) > caps.moveWords) c.tight = true;
-    if (moveLines(l.move, p.say) > roomFor(p.say)) c.over.push(`worked move ${R} past 2 lines`);
+    if (moveLines(l.move, p.say) > roomFor(p.say, h))
+      c.over.push(`worked move ${R} past ${roomFor(p.say, h)} lines`);
   });
 
   // The check: its own sand strip (a card beside the panel), "Check:", the sum and a tick.
@@ -1127,7 +1189,7 @@ function fieldsOf(
     out.push(
       report(
         `Move ${i + 1}`,
-        `lines.${i}.move`,
+        `lines.${l.at ?? i}.move`,
         l.move.length,
         perLine,
         Math.min(2 * perLine, caps.moveWords * 8),

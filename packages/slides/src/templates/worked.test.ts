@@ -9,10 +9,12 @@ import {
   moveHot,
   panelDraws,
   panelLost,
+  problemEquation,
   snap,
   splitWorked,
   WORKED_NAMES,
   workedFrames,
+  workedLines,
   workedMax,
   workedPanelFrom,
 } from "./worked";
@@ -255,11 +257,31 @@ describe("worked example: the bar model fits the rows shown (TEACH-247 part ch)"
     ) as { revealStep?: number; buildFrom?: number; builds?: number; src: string } | undefined;
     return { r, img };
   };
+  // The rows the slide shows: the problem's opening row (TEACH-247 part cm), the lines, the check.
   const rowsOf = (input: TemplateInput) =>
-    (input.lines?.length ?? 0) + (input.check?.trim() ? 1 : 0);
+    workedLines(input).length + (input.check?.trim() ? 1 : 0);
 
-  test("2 rows (the equations-C slide): the whole opens with the heading, take then share", () => {
+  test("2 lines (the equations-C slide): the problem opens as row 1, take then share", () => {
     const input = solve();
+    // TEACH-247 part cm: row 1 is the heading's equation, so the whole rides row 1.
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share"],
+      lead: false,
+    });
+    const { r, img } = panelOfSlide(input);
+    expect(r.diagram).toBeUndefined();
+    expect(r.over).toEqual([]);
+    expect(img?.revealStep).toBe(1);
+    expect(img?.buildFrom).toBe(2);
+    expect(img?.builds).toBe(2);
+    expect(rowsOf(input)).toBe(3);
+    expect(slideStepCount(r.slide as Slide)).toBe(rowsOf(input));
+    expect(named(r.slide.elements as El[], WORKED_NAMES.field)).toHaveLength(1);
+  });
+
+  test("a heading with no equation: the whole opens with the heading, build i with row i", () => {
+    const input = solve({ heading: "Solve for x" });
     expect(workedFrames(input)).toEqual({
       ok: true,
       frames: ["whole", "take", "share"],
@@ -273,13 +295,12 @@ describe("worked example: the bar model fits the rows shown (TEACH-247 part ch)"
     expect(img?.buildFrom).toBe(1);
     expect(img?.builds).toBe(2);
     expect(slideStepCount(r.slide as Slide)).toBe(rowsOf(input));
-    expect(named(r.slide.elements as El[], WORKED_NAMES.field)).toHaveLength(1);
   });
 
-  test("3 rows (2 lines and the check): take, share, check after the opening whole", () => {
+  test("2 lines and the check: whole, take, share, check, one per row", () => {
     const input = solve({ check: "3 × *5* + 5 = 20" });
     const f = workedFrames(input);
-    expect(f).toEqual({ ok: true, frames: ["whole", "take", "share", "check"], lead: true });
+    expect(f).toEqual({ ok: true, frames: ["whole", "take", "share", "check"], lead: false });
     const { r, img } = panelOfSlide(input);
     expect(r.diagram).toBeUndefined();
     expect(img?.builds).toBe(3);
@@ -325,7 +346,7 @@ describe("worked example: the bar model fits the rows shown (TEACH-247 part ch)"
     expect(workedFrames(input)).toEqual({
       ok: true,
       frames: ["whole", "take", "share", "share"],
-      lead: true,
+      lead: false,
     });
     expect(panelDraws(input)).toBe(true);
   });
@@ -342,7 +363,7 @@ describe("worked example: the bar model fits the rows shown (TEACH-247 part ch)"
     expect(workedFrames(input)).toEqual({
       ok: true,
       frames: ["whole", "take", "scale"],
-      lead: true,
+      lead: false,
     });
     const { r, img } = panelOfSlide(input);
     expect(r.diagram).toBeUndefined();
@@ -499,9 +520,10 @@ describe("worked example: each build pictures its row's equation (TEACH-247 part
     test(`${k.name}: build i shows row i's equation, both sides`, () => {
       const f = workedFrames(k.input);
       if (!f.ok) throw new Error(f.reason);
+      // The rows the slide shows (the problem's opening row among them, TEACH-247 part cm).
       const rows = [
         ...(f.lead ? [k.input.heading] : []),
-        ...(k.input.lines ?? []).map((l) => l.eq),
+        ...workedLines(k.input).map((l) => l.eq),
         ...(k.input.check ? ["check"] : []),
       ];
       expect(rows).toHaveLength(f.frames.length);
@@ -574,7 +596,8 @@ describe("worked example: no wrong bar model (TEACH-247 part ch)", () => {
     ]);
     expect(workedFrames(s).ok).toBe(false);
     expect(panelDraws(s)).toBe(false);
-    expect(panelLost(s)).toContain("cannot picture row 1");
+    // Row 1 is the problem (TEACH-247 part cm); the writer's first line is row 2.
+    expect(panelLost(s)).toContain("cannot picture row 2");
     const r = layoutTemplate(s, getTheme("paper"), "ks3");
     expect(r.diagram?.join()).toContain("worked panel:");
   });
@@ -594,13 +617,207 @@ describe("worked example: no wrong bar model (TEACH-247 part ch)", () => {
     expect(workedFrames(sub5)).toEqual({
       ok: true,
       frames: ["whole", "take", "share"],
-      lead: true,
+      lead: false,
     });
     // A parsed row that is the take by its equation, whatever its move says.
     const ok = slide("Solve 3x + 5 = 20", base, [
       { move: "Take 5 away", eq: "3x + 5 − 5 = 20 − 5" },
       { eq: "x = 5", answer: true },
     ]);
-    expect(workedFrames(ok)).toEqual({ ok: true, frames: ["whole", "take", "share"], lead: true });
+    expect(workedFrames(ok)).toEqual({ ok: true, frames: ["whole", "take", "share"], lead: false });
+  });
+});
+
+/*
+ * TEACH-247 part cm: the writer is told "each row the move in words, then the equation it gives"
+ * and that the heading is the problem, so its row 1 carries a move ("Subtract 5 from both sides",
+ * "3x = 15"). The slide used to draw no move on row 1: the first step was lost on every equations
+ * deck. Every written move is now drawn: the working opens on the problem's equation (read from the
+ * heading) and a move with no line above it leads from the heading.
+ */
+describe("worked example: a written move is never lost (TEACH-247 part cm)", () => {
+  const text = (e: El) =>
+    [...JSON.stringify(e.doc ?? "").matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join("");
+  const writer = (over: Partial<TemplateInput> = {}): TemplateInput => ({
+    template: "worked",
+    heading: "Solve 3x + 5 = 20",
+    lines: [
+      { move: "Subtract 5 from both sides", eq: "3x = 15" },
+      { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+    ],
+    ...over,
+  });
+  const fraction = writer({
+    heading: "Find ⅔ of 24",
+    vars: [],
+    lines: [
+      { move: "Divide by the denominator, 3", eq: "24 ÷ 3 = 8" },
+      { move: "Multiply by the numerator, 2", eq: "8 × 2 = 16", answer: true },
+    ],
+  });
+  const check = writer({
+    heading: "Check x = 6 in 2x + 3 = 15",
+    lines: [
+      { move: "Substitute 6 for x", eq: "2(6) + 3" },
+      { move: "Calculate the left side", eq: "12 + 3 = 15" },
+      { move: "Compare with the right side", eq: "15 = 15, so x = 6 is a solution", answer: true },
+    ],
+  });
+  const started = writer({
+    lines: [
+      { move: "Start with the equation", eq: "3x + 5 = 20" },
+      { move: "Subtract 5 from both sides", eq: "3x = 15" },
+      { move: "Divide both sides by 3", eq: "x = 5", answer: true },
+    ],
+  });
+  const word = writer({
+    heading: "Mass falls from 50 g to 46 g in 20 s",
+    vars: [],
+    lines: [
+      { move: "Find the mass lost", eq: "50 - 46 = 4 g" },
+      { move: "Divide by the time", eq: "4 g ÷ 20 s = 0.2 g/s", answer: true },
+    ],
+  });
+  const movesOf = (input: TemplateInput) =>
+    (input.lines ?? []).flatMap((l) => (l.move?.trim() ? [mathText(l.move.trim())] : []));
+  const drawnMoves = (els: readonly El[]) => named(els, WORKED_NAMES.move).map(text);
+
+  test("the problem's equation is the one the heading states, after its words", () => {
+    expect(problemEquation("Solve 3x + 5 = 20")).toBe("3x + 5 = 20");
+    expect(problemEquation("Solve x/4 + 3 = 8.")).toBe("x/4 + 3 = 8");
+    expect(problemEquation("Solve for x: 3x − 4 = −10")).toBe("3x − 4 = −10");
+    expect(problemEquation("Check x = 6 in 2x + 3 = 15")).toBe("2x + 3 = 15");
+    expect(problemEquation("Solve 4(x - 3) = 2x + 6")).toBe("4(x - 3) = 2x + 6");
+    // No equation: a quantity, a word problem, a question, a continued slide.
+    expect(problemEquation("Find ⅔ of 24")).toBeUndefined();
+    expect(problemEquation("Mass falls from 50 g to 46 g in 20 s")).toBeUndefined();
+    expect(problemEquation("How many moles are in 22 g of CO₂?")).toBeUndefined();
+    expect(problemEquation("Solve 3x + 5 = 20 (continued)")).toBeUndefined();
+  });
+
+  test("the writer's rows: the working opens on the problem, then each move on its own row", () => {
+    const r = layoutTemplate(writer(), getTheme("paper"), "ks3");
+    const els = r.slide.elements as El[];
+    expect(r.over).toEqual([]);
+    expect(drawnMoves(els)).toEqual(movesOf(writer()));
+    // Row 1 is the problem's equation, then the two rows the writer wrote: one click a row.
+    const lefts = named(els, WORKED_NAMES.left).map(text);
+    const rights = named(els, WORKED_NAMES.right).map(text);
+    expect(lefts).toEqual(["3x + 5", "3x", "x"]);
+    expect(rights).toEqual(["20", "15", "5"]);
+    expect(slideStepCount(r.slide as Slide)).toBe(3);
+    // "Subtract 5" leads from row 1 to row 2, on row 2's click, with its arrow.
+    const [m1, m2] = named(els, WORKED_NAMES.move);
+    expect(m1?.revealStep).toBe(2);
+    expect(m2?.revealStep).toBe(3);
+    for (const m of [m1, m2])
+      expect(named(els, WORKED_NAMES.arrow).some((a) => a.revealStep === m?.revealStep)).toBe(true);
+    // The field counters keep the writer's own path for its first move.
+    expect(r.fields?.map((f) => f.path)).toContain("lines.0.move");
+    expect(r.fields?.find((f) => f.path === "lines.0.move")?.chars).toBe(
+      "Subtract 5 from both sides".length,
+    );
+  });
+
+  test("with its bar model the problem's row is the panel's whole, shown with row 1", () => {
+    const input = writer({ barPanel: { model: "algebra-bar", a: 3, b: 5, c: 20 } });
+    expect(workedFrames(input)).toEqual({
+      ok: true,
+      frames: ["whole", "take", "share"],
+      lead: false,
+    });
+    const r = layoutTemplate(input, getTheme("paper"), "ks3");
+    expect(r.over).toEqual([]);
+    expect(r.diagram).toBeUndefined();
+    expect(drawnMoves(r.slide.elements as El[])).toEqual(movesOf(input));
+    const img = r.slide.elements.find(
+      (e) => e.type === "image" && (e as { builds?: number }).builds,
+    ) as { revealStep?: number; buildFrom?: number; builds?: number } | undefined;
+    expect(img?.revealStep).toBe(1);
+    expect(img?.buildFrom).toBe(2);
+    expect(img?.builds).toBe(2);
+    expect(slideStepCount(r.slide as Slide)).toBe(3);
+  });
+
+  test("a heading with no equation: move 1 leads from the heading to row 1, on row 1's click", () => {
+    for (const input of [fraction, word]) {
+      const r = layoutTemplate(input, getTheme("paper"), "ks3");
+      const els = r.slide.elements as El[];
+      expect(r.over).toEqual([]);
+      expect(drawnMoves(els)).toEqual(movesOf(input));
+      expect(named(els, WORKED_NAMES.sign)).toHaveLength(2);
+      const heading = els.find((e) => e.name === "Heading") as El;
+      const row1 = named(els, WORKED_NAMES.left)[0] as El;
+      const move1 = named(els, WORKED_NAMES.move)[0] as El;
+      const arrow1 = named(els, WORKED_NAMES.arrow)[0] as El;
+      expect(move1.revealStep).toBe(1);
+      expect(arrow1.revealStep).toBe(1);
+      // Under the heading, ending at row 1's middle; beside the equations, never over them.
+      for (const e of [move1, arrow1]) {
+        expect(e.y).toBeGreaterThanOrEqual(heading.y + heading.h - 1);
+        expect(e.y + e.h).toBeLessThanOrEqual(row1.y + row1.h / 2 + 1);
+        expect(e.x).toBeGreaterThanOrEqual(row1.x + row1.w);
+      }
+    }
+  });
+
+  test("a row 1 that is the problem keeps its move, and the problem is not shown twice", () => {
+    const r = layoutTemplate(started, getTheme("paper"), "ks3");
+    const els = r.slide.elements as El[];
+    expect(r.over).toEqual([]);
+    expect(named(els, WORKED_NAMES.sign)).toHaveLength(3);
+    expect(drawnMoves(els)).toEqual(movesOf(started));
+  });
+
+  test("a substitution check opens on the equation it checks", () => {
+    const r = layoutTemplate(check, getTheme("paper"), "ks3");
+    const els = r.slide.elements as El[];
+    expect(drawnMoves(els)).toEqual(movesOf(check));
+    expect(named(els, WORKED_NAMES.left).map(text)[0]).toBe("2x + 3");
+  });
+
+  test("past the rows a slide holds, the continued slide's first move is still drawn", () => {
+    const long = writer({
+      heading: "Solve 4(x - 3) = 2x + 6",
+      lines: [
+        { move: "Expand the bracket", eq: "4x - 12 = 2x + 6" },
+        { move: "Subtract 2x from both sides", eq: "2x - 12 = 6" },
+        { move: "Add 12 to both sides", eq: "2x = 18" },
+        { move: "Divide both sides by 2", eq: "x = 9" },
+        { move: "Write the solution", eq: "x = 9", answer: true },
+      ],
+      check: "4(*9* - 3) = 24 = 2 × *9* + 6",
+    });
+    const parts = splitWorked(long, "ks3");
+    expect(parts.length).toBe(2);
+    const drawn: string[] = [];
+    for (const p of parts) {
+      const r = layoutTemplate(p, getTheme("paper"), "ks3");
+      expect(r.over).toEqual([]);
+      drawn.push(...drawnMoves(r.slide.elements as El[]));
+    }
+    expect(drawn).toEqual(movesOf(long));
+  });
+
+  test("on every theme and stage, every written move is on the slide", () => {
+    const lost: string[] = [];
+    const stages: Stage[] = ["ks1", "ks2", "ks3", "ks4", "ks5"];
+    for (const theme of THEMES)
+      for (const stage of stages)
+        for (const [k, input] of Object.entries({ writer, fraction, check, started, word })) {
+          const i = typeof input === "function" ? input() : input;
+          for (const p of splitWorked(i, stage)) {
+            const r = layoutTemplate(p, theme, stage);
+            const els = r.slide.elements as El[];
+            const want = movesOf(p);
+            const got = drawnMoves(els);
+            if (JSON.stringify(got) !== JSON.stringify(want))
+              lost.push(`${theme.id} ${stage} ${k}: ${got.length}/${want.length} moves drawn`);
+            for (const e of els)
+              if (e.x < 0 || e.y < 0 || e.x + e.w > 960.5 || e.y + e.h > 540.5)
+                lost.push(`${theme.id} ${stage} ${k} ${e.name} off the slide`);
+          }
+        }
+    expect(lost).toEqual([]);
   });
 });
