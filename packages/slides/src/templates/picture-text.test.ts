@@ -4,9 +4,15 @@ import { resolveTextStyle } from "../text-style";
 import { atKeyStage, getTheme, THEMES } from "../themes";
 import { drawnPicture, layoutTemplate, type Stage, type TemplateInput } from "./index";
 import { type KeyCard, PT_CAPS, PT_NAMES } from "./picture-text";
-import { measurePictureTextCaps } from "./picture-text-capacity";
+import {
+  keyCardFits,
+  keyCardInput,
+  measureKeyCardCaps,
+  measurePictureTextCaps,
+} from "./picture-text-capacity";
 import CAPACITY from "./picture-text-capacity.json" with { type: "json" };
 import { PT_CASES, photo, SVG } from "./picture-text-fixtures";
+import KEY_CAPACITY from "./picture-text-key-capacity.json" with { type: "json" };
 
 /*
  * TEACH-75 part ae (C6): picture and text, the v13 gold B "tucked field", and its key card look.
@@ -289,6 +295,18 @@ describe("picture and text: old slides and capacity", () => {
   });
   test("picture-text-capacity.json is what the renderer measures", () => {
     expect(measurePictureTextCaps()).toEqual(CAPACITY);
+  });
+  // TEACH-247 part co: the key card look measured with the lead, every field full at once.
+  test("picture-text-key-capacity.json is what the renderer measures", () => {
+    expect(measureKeyCardCaps()).toEqual(KEY_CAPACITY);
+  });
+  test("the gold's caps together overflow the KS1 column; the measured room fits, one more does not", () => {
+    const over = (n: number) =>
+      layoutTemplate(keyCardInput(n, 1, "word"), getTheme("crayon", "ks1"), "ks1").over;
+    expect(over(16).some((o) => o.startsWith("picture-text column "))).toBe(true);
+    const n = KEY_CAPACITY.KS1.words["1"];
+    expect(keyCardFits(["ks1"], n, 1)).toBe(true);
+    expect(keyCardFits(["ks1"], n + 1, 1)).toBe(false);
   });
 });
 

@@ -1,4 +1,5 @@
-import type { FieldReport } from "@tj/slides/templates";
+import type { FieldReport, Stage } from "@tj/slides/templates";
+import { groupOf, KEY_FIT } from "@tj/slides/templates/picture-text";
 import { nWords, wordCount, wordsOver } from "./fixes";
 import { type MaterialiseCtx, pilotFit, STABLE_ID_TEMPLATES } from "./materialise";
 import { whenNonFatal } from "./services";
@@ -36,9 +37,41 @@ export function writerPath(laid: string, writerTemplate: string, path: string): 
   return path.replace(/^rows\./, "items.");
 }
 
+/**
+ * TEACH-247 part co: a key card slide (visual-text key-card-fig, laid as picture-text's key card
+ * look): a lead and key cards beside a picture. Its column is one shared height, so it reports no
+ * per-field room; its room is measured by `picture-text-key-capacity.json` (KEY_FIT).
+ */
+export const isKeyCardSlide = (s: S | undefined): boolean =>
+  !!s && s.template === "visual-text" && Array.isArray(s.cards) && s.cards.length > 0;
+
+/**
+ * A key card slide whose column runs past its foot: the lead and each meaning past the card
+ * count's measured room (every field full at once), for the writer's repair. On the slide, so never
+ * clipped: code cuts nothing here. A column that fits reports nothing, whatever the counts.
+ */
+function keyCardOvers(s: S, ctx: MaterialiseCtx, over: string[]): PilotOver[] {
+  if (!over.some((o) => o.startsWith("picture-text column "))) return [];
+  const cards = s.cards as S[];
+  const fit = KEY_FIT[groupOf(ctx.stage as Stage)];
+  const room = fit.words[String(cards.length) as "1" | "2"] || fit.words["1"];
+  const fields: [string, unknown][] = [
+    ["lead", s.lead],
+    ...cards.map((c, i): [string, unknown] => [`cards.${i}.meaning`, c?.meaning]),
+  ];
+  return fields.flatMap(([path, t]): PilotOver[] => {
+    if (typeof t !== "string") return [];
+    const words = wordCount(t);
+    if (words <= room) return [];
+    const chars = t.trim().length;
+    return [{ path, chars, words, room: Math.ceil((chars * room) / words), clipped: false }];
+  });
+}
+
 /** Fields past their room, plus how many members the layout holds when there are too many. */
 export function pilotOvers(s: S, ctx: MaterialiseCtx): { overs: PilotOver[]; tooMany: boolean } {
   const fit = pilotFit(s, ctx);
+  if (isKeyCardSlide(s)) return { overs: keyCardOvers(s, ctx, fit.over), tooMany: false };
   const overs = (fit.fields as FieldReport[]).flatMap((f): PilotOver[] => {
     const room = f.cap && f.cap > 0 ? f.cap : (f.hardMax ?? 0);
     const past = f.over || (!!f.cap && f.cap > 0 && f.chars > f.cap);

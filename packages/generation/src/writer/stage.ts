@@ -150,7 +150,14 @@ import {
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
-import { carryFigures, fitPilot, isPilot, pilotOvers, pilotSlips } from "./pilot-fit";
+import {
+  carryFigures,
+  fitPilot,
+  isKeyCardSlide,
+  isPilot,
+  pilotOvers,
+  pilotSlips,
+} from "./pilot-fit";
 import {
   offeredLayouts,
   PILOT_PACKS,
@@ -3080,19 +3087,36 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // keeps the layout, then a second with exact budgets; code then cuts whole sentences only, and a
   // field with none to stop at stays whole (still over, the editor's chip). This is the pilot
   // layouts' own fit, not a check: it runs when the checks only log too (TEACH-110 part s).
+  // TEACH-247 part co: a key card slide (a lead and key cards beside a picture) takes the same fit:
+  // its column measured as laid, the lead and meanings past their measured room go back to the
+  // writer once (Great Fire v4.21a s9 ran 32pt past its column, every field inside its cap). Its
+  // words are on the slide, so code never cuts them; only the writer's rewrite changes them.
   const pilotSlides = plan.slides.flatMap((s0, i) =>
-    isPilot(s0 as S) && repairable(s0 as S, i) ? [i] : [],
+    (isPilot(s0 as S) || isKeyCardSlide(s0 as S)) && repairable(s0 as S, i) ? [i] : [],
   );
   await eachBounded(pilotSlides, TAIL_CONCURRENCY, async (i) => {
     const s0 = plan.slides[i] as S;
+    const keyCard = isKeyCardSlide(s0);
     const pctx = { ...base, index: i, plan, visual: visualState(i) };
     const at = pilotOvers(s0, pctx);
-    if (!at.overs.length && !at.tooMany && !pilotSlips(s0).length) return;
+    if (!at.overs.length && !at.tooMany && (keyCard || !pilotSlips(s0).length)) return;
     const repair = run.services
       ? async (_s: S, faults: string[]) => {
-          const ok = await repairOne({ slide: i + 1, faults }, "fit", {
+          // A key card slide's own fit is a variant of visual-text: the general repair schema. Its
+          // column line goes with the fields' rooms, so the reword is kept only if the column
+          // overflows less than it did (`keepPartial` compares points over).
+          const column = keyCard
+            ? (check()[i]?.faults ?? []).filter((f) =>
+                f.startsWith("overflow: picture-text column "),
+              )
+            : [];
+          const ok = await repairOne({ slide: i + 1, faults: [...column, ...faults] }, "fit", {
             keepPartial: true,
-            schema: pilotRepairSchema(repairSchemaFor(stageKey), schema, String(s0.template)),
+            ...(keyCard
+              ? {}
+              : {
+                  schema: pilotRepairSchema(repairSchemaFor(stageKey), schema, String(s0.template)),
+                }),
           });
           return ok ? (plan.slides[i] as S) : undefined;
         }
