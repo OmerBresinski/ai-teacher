@@ -72,6 +72,7 @@ export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_lost_picture: ["asked", "landed", "ok", "slide", "try"],
   gen_lost_picture_landed: ["slide"],
   gen_main_incomplete: ["chars", "why"],
+  gen_meaning_rerouted: ["kind", "ok", "slide", "why"],
   gen_notes: ["attempt", "ms", "of", "slides", "usd"],
   gen_notes_error: ["attempt"],
   gen_notes_missing: ["asked", "got", "ms", "usd"],

@@ -17,7 +17,16 @@ describe("REGISTER checker-01: a flow that drew is dropped for missing its side 
     // Was words-figure-dropped after a refused stand-alone rewrite call.
     expect(ev.find((e) => e.ev === "visual-path")?.path).toBe("unshown");
     expect(ev.some((e) => e.ev === "restage-fallback")).toBe(false);
-    expect(chats.filter((c) => c === "slide").length).toBeLessThan(4);
+    // TEACH-247 part cp: the failed flow goes back to the writer once (refused here, so it still
+    // ends unshown); that call is the reroute's, not a check's.
+    // This run's reroute calls, each named by its own tagged repair event (one per reroute).
+    const reroutes = events.filter((e) => e.ev === "meaning-rerouted").length;
+    const rerouteCalls = events.filter(
+      (e) => (e.ev === "repair" || e.ev === "repair-rejected") && e.via === "meaning",
+    ).length;
+    expect(ev.some((e) => e.ev === "meaning-rerouted")).toBe(true);
+    expect(rerouteCalls).toBe(reroutes);
+    expect(chats.filter((c) => c === "slide").length - rerouteCalls).toBeLessThan(4);
   }, 60_000);
 });
 

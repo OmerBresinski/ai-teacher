@@ -60,6 +60,10 @@ const acted = (e: Ev) =>
   // in log mode the relayout acts only when it is what lets the diagram show (keptVisual)
   (e.ev === "diagram-relaid" && e.ok === true && e.keptVisual !== true);
 
+/** The meaning reroute's own repair event (part cp), tagged `via: "meaning"` by the stage. */
+const isReroute = (e: Ev) =>
+  (e.ev === "repair" || e.ev === "repair-rejected") && e.via === "meaning";
+
 const images = (slides: { elements: { type: string }[] }[]) =>
   slides.map((s) => s.elements.filter((e) => e.type === "image").length);
 
@@ -68,11 +72,19 @@ describe('checks: "log" acts on no check result', () => {
     const act = await run(b, "act");
     const log = await run(b, "log");
     expect(log.events.some((e) => e.ev === "checks")).toBe(true);
-    expect(log.systems.filter((s) => s === REPAIR)).toEqual([]);
-    expect(log.events.filter(acted)).toEqual([]);
+    // TEACH-247 part cp: a drawing no picture can stand in for (a flow) that failed to draw goes
+    // back to the writer once whatever the checks do, as a lost picture is rerouted: a visual that
+    // genuinely fails to draw still acts. Those calls and their repair events are its own.
+    // One call per reroute, each with exactly one tagged repair event.
+    const rerouted = log.events.filter((e) => e.ev === "meaning-rerouted").length;
+    expect(log.events.filter(isReroute)).toHaveLength(rerouted);
+    expect(log.systems.filter((s) => s === REPAIR).length).toBe(rerouted);
+    expect(log.events.filter((e) => acted(e) && !isReroute(e))).toEqual([]);
     // Every slide the acting run sent to repair is named instead.
     const repaired = new Set(
-      act.events.filter((e) => e.ev === "repair" && e.mode === "fit").map((e) => e.slide),
+      act.events
+        .filter((e) => e.ev === "repair" && e.mode === "fit" && !isReroute(e))
+        .map((e) => e.slide),
     );
     const skipped = new Set(
       log.events.filter((e) => e.ev === "repair-skipped").map((e) => e.slide),
