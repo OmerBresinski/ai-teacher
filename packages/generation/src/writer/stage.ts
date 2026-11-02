@@ -27,7 +27,13 @@ import {
 } from "./activities";
 import { BODY_MODELS } from "./body-figure";
 import { type WriterBundleId, writerBundle } from "./bundle";
-import { borrowCheckVisuals, fitsWithVisual, lentKey, relend } from "./check-pictures";
+import {
+  borrowCheckVisuals,
+  CHECK_TEMPLATES,
+  fitsWithVisual,
+  lentKey,
+  relend,
+} from "./check-pictures";
 import { CHECKER_DEFAULTS, type CheckerFlags } from "./checker-flags";
 import {
   ANY_POINTING,
@@ -1428,7 +1434,38 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const byIndex = plan.flow?.find((x) => x.slide === idx + 1);
     if (byIndex !== entry && lookOf(byIndex)?.kind === "picture")
       log({ ev: "look-other-slide", slide: idx + 1, written, planned: byIndex?.layout ?? null });
-    const added = withLook(s, look);
+    const looked = withLook(s, look);
+    // TEACH-247 part cx (CODE-NOTE v4.21 item 4): a picture the look adds to a check slide gets
+    // cj's fit test, measured at the drawn size with the picture's room held (pending): placed
+    // only when the writer's words fit beside it no worse than without it. Code never cuts a word
+    // to make room, so one that does not fit is not asked for: logged `look-unfit` (and the look
+    // `look-unmet` below), and the slide goes on to cj like any check slide with no visual
+    // (`borrowForChecks`: a lent visual that fits, or its own logged skip). A quick check never
+    // borrows: it ships text-only.
+    const lookKey = looked.how?.match(/^(\w+)-from-look$/)?.[1];
+    const lookTpl = String(s.template);
+    const lookCheck = CHECK_TEMPLATES.has(lookTpl) || lookTpl === "question-set";
+    const lookFits =
+      !lookKey ||
+      !lookCheck ||
+      fitsWithVisual(
+        s,
+        looked.slide,
+        { ...base, index: idx, plan, visual: visualState(idx) },
+        lookKey,
+        { status: "pending" },
+      );
+    if (!lookFits)
+      log({
+        ev: "look-unfit",
+        level: "warn",
+        slide: idx + 1,
+        template: lookTpl,
+        key: lookKey,
+        shows: look?.shows ?? null,
+        next: CHECK_TEMPLATES.has(lookTpl) ? "cj" : "text-only",
+      });
+    const added = lookFits ? looked : { slide: s };
     if (added.how) {
       log({ ev: "look-added", slide: idx + 1, how: added.how });
       s = added.slide;
