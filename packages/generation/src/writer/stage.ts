@@ -59,6 +59,7 @@ import {
   asTableText,
   asWords,
   continueForFit,
+  MEANING_KINDS,
   pictureFallbackOk,
   tableRows,
   tilesAsPictures,
@@ -663,6 +664,11 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const carried = new Map<string, { key: string; ask: VisualAsk }>();
   /** Diagrams drawn in this run, by `<slide>:<key>` (TEACH-247). */
   const drawnDiagrams = new Map<string, VisualState>();
+  /**
+   * Why a drawing could not be drawn, by `<slide>:<key>` (TEACH-247 part cp): the writer is told
+   * it when a drawing no picture can stand in for goes back to it (`meaningLost`).
+   */
+  const drawFaults = new Map<string, string>();
   /** States code decided after the fact (match6 kept photo, orphan6, a stale drawing), by key. */
   const override = new Map<string, VisualState>();
   /** `restore` puts a slide's override and drawn states back as they were when it was swapped. */
@@ -1199,6 +1205,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             `${i}:${a.key}`,
             r.spec ? { status: "diagram", spec: r.spec } : { status: "failed" },
           );
+          if (!r.spec) drawFaults.set(`${i}:${a.key}`, r.fault);
           log({ ev: "diagram-done", slide: i + 1, key: a.key, via: r.via, ok: !!r.spec });
           relay(i);
           shown(i);
@@ -1988,6 +1995,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           log: (e) => log({ ...e, slide: i + 1 }),
         });
         if (r.spec) drawnDiagrams.set(`${i}:${a.key}`, { status: "diagram", spec: r.spec });
+        else drawFaults.set(`${i}:${a.key}`, r.fault);
       }
   };
   /** attemptLost's body: the swap, its visuals, and keep or restore. */
@@ -2882,6 +2890,48 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     unpoint(i);
     return true;
   };
+  /**
+   * TEACH-247 part cp: a drawing whose meaning no picture carries (`MEANING_KINDS`: a flow's
+   * arrows, counts, shares, states) that neither the writer's spec nor the drawer's two tries could
+   * draw goes back to the writer once with why it did not draw, in the repair's own `diagram:` line,
+   * as a lost picture is rerouted (pictureLost). The rewrite must still ask a drawing of that kind;
+   * its spec is drawn by code at the swap, else by the drawer. Kept only when every drawing it
+   * asks draws; otherwise the slide is restored and goes on to stand in words, as before.
+   */
+  const meaningRetried = new Set<number>();
+  const meaningLost = async (
+    i: number,
+    lost: Extract<VisualAsk, { type: "diagram" }>,
+  ): Promise<boolean> => {
+    const s0 = plan.slides[i] as S;
+    const n0 = notes.get(i);
+    const oldAsks = asks.get(i) ?? [];
+    const fault = drawFaults.get(`${i}:${lost.key}`) || "it does not draw";
+    const keepsKind = (after: S) =>
+      visualsOf(after, i, { ...base, plan }).some(
+        (a) => a.type === "diagram" && a.kind === lost.kind,
+      )
+        ? undefined
+        : `drops the ${lost.kind} diagram, which no picture or words can stand in for`;
+    const ok = await repairOne(
+      { slide: i + 1, faults: [`diagram: figure could not be drawn: ${fault}`] },
+      "fit",
+      { guard: keepsKind },
+    );
+    if (!ok) {
+      log({ ev: "meaning-rerouted", slide: i + 1, kind: lost.kind, ok: false, why: "repair" });
+      return false;
+    }
+    await drawUndrawn(i);
+    relay(i);
+    const drawn = (asks.get(i) ?? [])
+      .filter((a) => a.type === "diagram")
+      .every((a) => visualState(i)(a.key).status === "diagram");
+    log({ ev: "meaning-rerouted", slide: i + 1, kind: lost.kind, ok: drawn });
+    if (drawn) return true;
+    restore(i, s0, n0, oldAsks);
+    return false;
+  };
   const fallback = async (i: number, fo: { noPicture?: boolean; wasPicture?: boolean } = {}) => {
     if (!path.has(i) && (await tileFallback(i, fo))) return;
     const dAsk = (asks.get(i) ?? []).find((a) => a.type === "diagram") as
@@ -2918,6 +2968,20 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         return;
       }
       restore(i, s, n0, oldAsks);
+    }
+    // TEACH-247 part cp: a drawing no picture can stand in for goes back to the writer once.
+    if (
+      st === "failed" &&
+      !fo.wasPicture &&
+      MEANING_KINDS.has(dAsk.kind) &&
+      run.services &&
+      !meaningRetried.has(i)
+    ) {
+      meaningRetried.add(i);
+      if (await meaningLost(i, dAsk)) {
+        path.set(i, "diagram-repaired");
+        return;
+      }
     }
     // Greg (10 Oct 2026): a planned visual is never lost. A drawing that draws in no room cleanly
     // but does draw with warnings ships the least-bad layout, its warnings logged on visual-path.
