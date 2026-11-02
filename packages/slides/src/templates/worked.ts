@@ -11,6 +11,12 @@
  *   apart), and the type shrinks only when rows have to get closer.
  * - **Reveal:** row *i* (its badge, rail segment, move, equation and answer plate) is reveal step
  *   *i*; the check is the last step. Every worked example takes one click per row.
+ * - **Every move is drawn** (TEACH-247 part cm): the writer writes each row as the move and the
+ *   equation it gives, so its row 1 carries a move. The working then opens on the problem's own
+ *   equation (`problemEquation`, read from the heading only when it states one with certainty, and
+ *   only when the row fits the slide's cap: `withProblemRow`) and each move sits on the row it
+ *   leads to. A move with no row above it (no certain equation, a full slide, a continued slide, or
+ *   row 1 is the problem itself) leads from the heading to row 1. A written move is never dropped.
  * - **Panel:** a bar model (TEACH-75 part y) at panel size on a sand field; build *i* rides row *i*
  *   (TEACH-205 part c `buildFrom`). An equation panel's frames are matched to the rows shown
  *   (`workedFrames`, TEACH-247 part ch): each row pictures its own move, and when row 1 is not the
@@ -50,8 +56,13 @@ import type { Ctx, FieldReport, Stage, TemplateInput } from "./index";
 import { kit } from "./index";
 import CAPACITY from "./worked-capacity.json" with { type: "json" };
 
-/** One working line: the move that led to it (none on line 1), the equation, the answer line. */
-export type WorkedLine = { move?: string; eq: string; answer?: boolean };
+/**
+ * One working line: the move that led to it, the equation, the answer line. `given` marks the
+ * problem's opening row, set by code (`withProblemRow`), never written.
+ */
+export type WorkedLine = { move?: string; eq: string; answer?: boolean; given?: boolean };
+/** A row the slide shows; `at` is its line's index in the writer's input (`lines.<at>`). */
+type ShownLine = Omit<WorkedLine, "given"> & { at?: number };
 /**
  * The writer's panel: ax + b = c as a bar, or p% of an amount by tenths. `division-bar`
  * (x/a + b = c) is set by code only (`workedPanelFrom`), never offered to the writer.
@@ -101,6 +112,8 @@ const ARROW_W = pt(70);
 const PANEL_W = pt(480);
 const EQ_LH = 1.2;
 const SAY_LH = 1.12;
+/** Heading bottom to row 1's middle when row 1's move leads from the heading (two move lines). */
+const LEAD_GAP = pt(100);
 /** The narrowest move column (two lines of a six-word move). */
 const MOVE_MIN_W = pt(200);
 /**
@@ -231,15 +244,73 @@ export function barPanelOf(
   return undefined;
 }
 
-/** The lines the slide shows: only lines with words, their maths set (`mathText`). */
-export function workedLines(input: TemplateInput): WorkedLine[] {
-  return (input.lines ?? [])
-    .filter((l) => l && typeof l.eq === "string" && l.eq.trim())
-    .map((l) => ({
-      ...(l.move?.trim() ? { move: mathText(l.move.trim()) } : {}),
-      eq: mathText(l.eq.trim()),
-      ...(l.answer ? { answer: true } : {}),
-    }));
+/** Words that may lead into the problem's equation ("Solve …", "Check x = 6 in …"). */
+const LEAD_IN = /^(solve|check|simplify|rearrange|find|verify|show|in|if|given|when|where)$/i;
+/** A token that is maths only: numbers, single letters, operators and brackets. */
+const MATHS = /^[\p{N}\p{L}+\-−–×÷*/=().^²³√%]+$/u;
+
+/**
+ * The equation the problem states (TEACH-247 part cm): the heading's maths after a lead-in word or
+ * a colon, or the whole heading ("Solve 3x + 5 = 20", "Solve for x: 3x − 4 = −10", "Check x = 6
+ * in 2x + 3 = 15"), one "=" with both sides. Undefined unless that is certain: words inside the
+ * maths ("25% of x = 10", "x = 2 and y = 3", "sin x = 0.5"), a quantity ("Find ⅔ of 24") or a
+ * heading ending in words give none, and move 1 then leads from the heading.
+ */
+export function problemEquation(heading: string): string | undefined {
+  const words = heading
+    .trim()
+    .replace(/[.!?;]+$/, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  let i = words.length;
+  while (i > 0) {
+    const w = words[i - 1] as string;
+    if (!MATHS.test(w) || /\p{L}{2,}/u.test(w)) break;
+    i--;
+  }
+  const lead = words[i - 1];
+  if (lead !== undefined && !LEAD_IN.test(lead) && !lead.endsWith(":")) return undefined;
+  const eq = words.slice(i).join(" ");
+  const sides = eq.split("=");
+  if (sides.length !== 2 || !sides.every((x) => /[\p{L}\p{N}]/u.test(x))) return undefined;
+  return eq;
+}
+
+/**
+ * The input with the problem's equation as its opening row (TEACH-247 part cm), when line 1
+ * carries a move, the heading states the equation with certainty, line 1 is not that equation
+ * itself, and the row fits the cap the writer and the editor work to (`workedMax`, the check
+ * among the rows) without losing the panel. Otherwise the input as it is: move 1 then leads from
+ * the heading.
+ */
+export function withProblemRow(input: TemplateInput, stage: Stage): TemplateInput {
+  const lines = (input.lines ?? []).filter((l) => l && typeof l.eq === "string" && l.eq.trim());
+  const first = lines[0];
+  if (!first?.move?.trim() || first.given) return input;
+  const start = problemEquation(input.heading ?? "");
+  if (!start || flat(start) === flat(first.eq)) return input;
+  const out = { ...input, lines: [{ eq: start, given: true }, ...(input.lines ?? [])] };
+  const panel = panelDraws(out);
+  if (panelDraws(input) && !panel) return input;
+  const rows = lines.length + 1 + (input.check?.trim() ? 1 : 0);
+  return rows <= workedMax(stage, panel) ? out : input;
+}
+
+/** The rows the slide shows: only lines with words, their maths set, each with its input index. */
+export function workedLines(input: TemplateInput): ShownLine[] {
+  const given = input.lines?.[0]?.given ? 1 : 0;
+  return (input.lines ?? []).flatMap((l, k) =>
+    l && typeof l.eq === "string" && l.eq.trim()
+      ? [
+          {
+            ...(l.move?.trim() ? { move: mathText(l.move.trim()) } : {}),
+            eq: mathText(l.eq.trim()),
+            ...(l.answer ? { answer: true } : {}),
+            ...(l.given ? {} : { at: k - given }),
+          },
+        ]
+      : [],
+  );
 }
 
 // ─── the panel's equation and its frames (TEACH-247 part ch) ─────────────────────────────────
@@ -533,10 +604,13 @@ function plan(
   noPanel = false,
 ): Plan {
   const age = ageOf(stage);
-  const nEq = Math.max(1, workedLines(input).length);
+  const rows = workedLines(input);
+  const nEq = Math.max(1, rows.length);
   const check = !!input.check?.trim();
   const model = !noPanel && panelDraws(input);
-  const row1 = Math.max(ROW1, headBottom + pt(56));
+  // A move on row 1 leads from the heading (TEACH-247 part cm): row 1 sits low enough under the
+  // heading for its two lines.
+  const row1 = Math.max(ROW1, headBottom + (rows[0]?.move ? LEAD_GAP : pt(56)));
   const checkH = nEq > 3 ? pt(100) : pt(116);
   const checkTop = H - FOOT - checkH;
   const lastY = check ? checkTop - pt(70) : H - FOOT - pt(60);
@@ -675,7 +749,9 @@ function svgImage(
   return el;
 }
 
-export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
+export function layoutWorked(c: Ctx, written: TemplateInput, stage: Stage) {
+  // The problem's opening row, when it is certain and fits (TEACH-247 part cm).
+  const input = withProblemRow(written, stage);
   const age = ageOf(stage);
   const caps = WORKED_CAPS[age];
   const vars = (input.vars ?? ["x"]).filter((v) => /^[A-Za-z]$/.test(v));
@@ -696,7 +772,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   let p = plan(c, input, headBottom, stage);
   if (!lines.length) return;
   const floor = eqFloorOf(stage);
-  const hasMoves = lines.some((l, i) => i > 0 && l.move);
+  const hasMoves = lines.some((l) => l.move);
   // The geometry at an equation size: the "=" column on the widest left side, the moves just right
   // of the widest right side.
   const geom = (eq: number, model: boolean) => {
@@ -753,11 +829,18 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
   const sayW = Math.max(60, p.right - sayL);
   if (hasMoves && sayW < MOVE_MIN_W) c.over.push("worked moves have no room");
   const eqH = p.eq * EQ_LH;
-  // A move takes one line if it fits, else two; type steps down only when two will not fit the pitch.
+  // A move's band: from the row above to its own row. Row 1's move leads from the heading, from
+  // just under it to row 1 (TEACH-247 part cm), never over the heading.
+  const band = (i: number) => {
+    const top = i > 0 ? yOf(i - 1) : Math.max(headBottom + pt(6), yOf(0) - p.pitch);
+    return { top, h: yOf(i) - top };
+  };
+  // A move takes one line if it fits, else two; type steps down only when two will not fit its band.
   const moveLines = (m: string, size: number) => countLines(m, "body", c.t, sayW, 600, size);
-  const roomFor = (size: number) => Math.min(2, Math.floor((p.pitch + 4) / (size * SAY_LH)));
-  for (const s of rungs(p.say, sayMin, pt(1)).slice(1))
-    if (lines.some((l) => l.move && moveLines(l.move, p.say) > roomFor(p.say))) p.say = s;
+  const roomFor = (size: number, h: number) => Math.min(2, Math.floor((h + 4) / (size * SAY_LH)));
+  const crowded = (size: number) =>
+    lines.some((l, i) => l.move && moveLines(l.move, size) > roomFor(size, band(i).h));
+  for (const s of rungs(p.say, sayMin, pt(1)).slice(1)) if (crowded(p.say)) p.say = s;
 
   // The rail of badges: ghosts from the start, each row's badge and rail segment on its step.
   const badgeY = lines.map((_, i) => yOf(i));
@@ -961,12 +1044,12 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       );
   });
 
-  // The moves: a red bracket arrow from the line above to this one, the instruction beside it.
+  // The moves: a red bracket arrow from the line above to this one (row 1's from the heading), the
+  // instruction beside it. Every written move is drawn (TEACH-247 part cm).
   lines.forEach((l, i) => {
-    if (!l.move || i === 0) return;
+    if (!l.move) return;
     const R = i + 1;
-    const top = yOf(i - 1);
-    const h = p.pitch;
+    const { top, h } = band(i);
     const t = h * 0.12;
     const arrow = arrowCubic(
       [pt(8), t],
@@ -986,7 +1069,8 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
       R,
     );
     if (wordCount(l.move) > caps.moveWords) c.tight = true;
-    if (moveLines(l.move, p.say) > roomFor(p.say)) c.over.push(`worked move ${R} past 2 lines`);
+    if (moveLines(l.move, p.say) > roomFor(p.say, h))
+      c.over.push(`worked move ${R} past ${roomFor(p.say, h)} lines`);
   });
 
   // The check: its own sand strip (a card beside the panel), "Check:", the sum and a tick.
@@ -1111,7 +1195,7 @@ export function layoutWorked(c: Ctx, input: TemplateInput, stage: Stage) {
 
 function fieldsOf(
   input: TemplateInput,
-  lines: WorkedLine[],
+  lines: ShownLine[],
   age: AgeKey,
   sayW: number,
   say: number,
@@ -1126,8 +1210,8 @@ function fieldsOf(
     if (!l.move) return;
     out.push(
       report(
-        `Move ${i + 1}`,
-        `lines.${i}.move`,
+        `Move ${(l.at ?? i) + 1}`,
+        `lines.${l.at ?? i}.move`,
         l.move.length,
         perLine,
         Math.min(2 * perLine, caps.moveWords * 8),
