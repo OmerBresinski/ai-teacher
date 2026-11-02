@@ -869,6 +869,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
                 ? {
                     yearGroup: brief.yearGroup,
                     subject: brief.subject,
+                    // A blank subject (the brief form's is optional) is read from these words.
+                    topic: brief.topic,
                     ...(run.libraryMenuRank ? { objectives: run.objectives } : {}),
                   }
                 : undefined,
