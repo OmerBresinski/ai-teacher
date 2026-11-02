@@ -62,7 +62,10 @@ const read = (f: string) => readFileSync(join(import.meta.dir, "fixtures/replay"
 
 type E = Record<string, unknown>;
 /** The lesson with the run's slide in writer slide 2, the drawer's tries and `repaired` as the writer's repair. */
-async function run(repaired: unknown) {
+async function run(
+  repaired: unknown,
+  o: { checks?: "act" | "log"; afterTwo?: (req: unknown) => unknown } = {},
+) {
   const brief = JSON.parse(read("brief.json")) as Brief;
   const objectives = (
     JSON.parse(read("objectives.json")) as { objectives: { teacher: string }[] }
@@ -72,11 +75,15 @@ async function run(repaired: unknown) {
   out.slides[1] = structuredClone(SLIDE4);
   let drawerCalls = 0;
   const callDrawer: DrawerCall = async (req) => {
-    if (!JSON.stringify(req).includes("Glucose")) return { out: undefined };
-    return { out: DRAWER[drawerCalls++] ?? DRAWER[1] };
+    if (!/glucose/i.test(JSON.stringify(req))) return { out: undefined };
+    const k = drawerCalls++;
+    // The drawer's third call and on are the reroute's (a spec-less rewrite, or its retry).
+    if (k >= 2 && o.afterTwo) return { out: o.afterTwo(req) };
+    return { out: DRAWER[k] ?? DRAWER[1] };
   };
   const repairs: string[] = [];
   const base = replayServices(B);
+  const rec = recordedVisuals(B);
   const events: E[] = [];
   const lesson = await runWriter({
     brief,
@@ -92,18 +99,26 @@ async function run(repaired: unknown) {
         return base.chat(r);
       },
     },
-    visual: recordedVisuals(B),
+    // The recorded run's own visuals, but none for this slide: the recorded drawing at its place is
+    // another lesson's (the French run's), and a drawing here is only ever what this run draws.
+    visual: Object.assign(
+      (i: number, key: string, ask: Parameters<typeof rec>[2]) =>
+        JSON.stringify(ask).includes("Glucose")
+          ? ({ status: "failed" } as ReturnType<typeof rec>)
+          : rec(i, key, ask),
+      rec,
+    ),
     recordedWriter: { text: JSON.stringify(out), finishReason: main.finishReason ?? null },
     drawDiagrams: { callDrawer },
     library: true,
-    checks: "log",
+    checks: o.checks ?? "log",
   });
   const at = lesson.slides.findIndex((x) => JSON.stringify(x.elements).includes(SLIDE4.heading));
   const ev = events.filter((e) => e.slide === at + 1);
   const drawn = (lesson.slides[at]?.elements ?? []).filter(
     (e) => (e as { name?: string }).name === "Diagram",
   ) as { src?: string }[];
-  return { at, ev, drawn, repairs, drawerCalls };
+  return { at, ev, drawn, repairs, drawerCalls, lesson };
 }
 
 /** The writer's rewrite: the same slide, the arrow's words in its room, the rest kept. */
@@ -153,5 +168,53 @@ describe("a flow that cannot be drawn goes back to the writer, never to words (T
     // As before the change: no picture stands in for the flow.
     expect(r.ev).toContainEqual(expect.objectContaining({ ev: "visual-path", path: "unshown" }));
     expect(r.drawn).toHaveLength(0);
+  }, 60_000);
+
+  test("a rewrite whose flow still does not draw is undone; the slide stands in words", async () => {
+    const still = structuredClone(REWRITTEN);
+    still.figure.links = [{ from: 0, to: 1, label: `${LONG} every single day` }];
+    const r = await run({ slide: still, to_notes: "", fix: "another label" });
+    expect(r.repairs).toHaveLength(1);
+    expect(r.ev).toContainEqual(
+      expect.objectContaining({ ev: "meaning-rerouted", kind: "flow", ok: false }),
+    );
+    expect(r.ev).toContainEqual(expect.objectContaining({ ev: "visual-path", path: "unshown" }));
+    expect(r.drawn).toHaveLength(0);
+    // Restored: the slide's words are the writer's own, not the refused rewrite's.
+    expect(JSON.stringify(r.lesson.slides[r.at]?.elements)).not.toContain("every single day");
+  }, 60_000);
+
+  test("a spec-less rewrite is drawn by the drawer and kept only once it is on the slide", async () => {
+    const {
+      nodes: _n,
+      links: _l,
+      ...bare
+    } = structuredClone(REWRITTEN).figure as Record<string, unknown>;
+    const specless = { ...structuredClone(REWRITTEN), figure: bare };
+    const r = await run(
+      { slide: specless, to_notes: "", fix: "simpler flow" },
+      {
+        afterTwo: () => ({
+          ...DRAWER[0],
+          links: [{ from: 0, to: 1, label: "photosynthesis" }],
+        }),
+      },
+    );
+    expect(r.drawerCalls).toBeGreaterThan(2);
+    expect(r.ev).toContainEqual(
+      expect.objectContaining({ ev: "meaning-rerouted", kind: "flow", ok: true }),
+    );
+    expect(r.drawn).toHaveLength(1);
+  }, 60_000);
+
+  test("act mode: the reroute runs once, beside the fit loop's own calls (at most 3 on the slide)", async () => {
+    const r = await run(
+      { slide: REWRITTEN, to_notes: "", fix: "shorter arrow label" },
+      { checks: "act" },
+    );
+    expect(r.ev.filter((e) => e.ev === "meaning-rerouted")).toHaveLength(1);
+    expect(r.ev.filter((e) => e.via === "meaning")).toHaveLength(1);
+    expect(r.repairs.length).toBeLessThanOrEqual(3);
+    expect(r.drawn).toHaveLength(1);
   }, 60_000);
 });

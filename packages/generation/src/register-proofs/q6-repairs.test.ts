@@ -19,9 +19,14 @@ describe("REGISTER checker-01: a flow that drew is dropped for missing its side 
     expect(ev.some((e) => e.ev === "restage-fallback")).toBe(false);
     // TEACH-247 part cp: the failed flow goes back to the writer once (refused here, so it still
     // ends unshown); that call is the reroute's, not a check's.
-    const rerouted = events.filter((e) => e.ev === "meaning-rerouted").length;
+    // This run's reroute calls, each named by its own tagged repair event (one per reroute).
+    const reroutes = events.filter((e) => e.ev === "meaning-rerouted").length;
+    const rerouteCalls = events.filter(
+      (e) => (e.ev === "repair" || e.ev === "repair-rejected") && e.via === "meaning",
+    ).length;
     expect(ev.some((e) => e.ev === "meaning-rerouted")).toBe(true);
-    expect(chats.filter((c) => c === "slide").length - rerouted).toBeLessThan(4);
+    expect(rerouteCalls).toBe(reroutes);
+    expect(chats.filter((c) => c === "slide").length - rerouteCalls).toBeLessThan(4);
   }, 60_000);
 });
 

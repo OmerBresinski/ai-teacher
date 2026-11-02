@@ -2520,6 +2520,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       schema?: Record<string, unknown>;
       /** Judge the repaired slide on these faults only (log mode's leak repair, ruling 307). */
       only?: (fault: string) => boolean;
+      /** Names the call on its repair events (`via`): the meaning reroute's own (TEACH-247 part cp). */
+      via?: string;
     } = {},
   ): Promise<boolean> => {
     const i = c.slide - 1;
@@ -2587,7 +2589,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     const o2 = r?.out as { slide?: S; to_notes?: unknown; fix?: string } | undefined;
     if (!o2?.slide || typeof o2.slide !== "object") {
-      log({ ev: "repair", slide: i + 1, mode, ok: false });
+      log({ ev: "repair", slide: i + 1, mode, ok: false, ...(ro.via ? { via: ro.via } : {}) });
       debug(
         "repair",
         { mode, ok: false, why: "no slide", faults: c.faults, out: r?.out ?? null },
@@ -2654,7 +2656,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       ...(keyed ? [] : ["answer option lost"]),
     ];
     if (why.length) {
-      log({ ev: "repair-rejected", slide: i + 1, mode, fix: o2.fix, why });
+      log({
+        ev: "repair-rejected",
+        slide: i + 1,
+        mode,
+        fix: o2.fix,
+        why,
+        ...(ro.via ? { via: ro.via } : {}),
+      });
       debug(
         "repair",
         {
@@ -2705,7 +2714,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           : [...kinds(now)].some((k) => was.has(k)) || now.length > c.faults.length;
     if (worse) restore(i, before, n0, oldAsks);
     else if (c.faults.some((f) => f.startsWith("diagram:"))) path.set(i, "diagram-repaired");
-    log({ ev: "repair", slide: i + 1, mode, ok: true, fix: o2.fix, reverted: worse });
+    log({
+      ev: "repair",
+      slide: i + 1,
+      mode,
+      ok: true,
+      fix: o2.fix,
+      reverted: worse,
+      ...(ro.via ? { via: ro.via } : {}),
+    });
     debug(
       "repair",
       {
@@ -2916,7 +2933,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const ok = await repairOne(
       { slide: i + 1, faults: [`diagram: figure could not be drawn: ${fault}`] },
       "fit",
-      { guard: keepsKind },
+      { guard: keepsKind, via: "meaning" },
     );
     if (!ok) {
       log({ ev: "meaning-rerouted", slide: i + 1, kind: lost.kind, ok: false, why: "repair" });
@@ -2924,9 +2941,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     }
     await drawUndrawn(i);
     relay(i);
-    const drawn = (asks.get(i) ?? [])
-      .filter((a) => a.type === "diagram")
-      .every((a) => visualState(i)(a.key).status === "diagram");
+    // Drawn and placed: a spec the drawer drew for a spec-less rewrite is kept only when the layout
+    // also put it on the slide (no `diagram` fault, an image on the slide), never an unplaced one.
+    const drawn =
+      (asks.get(i) ?? [])
+        .filter((a) => a.type === "diagram")
+        .every((a) => visualState(i)(a.key).status === "diagram") &&
+      !laid.get(i)?.diagram?.length &&
+      (laid.get(i)?.slide.elements ?? []).some((e) => e.type === "image");
     log({ ev: "meaning-rerouted", slide: i + 1, kind: lost.kind, ok: drawn });
     if (drawn) return true;
     restore(i, s0, n0, oldAsks);
@@ -2974,7 +2996,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       st === "failed" &&
       !fo.wasPicture &&
       MEANING_KINDS.has(dAsk.kind) &&
-      run.services &&
       !meaningRetried.has(i)
     ) {
       meaningRetried.add(i);
