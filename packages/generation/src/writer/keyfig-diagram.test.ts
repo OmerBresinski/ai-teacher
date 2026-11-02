@@ -1,9 +1,8 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BODY_STACKS, fitsMeasured, LIMITS } from "@tj/slides/diagrams";
+import { BODY_STACKS, fitsMeasured, hasAdvances, LIMITS } from "@tj/slides/diagrams";
 import { FONT_STACKS } from "@tj/slides/fonts";
-import { ALL_THEMES } from "@tj/slides/themes";
 import { endDrawThread } from "../library/guard";
 import type { DrawerCall } from "./diagrams";
 import type { Brief } from "./fixes";
@@ -92,7 +91,10 @@ describe("a key-fig flow's planned diagram reaches its slot (TEACH-247 part cn)"
       library: true,
       checks: "log",
     });
-    const s4 = events.filter((e) => e.slide === 4);
+    // The deck slide that shows the run's slide (found by its heading, not a fixed index).
+    const at = lesson.slides.findIndex((x) => JSON.stringify(x.elements).includes(SLIDE4.heading));
+    expect(at).toBeGreaterThan(-1);
+    const s4 = events.filter((e) => e.slide === at + 1);
     expect(s4.filter((e) => e.ev === "r2-spec-fault")).toEqual([]);
     expect(s4).toContainEqual(
       expect.objectContaining({ ev: "diagram-done", via: "code", ok: true }),
@@ -102,7 +104,7 @@ describe("a key-fig flow's planned diagram reaches its slot (TEACH-247 part cn)"
     // The writer's own spec draws: the drawer is never asked to repair it.
     expect(calls).toBe(0);
     // The flow is on the slide, drawn by code (an SVG image named Diagram).
-    const drawn = (lesson.slides[3]?.elements ?? []).filter(
+    const drawn = (lesson.slides[at]?.elements ?? []).filter(
       (e) => (e as { name?: string }).name === "Diagram",
     ) as { src?: string }[];
     expect(drawn).toHaveLength(1);
@@ -119,8 +121,10 @@ describe("the width check measures the faces slides are set in (TEACH-247 part c
       fitsMeasured("Electrostatic attraction between oppositely charged ions", LIMITS.flow.link),
     ).toBe(false);
   });
-  test("every theme's body face is measured, and Geist (no theme's face) is not", () => {
-    for (const t of ALL_THEMES) expect(BODY_STACKS).toContain(t.fonts.body);
+  test("every face measured has a metrics table, never the 0.62 em guess; Geist is not one", () => {
+    expect(BODY_STACKS.length).toBeGreaterThan(0);
+    for (const stack of BODY_STACKS) expect([stack, hasAdvances(stack)]).toEqual([stack, true]);
+    expect(hasAdvances(FONT_STACKS.geist)).toBe(false);
     expect(BODY_STACKS).not.toContain(FONT_STACKS.geist);
   });
   test("the drawer reads a key point's words, never 'undefined:'", () => {

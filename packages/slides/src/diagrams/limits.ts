@@ -54,12 +54,11 @@ export const BODY_STACKS: readonly string[] = [
     ...Object.values(V2_AGE_PROFILES).map((p) => FONT_STACKS[p.fonts.body]),
   ]),
 ];
-const STACKS = BODY_STACKS;
 /** Whether `text` sets within `m` in every body face, measured as the renderer measures it. */
 export function fitsMeasured(text: string, m: Measured): boolean {
   const t = text.trim();
   if (!t) return false;
-  return STACKS.every((stack) => {
+  return BODY_STACKS.every((stack) => {
     const x = { stack, fs: TYPE_FLOOR } as unknown as Ctx;
     const lines = wrap(t, x, m.width, m.lines, TYPE_FLOOR, m.weight);
     return (
