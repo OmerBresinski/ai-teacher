@@ -65,6 +65,7 @@ import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
   assembleWriterSystem,
   layoutFieldCaps,
+  type MenuOpts,
   questionFieldCaps,
   questionOffer,
 } from "./layout-menu";
@@ -138,6 +139,12 @@ export type PilotPack = {
    * against the picture cells (reasons-picture-capacity.json). Only with menu wording that offers it.
    */
   reasonsPicture?: boolean;
+  /**
+   * KS1 offers items that carry their own picture or icon down to `PICTURED_MIN_ITEM` words
+   * (TEACH-247 part cv): panel-list with 3 or 4 pictures, items-row with 4 icons. The pack's system
+   * text must be assembled with the same switch (`assembleWriterSystem(..., { picturedFloor: true })`).
+   */
+  picturedFloor?: boolean;
   /**
    * The writer specs the river and hydrograph templates itself (`withWriterTemplates`), as it
    * did in the early-Oct lab runs, instead of naming them `{kind, shows, labels}` for the drawer.
@@ -803,7 +810,7 @@ export function pilotRequest(
           $defs: {
             ...capped.$defs,
             ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
-            ...capPilotDefs(schema.$defs, writerStageOf(ks)),
+            ...capPilotDefs(schema.$defs, writerStageOf(ks), { picturedFloor: pack.picturedFloor }),
             ...(pack.waveC
               ? waveCWordCaps(schema.$defs, writerStageOf(ks), headingWords(writerStageOf(ks)))
               : {}),
@@ -863,8 +870,8 @@ function capString(node: J | undefined, cap: number | undefined): J | undefined 
  * at this stage (`layoutFieldCaps`, the measured capacity tables). Code reads a field's room from
  * these; the writer never sees them (v4.6 is uncapped). Never hand-typed.
  */
-export function capPilotDefs(defs: J, stage: WriterStage): J {
-  const caps = layoutFieldCaps(stage);
+export function capPilotDefs(defs: J, stage: WriterStage, opts: MenuOpts = {}): J {
+  const caps = layoutFieldCaps(stage, opts);
   const out: J = {};
   for (const [layout, f] of Object.entries(PILOT_FIELDS) as [
     keyof typeof PILOT_FIELDS,

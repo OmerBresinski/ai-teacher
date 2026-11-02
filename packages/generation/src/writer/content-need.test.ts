@@ -62,6 +62,11 @@ describe("shown caps hold the room and the need", () => {
       for (const c of cells) check(c.cell, stage, c.shown, c.room, c.need);
     });
 
+    test(`${stage}: with the pictured floor (TEACH-247 part cv), the same rule holds`, () => {
+      for (const c of shownCells(stage, { picturedFloor: true }))
+        check(c.cell, stage, c.shown, c.room, c.need);
+    });
+
     test(`${stage}: fit layouts, every offered fit's body fields`, () => {
       const offer = fitOffer(stage);
       for (const layout of FIT_LAYOUTS)
