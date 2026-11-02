@@ -17,7 +17,9 @@ import { fmtNum, groupRing } from '../kit/batch-A.js';
 export const meta = {
   id: 'balance_equations', name: 'Balance and function machine', kind: 'scene', version: 2,
   subjects: ['Maths'],
-  years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6'],
+  // KS3 (TEACH-247 part cl): linear equations with whole positive answers, unknowns on one or both
+  // sides, solved by doing the same to both sides; a minus term is refused with its reason.
+  years: ['Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'KS3'],
   teaches: 'That = means both sides have the same value, how to find a missing number by matching cubes (Year 1 and 2) or by doing the same to both sides, and how inverse operations undo a function machine.',
 };
 
@@ -77,6 +79,10 @@ export const presets = [
   { id: 'y6-algebra', name: 'Year 6: 2a + 3 = 11', params: {
     title: 'Solve 2a + 3 = 11', mode: 'balance', unknown: 'letter', letter: 'a',
     balance: { left: '2a + 3', right: '11', show: 'cubes', solve: true },
+  } },
+  { id: 'ks3-both-sides', name: 'KS3: 3x + 2 = x + 10', params: {
+    title: 'Solve 3x + 2 = x + 10', mode: 'balance', unknown: 'letter', letter: 'x',
+    balance: { left: '3x + 2', right: 'x + 10', show: 'cubes', solve: true },
   } },
 ];
 

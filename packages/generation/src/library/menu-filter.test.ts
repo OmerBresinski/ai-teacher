@@ -37,6 +37,11 @@ describe("menu filter by year and subject", () => {
     expect(await ids("KS2", "Year 5", "Maths")).toContain("fractions");
     expect(await ids("KS2", "Year 4", "Geography")).toContain("rivers_coasts");
   });
+  test("y8 maths keeps the balance (TEACH-247 part cl): a KS3 equations lesson had no maths model", async () => {
+    expect(await ids("KS3-5", "Year 8", "Maths")).toContain("balance_equations");
+    expect(await ids("KS3-5", "Year 8", "Science")).not.toContain("balance_equations");
+    expect(await ids("KS3-5", "Year 12", "Maths")).not.toContain("balance_equations"); // KS3 only
+  });
   test("y12 psychology: empty, so no Models block and no model schema branch", async () => {
     const e = await catalogue("KS3-5", { yearGroup: "Year 12", subject: "Psychology" });
     expect(e).toEqual([]);
