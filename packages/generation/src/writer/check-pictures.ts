@@ -9,10 +9,10 @@
  *   source) and shares a telling word with the questions or their right answers (never a hinge's
  *   wrong options; a word at most half the deck's teaching visuals name). The one sharing the
  *   most telling words wins, then the most words, then the nearer one.
- * - The answer-leak guard: a question that asks pupils to name, label or identify something whose
- *   answer the visual's own text gives (a diagram's labels, title or alt; a photo's alt) never gets
- *   that form. A diagram with labels is reused with letters in their place, a photo with a neutral
- *   alt (photos draw no caption on these layouts). No leak-safe form: not reused, logged.
+ * - The answer-leak guard (audit, 2 Nov 2026): a labelled diagram is always reused lettered (where
+ *   a label sits can answer), and not at all when it has no lettered form. A photo cannot be
+ *   lettered: an answer word in its own request, subjects, alt or credits means it shows the
+ *   answer, and it is not reused; one that passes is lent with a neutral alt. Not reused: logged.
  * - The fit: the visual is placed only when the writer's words still fit beside it no worse than
  *   without it (`fits`); code never cuts a word or changes the layout to make room.
  * - Every check slide left without a visual is a logged skip with its reason: `no-source`, `leak`
@@ -240,29 +240,32 @@ export function safeForm(
   // Never the source's own object: the check slide's copy is its own (a later change to either
   // slide's state never reaches the other).
   const own = structuredClone(st);
-  const leak = leakOf(s, visibleText(own));
-  if (!leak) return { state: own, form: "as-is" };
-  if (own.status === "photo") {
-    // A photo draws no caption on these layouts: its words are its alt, request, subjects and
-    // note, all made neutral. Its credits stay (licences need them) and are checked once more.
-    const { subjects: _s, about: _a, ...photo } = own.photo;
-    const neutral: VisualState = {
-      status: "photo",
-      photo: { ...photo, alt: NEUTRAL_ALT, request: NEUTRAL_ALT },
-    };
-    const again = leakOf(s, visibleText(neutral));
-    if (again) return { leak: `${again}, in the photo's credits` };
-    return { state: neutral, form: "neutral-alt" };
-  }
   if (own.status === "diagram") {
-    const lettered = letteredSpec(own.spec);
-    if (lettered) {
+    // A labelled diagram on a check slide is always lettered (audit, 2 Nov 2026): where a label
+    // sits can answer a question whose answer shares no word with it (rivers r1: "River cliff" on
+    // the outer bank answers "which bank?", answer "outer"). No lettered form: not reused.
+    const labelled = isObj(own.spec) && Array.isArray(own.spec.labels) && own.spec.labels.length;
+    if (labelled) {
+      const lettered = letteredSpec(own.spec);
+      if (!lettered) return { leak: "its labels cannot be swapped for letters" };
       const again = leakOf(s, stringsIn(lettered).join(" "));
-      if (!again) return { state: { status: "diagram", spec: lettered }, form: "letters" };
-      return { leak: `${again}, with letters in place of the labels` };
+      if (again) return { leak: `${again}, with letters in place of the labels` };
+      return { state: { status: "diagram", spec: lettered }, form: "letters" };
     }
   }
-  return { leak };
+  // A photo cannot be lettered: an answer word in its own request, subjects, alt or credits means
+  // the photo shows the answer (plants r1: a roots photo beside "Which part takes in water?"), so
+  // it is not reused. Neutral words would hide that from a reader, not from the pupils' eyes.
+  const leak = leakOf(s, visibleText(own));
+  if (leak) return { leak };
+  if (own.status === "photo") {
+    const { subjects: _s, about: _a, ...photo } = own.photo;
+    return {
+      state: { status: "photo", photo: { ...photo, alt: NEUTRAL_ALT, request: NEUTRAL_ALT } },
+      form: "neutral-alt",
+    };
+  }
+  return { state: own, form: "as-is" };
 }
 
 /**

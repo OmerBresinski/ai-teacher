@@ -125,7 +125,8 @@ describe("borrowCheckVisuals", () => {
     expect(route?.slide).toBe(4);
     expect(route?.from).toBe(2);
     expect(route?.key).toBe("picture");
-    expect(route?.form).toBe("as-is");
+    // A lent photo's words are always neutral (it draws no caption; a reader hears the alt).
+    expect(route?.form).toBe("neutral-alt");
     expect((route?.json.picture as S | undefined)?.shows).toBe((buckets.figure as S).shows);
     // The writer's words are untouched.
     expect(route?.json.items).toEqual(practice.items);
@@ -205,7 +206,7 @@ describe("borrowCheckVisuals", () => {
     const r = borrowCheckVisuals({
       slides: [undefined, undefined, buckets, practice],
       teaches: () => [3],
-      state: () => () => photo("buckets of water"),
+      state: () => () => photo("Londoners at a fire"),
       fits: () => false,
     });
     expect(r.routes).toEqual([]);
@@ -219,8 +220,7 @@ describe("borrowCheckVisuals", () => {
     const r = borrowCheckVisuals({
       slides,
       teaches: () => [3],
-      state: (i) => (k) =>
-        i === 2 && k === "picture" ? photo("Londoners with buckets") : failed(),
+      state: (i) => (k) => (i === 2 && k === "picture" ? photo("Londoners at a fire") : failed()),
       fits: fitsAt(slides),
     });
     expect(r.routes[0]?.key).toBe("figure");
@@ -263,11 +263,69 @@ describe("the answer-leak guard", () => {
     expect(String(spec.alt)).not.toMatch(/flower/i);
   });
 
-  test("a photo whose alt names the answer keeps the photo with a neutral alt", () => {
-    const safe = safeForm(hinge, photo("A flowering plant with its flower open"));
-    expect(safe).toMatchObject({ form: "neutral-alt" });
-    const st = (safe as { state: VisualState }).state;
-    expect(st.status === "photo" && st.photo.alt).toBe(NEUTRAL_ALT);
+  test("a photo whose own words name the answer shows it: not reused, however neutral its alt", () => {
+    expect(safeForm(hinge, photo("A flowering plant with its flower open"))).toEqual({
+      leak: expect.stringContaining("flower"),
+    });
+    // Plants r1 (audit, 2 Nov 2026): a roots photo beside "Which part takes in water?".
+    const roots: S = {
+      template: "practice",
+      heading: "Jobs of the parts",
+      items: [
+        {
+          question: "A plant needs water from soil. Which part takes it in?",
+          answer: "The roots",
+        },
+      ],
+    };
+    const seedling: VisualState = {
+      status: "photo",
+      photo: {
+        src: "/x.jpg",
+        alt: "Close view of roots spreading through soil around a plant",
+        aspect: 1,
+        request: "branching roots. soil around roots. water in soil",
+      },
+    };
+    expect(safeForm(roots, seedling)).toEqual({ leak: expect.stringContaining("root") });
+  });
+
+  test("a labelled diagram is always lettered: where a label sits can answer (rivers r1)", () => {
+    // Q asks where the river cliff is; the answer ("outer") shares no word with any label.
+    const where: S = {
+      template: "practice",
+      heading: "Meanders",
+      items: [
+        {
+          question: "Which bank of a meander has the river cliff?",
+          answer: "The outer bank",
+        },
+      ],
+    };
+    const meander: VisualState = {
+      status: "diagram",
+      spec: {
+        kind: "river",
+        view: "meander-plan",
+        shows: "A meander viewed from above.",
+        alt: "A meander.",
+        labels: [
+          { part: "river-cliff", text: "River cliff" },
+          { part: "slip-off-slope", text: "Slip-off slope" },
+          { part: "flow-direction", text: "Flow direction" },
+        ],
+      },
+    };
+    expect(leakOf(where, visibleText(meander))).toBeUndefined();
+    const safe = safeForm(where, meander) as { state: { spec: S }; form: string };
+    expect(safe.form).toBe("letters");
+    expect((safe.state.spec.labels as S[]).map((l) => l.text)).toEqual(["A", "B", "C"]);
+    // A labelled drawing with no lettered form is not reused at all.
+    const drawnLabels: VisualState = {
+      status: "diagram",
+      spec: { ...(meander.spec as S), drawn: true },
+    };
+    expect(safeForm(where, drawnLabels)).toEqual({ leak: expect.stringContaining("letters") });
   });
 
   test("a drawing with no labels to letter is not reused: a leak skip with its reason", () => {
@@ -394,8 +452,9 @@ describe("review fixes (part cj)", () => {
   test("the reused state is the check slide's own copy", () => {
     const st = photo("Londoners fighting a fire");
     const safe = safeForm(practice, st) as { state: VisualState };
-    expect(safe.state).toEqual(st);
+    expect(safe.state.status === "photo" && safe.state.photo.src).toBe("/files/x/images/p.jpg");
     expect(safe.state).not.toBe(st);
+    expect(st.status === "photo" && st.photo.alt).toBe("Londoners fighting a fire");
     const spec = { kind: "labelled", labels: [{ part: "a", text: "Flower" }], nodes: [{ n: 1 }] };
     const lettered = letteredSpec(spec) as S;
     expect(lettered.nodes).not.toBe(spec.nodes);
@@ -407,11 +466,11 @@ describe("review fixes (part cj)", () => {
       status: "photo",
       photo: {
         src: "/x.jpg",
-        alt: "The flower of a plant",
+        alt: "A plant in a pot",
         aspect: 1,
-        request: "a flower",
-        subjects: [{ name: "flower", x: 0, y: 0, w: 1, h: 1 }],
-        about: "flower close-up",
+        request: "a plant",
+        subjects: [{ name: "plant", x: 0, y: 0, w: 1, h: 1 }],
+        about: "plant in a pot",
       },
     };
     const safe = safeForm(hinge, st) as { state: VisualState; form: string };
@@ -424,7 +483,7 @@ describe("review fixes (part cj)", () => {
       status: "photo",
       photo: { ...(st as { photo: S }).photo, source: { photographer: "Flower Studio" } } as never,
     };
-    expect(safeForm(hinge, credited)).toEqual({ leak: expect.stringContaining("credits") });
+    expect(safeForm(hinge, credited)).toEqual({ leak: expect.stringContaining("flower") });
   });
 
   test("a repair's rewrite gets the lent visual back under its layout's key, or a logged skip", () => {
