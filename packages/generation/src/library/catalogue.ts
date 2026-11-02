@@ -38,6 +38,10 @@ export const LIB_PROMPTS = {
 export const EXCLUDED: Record<string, string> = {
   states_of_matter: "needs SVG transform lists (DOMPoint, baseVal) that only a layout engine has",
   river_real: "draws from 29 MB of river data loaded at run time (prepare), not bundled",
+  // TEACH-247 part cq: held, not dropped. The code stays in vendor/models; a stored lesson keeps
+  // its drawn SVG, and a writer that still names it falls back to the drawer.
+  erosion_processes:
+    "held off the writer's menu until redrawn to the bar: the 2 Nov 2026 diagram audit scored it 2.0/5 (static icon tiles)",
 };
 
 /** A model that fails its fill falls back to the drawer as this kind (the lab's BASE_KIND). */

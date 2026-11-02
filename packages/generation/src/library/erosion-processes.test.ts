@@ -1,54 +1,36 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { svgAtBuild } from "@tj/slides/diagram-builds";
 import { modelBodyRect } from "@tj/slides/templates";
 import { getTheme } from "@tj/slides/themes";
-import { type Element, Window } from "happy-dom";
-import { catalogue } from "./catalogue";
-import { capabilityRefusals, libraryDiagram, overlappingWords, questionStep } from "./fill";
+import type { WriterStage } from "../writer/schema";
+import { catalogue, EXCLUDED, libSchema, type MenuFilter } from "./catalogue";
+import { capabilityRefusals, libraryDiagram } from "./fill";
 import { endDrawThread } from "./guard";
-import { kit, loadModel, renderLibraryModel } from "./render";
-import type { J } from "./types";
+import { MODEL_LOADERS } from "./models";
+import { kit } from "./render";
+import type { J, LibModel } from "./types";
 
 /*
  * TEACH-247 part cl: erosion and transport processes. A Y9 rivers deck listed the four erosion
  * processes as numbered text with no pictures; the standard teaching is four small diagrams. The
  * model draws each process's own mechanism and names it one build at a time, each name first a
  * letter so a question slide can ask for it.
+ *
+ * TEACH-247 part cq: held off the writer's menu until it is redrawn to the bar (diagram audit,
+ * 2 Nov 2026). The code stays and its science checks still run here, on the model itself; the
+ * drawing tests come back with the redraw.
  */
 afterAll(() => endDrawThread());
 
-const model = async () => {
-  const m = await loadModel("erosion_processes");
-  if (!m) throw new Error("no erosion_processes model");
-  return m;
+/** The held model, straight from its code (production does not load it). */
+const model = async (): Promise<LibModel> => {
+  await kit();
+  return (await import("./vendor/models/erosion_processes.js")) as unknown as LibModel;
 };
 const refusals = async (p: J) => {
   const m = await model();
   const v = m.validate((await kit()).withDefaults(m.params, p));
   return v.refusals.map((r) => `${r.path}: ${r.reason}`);
 };
-/** The words Present shows at build `k` (a passing letter only on its own frames). */
-function wordsAt(svg: string, k: number): string[] {
-  const doc = new Window().document;
-  doc.body.innerHTML = svgAtBuild(svg, k, { answer: true, motion: false }).replace(
-    /<style>[\s\S]*?<\/style>/g,
-    "",
-  );
-  for (const el of [...doc.querySelectorAll("[data-s]")])
-    if (Number(el.getAttribute("data-s")) > k) el.remove();
-  for (const el of [...doc.querySelectorAll("[data-f]")])
-    if (!(el.getAttribute("data-f") ?? "").split(" ").includes(String(k))) el.remove();
-  const read = (t: Element) => {
-    const lines = [...t.querySelectorAll("tspan")].filter((s) => s.hasAttribute("x"));
-    return (
-      lines.length ? lines.map((s) => s.textContent ?? "").join(" ") : (t.textContent ?? "")
-    ).trim();
-  };
-  return [...doc.querySelectorAll("text")]
-    .map((t) => read(t as unknown as Element))
-    .filter(Boolean);
-}
-
 describe("erosion_processes refuses a process described as another", () => {
   test("the presets are true", async () => {
     const m = await model();
@@ -120,126 +102,69 @@ describe("erosion_processes captions and notes", () => {
   });
 });
 
-describe("erosion_processes on a KS3 slide (the writer's path)", () => {
-  test("every preset draws in Studio and Night Lab at the label floor, never falling back", async () => {
-    for (const id of ["studio", "night-lab"]) {
-      const theme = getTheme(id, "ks3" as never);
-      const place = modelBodyRect("How rivers erode", undefined, theme, "ks3" as never);
-      for (const pre of (await model()).presets) {
-        const ask = {
-          key: "d",
-          model: "erosion_processes",
-          intent: "Show the four erosion processes",
-          words: "",
-          heading: "",
-          caption: "",
+describe("erosion_processes is held off the writer's menu (TEACH-247 part cq)", () => {
+  test("it is not shipped, and the reason is written down", () => {
+    expect(MODEL_LOADERS.erosion_processes).toBeUndefined();
+    expect(EXCLUDED.erosion_processes).toMatch(/audit/);
+  });
+
+  test("its code is kept: the model still loads from its own file", async () => {
+    const m = await model();
+    expect(m.meta.id).toBe("erosion_processes");
+    expect(m.presets.length).toBeGreaterThan(0);
+  });
+
+  test("no menu offers it, for any stage, subject or erosion lesson", async () => {
+    const asks: [WriterStage, MenuFilter | undefined][] = [
+      ["KS3-5", undefined],
+      ["KS3-5", { yearGroup: "Year 9", subject: "Geography" }],
+      ["KS3-5", { yearGroup: "Year 10", subject: "Geography" }],
+      [
+        "KS3-5",
+        {
           yearGroup: "Year 9",
-          lesson: "Geography: rivers",
-          labelOverlap: true,
-          labelFloor: true,
-          font: theme.fonts.body,
-          place,
-        };
-        const r = await libraryDiagram(ask, async () => ({ ...pre.params }));
-        expect(r.ok ? "ok" : `${id}/${pre.id}: ${r.reason}`).toBe("ok");
-      }
+          subject: "Geography",
+          objectives: [
+            "Describe the processes of erosion: hydraulic action, abrasion and attrition",
+          ],
+        },
+      ],
+      ["KS2", undefined],
+      ["KS1", undefined],
+    ];
+    for (const [stage, filter] of asks) {
+      const ids = (await catalogue(stage, filter)).map((e) => e.id);
+      expect(ids.length).toBeGreaterThan(0);
+      expect(ids).not.toContain("erosion_processes");
     }
-  }, 120_000);
-});
-
-describe("erosion_processes draws every build", () => {
-  test("each preset draws one frame per build, words clear of each other, nothing cut", async () => {
-    const m = await model();
-    const K = await kit();
-    for (const pre of m.presets) {
-      const P = K.withDefaults(m.params, pre.params);
-      const steps = m.builds?.(P).steps.map((s) => s.key) ?? [];
-      expect(steps[0]).toBe("picture");
-      const d = await renderLibraryModel("erosion_processes", P);
-      expect(d.builds + 1).toBe(steps.length);
-      expect(d.warnings).toEqual([]);
-      expect(overlappingWords(d.svg)).toEqual([]);
-    }
+    // The writer's schema enum is built from the stage's catalogue, so it cannot name it either.
+    const base = { $defs: { "diagram-full": { anyOf: [] } } };
+    const ids = (await catalogue("KS3-5")).map((e) => e.id);
+    const s = libSchema(base, ids) as { $defs: Record<string, J> };
+    const def = s.$defs["dg-model-full"] as { properties: { model: { enum: string[] } } };
+    expect(def.properties.model.enum).not.toContain("erosion_processes");
   });
 
-  test("the pictures open with letters; each build names one process, in order", async () => {
-    const m = await model();
-    const P = (await kit()).withDefaults(m.params, {});
-    const d = await renderLibraryModel("erosion_processes", P);
-    const keys = m.builds?.(P).steps.map((s) => s.key) ?? [];
-    expect(keys).toEqual(["picture", "hydraulic", "abrasion", "attrition", "solution"]);
-    const at = (k: string) => wordsAt(d.svg, keys.indexOf(k)).join(" | ");
-    expect(at("picture")).toBe("A | B | C | D");
-    expect(at("hydraulic")).toMatch(/^Hydraulic action \| Water forces air into cracks/);
-    expect(at("hydraulic")).not.toMatch(/Abrasion/);
-    expect(at("abrasion")).toMatch(/Abrasion \| Rocks carried by the river scrape the bed/);
-    expect(at("solution")).toMatch(/Solution \| Water dissolves some rocks/);
-    expect(at("solution")).not.toMatch(/\b[ABCD]\b \|/);
-  });
-
-  test("names only, and the transport view", async () => {
-    const m = await model();
-    const K = await kit();
-    const names = await renderLibraryModel(
-      "erosion_processes",
-      K.withDefaults(m.params, { explain: false }),
+  test("a lesson that still asks for it falls back to the drawer, never an error", async () => {
+    const theme = getTheme("studio", "ks3" as never);
+    const place = modelBodyRect("How rivers erode", undefined, theme, "ks3" as never);
+    const r = await libraryDiagram(
+      {
+        key: "d",
+        model: "erosion_processes",
+        intent: "Show the four erosion processes",
+        words: "",
+        heading: "",
+        caption: "",
+        yearGroup: "Year 9",
+        lesson: "Geography: rivers",
+        font: theme.fonts.body,
+        place,
+      },
+      async () => ({}),
     );
-    expect(wordsAt(names.svg, names.builds)).toEqual([
-      "Hydraulic action",
-      "Abrasion",
-      "Attrition",
-      "Solution",
-    ]);
-    const tr = await renderLibraryModel(
-      "erosion_processes",
-      K.withDefaults(m.params, { view: "transport", explain: false }),
-    );
-    expect(wordsAt(tr.svg, tr.builds)).toEqual(["Traction", "Saltation", "Suspension", "Solution"]);
-  });
-});
-
-describe("erosion_processes in the writer's menu and on question slides", () => {
-  test("the Year 9 geography menu lists it, first for an erosion lesson; not for Year 4", async () => {
-    const entries = await catalogue("KS3-5", {
-      yearGroup: "Year 9",
-      subject: "Geography",
-      objectives: ["Describe the processes of erosion: hydraulic action, abrasion and attrition"],
-    });
-    expect(entries[0]?.id).toBe("erosion_processes");
-    const ks2 = await catalogue("KS2", { yearGroup: "Year 4", subject: "Geography" });
-    expect(ks2.map((e) => e.id)).not.toContain("erosion_processes");
-  });
-
-  test("a question slide opens on the lettered pictures", async () => {
-    const m = await model();
-    expect(await questionStep("erosion_processes", (await kit()).withDefaults(m.params, {}))).toBe(
-      0,
-    );
-  });
-
-  test("KS4 lists it; Year 8 science does not (the menu filters by subject)", async () => {
-    const ks4 = await catalogue("KS3-5", { yearGroup: "Year 10", subject: "Geography" });
-    expect(ks4.map((e) => e.id)).toContain("erosion_processes");
-    const sci = await catalogue("KS3-5", { yearGroup: "Year 8", subject: "Science" });
-    expect(sci.map((e) => e.id)).not.toContain("erosion_processes");
-  });
-
-  test("question slides in the coast and transport views open on letters only", async () => {
-    const m = await model();
-    const K = await kit();
-    for (const sent of [{ setting: "coast" }, { view: "transport" }]) {
-      const P = K.withDefaults(m.params, sent);
-      const q = await questionStep("erosion_processes", P);
-      expect(q).toBe(0);
-      const d = await renderLibraryModel("erosion_processes", P, { step: q });
-      const doc = new Window().document;
-      doc.body.innerHTML = d.svg.replace(/<style>[\s\S]*?<\/style>/g, "");
-      const open = [...doc.querySelectorAll("text")]
-        .filter((t) => !t.closest("[data-reveal]"))
-        .map((t) => (t.textContent ?? "").trim())
-        .filter(Boolean);
-      expect(open, JSON.stringify(sent)).toEqual(["A", "B", "C", "D"]);
-    }
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/no shipped model erosion_processes/);
   });
 
   test("what it cannot draw", () => {
