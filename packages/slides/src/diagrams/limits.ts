@@ -8,7 +8,8 @@
  */
 import { z } from "zod";
 import { FONT_STACKS } from "../fonts";
-import type { KeyStage } from "../themes";
+import { V2_AGE_PROFILES } from "../theme-v2-paper";
+import { ALL_THEMES, type KeyStage } from "../themes";
 import { SLOT_TABLE } from "./slot-limits.gen";
 import { TYPE_FLOOR } from "./style";
 import { type Ctx, textWidth, wrap } from "./svg";
@@ -40,12 +41,24 @@ export const captionRule = (k: number): Measured => ({
 /** Words on a flow's arrow: two lines (`flow.ts`: wrap(label, room, 2)). */
 const LINK: Measured = { width: 140, lines: 2, weight: 400 };
 
-const STACKS = [...new Set(Object.values(FONT_STACKS))];
+/**
+ * The faces a diagram's words are set in: every theme's body face, retired themes and theme v2's
+ * age profiles included. Not every stack in `FONT_STACKS`: Geist is the app's own face, which no
+ * theme sets slide text in and which has no metrics table, so `textWidth` guessed 0.62 em a glyph
+ * and refused a subject word every theme draws (TEACH-247 part cn: "photosynthesis" measured 156
+ * points against at most 131 in a theme face, and a Y8 flow was lost).
+ */
+export const BODY_STACKS: readonly string[] = [
+  ...new Set([
+    ...ALL_THEMES.map((t) => t.fonts.body),
+    ...Object.values(V2_AGE_PROFILES).map((p) => FONT_STACKS[p.fonts.body]),
+  ]),
+];
 /** Whether `text` sets within `m` in every body face, measured as the renderer measures it. */
 export function fitsMeasured(text: string, m: Measured): boolean {
   const t = text.trim();
   if (!t) return false;
-  return STACKS.every((stack) => {
+  return BODY_STACKS.every((stack) => {
     const x = { stack, fs: TYPE_FLOOR } as unknown as Ctx;
     const lines = wrap(t, x, m.width, m.lines, TYPE_FLOOR, m.weight);
     return (

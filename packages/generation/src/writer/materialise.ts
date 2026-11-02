@@ -1444,7 +1444,10 @@ export function wordsOf(raw: S): string {
     str(s.stem),
     str(s.formula),
     str(s.instruction),
-    ...pts(s.points).map((p) => (typeof p === "string" ? p : `${p.label}: ${p.text}`)),
+    // A key point has no label (TEACH-247 part cn: the drawer read "undefined: Carbon dioxide…").
+    ...pts(s.points).map((p) =>
+      typeof p === "string" ? p : [p.label, p.text].filter(Boolean).join(": "),
+    ),
     ...strs(s.questions),
     ...strs(s.options),
   ];
