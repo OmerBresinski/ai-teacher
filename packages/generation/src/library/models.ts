@@ -46,7 +46,6 @@ export const MODEL_LOADERS: Record<string, () => Promise<LibModel>> = {
   seasons_weather: () => import("./vendor/models/seasons_weather.js"),
   volcano_earthquake: () => import("./vendor/models/volcano_earthquake.js"),
   rivers_coasts: () => import("./vendor/models/rivers_coasts.js"),
-  erosion_processes: () => import("./vendor/models/erosion_processes.js"),
   climate_biomes: () => import("./vendor/models/climate_biomes.js"),
   map_skills: () => import("./vendor/models/map_skills.js"),
   hist_map: () => import("./vendor/models/hist_map.js"),
