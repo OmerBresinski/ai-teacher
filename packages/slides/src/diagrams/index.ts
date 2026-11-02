@@ -51,6 +51,7 @@ export {
 export { pileSpec, UNSHARED_ASK } from "./groups";
 export { mendParticleLabels, particleLabelFaults } from "./labels3";
 export {
+  BODY_STACKS,
   CHARS_PER_WORD,
   captionRule,
   type DiagramSlot,
