@@ -357,14 +357,20 @@ function renderBalance(root, P, ctx) {
 
   // pack items into rows bottom-up, centred on the pan; returns placed boxes
   const packRows = (rows, ex, baseY) => {
-    let y = baseY; const out = [];
+    // each mark rests on the highest mark already placed under it, or on the pan (TEACH-247 part cr):
+    // a short weight beside a tall bag no longer leaves the row above hanging over the weight
+    const out = []; let top = baseY;
     for (const r of rows) {
-      const gap = r.gap ?? CG; const rh = Math.max(...r.items.map(i => i.h));
+      const gap = r.gap ?? CG;
       const rw = r.items.reduce((s, i) => s + i.w, 0) + (r.items.length - 1) * (r.sp ?? 8);
-      let x = ex - rw / 2; y -= rh + (out.length ? gap : 4);
-      for (const it of r.items) { it.x = x; it.y = y + rh - it.h; x += it.w + (r.sp ?? 8); out.push(it); }
+      let x = ex - rw / 2; const below = out.slice();
+      for (const it of r.items) {
+        const under = below.filter(o => o.x < x + it.w && x < o.x + o.w);
+        it.x = x; it.y = (under.length ? Math.min(...under.map(o => o.y)) - gap : baseY - 4) - it.h;
+        top = Math.min(top, it.y); x += it.w + (r.sp ?? 8); out.push(it);
+      }
     }
-    return { items: out, top: y };
+    return { items: out, top };
   };
   // items into rows no wider than the pan
   const wrapRows = list => { const out = []; let cr = []; for (const it of list) { if (cr.length && cr.reduce((s2, i) => s2 + i.w + 8, 0) + it.w > PAN_W) { out.push({ items: cr }); cr = []; } cr.push(it); } if (cr.length) out.push({ items: cr }); return out; };
@@ -423,9 +429,9 @@ function renderBalance(root, P, ctx) {
       const take = isU(side) || isO(side) ? M.bU : 0;
       if (isO(side)) {
         const groups = M.aU;
-        for (let gi = 0; gi < groups; gi++) chunk(Array.from({ length: M.x }, () => ({ kind: 'cube', w: CUBE, h: CUBE, grp: gi })), PER_ROW).forEach((r, ri) => rows.push({ items: r, sp: CG, gap: ri === 0 && gi > 0 ? 18 : CG, grp: gi }));
+        for (let gi = 0; gi < groups; gi++) chunk(Array.from({ length: M.x }, () => ({ kind: 'cube', w: CUBE, h: CUBE, grp: gi })), PER_ROW).forEach((r, ri) => rows.push({ items: r, sp: CG, gap: ri === 0 && gi > 0 ? 12 : CG, grp: gi }));
       } else if (!isU(side)) chunk(Array.from({ length: S.b }, () => ({ kind: 'cube', w: CUBE, h: CUBE })), PER_ROW).forEach(r => rows.push({ items: r, sp: CG }));
-      chunk(Array.from({ length: take }, () => ({ kind: 'cube', w: CUBE, h: CUBE, take: true })), PER_ROW).forEach((r, ri) => rows.push({ items: r, sp: CG, gap: ri === 0 && rows.length ? 14 : CG }));
+      chunk(Array.from({ length: take }, () => ({ kind: 'cube', w: CUBE, h: CUBE, take: true })), PER_ROW).forEach(r => rows.push({ items: r, sp: CG }));
       const { items: placed } = packRows(lastFirst(rows, rowLeaves(side)), ex, PAN_Y);
       placed.forEach((it, j) => {
         const gone = goneAt(it, side);
@@ -436,7 +442,7 @@ function renderBalance(root, P, ctx) {
       if (isO(side) && M.aU > 1 && kS >= 0) for (let gi = 0; gi < M.aU; gi++) {
         const gs = placed.filter(i => i.grp === gi); if (!gs.length) continue;
         const x0 = Math.min(...gs.map(i => i.x)), y0 = Math.min(...gs.map(i => i.y)), x1 = Math.max(...gs.map(i => i.x + i.w)), y1 = Math.max(...gs.map(i => i.y + i.h));
-        groupRing(cont, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, { pad: 6, s: kS, col: 'var(--focus)' });
+        groupRing(cont, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, { pad: 5, s: kS, col: 'var(--focus)' });
       }
     } else {
       // number weights: one weight per number the teacher wrote; after a step, the new amount
@@ -589,7 +595,7 @@ function renderWide(root, P, ctx) {
     let cu = 64;
     const uW = c => bU * (c + GAP) + SPLIT + boxW(x, c);
     while (cu > 26 && (plainXs(cu).w > ROOM || uW(cu) > ROOM)) cu--;
-    const yC = PAN_Y - 4 - cu - PB;           // cubes sit level with the cubes inside the box
+    const yC = PAN_Y - cu - PB;               // cubes sit level with the cubes inside the box, the box on the pan
     topY = yC - PB;
     // the plain side: matched cubes nearest the middle, left-over cubes at the outer end
     { const { g: pg, ex } = pans[oS]; const { xs, w } = plainXs(cu); const x0 = ex - w / 2;
