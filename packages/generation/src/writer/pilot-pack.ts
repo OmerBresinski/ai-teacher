@@ -60,6 +60,9 @@ import t183 from "./bundles/pilot-v4.18-menu/system-KS3.template.txt" with { typ
 import t18b1 from "./bundles/pilot-v4.18b-menu/system-KS1.template.txt" with { type: "text" };
 import t18b2 from "./bundles/pilot-v4.18b-menu/system-KS2.template.txt" with { type: "text" };
 import t18b3 from "./bundles/pilot-v4.18b-menu/system-KS3.template.txt" with { type: "text" };
+import t50a1 from "./bundles/pilot-v5.0a/system-KS1.template.txt" with { type: "text" };
+import t50a2 from "./bundles/pilot-v5.0a/system-KS2.template.txt" with { type: "text" };
+import t50a3 from "./bundles/pilot-v5.0a/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -70,6 +73,7 @@ import {
   questionOffer,
   withMenuOpts,
 } from "./layout-menu";
+import { v50aSystem } from "./pilot-v50a";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
 import { WAVE_C_FLOW_SHAPES, WAVE_C_ROUTED_FITS, waveCDefs, waveCWordCaps } from "./wave-c";
@@ -642,13 +646,53 @@ export const PILOT_PACKS = {
     flowGroup: "required",
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v5.0a (3 Nov 2026, test runs only, selected with TJ_PILOT_PACK): back to basics. v4.17's schema,
+  // layouts, switches and writer; the system text is a short first-principles brief plus what code
+  // needs, and the code-built menu lines keep their Fits under one short line each (pilot-v50a.ts).
+  "v5.0a": {
+    id: "v5.0a",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(v50aSystem(t50a1, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(v50aSystem(t50a2, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(v50aSystem(t50a3, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
 export const packWriter = (id: string | undefined): PilotPack["writer"] =>
   id ? (PILOT_PACKS as Record<string, PilotPack>)[id]?.writer : undefined;
+/**
+ * A tuning run's pack (LT-1 precedent, 2 Nov 2026): `TJ_PILOT_PACK` names a pack id for one run
+ * (genlab `run.ts` forwards it to the worker and records `meta.pilotPack`). Unset or empty: the
+ * live pack. An id that is not a pack throws at load, so a typo never runs the live pack silently.
+ */
+export function packFromEnv(env: string | undefined, live: PilotPackId): PilotPackId {
+  if (!env) return live;
+  if (!(env in PILOT_PACKS)) throw new Error(`TJ_PILOT_PACK: no pilot pack ${env}`);
+  return env as PilotPackId;
+}
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_ID: PilotPackId = "v4.17";
+export const PILOT_PACK_LIVE: PilotPackId = "v4.17";
+export const PILOT_PACK_ID: PilotPackId = packFromEnv(
+  typeof process === "undefined" ? undefined : process.env.TJ_PILOT_PACK,
+  PILOT_PACK_LIVE,
+);
 
 /**
  * A schema with no string length caps: `maxLength` dropped, a `pattern` (the `^.{1,N}$` caps)
