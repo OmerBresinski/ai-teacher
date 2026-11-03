@@ -23,11 +23,7 @@ export const DRAWING_PARAMS: Record<string, { always: string[]; when?: (p: J) =>
     always: [],
     when: (p) => (p.layout === "grid" ? ["grid"] : ["groups", "size"]),
   },
-  fractions: {
-    always: ["fractions"],
-    when: (p) =>
-      p.operation === "of" ? ["amount", ...(p.representation === "set" ? ["things"] : [])] : [],
-  },
+  fractions: { always: ["fractions"], when: (p) => (p.operation === "of" ? ["amount"] : []) },
   bar_model: {
     always: ["type"],
     when: (p) =>

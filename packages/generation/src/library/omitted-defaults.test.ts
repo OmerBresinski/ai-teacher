@@ -137,7 +137,8 @@ const LEFT: Record<string, Record<string, string>> = {
   },
   circuits: { cells: DEMO },
   equal_groups: { remainder: "0 draws nothing" },
-  fractions: { whole: NEUTRAL },
+  // A recorded fill (d52 Alib y5 s7, "3/5 of 35") left it out: counters stand for any things.
+  fractions: { whole: NEUTRAL, things: NEUTRAL },
   bar_model: {
     unknownPart: "which part is hidden, a choice, not a value the words state",
     percent: WHEN,
