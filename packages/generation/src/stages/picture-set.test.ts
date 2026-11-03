@@ -1022,3 +1022,52 @@ describe("a placed panel is handed over at once (TEACH-247 part cd, plants showc
     expect(shown.sort()).toEqual(["0:p0", "1:p1", "2:p2"]);
   });
 });
+
+describe("a remade panel judged beside its placed neighbours (TEACH-247 part cy)", () => {
+  const placed = [
+    { shows: "A newly hatched chick", dataUrl: "data:image/png;base64,AAAA" },
+    { shows: "A growing young chicken", dataUrl: "data:image/png;base64,BBBB" },
+  ];
+  const remake: SetAsk[] = [
+    { key: "p2", index: 3, shows: "An adult hen", mustSee: [], aspect: 1, sameSubject: true },
+  ];
+  const run = async (verdicts: { same: boolean; odd: number[]; why?: string }[]) => {
+    const f = fakes({ strips: [stripPng([30])] });
+    const seen: number[] = [];
+    const out = await makePictureSet(remake, {
+      ...f.deps,
+      placed,
+      judgeSet: async (shows) => {
+        seen.push(shows.length);
+        return verdicts.shift() ?? { same: true, odd: [] };
+      },
+    });
+    return { out, seen, made: f.made() };
+  };
+  test("a mismatch blamed on a placed panel still fails the remake: it is what is being decided", async () => {
+    const blamed = { same: false, odd: [0], why: "panel 1 differs" };
+    const { out, seen } = await run([blamed, blamed, blamed]);
+    expect(out[0]).toBeUndefined();
+    expect(seen.every((n) => n === 3)).toBe(true);
+  });
+  test("a mismatch that names no panel fails the remake too", async () => {
+    const none = { same: false, odd: [] as number[] };
+    const { out } = await run([none, none, none]);
+    expect(out[0]).toBeUndefined();
+  });
+  test("a remake that matches is placed, with no second generation", async () => {
+    const { out, seen, made } = await run([{ same: true, odd: [] }]);
+    expect(out[0]?.key).toBe("p2");
+    expect(seen).toEqual([3]);
+    expect(made).toBe(1);
+  });
+  test("its next try is judged beside the placed panels as well, and placed only if it matches", async () => {
+    const { out, seen, made } = await run([
+      { same: false, odd: [2] },
+      { same: true, odd: [] },
+    ]);
+    expect(out[0]?.key).toBe("p2");
+    expect(seen).toEqual([3, 3]);
+    expect(made).toBe(2);
+  });
+});

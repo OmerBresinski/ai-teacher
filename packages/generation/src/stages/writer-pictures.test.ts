@@ -2,7 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { BudgetReservationError } from "@tj/ai";
 import { createFakeAi } from "@tj/ai/testing";
 import type { Lesson, PhotoSource } from "@tj/domain/documents";
-import { encodePng, type ImageGenerator, type PhotoResult, type StoredPhoto } from "@tj/images";
+import {
+  encodePng,
+  ImageGenerationError,
+  type ImageGenerator,
+  type PhotoResult,
+  type StoredPhoto,
+} from "@tj/images";
 import pino from "pino";
 import { FICTION_IN_PERIOD_IS_HISTORICAL } from "../period";
 import type { PictureDirection } from "../prompts/picture-director";
@@ -1032,6 +1038,255 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     expect(pictures.state(12, "stage.1").status).toBe("photo");
     expect(pictures.state(12, "stage.2").status).toBe("photo");
     expect(pictures.state(12, "stage.0").status).toBe("failed");
+  });
+
+  test("a stages panel made again and waiting on its judge outlives the deadline, as a single picture does (rivers v421b s8)", async () => {
+    // Rivers v4.21b s8: stage 4's third picture landed 0.2 s before the settle and its judge was
+    // aborted there; a single made picture gets WRITER_MADE_GRACE_MS, a set panel got none, so the
+    // panel failed and the all-or-none stages layout dropped the three placed pictures with it.
+    const m = splitMaker();
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    // The re-made panel's judge answers after the deadline (it stops if its signal aborts).
+    const slowJudge = (call: { abortSignal?: AbortSignal | undefined }) =>
+      new Promise<string>((resolve, reject) => {
+        const t = setTimeout(() => resolve(saw("sunflower")), 300);
+        call.abortSignal?.addEventListener("abort", () => {
+          clearTimeout(t);
+          reject(Object.assign(new Error("stopped"), { name: "AbortError" }));
+        });
+      });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, slowJudge],
+          text: set,
+        }),
+      ),
+      maker: m.maker,
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const seen = ["sunflower", "seed head", "seeds"];
+    for (const [k, s] of seen.entries())
+      pictures.start(
+        12,
+        ask({ key: `stage.${k}`, shows: `A ${s}`, mustSee: [s], named: false, set: "stages" }),
+        slide,
+      );
+    await pictures.settle(150);
+    expect(m.prompts).toHaveLength(4);
+    expect(pictures.state(12, "stage.1").status).toBe("photo");
+    expect(pictures.state(12, "stage.2").status).toBe("photo");
+    expect(pictures.state(12, "stage.0").status).toBe("photo");
+  });
+
+  test("a stages panel made again in a later round is judged beside the placed panels (TEACH-247 part cy)", async () => {
+    const m = splitMaker();
+    let n = 0;
+    const inner = m.maker.generator;
+    // The fourth generation (stage 0 made again alone) runs past the deadline, as in part cd.
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: inner.model,
+      generate: (req) =>
+        n++ === 3
+          ? new Promise((_, reject) =>
+              req.signal?.addEventListener("abort", () =>
+                reject(Object.assign(new Error("stopped"), { name: "AbortError" })),
+              ),
+            )
+          : inner.generate(req),
+    };
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const ai = createFakeAi({
+      script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("sunflower")],
+      text: set,
+    });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(ai),
+      maker: { ...m.maker, generator },
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const seen = ["sunflower", "seed head", "seeds"];
+    const asks = seen.map((s, k) =>
+      ask({
+        key: `stage.${k}`,
+        shows: `A ${s}`,
+        mustSee: [s],
+        named: false,
+        set: "stages",
+        // One subject at every stage, as materialise marks a stages strip (part ca).
+        sameSubject: true,
+      }),
+    );
+    for (const a of asks) pictures.start(12, a, slide);
+    await pictures.settle(400);
+    expect(pictures.state(12, "stage.0").status).toBe("failed");
+    expect(pictures.retryable(12, "stage.0")).toBe(true);
+    // The stage's retry (placeMore) asks the one panel again; it is made alone and placed.
+    pictures.start(12, asks[0] as WriterPhotoAsk, slide);
+    await pictures.settleSlide(12, 400);
+    expect(m.prompts).toHaveLength(4);
+    expect(pictures.state(12, "stage.0").status).toBe("photo");
+    expect(pictures.state(12, "stage.1").status).toBe("photo");
+    // Once per round: a second ask of the same key is not started again.
+    expect(pictures.canReask(12, "stage.0")).toBe(false);
+    // The set judge saw the two placed panels with the remake (3 pictures), not the remake alone.
+    // (Calls 0-3 are the first round's three panel judges and its set judge.)
+    expect(ai.calls.slice(4).map((c) => c.imageParts ?? 0)).toContain(3);
+  });
+
+  test("a stages panel lost before the settle is really made again early, and the settle does not stop or fail it (TEACH-247 part cy)", async () => {
+    const m = splitMaker();
+    let n = 0;
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const inner = m.maker.generator;
+    // Stage 0's solo fails at the provider; its early remake is held past the round's settle.
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: inner.model,
+      generate: async (req) => {
+        const at = n++;
+        if (at === 3) throw new ImageGenerationError("down", "server-error", 3, 500);
+        if (at === 4) await held;
+        if (at === 4 && req.signal?.aborted)
+          throw Object.assign(new Error("stopped"), { name: "AbortError" });
+        return inner.generate(req);
+      },
+    };
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("sunflower")],
+          text: set,
+        }),
+      ),
+      maker: { ...m.maker, generator },
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const asks = ["sunflower", "seed head", "seeds"].map((s, k) =>
+      ask({
+        key: `stage.${k}`,
+        shows: `A ${s}`,
+        mustSee: [s],
+        named: false,
+        set: "stages",
+        sameSubject: true,
+      }),
+    );
+    for (const a of asks) pictures.start(12, a, slide);
+    await pictures.whenSlideDone(12, 2000);
+    expect(pictures.state(12, "stage.0").status).toBe("failed");
+    pictures.start(12, asks[0] as WriterPhotoAsk, slide);
+    const remade = pictures.settleSlide(12, 2000);
+    // The round settles while the remake runs: it must neither stop it nor fail the lesson.
+    await pictures.settle(10);
+    release();
+    await remade;
+    expect(n).toBe(5);
+    expect(pictures.state(12, "stage.0").status).toBe("photo");
+  });
+
+  test("a remake the judge refuses is not retryable again, though the first loss was an error (TEACH-247 part cy)", async () => {
+    const m = splitMaker();
+    let n = 0;
+    const inner = m.maker.generator;
+    // Stage 0's solo fails at the provider; its remake is made and refused twice.
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: inner.model,
+      generate: (req) =>
+        n++ === 3
+          ? Promise.reject(new ImageGenerationError("down", "server-error", 3, 500))
+          : inner.generate(req),
+    };
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("a cat"), set],
+          text: saw("a cat"),
+        }),
+      ),
+      maker: { ...m.maker, generator },
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const asks = ["sunflower", "seed head", "seeds"].map((s, k) =>
+      ask({ key: `stage.${k}`, shows: `A ${s}`, mustSee: [s], named: false, set: "stages" }),
+    );
+    for (const a of asks) pictures.start(12, a, slide);
+    await pictures.settle(2000);
+    expect(pictures.retryable(12, "stage.0")).toBe(true);
+    pictures.start(12, asks[0] as WriterPhotoAsk, slide);
+    await pictures.settleSlide(12, 2000);
+    expect(pictures.state(12, "stage.0").status).toBe("failed");
+    expect(pictures.retryable(12, "stage.0")).toBe(false);
+  });
+
+  test("a stages panel lost to a provider error may be made again; one the judge refused may not (TEACH-247 part cy)", async () => {
+    const lose = async (fail: "provider" | "judge") => {
+      const m = splitMaker();
+      let n = 0;
+      const inner = m.maker.generator;
+      // Stage 0 is judged wrong in the strip; its solo then fails at the provider (rivers replay
+      // s8: a server error), or is made and refused again.
+      const generator: Pick<ImageGenerator, "model" | "generate"> = {
+        model: inner.model,
+        generate: (req) =>
+          n++ >= 3 && fail === "provider"
+            ? Promise.reject(new ImageGenerationError("down", "server-error", 3, 500))
+            : inner.generate(req),
+      };
+      const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+      const pictures = createWriterPictures({
+        lesson: { ...sampleBriefLesson(), subject: "Science" },
+        country: "UK",
+        images: images({}),
+        deps: recordingDeps(
+          createFakeAi({
+            script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("a cat"), saw("a cat")],
+            text: set,
+          }),
+        ),
+        maker: { ...m.maker, generator },
+        direct: async () => {
+          throw new Error("a generated set never asks the director");
+        },
+      });
+      ["sunflower", "seed head", "seeds"].forEach((s, k) => {
+        pictures.start(
+          12,
+          ask({ key: `stage.${k}`, shows: `A ${s}`, mustSee: [s], named: false, set: "stages" }),
+          slide,
+        );
+      });
+      await pictures.settle(2000);
+      expect(pictures.state(12, "stage.0").status).toBe("failed");
+      expect(pictures.state(12, "stage.1").status).toBe("photo");
+      return pictures.retryable(12, "stage.0");
+    };
+    expect(await lose("provider")).toBe(true);
+    expect(await lose("judge")).toBe(false);
   });
 
   test("a compound ask is one generated set joined into the slot's one picture", async () => {

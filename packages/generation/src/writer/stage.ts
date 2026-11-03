@@ -534,6 +534,17 @@ export const CONTINUED_NOTE = "Continued from the previous slide: the same conte
 /** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
 export const PUPIL_WORDING_DEADLINE_MS = 8_000;
 
+type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
+/** A stages strip's panel (TEACH-247 part cy): its slide shows every stage's picture or none. */
+const setPanel = (a: PhotoAsk) => a.set === "stages";
+/** A photo ask lostPic may fill once it fails: never a fixed shape, a card or a sequence set. */
+export const lostable = (a: VisualAsk): a is PhotoAsk =>
+  a.type === "photo" &&
+  (!a.set || setPanel(a)) &&
+  !a.fixedShape &&
+  // a card's picture has its own retry and plain-question fallback (ruling 195): a pair slide is
+  // never split or redrawn
+  !/^card\.\d+$/.test(a.key);
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** The checks act on their results ("act", the default) or are only logged (part i). */
   const act = run.checks !== "log";
@@ -2023,18 +2034,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     asks.set(i, oldAsks);
     relay(i);
   };
-  type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
-  /** A slide's failed photo asks that lostPic may fill (sets, fixed shapes and cards have their own paths). */
+  /**
+   * A slide's failed photo asks that lostPic may fill (fixed shapes, cards and sequence sets have
+   * their own paths). TEACH-247 part cy: a stages panel is one: the strip shows pictures on every
+   * stage or on none, so one lost panel took its placed neighbours with it (rivers v4.21b s8). It
+   * is made again once, alone in the set's look, and never drawn or split (`setPanel`).
+   */
   const lostAsks = (i: number) =>
     (asks.get(i) ?? []).filter(
-      (a): a is PhotoAsk =>
-        a.type === "photo" &&
-        !a.set &&
-        !a.fixedShape &&
-        // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
-        // slide is never split or redrawn
-        !/^card\.\d+$/.test(a.key) &&
-        visualState(i)(a.key).status === "failed",
+      (a): a is PhotoAsk => lostable(a) && visualState(i)(a.key).status === "failed",
     );
   /**
    * lostPic's attempt for one lost picture: swap in `next` (a library drawing or a split), place or
@@ -2185,7 +2193,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (i < 2) return;
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
-      const kind = run.drawAs?.(i, lost.key);
+      // A stages panel is never drawn alone: it is made again in the set's look, or not at all.
+      const kind = setPanel(lost) ? undefined : run.drawAs?.(i, lost.key);
       if (!kind && !run.retryable?.(i, lost.key)) continue;
       if (kind && run.drawDiagrams && !path.has(i) && (await drawLost(i, lost, kind))) continue;
       again.push(lost);
@@ -2261,8 +2270,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           if (!lostAsks(i).length) {
             if (a0.some((a) => a.type === "photo" && visualState(i)(a.key).status === "photo")) {
               relay(i);
-              path.set(i, "picture-placed");
-              log({ ev: "lost-early-landed", slide: i + 1 });
+              // TEACH-247 part cy: a stages strip shows every stage's picture or none, so one still
+              // out leaves the slide unplaced and the tail decides (rivers v4.21b s8). Every other
+              // slide keeps this route, whatever is pending (rivers pr754 s4, a panel list).
+              const panels = a0.filter((a) => a.type === "photo" && setPanel(a));
+              const placed = panels.filter((a) => visualState(i)(a.key).status === "photo").length;
+              if (placed < panels.length)
+                log({ ev: "lost-early-partial", slide: i + 1, placed, asked: panels.length });
+              else {
+                path.set(i, "picture-placed");
+                log({ ev: "lost-early-landed", slide: i + 1 });
+              }
             }
             return;
           }
@@ -3223,9 +3241,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const others = (asks.get(i) ?? [])
       .filter((a) => a.key !== lost.key)
       .map((a) => visualState(i)(a.key).status);
-    const how0 = !heldPhotoFills(s0, others)
-      ? undefined
-      : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
+    // TEACH-247 part cy: a stages panel is never swapped for a drawing or split off (code would
+    // choose the layout): the writer restages the slide (the reroute below), knowing the picture
+    // could not be shown.
+    const how0 =
+      setPanel(lost) || !heldPhotoFills(s0, others)
+        ? undefined
+        : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
     if (how0) {
       path.set(i, `picture-${how0}`);
       return;

@@ -60,6 +60,7 @@ import {
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
+  panelErrored,
   type SetAsk,
   type SetPicture,
   STRUCTURE,
@@ -2054,6 +2055,11 @@ export function createWriterPictures(opts: {
   const slots = new Map<string, Slot>();
   /** A slide's set panels, gathered until the slide's asks are all in (one microtask). */
   const sets = new Map<string, { index: number; slide: SlideForPicture; asks: WriterPhotoAsk[] }>();
+  /**
+   * TEACH-247 part cy: each set's placed panels (shows and bytes), so a panel made again later is
+   * judged beside them and the set still holds together.
+   */
+  const placedPanels = new Map<string, Map<string, { shows: string; dataUrl: string }>>();
   const taken = new Set<string>();
   const sources = new Map<string, PhotoSource>();
   const id = (index: number, key: string) => `${index}:${key}`;
@@ -2407,27 +2413,47 @@ export function createWriterPictures(opts: {
       if (!slot || slot.state.status !== "pending") return;
       if (!p) {
         slot.state = { status: "failed" };
-        slot.miss = "generation-refused-or-failed";
+        // TEACH-247 part cy: a panel lost to the provider or the network is an error (retryable
+        // once by the stage, as a single picture is), never a refusal.
+        slot.miss = errored.has(ask.key) ? "error" : "generation-refused-or-failed";
         return;
       }
       sources.set(p.src, p.source);
+      if (p.dataUrl) {
+        const kept = placedPanels.get(setId) ?? new Map();
+        kept.set(ask.key, { shows: ask.shows, dataUrl: p.dataUrl });
+        placedPanels.set(setId, kept);
+      }
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
+    // A remake: the set's panels still on the slide are judged beside it.
+    const asked = new Set(group.asks.map((a) => a.key));
+    const placed = [...(placedPanels.get(setId) ?? [])]
+      .filter(
+        ([key]) => !asked.has(key) && slots.get(id(group.index, key))?.state.status === "photo",
+      )
+      .map(([, r]) => r);
+    /** Panels the set ended without because a call failed, not a judge (`panelErrored`). */
+    const errored = new Set<string>();
     /** Panels already shown by `onPanel`: the set's end never sets them twice. */
     const early = new Set<number>();
+    // An early remake (Slot.own) runs on the job's signal, not the round's: the settle neither
+    // waits for it nor stops it (as `placeSplit` and `slotDeps`).
+    const setDeps = panels.some(({ slot }) => slot?.own) ? opts.deps : deps;
     const generateSet = (look: typeof setLook) =>
       makePictureSet(
         asks,
         {
           generator: maker.generator,
           save: maker.save,
-          ...directedSetJudges(opts.lesson, deps),
+          ...directedSetJudges(opts.lesson, setDeps),
           ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
           ...(maker.allow ? { allow: maker.allow } : {}),
           ...(maker.spent ? { spent: maker.spent } : {}),
+          ...(placed.length ? { placed } : {}),
           signal: AbortSignal.any([
-            deps.signal,
+            setDeps.signal,
             ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
           ]),
           log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
@@ -2443,6 +2469,18 @@ export function createWriterPictures(opts: {
               () => opts.onPlaced?.(group.index, e.ask.key),
               () => undefined,
             );
+          },
+          // TEACH-247 part cy: a landed panel waiting on its judges is `made`, so the settle's
+          // `graceForMade` waits for it as it does for a single generated picture.
+          onEmpty: (k, reason) => {
+            const key = asks[k]?.key;
+            if (key && panelErrored(reason)) errored.add(key);
+          },
+          onMade: (ks, made) => {
+            for (const k of ks) {
+              const slot = panels[k]?.slot;
+              if (slot && slot.state.status === "pending") slot.made = made;
+            }
           },
         },
         look,
@@ -2658,6 +2696,12 @@ export function createWriterPictures(opts: {
           slot.done = new Promise<void>((finish) => queueMicrotask(() => placeSet(setId, finish)));
         }
         slots.set(k, slot);
+        // TEACH-247 part cy: its set's placement is over: a failed panel may be asked again before
+        // the round ends, as a single ask may (without this the early remake silently did nothing).
+        void slot.done.then(
+          () => over.add(slot),
+          () => over.add(slot),
+        );
         return;
       }
       const subjects = opts.maker ? splitSubjects(ask) : undefined;
@@ -2844,6 +2888,7 @@ export function createWriterPictures(opts: {
         reasked.delete(k);
       }
       for (const k of sets.keys()) if (k.startsWith(prefix)) sets.delete(k);
+      for (const k of placedPanels.keys()) if (k.startsWith(prefix)) placedPanels.delete(k);
       // New words are a new ask: the slide's refusals count again from none.
       refused.delete(index);
     },

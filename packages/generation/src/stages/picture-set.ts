@@ -329,6 +329,11 @@ export interface SetPicture {
   /** The set it was made in (a solo panel: `<set>#solo<k>`). */
   set: string;
   boxes?: Box[];
+  /**
+   * The placed panel's bytes as a data URL (TEACH-247 part cy): a panel of the same set made again
+   * later is judged beside it (`PictureSetDeps.placed`). Never stored on the slide.
+   */
+  dataUrl?: string;
 }
 
 export interface PanelVerdict {
@@ -364,6 +369,28 @@ export interface PictureSetDeps {
    * may replace.
    */
   onPanel?(k: number, picture: SetPicture): void;
+  /**
+   * TEACH-247 part cy: a generation for these panels starts (`false`) or has landed, paid and
+   * waiting on its judges (`true`). The caller gives a landed panel the same deadline grace a
+   * single generated picture gets (rivers v4.21b s8: the fourth stage's judge was stopped 0.2 s
+   * after its picture landed, and the slide lost all four).
+   */
+  onMade?(panels: number[], made: boolean): void;
+  /** A panel the set ends without, and its last failure's reason code (TEACH-247 part cy). */
+  onEmpty?(k: number, reason: string | undefined): void;
+  /**
+   * TEACH-247 part cy: panels of this set already placed (a remake of one panel): the set judge
+   * sees them first, beside the new panels, so the remake must hold together with them.
+   */
+  placed?: { shows: string; dataUrl: string }[];
+}
+
+/**
+ * A panel's failure that is no verdict on the picture (the provider or the network failed, or the
+ * time ran out): the stage may make it again once, as it may a single picture lost to an error.
+ */
+export function panelErrored(reason: string | undefined): boolean {
+  return !!reason && NO_SOLO_AFTER.has(reason);
 }
 
 /**
@@ -500,7 +527,10 @@ export async function makePictureSet(
   const soloSize = sizeForAspect(slotAspect).size;
   const style = setStyle(look);
   const shows = asks.map((a) => a.shows);
-  const same = relation === "stages";
+  const ref = deps.placed ?? [];
+  // A remade stages panel is judged with its placed neighbours (TEACH-247 part cy).
+  const same =
+    relation === "stages" || (ref.length > 0 && given.every((a) => a.sameSubject === true));
   const mode = setMode(asks.length, deps.grid, asks[0]?.fills);
   let capped = false;
   /** Generations each panel has had (a strip or grid counts once for every panel in it). */
@@ -533,6 +563,7 @@ export async function makePictureSet(
     const count = () => {
       for (const k of panels) tries[k] = (tries[k] ?? 0) + 1;
     };
+    deps.onMade?.(panels, false);
     const made = await deps.generator
       .generate({
         prompt: p,
@@ -547,6 +578,7 @@ export async function makePictureSet(
     count();
     deps.spent?.(made.costUsd);
     halted();
+    deps.onMade?.(panels, true);
     return made;
   };
   const place = async (
@@ -578,6 +610,7 @@ export async function makePictureSet(
       style,
       set,
       ...(boxes?.length ? { boxes } : {}),
+      dataUrl: dataUrl(panel),
     };
   };
   /** A panel placed for good, handed to the caller at once (`onPanel`). */
@@ -590,6 +623,22 @@ export async function makePictureSet(
     deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
   deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, relation, aspect: slotAspect });
 
+  /**
+   * The set judge over these panels, any placed panels first (TEACH-247 part cy). Only the new
+   * panels are being decided, so a mismatch that names none of them (it blames a placed panel, or
+   * no panel) fails them all: a set judged mismatched never passes them.
+   */
+  const judgeBeside = (panelShows: string[], urls: string[]) =>
+    deps
+      .judgeSet(
+        [...ref.map((r) => r.shows), ...panelShows],
+        [...ref.map((r) => r.dataUrl), ...urls],
+      )
+      .then((v) => {
+        if (!v || !ref.length) return v;
+        const odd = v.odd.map((k) => k - ref.length).filter((k) => k >= 0);
+        return { ...v, odd: !v.same && !odd.length ? panelShows.map((_, k) => k) : odd };
+      });
   // Partial-set fallback: each panel not placed is generated alone, in the lesson's look, judged
   // alone; placed panels are kept. Up to `SOLO_ATTEMPTS` solos, each carrying why the last failed.
   const soloOnce = (a: SetAsk, k: number, n: number): Promise<SetPicture | undefined | "again"> =>
@@ -616,6 +665,16 @@ export async function makePictureSet(
         if (!verdict.ok) {
           failed(k, { reason: "judge", ...(verdict.why ? { why: verdict.why } : {}) });
           return "again";
+        }
+        // A remake's later tries answer to its placed neighbours too, not only the first.
+        if (same && ref.length) {
+          const beside = await judgeBeside([a.shows], [dataUrl(made.bytes)]).catch(
+            whenNonFatal(() => undefined),
+          );
+          if (beside && !beside.same) {
+            failed(k, { reason: "odd", ...(beside.why ? { why: beside.why } : {}) });
+            return "again";
+          }
         }
         return placed(k, await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`));
       },
@@ -672,7 +731,7 @@ export async function makePictureSet(
     // whole plants); each card is judged alone against its own subject, and one look is the
     // generation's (a matched-set judge for style is a later prompt).
     const verdictP = same
-      ? deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined))
+      ? judgeBeside(shows, urls).catch(whenNonFatal(() => undefined))
       : Promise.resolve(undefined);
     if (early) {
       judging.forEach((j, k) => {
@@ -839,6 +898,7 @@ export async function makePictureSet(
   const outcomes = (out: (SetPicture | undefined)[]) =>
     asks.forEach((a, k) => {
       const why = reasons.get(k)?.reason ?? (capped ? "capped" : undefined);
+      if (!out[k]) deps.onEmpty?.(k, why);
       deps.log({
         ev: "picture-outcome",
         kind: "set",
