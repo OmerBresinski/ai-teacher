@@ -266,8 +266,22 @@ const CLEAN = {
   shapes: [{ type: "rect", x: 30, y: 30, w: 40, h: 40, fill: "accent" }],
   labels: [{ text: "Square", at: [50, 15] }],
 };
+describe("what releases a group's held repaint (TEACH-247 part cz, review of #755)", () => {
+  test("the group decides, even when the stage has no lost ask left on the slide", async () => {
+    const { paintCalls, retried } = await run({
+      retryable: false,
+      remakeLands: false,
+      panelList: true,
+      landsAtSettle: true,
+      paintFills: true,
+    });
+    expect(retried).toEqual([]);
+    expect(paintCalls).toContain(DECK);
+  });
+});
+
 describe("a group member the stage draws (TEACH-247 part cz, review of #755)", () => {
-  test("releases the group's held repaint: its photos are not left beside the drawing", async () => {
+  test("the group's held repaint is still released after the drawing", async () => {
     const events: S[] = [];
     const paintCalls: number[] = [];
     const remade = new Set<string>();
