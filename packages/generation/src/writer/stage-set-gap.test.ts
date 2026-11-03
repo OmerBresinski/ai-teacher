@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Brief } from "./fixes";
 import type { VisualState } from "./materialise";
 import { replayServices } from "./replay-fixture";
-import { runWriter } from "./stage";
+import { lostable, runWriter } from "./stage";
 
 /*
  * TEACH-247 part cy (rivers v4.21b s8): a stages strip shows a picture on every stage or on none.
@@ -123,5 +123,32 @@ describe("a stages set with one gap (TEACH-247 part cy)", () => {
     expect(paths.map((e) => e.path)).not.toContain("picture-placed");
     expect(paths.map((e) => String(e.path))).toEqual([expect.stringMatching(/^picture-/)]);
     expect(events.some((e) => e.ev === "repair" && e.slide === DECK + 1)).toBe(true);
+  });
+
+  test("when the reroute cannot rewrite it, the strip's pictures really go and the log says so", async () => {
+    // The replay has no writer answer for this rewrite, so restage takes its fixed fallback.
+    const { out, events, pictures } = await run({ retryable: false, remakeLands: false });
+    expect(at(events, "restage-fallback")).toEqual([
+      expect.objectContaining({ how: "stage-pictures-dropped" }),
+    ]);
+    const paths = events.filter((e) => e.ev === "visual-path" && e.slide === DECK + 1);
+    expect(paths.map((e) => e.path)).toEqual(["picture-stage-pictures-dropped"]);
+    // What the teacher sees: no stage asks a picture, and none is drawn.
+    const slide = out.slides.find((s) => s.id === `s${DECK + 1}`);
+    const input = JSON.stringify(slide?.elements ?? []);
+    expect(input).not.toContain('"picture":{');
+    expect(pictures).toEqual([]);
+  });
+});
+
+describe("which pictures count towards a slide being placed (TEACH-247 part cy)", () => {
+  const photoAsk = (key: string, over: object = {}) =>
+    ({ key, type: "photo", shows: key, mustSee: [], named: false, ...over }) as never;
+  test("a single picture and a stages panel count; a card, a fixed shape and a sequence set do not", () => {
+    expect(lostable(photoAsk("picture"))).toBe(true);
+    expect(lostable(photoAsk("stage.0", { set: "stages" }))).toBe(true);
+    expect(lostable(photoAsk("card.0"))).toBe(false);
+    expect(lostable(photoAsk("figure", { fixedShape: true }))).toBe(false);
+    expect(lostable(photoAsk("seq.0", { set: "seq" }))).toBe(false);
   });
 });

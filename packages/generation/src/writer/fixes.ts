@@ -638,7 +638,7 @@ export function linkSteps(spec: Record<string, unknown> | undefined): string[] {
 }
 export function fixedFallback(
   slide: S,
-  lost: { type: string; kind?: string; labels?: string[] },
+  lost: { type: string; kind?: string; labels?: string[]; key?: string },
   parts: string[],
   maxSteps: number,
 ): { slide: S; how: string } {
@@ -667,6 +667,19 @@ export function fixedFallback(
               : p,
         )
         .filter((p) => (typeof p === "string" ? p.trim() : true));
+  // TEACH-247 part cy: a stages strip shows a picture on every stage or on none, so a stage picture
+  // that cannot be shown takes the strip's other pictures with it, here and in the log: every
+  // stage's picture ask is dropped (no slot, no paid picture left on the slide unseen).
+  if (out.template === "stages" && /^stage\.\d+$/.test(lost.key ?? "") && Array.isArray(out.items))
+    return {
+      slide: {
+        ...out,
+        items: (out.items as unknown[]).map((it) =>
+          it && typeof it === "object" ? { ...(it as S), picture: null } : it,
+        ),
+      },
+      how: "stage-pictures-dropped",
+    };
   const tpl = String(out.template);
   if (
     [

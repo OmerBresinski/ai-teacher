@@ -534,6 +534,17 @@ export const CONTINUED_NOTE = "Continued from the previous slide: the same conte
 /** The pupil-wording call's deadline: it runs beside the writer, so it is never the wait. */
 export const PUPIL_WORDING_DEADLINE_MS = 8_000;
 
+type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
+/** A stages strip's panel (TEACH-247 part cy): its slide shows every stage's picture or none. */
+const setPanel = (a: PhotoAsk) => a.set === "stages";
+/** A photo ask lostPic may fill once it fails: never a fixed shape, a card or a sequence set. */
+export const lostable = (a: VisualAsk): a is PhotoAsk =>
+  a.type === "photo" &&
+  (!a.set || setPanel(a)) &&
+  !a.fixedShape &&
+  // a card's picture has its own retry and plain-question fallback (ruling 195): a pair slide is
+  // never split or redrawn
+  !/^card\.\d+$/.test(a.key);
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** The checks act on their results ("act", the default) or are only logged (part i). */
   const act = run.checks !== "log";
@@ -2023,9 +2034,6 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     asks.set(i, oldAsks);
     relay(i);
   };
-  type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
-  /** A stages strip's panel (TEACH-247 part cy): its slide shows every stage's picture or none. */
-  const setPanel = (a: PhotoAsk) => a.set === "stages";
   /**
    * A slide's failed photo asks that lostPic may fill (fixed shapes, cards and sequence sets have
    * their own paths). TEACH-247 part cy: a stages panel is one: the strip shows pictures on every
@@ -2034,14 +2042,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    */
   const lostAsks = (i: number) =>
     (asks.get(i) ?? []).filter(
-      (a): a is PhotoAsk =>
-        a.type === "photo" &&
-        (!a.set || setPanel(a)) &&
-        !a.fixedShape &&
-        // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
-        // slide is never split or redrawn
-        !/^card\.\d+$/.test(a.key) &&
-        visualState(i)(a.key).status === "failed",
+      (a): a is PhotoAsk => lostable(a) && visualState(i)(a.key).status === "failed",
     );
   /**
    * lostPic's attempt for one lost picture: swap in `next` (a library drawing or a split), place or
@@ -2271,9 +2272,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
             // is on it. With one still out (pending past the wait), what landed is laid in and the
             // tail decides (rivers v4.21b s8 logged placed with stage 4 still out, so the tail never
             // retried it and the strip shipped as numbered text).
-            const photos = (asks.get(i) ?? []).filter((a) => a.type === "photo");
-            const placed = photos.filter((a) => visualState(i)(a.key).status === "photo").length;
-            if (placed) {
+            // Only the asks lostPic would fill count (a card, a fixed shape or a sequence set
+            // keeps its own path): those never turn a placed slide into a partial one.
+            const now = asks.get(i) ?? [];
+            const isPhoto = (a: VisualAsk) => visualState(i)(a.key).status === "photo";
+            const photos = now.filter(lostable);
+            const placed = photos.filter(isPhoto).length;
+            if (now.some((a) => a.type === "photo" && isPhoto(a))) {
               relay(i);
               if (placed === photos.length) {
                 path.set(i, "picture-placed");

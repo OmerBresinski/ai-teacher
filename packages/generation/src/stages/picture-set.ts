@@ -329,6 +329,11 @@ export interface SetPicture {
   /** The set it was made in (a solo panel: `<set>#solo<k>`). */
   set: string;
   boxes?: Box[];
+  /**
+   * The placed panel's bytes as a data URL (TEACH-247 part cy): a panel of the same set made again
+   * later is judged beside it (`PictureSetDeps.placed`). Never stored on the slide.
+   */
+  dataUrl?: string;
 }
 
 export interface PanelVerdict {
@@ -373,6 +378,11 @@ export interface PictureSetDeps {
   onMade?(panels: number[], made: boolean): void;
   /** A panel the set ends without, and its last failure's reason code (TEACH-247 part cy). */
   onEmpty?(k: number, reason: string | undefined): void;
+  /**
+   * TEACH-247 part cy: panels of this set already placed (a remake of one panel): the set judge
+   * sees them first, beside the new panels, so the remake must hold together with them.
+   */
+  placed?: { shows: string; dataUrl: string }[];
 }
 
 /**
@@ -517,7 +527,10 @@ export async function makePictureSet(
   const soloSize = sizeForAspect(slotAspect).size;
   const style = setStyle(look);
   const shows = asks.map((a) => a.shows);
-  const same = relation === "stages";
+  const ref = deps.placed ?? [];
+  // A remade stages panel is judged with its placed neighbours (TEACH-247 part cy).
+  const same =
+    relation === "stages" || (ref.length > 0 && given.every((a) => a.sameSubject === true));
   const mode = setMode(asks.length, deps.grid, asks[0]?.fills);
   let capped = false;
   /** Generations each panel has had (a strip or grid counts once for every panel in it). */
@@ -597,6 +610,7 @@ export async function makePictureSet(
       style,
       set,
       ...(boxes?.length ? { boxes } : {}),
+      dataUrl: dataUrl(panel),
     };
   };
   /** A panel placed for good, handed to the caller at once (`onPanel`). */
@@ -691,7 +705,15 @@ export async function makePictureSet(
     // whole plants); each card is judged alone against its own subject, and one look is the
     // generation's (a matched-set judge for style is a later prompt).
     const verdictP = same
-      ? deps.judgeSet(shows, urls).catch(whenNonFatal(() => undefined))
+      ? deps
+          .judgeSet([...ref.map((r) => r.shows), ...shows], [...ref.map((r) => r.dataUrl), ...urls])
+          .then((v) =>
+            // The placed panels come first: only the new panels can be odd here.
+            v && ref.length
+              ? { ...v, odd: v.odd.map((k) => k - ref.length).filter((k) => k >= 0) }
+              : v,
+          )
+          .catch(whenNonFatal(() => undefined))
       : Promise.resolve(undefined);
     if (early) {
       judging.forEach((j, k) => {

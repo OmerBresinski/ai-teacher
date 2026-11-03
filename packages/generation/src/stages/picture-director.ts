@@ -2055,6 +2055,11 @@ export function createWriterPictures(opts: {
   const slots = new Map<string, Slot>();
   /** A slide's set panels, gathered until the slide's asks are all in (one microtask). */
   const sets = new Map<string, { index: number; slide: SlideForPicture; asks: WriterPhotoAsk[] }>();
+  /**
+   * TEACH-247 part cy: each set's placed panels (shows and bytes), so a panel made again later is
+   * judged beside them and the set still holds together.
+   */
+  const placedPanels = new Map<string, Map<string, { shows: string; dataUrl: string }>>();
   const taken = new Set<string>();
   const sources = new Map<string, PhotoSource>();
   const id = (index: number, key: string) => `${index}:${key}`;
@@ -2414,9 +2419,21 @@ export function createWriterPictures(opts: {
         return;
       }
       sources.set(p.src, p.source);
+      if (p.dataUrl) {
+        const kept = placedPanels.get(setId) ?? new Map();
+        kept.set(ask.key, { shows: ask.shows, dataUrl: p.dataUrl });
+        placedPanels.set(setId, kept);
+      }
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
+    // A remake: the set's panels still on the slide are judged beside it.
+    const asked = new Set(group.asks.map((a) => a.key));
+    const placed = [...(placedPanels.get(setId) ?? [])]
+      .filter(
+        ([key]) => !asked.has(key) && slots.get(id(group.index, key))?.state.status === "photo",
+      )
+      .map(([, r]) => r);
     /** Panels the set ended without because a call failed, not a judge (`panelErrored`). */
     const errored = new Set<string>();
     /** Panels already shown by `onPanel`: the set's end never sets them twice. */
@@ -2431,6 +2448,7 @@ export function createWriterPictures(opts: {
           ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
           ...(maker.allow ? { allow: maker.allow } : {}),
           ...(maker.spent ? { spent: maker.spent } : {}),
+          ...(placed.length ? { placed } : {}),
           signal: AbortSignal.any([
             deps.signal,
             ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),

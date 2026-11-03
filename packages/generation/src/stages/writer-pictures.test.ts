@@ -1084,7 +1084,7 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     expect(pictures.state(12, "stage.0").status).toBe("photo");
   });
 
-  test("a stages panel lost to the deadline is made again once, alone, in a later round (TEACH-247 part cy)", async () => {
+  test("a stages panel made again in a later round is judged beside the placed panels (TEACH-247 part cy)", async () => {
     const m = splitMaker();
     let n = 0;
     const inner = m.maker.generator;
@@ -1101,16 +1101,15 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
           : inner.generate(req),
     };
     const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const ai = createFakeAi({
+      script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("sunflower")],
+      text: set,
+    });
     const pictures = createWriterPictures({
       lesson: { ...sampleBriefLesson(), subject: "Science" },
       country: "UK",
       images: images({}),
-      deps: recordingDeps(
-        createFakeAi({
-          script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("sunflower")],
-          text: set,
-        }),
-      ),
+      deps: recordingDeps(ai),
       maker: { ...m.maker, generator },
       direct: async () => {
         throw new Error("a generated set never asks the director");
@@ -1118,7 +1117,15 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     });
     const seen = ["sunflower", "seed head", "seeds"];
     const asks = seen.map((s, k) =>
-      ask({ key: `stage.${k}`, shows: `A ${s}`, mustSee: [s], named: false, set: "stages" }),
+      ask({
+        key: `stage.${k}`,
+        shows: `A ${s}`,
+        mustSee: [s],
+        named: false,
+        set: "stages",
+        // One subject at every stage, as materialise marks a stages strip (part ca).
+        sameSubject: true,
+      }),
     );
     for (const a of asks) pictures.start(12, a, slide);
     await pictures.settle(400);
@@ -1132,6 +1139,49 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     expect(pictures.state(12, "stage.1").status).toBe("photo");
     // Once per round: a second ask of the same key is not started again.
     expect(pictures.canReask(12, "stage.0")).toBe(false);
+    // The set judge saw the two placed panels with the remake (3 pictures), not the remake alone.
+    // (Calls 0-3 are the first round's three panel judges and its set judge.)
+    expect(ai.calls.slice(4).map((c) => c.imageParts ?? 0)).toContain(3);
+  });
+
+  test("a remake the judge refuses is not retryable again, though the first loss was an error (TEACH-247 part cy)", async () => {
+    const m = splitMaker();
+    let n = 0;
+    const inner = m.maker.generator;
+    // Stage 0's solo fails at the provider; its remake is made and refused twice.
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: inner.model,
+      generate: (req) =>
+        n++ === 3
+          ? Promise.reject(new ImageGenerationError("down", "server-error", 3, 500))
+          : inner.generate(req),
+    };
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("a cat"), set],
+          text: saw("a cat"),
+        }),
+      ),
+      maker: { ...m.maker, generator },
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const asks = ["sunflower", "seed head", "seeds"].map((s, k) =>
+      ask({ key: `stage.${k}`, shows: `A ${s}`, mustSee: [s], named: false, set: "stages" }),
+    );
+    for (const a of asks) pictures.start(12, a, slide);
+    await pictures.settle(2000);
+    expect(pictures.retryable(12, "stage.0")).toBe(true);
+    pictures.start(12, asks[0] as WriterPhotoAsk, slide);
+    await pictures.settleSlide(12, 2000);
+    expect(pictures.state(12, "stage.0").status).toBe("failed");
+    expect(pictures.retryable(12, "stage.0")).toBe(false);
   });
 
   test("a stages panel lost to a provider error may be made again; one the judge refused may not (TEACH-247 part cy)", async () => {
