@@ -202,7 +202,8 @@ export const MARKS: Record<string, (p: Record<string, unknown>) => boolean> = {
     nonEmpty(p.routes) || nonEmpty(p.events) || nonEmpty(p.territories) || nonEmpty(p.frontiers),
 };
 
-const BLANK_REASON = "it marks nothing the slide is about (no route, place or area)";
+const BLANK_REASON =
+  "it marks nothing the slide is about: add the route, place or area the intent asks for, with every required field; a date is the year of the lesson's event, not the start of dateRange";
 
 export function capabilityRefusals(id: string, intent: string): LibRefusal[] {
   return (LIB_META[id]?.cannot ?? [])
