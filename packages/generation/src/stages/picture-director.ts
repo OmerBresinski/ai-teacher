@@ -26,7 +26,7 @@ import {
   PICTURE_DIRECTOR_BATCH_VERSION,
 } from "../prompts/picture-director-batch";
 import type { PictureMaker, PipelineDeps } from "../types";
-import { compoundSubjects, libraryKind } from "../writer/lost-picture";
+import { compoundSubjects, libraryKind, lostableAsk } from "../writer/lost-picture";
 import { namedUnmatched, seenOf, unmatchedItems } from "../writer/picture-checks";
 import {
   isFatal,
@@ -1829,6 +1829,11 @@ export interface WriterPictures {
    * on it while other slides' pictures are still coming.
    */
   whenSlideDone(index: number, deadlineMs?: number): Promise<void>;
+  /**
+   * TEACH-247 part cz: the stage's retries of this slide are over. A group that held its repaint
+   * for one of them, and still has a gap with nothing running, is painted now.
+   */
+  paintGaps(index: number): Promise<void>;
   /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
   vetoed(index: number, key: string): string | undefined;
   /**
@@ -1863,6 +1868,15 @@ export interface WriterPictures {
 
 /** The longest the stage waits for pictures before laying the deck out without them. */
 export const WRITER_PICTURE_DEADLINE_MS = 45_000;
+/**
+ * Misses a second placement can fix (the stage's `retryable`): the deadline, an error, and
+ * (TEACH-247 part cc) a real search that failed (an error or a busy Commons), which is not a miss.
+ */
+const RETRYABLE_MISSES: ReadonlySet<WriterPictureMiss> = new Set<WriterPictureMiss>([
+  "deadline",
+  "error",
+  "real-search-failed",
+]);
 
 /**
  * picq (greatfire 26 Oct): past the deadline, a slot whose picture is already generated (paid
@@ -1946,6 +1960,12 @@ export function createWriterPictures(opts: {
    * again), the director's drawing is kept as a picture of the ask: stock, then generation.
    */
   draws?: boolean;
+  /**
+   * TEACH-247 part cz: the stage asks again (or draws) what it can fill, then calls `paintGaps`, so
+   * a group's repaint waits for it. Absent (the resume search has no stage behind it), a group with
+   * a gap paints at once.
+   */
+  retriesLost?: boolean;
 }): WriterPictures {
   type Slot = {
     state: WriterPictureState;
@@ -1967,6 +1987,10 @@ export function createWriterPictures(opts: {
     noPaint?: boolean;
     /** Its picture was placed: a painting it discards later is a lost race, not a refusal. */
     won?: boolean;
+    /** Its placement is still climbing its ladder, even past a deadline that failed the slot. */
+    placing?: boolean;
+    /** This slot is the stage's second try at its key: no further retry is coming. */
+    again?: boolean;
   };
   /**
    * The bank as one slot sees it: a generated picture marks the slot `made`, so a deadline that
@@ -2288,14 +2312,25 @@ export function createWriterPictures(opts: {
    * again together, every member, so the slide has no hole and never mixes real and painted
    * (ruling 209). Painted into stand-in slots; the group's pictures are swapped in only when every
    * member was painted, so a failed repaint never empties a member that had its picture.
+   *
+   * TEACH-247 part cz (rivers pr754 s4; romans v417n s8 lost three real photos to paintings): the
+   * repaint is for a gap nothing else is about to fill. A member still placing ends in its own
+   * check. A member the stage will try again holds the repaint (`hold`) for that try, whose own
+   * check follows, or for `paintGaps` when the stage's retries end without one.
    */
   const paintGroup = async (
     index: number,
     slide: SlideForPicture,
     members: { ask: WriterPhotoAsk; slot: Slot }[],
+    hold?: () => void,
   ): Promise<void> => {
     const missed = members.filter(({ slot }) => slot.state.status !== "photo").length;
     if (!missed || members.length < 2) return;
+    if (members.some(({ slot }) => slot.placing)) return;
+    if (hold && members.some(({ ask, slot }) => stageWillTry(index, ask, slot))) {
+      hold();
+      return;
+    }
     const paintAll = async (unjudged: boolean) => {
       const stand = members.map(({ slot }) => ({
         ...slot,
@@ -2378,10 +2413,24 @@ export function createWriterPictures(opts: {
       members: { ask: WriterPhotoAsk; slot: Slot }[];
       placed: Promise<unknown>[];
       painting?: Promise<void>;
+      slide: SlideForPicture;
+      /** Its repaint is held for a retry of the stage's (`paintGroup`, `paintGaps`). */
+      held?: boolean;
     }
   >();
   const groupOf = (index: number, key: string) =>
     soleOnSlide(key) ? undefined : id(index, key.split(/[.#]/)[0] ?? key);
+  /**
+   * TEACH-247 part cz: the stage's lost-picture retry will take this failed member: its first try
+   * ended for a reason a second can fix, or the director sent it to the drawer (`retryLost`).
+   */
+  const stageWillTry = (index: number, ask: WriterPhotoAsk, slot: Slot) =>
+    !!opts.retriesLost &&
+    index >= 2 &&
+    !slot.again &&
+    slot.state.status === "failed" &&
+    (RETRYABLE_MISSES.has(slot.miss as WriterPictureMiss) || slot.miss === "director-code") &&
+    lostableAsk(ask);
 
   /**
    * One slide's set, once its panels are all in: made together by the generator when it is a
@@ -2671,6 +2720,7 @@ export function createWriterPictures(opts: {
         state: { status: "pending" },
         done: Promise.resolve(),
         stop: new AbortController(),
+        ...(prev ? { again: true } : {}),
         ...(early ? { own: true } : {}),
         ...((refused.get(index) ?? 0) >= SLIDE_REFUSALS_MAX ? { noPaint: true } : {}),
       };
@@ -2721,6 +2771,7 @@ export function createWriterPictures(opts: {
       }
       // An ask the director sent to the drawer, asked again (the drawer could not draw it): the
       // picture route this time, so it ends with a picture or a real miss, never none.
+      slot.placing = true;
       const placed = place(
         slot,
         index,
@@ -2728,20 +2779,28 @@ export function createWriterPictures(opts: {
         slide,
         undefined,
         prev?.miss === "director-code" ? false : undefined,
-      );
+      ).finally(() => {
+        slot.placing = false;
+      });
       // TEACH-251 part ay: a slide's cards or tiles are one group: once every member's placement is
       // over, a group with a hole is painted again together (`paintGroup`).
       const gk = groupOf(index, ask.key);
       if (gk) {
-        const g = groups.get(gk) ?? { members: [], placed: [] };
+        const g = groups.get(gk) ?? { members: [], placed: [], slide };
         groups.set(gk, g);
         g.members = [...g.members.filter((m) => m.ask.key !== ask.key), { ask, slot }];
         g.placed.push(placed);
         // A member asked again reopens its group's check.
         g.painting = undefined;
+        g.held = false;
         slot.done = placed.then(async () => {
           await Promise.allSettled(g.placed);
-          g.painting ??= tracked(index, paintGroup(index, slide, g.members));
+          g.painting ??= tracked(
+            index,
+            paintGroup(index, slide, g.members, () => {
+              g.held = true;
+            }),
+          );
           await g.painting;
         });
       } else slot.done = placed;
@@ -2869,8 +2928,20 @@ export function createWriterPictures(opts: {
     },
     retryable(index, key) {
       const miss = slots.get(id(index, key))?.miss;
-      // TEACH-247 part cc: a real search that failed (an error or a busy Commons) is not a miss.
-      return miss === "deadline" || miss === "error" || miss === "real-search-failed";
+      return !!miss && RETRYABLE_MISSES.has(miss);
+    },
+    async paintGaps(index) {
+      const prefix = `${index}:`;
+      const running: Promise<void>[] = [];
+      for (const [k, g] of groups) {
+        if (!k.startsWith(prefix)) continue;
+        if (g.held) {
+          g.held = false;
+          g.painting = tracked(index, paintGroup(index, g.slide, g.members));
+        }
+        if (g.painting) running.push(g.painting);
+      }
+      await Promise.allSettled(running);
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,
@@ -2889,6 +2960,7 @@ export function createWriterPictures(opts: {
       }
       for (const k of sets.keys()) if (k.startsWith(prefix)) sets.delete(k);
       for (const k of placedPanels.keys()) if (k.startsWith(prefix)) placedPanels.delete(k);
+      for (const k of groups.keys()) if (k.startsWith(prefix)) groups.delete(k);
       // New words are a new ask: the slide's refusals count again from none.
       refused.delete(index);
     },

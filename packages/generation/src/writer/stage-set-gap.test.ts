@@ -65,12 +65,17 @@ type Opts = {
   panelList?: boolean;
   /** The picture still out lands by the settle. */
   landsAtSettle?: boolean;
+  /** The stage has the group's `paintGaps`, which fills the gap. */
+  paintFills?: boolean;
 };
 const run = async (o: Opts) => {
   const events: S[] = [];
   const retried: string[] = [];
   let settled = false;
   let remade = false;
+  let painted = false;
+  const paintCalls: number[] = [];
+  const writerRequests: string[] = [];
   const gap = `${DECK}:${o.panelList ? "row.1" : "stage.2"}`;
   const out = await runWriter({
     brief: read(`replay/${B}/brief.json`) as Brief,
@@ -83,17 +88,20 @@ const run = async (o: Opts) => {
       log: (e: object) => {
         events.push(e as S);
       },
-      writer: async () => ({
-        text: o.panelList ? panelText : text,
-        finishReason: "stop",
-        usd: 0,
-        ms: 0,
-      }),
+      writer: async (...args: unknown[]) => {
+        writerRequests.push(JSON.stringify(args));
+        return {
+          text: o.panelList ? panelText : text,
+          finishReason: "stop",
+          usd: 0,
+          ms: 0,
+        };
+      },
     },
     visual: (i: number, k: string, a: { type: string }) => {
       if (a.type !== "photo") return { status: "failed" };
       if (`${i}:${k}` !== gap) return photo(i, k);
-      if (remade || (o.landsAtSettle && settled)) return photo(i, k);
+      if (remade || painted || (o.landsAtSettle && settled)) return photo(i, k);
       return settled ? { status: "failed" } : { status: "pending" };
     },
     beforeEditable: async () => {
@@ -102,6 +110,14 @@ const run = async (o: Opts) => {
       settled = true;
     },
     ...(o.slideDone ? { slideDone: async () => {} } : {}),
+    ...(o.paintFills
+      ? {
+          paintGaps: async (i: number) => {
+            paintCalls.push(i);
+            painted = true;
+          },
+        }
+      : {}),
     drawDiagrams: {
       callDrawer: async () => {
         throw new Error("drawer down");
@@ -116,7 +132,7 @@ const run = async (o: Opts) => {
   } as never);
   const slide = out.slides.find((s) => s.id === `s${DECK + 1}`);
   const pictures = JSON.stringify(slide?.elements ?? []).match(/https:\/\/img\.test\/[^"]+/g) ?? [];
-  return { out, events, retried, pictures: [...new Set(pictures)] };
+  return { out, events, retried, paintCalls, writerRequests, pictures: [...new Set(pictures)] };
 };
 const at = (events: S[], ev: string) => events.filter((e) => e.ev === ev && e.slide === DECK + 1);
 
@@ -184,6 +200,42 @@ describe("a slide that is not a stages strip keeps master's route (rivers pr754 
     expect(at(events, "lost-early-landed")).toHaveLength(1);
     expect(retried).toEqual([]);
     expect(pictures).toHaveLength(4);
+  });
+});
+
+describe("a group's gap once the slide's retries are over (TEACH-247 part cz)", () => {
+  test("is painted before any fallback gives the slide up, and the slide keeps its pictures", async () => {
+    const { retried, events, pictures, paintCalls } = await run({
+      retryable: false,
+      remakeLands: false,
+      panelList: true,
+      paintFills: true,
+    });
+    // The harness's drawer is down, so the row is asked again once, and misses.
+    expect(retried).toEqual([`${DECK}:row.1`]);
+    expect(paintCalls).toContain(DECK);
+    expect(pictures).toHaveLength(4);
+    expect(events.some((e) => e.ev === "repair" && e.slide === DECK + 1)).toBe(false);
+  });
+
+  test("a retry that lands leaves no gap: the stage asks for no painting", async () => {
+    const { retried, paintCalls, pictures } = await run({
+      retryable: true,
+      remakeLands: true,
+      panelList: true,
+      paintFills: true,
+    });
+    expect(retried).toEqual([`${DECK}:row.1`]);
+    expect(paintCalls).toEqual([]);
+    expect(pictures).toHaveLength(4);
+  });
+
+  test("the writer's request bytes are the same with and without it", async () => {
+    const o = { retryable: true, remakeLands: false, panelList: true };
+    const off = await run(o);
+    const on = await run({ ...o, paintFills: true });
+    expect(off.writerRequests.length).toBeGreaterThan(0);
+    expect(on.writerRequests[0]).toBe(off.writerRequests[0] as string);
   });
 });
 
