@@ -4,7 +4,9 @@ import { DRAWING_PARAMS, missingDrawingParams } from "./drawing-params";
 import { checkParams, type LibFiller, libraryDiagram } from "./fill";
 import { MODEL_LOADERS } from "./models";
 import { kit, loadModel, renderLibraryModel } from "./render";
-import type { J } from "./types";
+
+// biome-ignore lint/suspicious/noExplicitAny: the vendored models and their params are untyped JS
+type J = any;
 
 /*
  * TEACH-247 part de: Y9 equations slide 5 said 2x − 3 = 7, x = 5. The fill sent no input, so the
