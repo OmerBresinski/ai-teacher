@@ -142,3 +142,9 @@ export function factsOf(aspect: number, subjects?: SubjectBox[]): PictureFacts {
   const y1 = Math.max(...subjects.map((b) => b.y + b.h));
   return { ...facts, subject: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } };
 }
+
+/**
+ * Ruling 317: a title panel's question or heading steps down until its longest word fits, to this
+ * size. It sits under the type scale's steps, so a size this ladder chooses is stored as fixed.
+ */
+export const LONG_WORD_FLOOR = 28;
