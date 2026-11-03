@@ -2879,6 +2879,7 @@ export function createWriterPictures(opts: {
         reasked.delete(k);
       }
       for (const k of sets.keys()) if (k.startsWith(prefix)) sets.delete(k);
+      for (const k of placedPanels.keys()) if (k.startsWith(prefix)) placedPanels.delete(k);
       // New words are a new ask: the slide's refusals count again from none.
       refused.delete(index);
     },

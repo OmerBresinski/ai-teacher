@@ -623,6 +623,22 @@ export async function makePictureSet(
     deps.judgePanel(a, url, slotAspect).catch(whenNonFatal((): PanelVerdict => ({ ok: false })));
   deps.log({ ev: "set-start", set: setKey, n: asks.length, mode, relation, aspect: slotAspect });
 
+  /**
+   * The set judge over these panels, any placed panels first (TEACH-247 part cy). Only the new
+   * panels are being decided, so a mismatch that names none of them (it blames a placed panel, or
+   * no panel) fails them all: a set judged mismatched never passes them.
+   */
+  const judgeBeside = (panelShows: string[], urls: string[]) =>
+    deps
+      .judgeSet(
+        [...ref.map((r) => r.shows), ...panelShows],
+        [...ref.map((r) => r.dataUrl), ...urls],
+      )
+      .then((v) => {
+        if (!v || !ref.length) return v;
+        const odd = v.odd.map((k) => k - ref.length).filter((k) => k >= 0);
+        return { ...v, odd: !v.same && !odd.length ? panelShows.map((_, k) => k) : odd };
+      });
   // Partial-set fallback: each panel not placed is generated alone, in the lesson's look, judged
   // alone; placed panels are kept. Up to `SOLO_ATTEMPTS` solos, each carrying why the last failed.
   const soloOnce = (a: SetAsk, k: number, n: number): Promise<SetPicture | undefined | "again"> =>
@@ -649,6 +665,16 @@ export async function makePictureSet(
         if (!verdict.ok) {
           failed(k, { reason: "judge", ...(verdict.why ? { why: verdict.why } : {}) });
           return "again";
+        }
+        // A remake's later tries answer to its placed neighbours too, not only the first.
+        if (same && ref.length) {
+          const beside = await judgeBeside([a.shows], [dataUrl(made.bytes)]).catch(
+            whenNonFatal(() => undefined),
+          );
+          if (beside && !beside.same) {
+            failed(k, { reason: "odd", ...(beside.why ? { why: beside.why } : {}) });
+            return "again";
+          }
         }
         return placed(k, await place(a, made.bytes, verdict.boxes, `${setKey}#solo${k}`));
       },
@@ -705,15 +731,7 @@ export async function makePictureSet(
     // whole plants); each card is judged alone against its own subject, and one look is the
     // generation's (a matched-set judge for style is a later prompt).
     const verdictP = same
-      ? deps
-          .judgeSet([...ref.map((r) => r.shows), ...shows], [...ref.map((r) => r.dataUrl), ...urls])
-          .then((v) =>
-            // The placed panels come first: only the new panels can be odd here.
-            v && ref.length
-              ? { ...v, odd: v.odd.map((k) => k - ref.length).filter((k) => k >= 0) }
-              : v,
-          )
-          .catch(whenNonFatal(() => undefined))
+      ? judgeBeside(shows, urls).catch(whenNonFatal(() => undefined))
       : Promise.resolve(undefined);
     if (early) {
       judging.forEach((j, k) => {
