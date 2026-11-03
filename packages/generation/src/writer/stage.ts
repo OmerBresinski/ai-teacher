@@ -2268,22 +2268,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           // repaint) are laid into the slide here: after the settle a landing relays nothing, so the
           // slide shipped as text with its three paintings made (romans cc-proof s9).
           if (!lostAsks(i).length) {
-            // TEACH-247 part cy: the slide is "picture-placed" only when every picture it asks for
-            // is on it. With one still out (pending past the wait), what landed is laid in and the
-            // tail decides (rivers v4.21b s8 logged placed with stage 4 still out, so the tail never
-            // retried it and the strip shipped as numbered text).
-            // Only the asks lostPic would fill count (a card, a fixed shape or a sequence set
-            // keeps its own path): those never turn a placed slide into a partial one.
-            const now = asks.get(i) ?? [];
-            const isPhoto = (a: VisualAsk) => visualState(i)(a.key).status === "photo";
-            const photos = now.filter(lostable);
-            const placed = photos.filter(isPhoto).length;
-            if (now.some((a) => a.type === "photo" && isPhoto(a))) {
+            if (a0.some((a) => a.type === "photo" && visualState(i)(a.key).status === "photo")) {
               relay(i);
-              if (placed === photos.length) {
+              // TEACH-247 part cy: a stages strip shows every stage's picture or none, so one still
+              // out leaves the slide unplaced and the tail decides (rivers v4.21b s8). Every other
+              // slide keeps this route, whatever is pending (rivers pr754 s4, a panel list).
+              const panels = a0.filter((a) => a.type === "photo" && setPanel(a));
+              const placed = panels.filter((a) => visualState(i)(a.key).status === "photo").length;
+              if (placed < panels.length)
+                log({ ev: "lost-early-partial", slide: i + 1, placed, asked: panels.length });
+              else {
                 path.set(i, "picture-placed");
                 log({ ev: "lost-early-landed", slide: i + 1 });
-              } else log({ ev: "lost-early-partial", slide: i + 1, placed, asked: photos.length });
+              }
             }
             return;
           }

@@ -28,6 +28,27 @@ const text = (() => {
   o.slides[AT] = STAGES as S;
   return JSON.stringify(o);
 })();
+const picture = (shows: string) => ({ shows, must_see: [shows], subject: "generic" });
+/** Rivers pr754 s4: a panel list whose rows each ask a picture. */
+const PANEL_LIST = {
+  template: "panel-list",
+  heading: "How young animals change",
+  lead: null,
+  panel: null,
+  items: ["Chick", "Pullet", "Hen", "Rooster"].map((name) => ({
+    name,
+    text: `The ${name.toLowerCase()} is one stage.`,
+    icon: null,
+    picture: picture(`A ${name.toLowerCase()}`),
+  })),
+};
+const panelText = (() => {
+  const o = JSON.parse((read(`replay/${B}/main.json`) as { text: string }).text) as {
+    slides: S[];
+  };
+  o.slides[AT] = PANEL_LIST;
+  return JSON.stringify(o);
+})();
 const photo = (i: number, k: string): VisualState => ({
   status: "photo",
   photo: { src: `https://img.test/${i}-${k}.png`, alt: k, aspect: 1, request: k } as never,
@@ -40,13 +61,17 @@ type Opts = {
   remakeLands: boolean;
   /** Stage 2 is still pending when the slide's own wait ends (the early job's look). */
   slideDone?: boolean;
+  /** A panel list, not a strip: its `row.1` is the picture still out at the early wait. */
+  panelList?: boolean;
+  /** The picture still out lands by the settle. */
+  landsAtSettle?: boolean;
 };
 const run = async (o: Opts) => {
   const events: S[] = [];
   const retried: string[] = [];
   let settled = false;
   let remade = false;
-  const gap = `${DECK}:stage.2`;
+  const gap = `${DECK}:${o.panelList ? "row.1" : "stage.2"}`;
   const out = await runWriter({
     brief: read(`replay/${B}/brief.json`) as Brief,
     objectives: (
@@ -58,12 +83,17 @@ const run = async (o: Opts) => {
       log: (e: object) => {
         events.push(e as S);
       },
-      writer: async () => ({ text, finishReason: "stop", usd: 0, ms: 0 }),
+      writer: async () => ({
+        text: o.panelList ? panelText : text,
+        finishReason: "stop",
+        usd: 0,
+        ms: 0,
+      }),
     },
     visual: (i: number, k: string, a: { type: string }) => {
       if (a.type !== "photo") return { status: "failed" };
       if (`${i}:${k}` !== gap) return photo(i, k);
-      if (remade) return photo(i, k);
+      if (remade || (o.landsAtSettle && settled)) return photo(i, k);
       return settled ? { status: "failed" } : { status: "pending" };
     },
     beforeEditable: async () => {
@@ -138,6 +168,22 @@ describe("a stages set with one gap (TEACH-247 part cy)", () => {
     const input = JSON.stringify(slide?.elements ?? []);
     expect(input).not.toContain('"picture":{');
     expect(pictures).toEqual([]);
+  });
+});
+
+describe("a slide that is not a stages strip keeps master's route (rivers pr754 s4)", () => {
+  test("a panel list with a picture still out at its wait is not partial and nothing is made again", async () => {
+    const { retried, events, pictures } = await run({
+      retryable: true,
+      remakeLands: false,
+      slideDone: true,
+      panelList: true,
+      landsAtSettle: true,
+    });
+    expect(at(events, "lost-early-partial")).toEqual([]);
+    expect(at(events, "lost-early-landed")).toHaveLength(1);
+    expect(retried).toEqual([]);
+    expect(pictures).toHaveLength(4);
   });
 });
 
