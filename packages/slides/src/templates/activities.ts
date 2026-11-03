@@ -289,7 +289,14 @@ export function drawCard(
   c: Ctx,
   item: ActivityCard,
   r: Rect,
-  o: { marker?: string; role: Role; capLines: number; what: string },
+  o: {
+    marker?: string;
+    role: Role;
+    capLines: number;
+    what: string;
+    /** The set has no pictures: the card is a word in its cell, with no picture slot to match. */
+    wordsOnly?: boolean;
+  },
 ): CardParts {
   const pad = 8;
   const inset = 6;
@@ -304,6 +311,7 @@ export function drawCard(
     w: r.w - 2 * inset,
     h: r.h - capH - inset,
   });
+  if (o.wordsOnly) return wordCard(c, item.text, r, o.what, o.marker);
   const fullH = r.h;
   // A short cell: the card narrows to its 3:2 slot, centred, so the picture still spans its width.
   r = { x: slot.x - inset, y: r.y, w: slot.w + 2 * inset, h: inset + slot.h + capH };
@@ -630,16 +638,20 @@ function groupSort(c: Ctx, input: TemplateInput, area: Rect): QuestionData | und
     cw = cell.w;
     lines = base;
   }
+  // Cards with no pictures take the whole cell: a picture slot's narrowing has nothing to match, and
+  // it cut the Great Fire Y2 cards to 71pt, so "Wi/nd" and "Str/eet/s" broke in Crayon Box's wide face.
+  const wordsOnly = cards.every((x) => !x.figure);
+  const width = wordsOnly ? cell.w : cw;
   order.forEach((k, j) => {
     const r = rects[j];
     const card = cards[k];
     if (r && card) {
-      const x = r.x + Math.round((r.w - cw) / 2);
+      const x = r.x + Math.round((r.w - width) / 2);
       drawCard(
         c,
         card,
-        { ...r, x, w: cw },
-        { marker: String(j + 1), role, capLines: lines, what: "card" },
+        { ...r, x, w: width },
+        { marker: String(j + 1), role, capLines: lines, what: "card", wordsOnly },
       );
     }
   });

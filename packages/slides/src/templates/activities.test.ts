@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { type Slide, type SlideElement, SlideSchema } from "@tj/domain/documents";
-import { getTheme, MIN_FONT_SIZE } from "../themes";
+import { getTheme, MIN_FONT_SIZE, THEMES } from "../themes";
 import { ACTIVITY_LIMITS, LEAKS, shuffled } from "./activities";
 import {
   ACTIVITY_STAGES,
@@ -268,4 +268,53 @@ describe("group sort: a group's name stays on one line, above its answer line", 
       });
     });
   }
+});
+
+describe("group sort: a card's word is never broken inside", () => {
+  const LEAD = "Sort the cards into things that spread or fought the fire.";
+  const cards = ["Wood", "Wind", "Streets", "Buckets", "Hooks", "Gaps"];
+  const sort = (lead?: string, figure?: { photo: string; aspect: number }) =>
+    ({
+      template: "group-sort",
+      heading: "Sort the cards",
+      ...(lead ? { lead } : {}),
+      groups: ["Spread the fire", "Fought the fire"],
+      cards: cards.map((text, i) => ({ text, group: i % 2, ...(figure ? { figure } : {}) })),
+    }) as unknown as TemplateInput;
+  const cardBoxes = (input: TemplateInput, id: string, stage: "ks1" | "ks2") =>
+    layoutTemplate(input, getTheme(id, stage), stage);
+
+  // Great Fire Y2, Crayon Box: "Wi/nd", "Str/eet/s". The picture slot's narrowing cut a card with no
+  // picture to 71pt, so every word broke, at a label length the writer's table offers.
+  test("word-only cards keep their cell's width in every theme, with or without a lead", () => {
+    for (const { id } of THEMES)
+      for (const stage of ["ks1", "ks2"] as const)
+        for (const lead of [undefined, LEAD]) {
+          const { slide, over } = cardBoxes(sort(lead), id, stage);
+          const widths = new Set(
+            slide.elements.filter((e) => e.name === "Card").map((e) => (e as { w: number }).w),
+          );
+          expect(`${id} ${stage} ${over.filter((o) => o.includes("too wide"))}`).toBe(
+            `${id} ${stage} `,
+          );
+          expect(widths.size).toBe(1);
+          expect([...widths][0]).toBeGreaterThanOrEqual(150);
+        }
+  });
+
+  test("a pictured card still narrows to its picture", () => {
+    const photo = { photo: "/files/act/x.jpg", aspect: 4 / 3 };
+    const short = {
+      ...(sort(undefined, photo) as object),
+      cards: ["Ox", "Hen", "Cat", "Dog", "Pig", "Ant"].map((text, i) => ({
+        text,
+        group: i % 2,
+        figure: photo,
+      })),
+    } as unknown as TemplateInput;
+    const { slide } = cardBoxes(short, "crayon", "ks1");
+    const f = slide.elements.find((e) => e.name === "Card") as { w: number };
+    const p = slide.elements.find((e) => e.type === "image") as { w: number };
+    expect(f.w).toBeLessThanOrEqual(p.w + 12);
+  });
 });
