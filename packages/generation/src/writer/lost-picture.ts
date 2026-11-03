@@ -7,6 +7,21 @@
 //   3. Only then the old path: the reroute or stand-alone rewrite, then pointGuard's code strip.
 // Shapes are never split into photos: step 2's pattern is checked before step 1 splits.
 
+/**
+ * A photo ask lostPic may fill once it fails: never a fixed shape, a card or a sequence set. A
+ * stages panel is one (TEACH-247 part cy). The stage's `lostable`, and the group repaint's test
+ * for a gap the stage is about to try (TEACH-247 part cz).
+ */
+export function lostableAsk(a: { key: string; set?: string; fixedShape?: boolean }): boolean {
+  return (
+    (!a.set || a.set === "stages") &&
+    !a.fixedShape &&
+    // a card's picture has its own retry and plain-question fallback (ruling 195): a pair slide is
+    // never split or redrawn
+    !/^card\.\d+$/.test(a.key)
+  );
+}
+
 /** The diagram kind that draws what a lost picture asked for, if the library has one. */
 export function libraryKind(shows: string): string | undefined {
   const t = shows.toLowerCase();

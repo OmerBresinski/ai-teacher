@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Brief } from "./fixes";
 import type { VisualState } from "./materialise";
-import { replayServices } from "./replay-fixture";
+import { recordedVisuals, replayServices } from "./replay-fixture";
 import { lostable, runWriter } from "./stage";
 
 /*
@@ -65,12 +65,17 @@ type Opts = {
   panelList?: boolean;
   /** The picture still out lands by the settle. */
   landsAtSettle?: boolean;
+  /** The stage has the group's `paintGaps`, which fills the gap. */
+  paintFills?: boolean;
 };
 const run = async (o: Opts) => {
   const events: S[] = [];
   const retried: string[] = [];
   let settled = false;
   let remade = false;
+  let painted = false;
+  const paintCalls: number[] = [];
+  const writerRequests: string[] = [];
   const gap = `${DECK}:${o.panelList ? "row.1" : "stage.2"}`;
   const out = await runWriter({
     brief: read(`replay/${B}/brief.json`) as Brief,
@@ -83,17 +88,20 @@ const run = async (o: Opts) => {
       log: (e: object) => {
         events.push(e as S);
       },
-      writer: async () => ({
-        text: o.panelList ? panelText : text,
-        finishReason: "stop",
-        usd: 0,
-        ms: 0,
-      }),
+      writer: async (...args: unknown[]) => {
+        writerRequests.push(JSON.stringify(args));
+        return {
+          text: o.panelList ? panelText : text,
+          finishReason: "stop",
+          usd: 0,
+          ms: 0,
+        };
+      },
     },
     visual: (i: number, k: string, a: { type: string }) => {
       if (a.type !== "photo") return { status: "failed" };
       if (`${i}:${k}` !== gap) return photo(i, k);
-      if (remade || (o.landsAtSettle && settled)) return photo(i, k);
+      if (remade || painted || (o.landsAtSettle && settled)) return photo(i, k);
       return settled ? { status: "failed" } : { status: "pending" };
     },
     beforeEditable: async () => {
@@ -102,6 +110,17 @@ const run = async (o: Opts) => {
       settled = true;
     },
     ...(o.slideDone ? { slideDone: async () => {} } : {}),
+    ...(o.paintFills
+      ? {
+          paintGaps: async (i: number) => {
+            // The stage looks at every slide; only this one has a group to release.
+            if (i !== DECK) return false;
+            paintCalls.push(i);
+            painted = true;
+            return true;
+          },
+        }
+      : {}),
     drawDiagrams: {
       callDrawer: async () => {
         throw new Error("drawer down");
@@ -116,7 +135,7 @@ const run = async (o: Opts) => {
   } as never);
   const slide = out.slides.find((s) => s.id === `s${DECK + 1}`);
   const pictures = JSON.stringify(slide?.elements ?? []).match(/https:\/\/img\.test\/[^"]+/g) ?? [];
-  return { out, events, retried, pictures: [...new Set(pictures)] };
+  return { out, events, retried, paintCalls, writerRequests, pictures: [...new Set(pictures)] };
 };
 const at = (events: S[], ev: string) => events.filter((e) => e.ev === ev && e.slide === DECK + 1);
 
@@ -184,6 +203,129 @@ describe("a slide that is not a stages strip keeps master's route (rivers pr754 
     expect(at(events, "lost-early-landed")).toHaveLength(1);
     expect(retried).toEqual([]);
     expect(pictures).toHaveLength(4);
+  });
+});
+
+describe("a group's gap once the slide's retries are over (TEACH-247 part cz)", () => {
+  test("is painted before any fallback gives the slide up, and the slide keeps its pictures", async () => {
+    const { retried, events, pictures, paintCalls } = await run({
+      retryable: false,
+      remakeLands: false,
+      panelList: true,
+      paintFills: true,
+    });
+    // The harness's drawer is down, so the row is asked again once, and misses.
+    expect(retried).toEqual([`${DECK}:row.1`]);
+    expect(paintCalls).toContain(DECK);
+    expect(pictures).toHaveLength(4);
+    expect(events.some((e) => e.ev === "repair" && e.slide === DECK + 1)).toBe(false);
+  });
+
+  test("a retry that lands keeps the slide's pictures", async () => {
+    const { retried, pictures } = await run({
+      retryable: true,
+      remakeLands: true,
+      panelList: true,
+    });
+    expect(retried).toEqual([`${DECK}:row.1`]);
+    expect(pictures).toHaveLength(4);
+  });
+
+  test("the writer's request bytes are the same with and without it", async () => {
+    const o = { retryable: true, remakeLands: false, panelList: true };
+    const off = await run(o);
+    const on = await run({ ...o, paintFills: true });
+    expect(off.writerRequests.length).toBeGreaterThan(0);
+    expect(on.writerRequests[0]).toBe(off.writerRequests[0] as string);
+  });
+});
+
+/** Rivers-shaped: a panel list of things the drawer may draw. */
+const TOOLS = {
+  ...PANEL_LIST,
+  heading: "Garden tools",
+  items: ["Hammer", "Saw", "Spade", "Rake"].map((name) => ({
+    name,
+    text: `The ${name.toLowerCase()} is one tool.`,
+    icon: null,
+    picture: picture(`A ${name.toLowerCase()}`),
+  })),
+};
+const toolsText = (() => {
+  const o = JSON.parse((read(`replay/${B}/main.json`) as { text: string }).text) as {
+    slides: S[];
+  };
+  o.slides[AT] = TOOLS;
+  return JSON.stringify(o);
+})();
+const CLEAN = {
+  kind: "labelled-diagram",
+  subject: "object_or_machine",
+  alt: "A green square",
+  canvas: "square",
+  shapes: [{ type: "rect", x: 30, y: 30, w: 40, h: 40, fill: "accent" }],
+  labels: [{ text: "Square", at: [50, 15] }],
+};
+describe("what releases a group's held repaint (TEACH-247 part cz, review of #755)", () => {
+  test("the group decides, even when the stage has no lost ask left on the slide", async () => {
+    const { paintCalls, retried } = await run({
+      retryable: false,
+      remakeLands: false,
+      panelList: true,
+      landsAtSettle: true,
+      paintFills: true,
+    });
+    expect(retried).toEqual([]);
+    expect(paintCalls).toContain(DECK);
+  });
+});
+
+describe("a group member the stage draws (TEACH-247 part cz, review of #755)", () => {
+  test("the group's held repaint is still released after the drawing", async () => {
+    const events: S[] = [];
+    const paintCalls: number[] = [];
+    const remade = new Set<string>();
+    let settled = false;
+    await runWriter({
+      brief: read(`replay/${B}/brief.json`) as Brief,
+      objectives: (
+        read(`replay/${B}/objectives.json`) as { objectives: { teacher: string }[] }
+      ).objectives.map((x) => x.teacher),
+      checks: "log",
+      services: {
+        ...replayServices(B),
+        log: (e: object) => {
+          events.push(e as S);
+        },
+        writer: async () => ({ text: toolsText, finishReason: "stop", usd: 0, ms: 0 }),
+      },
+      visual: (i: number, k: string, a: { type: string }) => {
+        if (a.type !== "photo") return recordedVisuals(B)(i, k, a as never);
+        if (i !== DECK) return photo(i, k);
+        if (remade.has(k)) return photo(i, k);
+        return settled ? { status: "failed" } : { status: "pending" };
+      },
+      beforeEditable: async () => {
+        settled = true;
+      },
+      drawDiagrams: { callDrawer: async () => ({ out: CLEAN }) },
+      // The director sent the first row to the drawer; the others ran out of time.
+      drawAs: (i: number, k: string) =>
+        i === DECK && k === "row.0" ? "labelled-diagram" : undefined,
+      retryable: (i: number, k: string) => i === DECK && k !== "row.0",
+      placeMore: async (_i: number, more: { key: string }[]) => {
+        for (const a of more) remade.add(a.key);
+      },
+      paintGaps: async (i: number) => {
+        paintCalls.push(i);
+        return false;
+      },
+    } as never);
+    // The drawing is kept, so no ask is lost, and the group's held repaint is still released.
+    expect(at(events, "lost-picture")).toContainEqual(
+      expect.objectContaining({ try: "library", ok: true }),
+    );
+    expect(paintCalls).toContain(DECK);
   });
 });
 

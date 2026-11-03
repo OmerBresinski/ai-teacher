@@ -477,6 +477,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         country: locale().country,
         images,
         deps,
+        retriesLost: true,
         batchSystem: PICTURE_DIRECTOR_BATCH_SYSTEM,
         // TEACH-237: the generator, when the worker has one (OPENAI_API_KEY).
         ...(deps.pictureMaker ? { maker: deps.pictureMaker } : {}),
@@ -759,6 +760,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
             },
             held: (i, key) => pictures.held(i, key),
             slideDone: (i) => pictures.whenSlideDone(i),
+            paintGaps: (i) => pictures.paintGaps(i),
             drawAs: (i, key) => pictures.drawAs(i, key),
             retryable: (i, key) => pictures.retryable(i, key),
             canReask: (i, key) => pictures.canReask(i, key),

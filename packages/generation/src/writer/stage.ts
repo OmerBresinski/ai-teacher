@@ -131,7 +131,7 @@ import { fitsNoWorse, routeIconMisses } from "./icon-route";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
 import { localise } from "./locale";
-import { keepLanded, lostPictureFallback, splitLanded } from "./lost-picture";
+import { keepLanded, lostableAsk, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
   codeObjectives,
   codeTitle,
@@ -380,6 +380,11 @@ export type WriterRun = {
    * early lost-picture retry waits on it (the write stage's `whenSlideDone`).
    */
   slideDone?: (index: number) => Promise<void>;
+  /**
+   * TEACH-247 part cz: this slide's retries are over. A group of its pictures that held its
+   * repaint for them is painted now, so a gap is never left empty. True when a repaint ran.
+   */
+  paintGaps?: (index: number) => Promise<boolean>;
   drawAs?: (index: number, key: string) => string | undefined;
   /** The failed photo ask may land if placed again (it ran out of time or its placement failed). */
   retryable?: (index: number, key: string) => boolean;
@@ -538,13 +543,7 @@ type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
 /** A stages strip's panel (TEACH-247 part cy): its slide shows every stage's picture or none. */
 const setPanel = (a: PhotoAsk) => a.set === "stages";
 /** A photo ask lostPic may fill once it fails: never a fixed shape, a card or a sequence set. */
-export const lostable = (a: VisualAsk): a is PhotoAsk =>
-  a.type === "photo" &&
-  (!a.set || setPanel(a)) &&
-  !a.fixedShape &&
-  // a card's picture has its own retry and plain-question fallback (ruling 195): a pair slide is
-  // never split or redrawn
-  !/^card\.\d+$/.test(a.key);
+export const lostable = (a: VisualAsk): a is PhotoAsk => a.type === "photo" && lostableAsk(a);
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** The checks act on their results ("act", the default) or are only logged (part i). */
   const act = run.checks !== "log";
@@ -2219,6 +2218,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     relay(i);
     if (!path.has(i) && !lostAsks(i).length) path.set(i, "picture-placed");
   };
+  /**
+   * TEACH-247 part cz: the slide's retries are over, so a group that held its repaint for them is
+   * released, before any fallback gives the slide up. The group decides, not `lostAsks`: a member
+   * drawn as the slide's figure is no longer lost, and its group still paints as one look.
+   */
+  const paintGaps = async (i: number) => {
+    if (await run.paintGaps?.(i)) relay(i);
+  };
   // ── early lost pictures (before editable) ──
   // A slide whose own pictures are over and lost one gets its retry (the director's drawing,
   // then the picture route) now, beside the other slides' pictures, instead of after every
@@ -3220,6 +3227,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const pictureLost = async (i: number) => {
     if (path.has(i) || i < 2) return;
     if (!lostAsks(i)[0]) return;
+    // An early fallback comes before the tail's own look.
+    await paintGaps(i);
     // TEACH-247 part cf (romans v6 s7, s9, s11: each slide was restaged as text while its pictures
     // were still being found or painted, and they landed after): a placement of the slide still
     // running past its round's deadline (it keeps climbing its ladder) is waited for before any
@@ -3574,6 +3583,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // A slide whose early job did not retry (its pictures were still pending at the wait's
     // deadline, or the wait was cut short) gets the tail's retry, as on master.
     if (!retriedEarly.has(i)) await retryLost(i);
+    await paintGaps(i);
     const beforeLost = pre ? pre.s : (plan.slides[i] as S | undefined);
     const asksBeforeLost = pre ? pre.a : (asks.get(i) ?? []);
     // after an early fallback its path is set, so this does nothing
