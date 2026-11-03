@@ -38,6 +38,11 @@ describe("a library model as the slide body stays on the slide with its caption"
       "Reverse the machine one step at a time, starting from the output it gives",
       "Adding 3, then dividing by 2, gives x = 5.",
     ],
+    [
+      "a three-line heading and a two-line caption",
+      "Reverse the machine one step at a time, starting from the output and undoing each step in turn",
+      "Adding 3, then dividing by 2, gives x = 5, and checking it in the first line gives 7 again, as the slide said it would.",
+    ],
   ] as const;
   for (const [label, heading, lead] of cases)
     for (const stage of stages)
@@ -58,8 +63,33 @@ describe("a library model as the slide body stays on the slide with its caption"
             // Neither hides the other: heading, drawing and caption run down the slide in order.
             expect(fig.y).toBeGreaterThanOrEqual(head.y + head.h);
             expect(fig.y + fig.h).toBeLessThanOrEqual(cap.y);
+            // The drawing keeps a readable size: it is never squeezed to a sliver.
+            expect(fig.h).toBeGreaterThanOrEqual(120);
           }
         });
+
+  test("a heading too long for the slide is reported for rewording, and the drawing still shows", () => {
+    for (const theme of THEMES)
+      for (const stage of stages) {
+        const r = layoutTemplate(
+          {
+            template: "big-diagram",
+            heading:
+              "Reverse the machine one step at a time, starting from the output it gives and undoing each operation in the opposite order to the one it was done in",
+            lead: "Adding 3, then dividing by 2, gives x = 5, and checking it in the first line gives 7 again, as the slide said it would.",
+            figure: drawn(1) as never,
+          },
+          theme,
+          stage,
+        );
+        const fig = named(r.slide.elements, "Diagram");
+        const cap = named(r.slide.elements, "Caption");
+        if (!fig || !cap) throw new Error("the drawing and caption are both set");
+        expect(r.over.some((o) => /^heading \d+ lines$/.test(o))).toBe(true);
+        expect(fig.h).toBeGreaterThan(0);
+        expect(cap.y + cap.h).toBeLessThanOrEqual(MODEL_BODY.foot);
+      }
+  });
 
   test("the heading keeps its full size: the body makes its own room", () => {
     const theme = THEMES[0];
