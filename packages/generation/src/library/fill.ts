@@ -202,6 +202,8 @@ export const MARKS: Record<string, (p: Record<string, unknown>) => boolean> = {
     nonEmpty(p.routes) || nonEmpty(p.events) || nonEmpty(p.territories) || nonEmpty(p.frontiers),
 };
 
+const BLANK_REASON = "it marks nothing the slide is about (no route, place or area)";
+
 export function capabilityRefusals(id: string, intent: string): LibRefusal[] {
   return (LIB_META[id]?.cannot ?? [])
     .filter((c) => c.when.some((w) => new RegExp(w, "i").test(intent)))
@@ -476,8 +478,14 @@ export async function libraryDiagram(
     );
     if (callFault) return fallback(`the fill call failed: ${callFault}`);
     const c = await checkParams(ask.model, last, ask.panelsOff ? ask.intent : undefined);
-    log({ ev: "lib-fill", key: ask.key, model: ask.model, attempt, ok: !!c.params });
-    if (c.params) params = c.params;
+    // TEACH-251 part ac (romans verify6 s4): a model must mark what the slide is about. A history
+    // map filled with only a region and a north arrow (no route, place, area or wall) teaches
+    // nothing, so it is not drawn, whatever the checks do. TEACH-247 part da (Great Fire r1 v417u
+    // s5): it is a refusal like any other, so the fill gets its second turn with the reason.
+    const blank = !!c.params && MARKS[ask.model]?.(c.params as Record<string, unknown>) === false;
+    log({ ev: "lib-fill", key: ask.key, model: ask.model, attempt, ok: !!c.params && !blank });
+    if (blank) refusals = [{ path: "marks", reason: BLANK_REASON }];
+    else if (c.params) params = c.params;
     else refusals = c.refusals;
   }
   if (!params)
@@ -487,11 +495,6 @@ export async function libraryDiagram(
         .map((r) => `${r.path}: ${r.reason}`)
         .join("; ")}`,
     );
-  // TEACH-251 part ac (romans verify6 s4): a model must mark what the slide is about. A history map
-  // filled with only a region and a north arrow (no route, place, area or wall) teaches nothing, so
-  // it is not drawn, whatever the checks do.
-  const blank = MARKS[ask.model]?.(params as Record<string, unknown>) === false;
-  if (blank) return fallback("it marks nothing the slide is about (no route, place or area)");
   const cannot = capabilityRefusals(ask.model, ask.intent);
   const cf = checkFault(cannot.map((r) => r.reason).join("; "));
   if (cf) return cf;
