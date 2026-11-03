@@ -113,6 +113,8 @@ const run = async (o: Opts) => {
     ...(o.paintFills
       ? {
           paintGaps: async (i: number) => {
+            // The stage looks at every slide; only this one has a group to release.
+            if (i !== DECK) return false;
             paintCalls.push(i);
             painted = true;
             return true;
@@ -294,7 +296,8 @@ describe("a group member the stage draws (TEACH-247 part cz, review of #755)", (
       },
       drawDiagrams: { callDrawer: async () => ({ out: CLEAN }) },
       // The director sent the first row to the drawer; the others ran out of time.
-      drawAs: (i: number, k: string) => (i === DECK && k === "row.0" ? "labelled-diagram" : undefined),
+      drawAs: (i: number, k: string) =>
+        i === DECK && k === "row.0" ? "labelled-diagram" : undefined,
       retryable: (i: number, k: string) => i === DECK && k !== "row.0",
       placeMore: async (_i: number, more: { key: string }[]) => {
         for (const a of more) remade.add(a.key);
