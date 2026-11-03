@@ -43,7 +43,15 @@ import {
   type Stage,
   type TemplateInput,
 } from "./index";
-import { type AgeKey, cropFor, factsOf, iconSrc, matchIcon, panelLook } from "./panel-list-deps";
+import {
+  type AgeKey,
+  cropFor,
+  factsOf,
+  iconSrc,
+  LONG_WORD_FLOOR,
+  matchIcon,
+  panelLook,
+} from "./panel-list-deps";
 import CAPACITY from "./reasons-capacity.json";
 import PICTURE_CAPACITY from "./reasons-picture-capacity.json";
 
@@ -291,11 +299,27 @@ export function layoutReasons(c: Ctx, input: TemplateInput) {
       const whole =
         !question || kit.wordsFit(c, question, "title", qW * CUSHION, size, L.displayWeight);
       const room = h + (lead ? LEAD_GAP + leadH : 0) <= roomH;
-      return { size, lines, h, ok: lines <= 4 && whole && room };
+      return { size, lines, h, ok: lines <= 4 && whole && room, fixed: false };
     };
     let q = qAt(drawn(c.t, "title", P.sizes.title));
     for (let k = 0.98; !q.ok && k >= least - 1e-9; k -= 0.02)
       q = qAt(drawn(c.t, "title", P.sizes.title * k));
+    // Ruling 317: a word wider than the box at the ladder's foot would break in the browser
+    // ("photosynthesis" and a lone "?", Y8 s8), so the question goes on down until it holds. A word
+    // the box does hold changes nothing, even when its cushion calls it over.
+    if (
+      !q.ok &&
+      least <= 0.8 &&
+      question &&
+      !kit.wordsFit(c, question, "title", qW, q.size, L.displayWeight)
+    )
+      for (let size = Math.floor(q.size) - 1; size >= LONG_WORD_FLOOR; size--) {
+        const next = qAt(size);
+        if (next.ok) {
+          q = { ...next, fixed: true };
+          break;
+        }
+      }
     return { q, qW, leadLines, leadH, roomH };
   };
   let panelW = PANEL_W[age];
@@ -359,6 +383,7 @@ export function layoutReasons(c: Ctx, input: TemplateInput) {
       QUESTION_LH,
       ink,
       REASON_NAMES.question,
+      q.fixed,
     );
   if (lead)
     put(
@@ -649,6 +674,7 @@ function put(
   lh: number,
   color: string,
   name: string,
+  fixed = false,
 ): TextElement {
   const lines = linesOf(c.t, value, preset, weight, size, rect.w);
   const el: TextElement = {
@@ -664,6 +690,7 @@ function put(
       preset,
       autoHeight: true,
       fontSize: size,
+      ...(fixed ? { fixedSize: true } : {}),
       lineHeight: lh,
       fontWeight: weight,
       padding: 0,

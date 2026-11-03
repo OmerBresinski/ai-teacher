@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { SlideElement } from "@tj/domain/documents";
 import * as ICONS from "../icons";
+import { countLines } from "../text-measure";
+import { resolveTextStyle } from "../text-style";
 import { v2Colors } from "../theme-v2";
 import { atKeyStage, THEMES } from "../themes";
 import { layoutTemplate, type Stage, type TemplateInput } from "./index";
@@ -272,5 +274,58 @@ describe("reasons: icons all or none, and the editor's paths", () => {
       "reasons.2.head",
       "reasons.2.line",
     ]);
+  });
+});
+
+describe("reasons: a long word in the question (ruling 317)", () => {
+  const items = [
+    {
+      head: "Broad shape",
+      line: "A broad leaf has a large surface area to absorb light.",
+      icon: "leaf",
+    },
+    {
+      head: "Thin shape",
+      line: "A thin leaf gives gases a short distance to travel to cells.",
+      icon: "air",
+    },
+  ];
+  const lay = (heading: string, id: string, stage: Stage) => {
+    const theme = atKeyStage(THEMES.find((t) => t.id === id) as (typeof THEMES)[number], stage);
+    const r = layoutTemplate(
+      { template: "reasons", heading, reasons: items, chain: false } as TemplateInput,
+      theme,
+      stage,
+    );
+    const flat = r.slide.elements.flatMap((e) =>
+      "children" in e ? (e.children as SlideElement[]) : [e],
+    );
+    const q = flat.find((e) => e.name === REASON_NAMES.question) as SlideElement & {
+      w: number;
+      style: { fontSize: number; fontWeight: number; fixedSize?: boolean };
+    };
+    return { theme, q };
+  };
+  // Photosynthesis Y8 s8: "photosynthesis" and a lone "?" on the next line, at the question's floor.
+  test("the longest word holds one line, at 28pt or more, in every theme", () => {
+    for (const { id } of THEMES)
+      for (const stage of ["ks2", "ks3", "ks4"] as const)
+        for (const [q, word] of [
+          ["How do leaves support photosynthesis?", "photosynthesis?"],
+          ["Why does industrialisation matter?", "industrialisation"],
+        ] as const) {
+          const { theme, q: el } = lay(q, id, stage);
+          const { fontSize, fontWeight } = el.style;
+          const n = countLines(word, "title", theme, el.w, fontWeight, fontSize);
+          expect(`${id} ${stage} ${word} ${n} ${fontSize >= 28}`).toBe(
+            `${id} ${stage} ${word} 1 true`,
+          );
+          expect(resolveTextStyle(el.style, theme).fontSize).toBe(fontSize);
+        }
+  });
+  test("a question whose words fit keeps its stage size, not fixed", () => {
+    const { q } = lay("Why did the fire spread so fast?", "studio", "ks3");
+    expect(q.style.fixedSize).toBeUndefined();
+    expect(q.style.fontSize).toBeGreaterThanOrEqual(38);
   });
 });
