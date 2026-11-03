@@ -18,6 +18,7 @@ import { TYPE_FLOOR } from "@tj/slides/diagrams";
 import { nonFatal, nonFatalSync } from "../writer/services";
 import { BASE_KIND, FALLBACK_KIND, LIB_META, LIB_PROMPTS } from "./catalogue";
 import { drawingWordsMismatch } from "./consistency";
+import { DRAWING_PARAMS, missingDrawingParams } from "./drawing-params";
 import { drawLibraryModel } from "./guard";
 import {
   boundsRefusals,
@@ -32,51 +33,7 @@ import type { J, LibRefusal } from "./types";
 /** Params the filler never sets: the slide's heading is the title; wording overrides are the teacher's. */
 const NOT_FILLED = ["title", "text"];
 
-/**
- * The params a model's drawing is built from, given the params as they will draw (TEACH-247 part
- * i). One the fill leaves out is refused, never defaulted: a default draws a different number from
- * the slide's ("half of 16" with no group size drew 2 groups of 2). The always-needed ones are also
- * `required` in the schema the filler sees.
- */
-export const DRAWING_PARAMS: Record<string, { always: string[]; when?: (p: J) => string[] }> = {
-  equal_groups: {
-    always: [],
-    when: (p) => (p.layout === "grid" ? ["grid"] : ["groups", "size"]),
-  },
-  fractions: { always: ["fractions"], when: (p) => (p.operation === "of" ? ["amount"] : []) },
-  bar_model: {
-    always: ["type"],
-    when: (p) =>
-      p.type === "fraction"
-        ? ["amount", "fraction"]
-        : p.type === "percentage"
-          ? ["amount", "percent"]
-          : p.type === "multiplicative"
-            ? ["parts", "times"]
-            : ["parts"],
-  },
-  number_line: {
-    always: ["from", "to"],
-    when: (p) => (p.task === "round" ? ["round"] : p.task === "position" ? ["marks"] : ["jumps"]),
-  },
-  number_bonds: { always: ["whole", "parts"] },
-  place_value: { always: ["number"] },
-  column_methods: { always: ["a", "b"] },
-  coins_money: { always: ["amount"], when: (p) => (p.task === "change" ? ["paid"] : []) },
-};
-
-/** The drawing-defining params `own` (what the filler sent) leaves out, as refusals. */
-export function missingDrawingParams(id: string, own: J, params: J): LibRefusal[] {
-  const d = DRAWING_PARAMS[id];
-  if (!d) return [];
-  const need = [...d.always, ...(d.when?.(params) ?? [])];
-  return [...new Set(need)]
-    .filter((k) => own[k] === undefined || own[k] === null)
-    .map((k) => ({
-      path: k,
-      reason: `${k} is missing: the drawing is built from it, and the model's default would draw a different number`,
-    }));
-}
+export { DRAWING_PARAMS, missingDrawingParams } from "./drawing-params";
 
 /**
  * An equivalence draws the finer partition with the coarser one marked (S10 paid L y2 s9: "2/4 =
