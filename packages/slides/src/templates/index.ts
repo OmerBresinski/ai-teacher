@@ -2299,6 +2299,9 @@ function layoutOnce(
       const fb = input.figure;
       if (fb && "drawn" in fb && fb.drawn.body) {
         // The slide's own line stays: it is reserved at the foot and the drawing fits what is left.
+        // Laid from the measured heading down, so the heading fit never moves it again: it took a
+        // smaller heading for room, which moved this body up too, and ran the caption off the slide.
+        c.bodyFromHeading = true;
         const r = modelBodyIn(c, head, input.lead);
         figurePanel(c, fb, r);
         if (input.lead)
