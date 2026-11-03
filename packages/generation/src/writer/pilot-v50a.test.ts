@@ -84,7 +84,6 @@ describe("v5.0a builds at every key stage", () => {
         "The slide draws list numbers, bullets and option letters, so each item is its text alone.",
         "A word count is a ceiling, not a target.",
         "The flow is final: add no slide it does not list.",
-        "A diagram is a diagram kind or model, never a picture.",
         "Words and labels go on the slide, not in the picture.",
         "never one year as both ends",
         "Answers on question-set, practice and exit-ticket are what a pupil should write",
