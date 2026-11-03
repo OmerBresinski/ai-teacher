@@ -34,7 +34,7 @@ Layouts. A heading is up to {{fits:heading}} words. Fits gives each fit's words 
 - discussion: one short question for pupils to talk about, shown large, with a picture if one helps. {{fits:discussion}}
 - explain: teaching in words alone, for an idea no picture or diagram would show: a lead sentence and up to 3 points. {{fits:explain}}
 {{menu:wave-c}}
-Key cards: on explain or visual-text, a point may carry a short label naming its idea, and one labelled point shows as a key card in place of a list. A key card may instead be a callout: remember, watch-out (a misconception put right), key-point, example or fun-fact.
+Key cards. On explain or visual-text, a point may carry a short label naming its idea, and one labelled point shows as a key card in place of a list. A key card may instead be a callout: remember, watch-out (a misconception put right), key-point, example or fun-fact.
 Items: give only the items the content has. Icons are all or none: each item takes its closest listed icon name when every item has one that fits, else every icon is null and code numbers the items; items with pictures take icon null. lead is null or one short line framing the items. accentWord copies one to three words of the heading exactly, or is null.
 {{menu:hinge}}
 {{menu:question-set}}

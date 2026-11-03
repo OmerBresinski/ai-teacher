@@ -1,15 +1,22 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { writerBrief } from "../stages/write";
+import { sampleBriefLesson } from "../testing";
+import { writerSystem } from "./ai-services";
 import {
   PILOT_PACK_ID,
   PILOT_PACK_LIVE,
   PILOT_PACKS,
   packFromEnv,
+  packRepairMenu,
   packWriter,
   pilotRequest,
 } from "./pilot-pack";
 import { V50A_MENU_LINES } from "./pilot-v50a";
+import type { WriterReq, WriterServices } from "./services";
+import { runWriter } from "./stage";
+import { waveCMenu } from "./wave-c";
 
 /*
  * Pilot pack v5.0a (3 Nov 2026, test runs only): the method's code checks. Every key stage builds,
@@ -116,4 +123,104 @@ describe("v5.0a's schema and writer are v4.17's", () => {
     const { system: _b, id: _j, ...b } = PILOT_PACKS["v5.0a"] as J;
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
   });
+});
+
+/*
+ * The real request path (runWriter, stage.ts): libSystem splices the Models list after the diagram
+ * kinds, withWaveCLibrary needs the model line once and a "\nKey cards. " line to put step-model's
+ * line before, packRepairMenu needs the "Layouts. " line, and ai-services splits the text at the
+ * Models header. The first paid v5.0a run threw in withWaveCLibrary ("Key cards:"), so each stage is
+ * run here with library models on and off, stopping at the writer call.
+ */
+describe("v5.0a through runWriter's request path", () => {
+  const LESSONS = [
+    {
+      ks: "KS1",
+      stage: "KS1",
+      yearGroup: "Year 2",
+      ageBand: "ks1",
+      subject: "History",
+      obj: "Say where and when the Great Fire of London began.",
+    },
+    {
+      ks: "KS2",
+      stage: "KS2",
+      yearGroup: "Year 4",
+      ageBand: "ks2",
+      subject: "History",
+      obj: "Explain why the Romans built Hadrian's Wall.",
+    },
+    {
+      ks: "KS3",
+      stage: "KS3-5",
+      yearGroup: "Year 8",
+      ageBand: "ks3",
+      subject: "Science",
+      obj: "Describe how plants make glucose by photosynthesis.",
+    },
+  ] as const;
+  const request = async (
+    pack: "v5.0a" | "v4.17",
+    l: (typeof LESSONS)[number],
+    library: boolean,
+  ) => {
+    let got: WriterReq | undefined;
+    const services = {
+      log: () => {},
+      chat: async () => {
+        throw new Error("no chat in this test");
+      },
+      writer: async (r: WriterReq) => {
+        got = r;
+        throw new Error("stop after the request");
+      },
+    } as unknown as WriterServices;
+    const lesson = sampleBriefLesson({
+      yearGroup: l.yearGroup,
+      ageBand: l.ageBand,
+      subject: l.subject,
+    } as never);
+    let thrown: unknown;
+    await runWriter({
+      brief: writerBrief(lesson),
+      objectives: [l.obj],
+      services,
+      pilotPack: pack,
+      drawDiagrams: { callDrawer: async () => ({ out: undefined, usd: 0, ms: 0 }) },
+      library,
+      libraryMenuFilter: true,
+      libraryMenuRank: true,
+      libraryModelBody: true,
+      libraryPanelsOff: true,
+      checks: "log",
+    } as never).catch((e) => {
+      thrown = e;
+    });
+    if (!got) throw new Error(`no writer request: ${String((thrown as Error)?.message ?? thrown)}`);
+    return got.system;
+  };
+  for (const l of LESSONS) {
+    test(`${l.ks}: with library models the request builds, and the model and step-model lines land`, async () => {
+      const sys = await request("v5.0a", l, true);
+      expect(sys).toContain("\nModels (id");
+      const stepModel = waveCMenu(l.stage)["steps step-model"] ?? "";
+      expect(stepModel.length).toBeGreaterThan(0);
+      expect(sys.split("\n")).toContain(stepModel);
+      expect(sys.indexOf(stepModel)).toBeLessThan(sys.indexOf("\nKey cards. "));
+      expect(sys).toContain(
+        "unless figure-slide or steps step-model takes it, as their lines say.",
+      );
+      expect(writerSystem(sys).length).toBe(2);
+      expect(packRepairMenu(sys, ["hinge", "explain"])).toContain("\n- hinge: ");
+      // Same splices as the live pack: v5.0a's text up to the Models list is its own pack text.
+      const live = await request("v4.17", l, true);
+      expect(live.split("\n")).toContain(stepModel);
+    });
+    test(`${l.ks}: without library models the request builds with no Models list or step-model line`, async () => {
+      const sys = await request("v5.0a", l, false);
+      expect(sys).not.toContain("\nModels (id");
+      expect(sys.split("\n")).not.toContain(waveCMenu(l.stage)["steps step-model"] ?? "");
+      expect(sys).toBe(PILOT_PACKS["v5.0a"].system[l.ks]);
+    });
+  }
 });
