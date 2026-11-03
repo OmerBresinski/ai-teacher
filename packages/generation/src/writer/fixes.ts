@@ -636,6 +636,29 @@ export function linkSteps(spec: Record<string, unknown> | undefined): string[] {
     .filter(Boolean);
   return out.length === links.length ? out : [];
 }
+/**
+ * One key card's words as a labelled point, every word kept: explain sets one or two labelled
+ * points as key cards (`leadAndPoints`), so the card stays a card on the words-only slide.
+ */
+function keyCardPoint(card: S): { label: string; text: string } {
+  const pairs = Array.isArray(card.examples) ? (card.examples as unknown[][]) : [];
+  const head =
+    str(card.term).trim() ||
+    [str(card.num).trim(), str(card.unit).trim()].filter(Boolean).join(" ");
+  const line = [head, str(card.meaning).trim()].filter(Boolean).join(": ");
+  const examples = pairs.map((p) => p.map(str).join(": ")).join("; ");
+  return { label: str(card.label).trim(), text: [line, examples].filter(Boolean).join("; ") };
+}
+
+const WORDS_ONLY_FROM = [
+  "visual-text",
+  "big-visual",
+  "diagram-text",
+  "picture-text",
+  "big-diagram",
+  "big-picture",
+];
+
 export function fixedFallback(
   slide: S,
   lost: { type: string; kind?: string; labels?: string[]; key?: string },
@@ -643,7 +666,13 @@ export function fixedFallback(
   maxSteps: number,
 ): { slide: S; how: string } {
   const heading = String(slide.heading ?? "");
+  // Ruling 317: a slide re-laid in words keeps its key cards; no words go with the figure.
+  const keyCards =
+    WORDS_ONLY_FROM.includes(String(slide.template)) && Array.isArray(slide.cards)
+      ? (slide.cards as S[])
+      : [];
   if (
+    !keyCards.length &&
     lost.type === "diagram" &&
     SEQUENCE_KINDS.has(lost.kind ?? "") &&
     parts.length >= 2 &&
@@ -654,6 +683,14 @@ export function fixedFallback(
       how: "sequence-as-steps",
     };
   const out: S = { ...slide, figure: null, picture: null, diagram: null };
+  if (keyCards.length) {
+    out.points = [
+      ...(Array.isArray(out.points) ? (out.points as unknown[]) : []),
+      ...keyCards.map(keyCardPoint),
+    ];
+    delete out.cards;
+    delete out.fit;
+  }
   for (const k of ["lead", "instruction", "stem", "prompt"])
     if (typeof out[k] === "string") out[k] = stripPointing(out[k] as string);
   for (const k of ["points", "questions"])
@@ -680,18 +717,7 @@ export function fixedFallback(
       },
       how: "stage-pictures-dropped",
     };
-  const tpl = String(out.template);
-  if (
-    [
-      "visual-text",
-      "big-visual",
-      "diagram-text",
-      "picture-text",
-      "big-diagram",
-      "big-picture",
-    ].includes(tpl)
-  )
-    out.template = "explain";
+  if (WORDS_ONLY_FROM.includes(String(out.template))) out.template = "explain";
   // A lost diagram's named parts are kept as the slide's points when it has none of its own, so
   // what the drawing named is still taught (PICTURES-DIAGRAMS fix 4); explain holds up to three.
   const own = Array.isArray(out.points) && out.points.length > 0;
