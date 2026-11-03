@@ -300,3 +300,74 @@ describe("a picture the director chose to draw (Greg, 10 Oct: a visual is never 
     expect({ how, tried }).toEqual({ how: undefined, tried: 0 });
   });
 });
+
+describe("a failed figure keeps the slide's key cards (ruling 317)", () => {
+  const lostFigure = { type: "photo" } as const;
+  const keyCardSlide = (cards: unknown[], points: string[] = []) => ({
+    template: "visual-text",
+    fit: "key-card-fig",
+    heading: "The photosynthesis equation",
+    lead: "Photosynthesis happens in chloroplasts.",
+    points,
+    icon: "leaf",
+    cards,
+    figure: { shows: "A flow", must_see: ["arrows"], subject: "generic" },
+  });
+  const word = {
+    kind: "word",
+    label: "Product",
+    term: "Glucose",
+    meaning: "A sugar made by photosynthesis.",
+    examples: null,
+    num: null,
+    unit: null,
+  };
+  test("a word card becomes a labelled point, which explain sets as a key card", () => {
+    const r = fixedFallback(keyCardSlide([word], ["CO2 + water"]), lostFigure, [], 0);
+    expect(r.how).toBe("figure-dropped");
+    expect(r.slide.template).toBe("explain");
+    expect(r.slide.cards).toBeUndefined();
+    expect(r.slide.points).toEqual([
+      "CO2 + water",
+      { label: "Product", text: "Glucose: A sugar made by photosynthesis." },
+    ]);
+  });
+  test("every kind of card keeps all its words", () => {
+    const r = fixedFallback(
+      keyCardSlide([
+        {
+          ...word,
+          kind: "fact",
+          label: "Speed",
+          term: null,
+          num: "300",
+          unit: "km/s",
+          meaning: "Light.",
+        },
+        {
+          ...word,
+          kind: "examples",
+          label: "Pairs",
+          term: null,
+          meaning: null,
+          examples: [
+            ["hot", "cold"],
+            ["up", "down"],
+          ],
+        },
+      ]),
+      lostFigure,
+      [],
+      0,
+    );
+    expect(r.slide.points).toEqual([
+      { label: "Speed", text: "300 km/s: Light." },
+      { label: "Pairs", text: "hot: cold; up: down" },
+    ]);
+  });
+  test("an activity's cards are left alone", () => {
+    const cards = [{ text: "Wood", group: 0 }];
+    const r = fixedFallback({ template: "group-sort", heading: "Sort", cards }, lostFigure, [], 0);
+    expect(r.slide.cards).toEqual(cards);
+  });
+});
