@@ -34,6 +34,8 @@ async function run(
     model?: string;
     noDrawer?: boolean;
     placeMore?: (i: number, asks: VisualAsk[]) => Promise<void>;
+    retryable?: (i: number, key: string) => boolean;
+    drawAs?: (i: number, key: string) => string | undefined;
     placed?: Set<string>;
     onEditable?: (slides: { elements?: unknown[] }[]) => void;
   } = {},
@@ -98,6 +100,8 @@ async function run(
     ...(shape.placeMore
       ? { placeMore: (i: number, a: VisualAsk[]) => shape.placeMore?.(i, a) ?? Promise.resolve() }
       : {}),
+    ...(shape.retryable ? { retryable: shape.retryable } : {}),
+    ...(shape.drawAs ? { drawAs: shape.drawAs } : {}),
     ...(shape.onEditable ? { onEditable: shape.onEditable } : {}),
   });
   const slide = res.slides[2]; // title and objectives come first
@@ -275,6 +279,57 @@ describe("writer stage: library models", () => {
     const els = (slide?.elements ?? []) as El[];
     expect(els.some((e) => e.type === "image" && e.src === "/files/test/map.png")).toBe(true);
     expect(els.some((e) => e.name === "Icon" || e.name === "Diagram")).toBe(false);
+  }, 60_000);
+
+  // TEACH-247 part da (Great Fire r1 v417u s5): the map's fallback picture was stopped by its
+  // round's deadline in the middle of its second painting, and the slide went to words with no
+  // second placement, which any other picture lost to time gets.
+  test("a map's fallback picture lost to time or an error is placed once more, and lands", async () => {
+    const calls: string[][] = [];
+    const placed = new Set<string>();
+    const { events, slide } = await run(() => ({ region: "uk", dates: "plain" }), {
+      model: "hist_map",
+      placed,
+      retryable: () => true,
+      placeMore: async (i, asks) => {
+        if (i !== 2) return;
+        calls.push(asks.map((a) => `${i}:${a.key}`));
+        if (calls.length > 1) for (const a of asks) placed.add(`${i}:${a.key}`);
+      },
+    });
+    expect(calls.length).toBe(2);
+    expect(calls[1]).toEqual(calls[0] as string[]);
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "visual-path", slide: 3, path: "picture" }),
+    );
+    const els = (slide?.elements ?? []) as El[];
+    expect(els.some((e) => e.type === "image" && e.src === "/files/test/map.png")).toBe(true);
+  }, 60_000);
+
+  // Ruling 302: a figure that fails and whose picture really misses is a plain text slide: no
+  // further picture, no rewrite by the writer.
+  test("a map's fallback picture that really misses leaves a plain text slide (ruling 302)", async () => {
+    const calls: string[][] = [];
+    const { events, slide } = await run(() => ({ region: "uk", dates: "plain" }), {
+      model: "hist_map",
+      placed: new Set<string>(),
+      retryable: () => false,
+      // The director would draw it, but the figure's own drawing has already failed.
+      drawAs: (i) => (i === 2 ? "labelled-diagram" : undefined),
+      placeMore: async (i, asks) => {
+        if (i === 2) calls.push(asks.map((a) => `${i}:${a.key}`));
+      },
+    });
+    expect(calls.length).toBe(1);
+    expect(events).toContainEqual(
+      expect.objectContaining({ ev: "visual-path", slide: 3, path: "unshown" }),
+    );
+    expect(events.some((e) => e.ev === "repair" && e.slide === 3)).toBe(false);
+    expect(events.some((e) => e.slide === 3 && e.ev === "diagram-call")).toBe(false);
+    const els = (slide?.elements ?? []) as El[];
+    expect(els.some((e) => e.type === "image" || e.name === "Icon")).toBe(false);
+    expect(els.some((e) => e.name === "Heading")).toBe(true);
+    expect(els.some((e) => e.name === "Lead")).toBe(true);
   }, 60_000);
 
   test("a slide whose tail throws is kept as it was at editable; the lesson still ships", async () => {

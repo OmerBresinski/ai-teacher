@@ -2188,12 +2188,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    * out of time or failed, the ask is placed again, which keeps the picture route (stock, then
    * generation). One `placeMore` round for the slide, each ask at most once.
    */
-  const retryLost = async (i: number) => {
+  const retryLost = async (i: number, ro: { noDrawing?: boolean } = {}) => {
     if (i < 2) return;
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
       // A stages panel is never drawn alone: it is made again in the set's look, or not at all.
-      const kind = setPanel(lost) ? undefined : run.drawAs?.(i, lost.key);
+      const kind = setPanel(lost) || ro.noDrawing ? undefined : run.drawAs?.(i, lost.key);
       if (!kind && !run.retryable?.(i, lost.key)) continue;
       if (kind && run.drawDiagrams && !path.has(i) && (await drawLost(i, lost, kind))) continue;
       again.push(lost);
@@ -3109,7 +3109,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         (asks.get(i) ?? []).filter((a) => a.type === "photo"),
         { heading: String(now.heading ?? ""), text: wordsOf(now), point: pointOf(now) },
       );
-      if ((asks.get(i) ?? []).some((a) => visualState(i)(a.key).status === "photo")) {
+      const landed = () =>
+        (asks.get(i) ?? []).some((a) => visualState(i)(a.key).status === "photo");
+      // TEACH-247 part da (Great Fire r1 v417u s5): a figure's picture stopped by its round's
+      // deadline or an error has not missed (ruling 302's miss): it gets the second placement any
+      // other picture lost that way gets, and is never handed to the drawer: the figure's own
+      // drawing has already failed. A rerouted picture has already had its own second placement.
+      if (!landed() && !fo.wasPicture) await retryLost(i, { noDrawing: true });
+      if (landed()) {
         relay(i);
         path.set(i, "picture");
         return;
