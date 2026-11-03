@@ -1831,9 +1831,10 @@ export interface WriterPictures {
   whenSlideDone(index: number, deadlineMs?: number): Promise<void>;
   /**
    * TEACH-247 part cz: the stage's retries of this slide are over. A group that held its repaint
-   * for one of them, and still has a gap with nothing running, is painted now.
+   * for one of them, and still has a gap with nothing running, is painted now. True when a held
+   * group was released.
    */
-  paintGaps(index: number): Promise<void>;
+  paintGaps(index: number): Promise<boolean>;
   /** Why the ask has no picture (the stage's `vetoed`); undefined when it has one or is running. */
   vetoed(index: number, key: string): string | undefined;
   /**
@@ -2933,15 +2934,18 @@ export function createWriterPictures(opts: {
     async paintGaps(index) {
       const prefix = `${index}:`;
       const running: Promise<void>[] = [];
+      let released = false;
       for (const [k, g] of groups) {
         if (!k.startsWith(prefix)) continue;
         if (g.held) {
           g.held = false;
+          released = true;
           g.painting = tracked(index, paintGroup(index, g.slide, g.members));
         }
         if (g.painting) running.push(g.painting);
       }
       await Promise.allSettled(running);
+      return released;
     },
     held: (index, key) => heldPhotos.get(id(index, key)),
     sources: () => sources,

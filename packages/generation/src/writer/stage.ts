@@ -381,10 +381,10 @@ export type WriterRun = {
    */
   slideDone?: (index: number) => Promise<void>;
   /**
-   * TEACH-247 part cz: this slide's retries are over. A group of its pictures still holding a gap
-   * that a retry was expected to fill is painted now, so the gap is never left empty.
+   * TEACH-247 part cz: this slide's retries are over. A group of its pictures that held its
+   * repaint for them is painted now, so a gap is never left empty. True when a repaint ran.
    */
-  paintGaps?: (index: number) => Promise<void>;
+  paintGaps?: (index: number) => Promise<boolean>;
   drawAs?: (index: number, key: string) => string | undefined;
   /** The failed photo ask may land if placed again (it ran out of time or its placement failed). */
   retryable?: (index: number, key: string) => boolean;
@@ -2219,13 +2219,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (!path.has(i) && !lostAsks(i).length) path.set(i, "picture-placed");
   };
   /**
-   * TEACH-247 part cz: the slide's retries are over, so a gap still in a group of its pictures is
-   * painted now (the group holds its repaint for them), before any fallback gives the slide up.
+   * TEACH-247 part cz: the slide's retries are over, so a group that held its repaint for them is
+   * released, before any fallback gives the slide up. The group decides, not `lostAsks`: a member
+   * drawn as the slide's figure is no longer lost, and its group still paints as one look.
    */
   const paintGaps = async (i: number) => {
-    if (!run.paintGaps || !lostAsks(i).length) return;
-    await run.paintGaps(i);
-    relay(i);
+    if (await run.paintGaps?.(i)) relay(i);
   };
   // ── early lost pictures (before editable) ──
   // A slide whose own pictures are over and lost one gets its retry (the director's drawing,

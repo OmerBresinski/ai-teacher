@@ -116,6 +116,8 @@ describe("a group's repaint waits for what is about to fill its gap (TEACH-247 p
     pictures.start(INDEX, asks[1] as WriterPhotoAsk, slide);
     await pictures.settleSlide(INDEX, 500);
     await pictures.whenSlideDone(INDEX, 500);
+    // The stage's later look finds nothing held.
+    expect(await pictures.paintGaps(INDEX)).toBe(false);
     expect(calls).toHaveLength(1);
     expect(srcOf(pictures.state(INDEX, "row.0") as never)).toContain("first");
     expect(srcOf(pictures.state(INDEX, "row.1") as never)).toContain("late");

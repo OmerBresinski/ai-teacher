@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Brief } from "./fixes";
 import type { VisualState } from "./materialise";
-import { replayServices } from "./replay-fixture";
+import { recordedVisuals, replayServices } from "./replay-fixture";
 import { lostable, runWriter } from "./stage";
 
 /*
@@ -115,6 +115,7 @@ const run = async (o: Opts) => {
           paintGaps: async (i: number) => {
             paintCalls.push(i);
             painted = true;
+            return true;
           },
         }
       : {}),
@@ -218,15 +219,13 @@ describe("a group's gap once the slide's retries are over (TEACH-247 part cz)", 
     expect(events.some((e) => e.ev === "repair" && e.slide === DECK + 1)).toBe(false);
   });
 
-  test("a retry that lands leaves no gap: the stage asks for no painting", async () => {
-    const { retried, paintCalls, pictures } = await run({
+  test("a retry that lands keeps the slide's pictures", async () => {
+    const { retried, pictures } = await run({
       retryable: true,
       remakeLands: true,
       panelList: true,
-      paintFills: true,
     });
     expect(retried).toEqual([`${DECK}:row.1`]);
-    expect(paintCalls).toEqual([]);
     expect(pictures).toHaveLength(4);
   });
 
@@ -236,6 +235,80 @@ describe("a group's gap once the slide's retries are over (TEACH-247 part cz)", 
     const on = await run({ ...o, paintFills: true });
     expect(off.writerRequests.length).toBeGreaterThan(0);
     expect(on.writerRequests[0]).toBe(off.writerRequests[0] as string);
+  });
+});
+
+/** Rivers-shaped: a panel list of things the drawer may draw. */
+const TOOLS = {
+  ...PANEL_LIST,
+  heading: "Garden tools",
+  items: ["Hammer", "Saw", "Spade", "Rake"].map((name) => ({
+    name,
+    text: `The ${name.toLowerCase()} is one tool.`,
+    icon: null,
+    picture: picture(`A ${name.toLowerCase()}`),
+  })),
+};
+const toolsText = (() => {
+  const o = JSON.parse((read(`replay/${B}/main.json`) as { text: string }).text) as {
+    slides: S[];
+  };
+  o.slides[AT] = TOOLS;
+  return JSON.stringify(o);
+})();
+const CLEAN = {
+  kind: "labelled-diagram",
+  subject: "object_or_machine",
+  alt: "A green square",
+  canvas: "square",
+  shapes: [{ type: "rect", x: 30, y: 30, w: 40, h: 40, fill: "accent" }],
+  labels: [{ text: "Square", at: [50, 15] }],
+};
+describe("a group member the stage draws (TEACH-247 part cz, review of #755)", () => {
+  test("releases the group's held repaint: its photos are not left beside the drawing", async () => {
+    const events: S[] = [];
+    const paintCalls: number[] = [];
+    const remade = new Set<string>();
+    let settled = false;
+    await runWriter({
+      brief: read(`replay/${B}/brief.json`) as Brief,
+      objectives: (
+        read(`replay/${B}/objectives.json`) as { objectives: { teacher: string }[] }
+      ).objectives.map((x) => x.teacher),
+      checks: "log",
+      services: {
+        ...replayServices(B),
+        log: (e: object) => {
+          events.push(e as S);
+        },
+        writer: async () => ({ text: toolsText, finishReason: "stop", usd: 0, ms: 0 }),
+      },
+      visual: (i: number, k: string, a: { type: string }) => {
+        if (a.type !== "photo") return recordedVisuals(B)(i, k, a as never);
+        if (i !== DECK) return photo(i, k);
+        if (remade.has(k)) return photo(i, k);
+        return settled ? { status: "failed" } : { status: "pending" };
+      },
+      beforeEditable: async () => {
+        settled = true;
+      },
+      drawDiagrams: { callDrawer: async () => ({ out: CLEAN }) },
+      // The director sent the first row to the drawer; the others ran out of time.
+      drawAs: (i: number, k: string) => (i === DECK && k === "row.0" ? "labelled-diagram" : undefined),
+      retryable: (i: number, k: string) => i === DECK && k !== "row.0",
+      placeMore: async (_i: number, more: { key: string }[]) => {
+        for (const a of more) remade.add(a.key);
+      },
+      paintGaps: async (i: number) => {
+        paintCalls.push(i);
+        return false;
+      },
+    } as never);
+    // The drawing is kept, so no ask is lost, and the group's held repaint is still released.
+    expect(at(events, "lost-picture")).toContainEqual(
+      expect.objectContaining({ try: "library", ok: true }),
+    );
+    expect(paintCalls).toContain(DECK);
   });
 });
 
