@@ -3,7 +3,7 @@ import { BASE_KIND, FALLBACK_KIND } from "./catalogue";
 import { DRAWING_PARAMS, missingDrawingParams } from "./drawing-params";
 import { checkParams, type LibFiller, libraryDiagram } from "./fill";
 import { MODEL_LOADERS } from "./models";
-import { kit, loadModel } from "./render";
+import { kit, loadModel, renderLibraryModel } from "./render";
 import type { J } from "./types";
 
 /*
@@ -86,6 +86,22 @@ describe("the class, on the balance too", () => {
       "letter",
     ]);
   });
+  test("a mirror on an axis needs no crossing point", async () => {
+    const reflect = (line: string) =>
+      checkParams("coordinate_grid", {
+        mode: "reflect",
+        shape: [
+          { name: "A", x: 1, y: 1 },
+          { name: "B", x: 3, y: 1 },
+          { name: "C", x: 1, y: 3 },
+        ],
+        mirror: { line },
+      });
+    const paths = async (line: string) => (await reflect(line)).refusals.map((r) => r.path);
+    expect(await paths("x-axis")).not.toContain("mirror.at");
+    expect(await paths("y-axis")).not.toContain("mirror.at");
+    expect((await reflect("vertical")).refusals.map((r) => r.path)).toEqual(["mirror.at"]);
+  });
   test("a whole fill passes", async () => {
     expect(
       await paths({
@@ -144,7 +160,12 @@ const LEFT: Record<string, Record<string, string>> = {
   },
   colour_mixing: { steps: NO_PRINT },
   earth_sun_moon: { place: NEUTRAL },
-  coordinate_grid: { "grid.across": SIZE, "grid.up": SIZE, "mover.name": NEUTRAL },
+  coordinate_grid: {
+    "grid.across": SIZE,
+    "grid.up": SIZE,
+    "mover.name": NEUTRAL,
+    "mirror.at": "named for a vertical or horizontal mirror, which no preset draws",
+  },
   volcano_earthquake: { "town.name": NEUTRAL, focusDepth: DEMO, "magnitude.value": DEMO },
   rivers_coasts: {
     "river.name": NEUTRAL,
@@ -171,7 +192,10 @@ const LEFT: Record<string, Record<string, string>> = {
     "bug.step": SWITCHED,
     "bug.count": SWITCHED,
   },
-  cycle_wheel: { "today.day": SWITCHED, year: DEMO },
+  cycle_wheel: { "today.day": SWITCHED, year: DEMO, centre: "the hub's label, true of any year" },
+  classify_key: {
+    questions: "rebuilt from the items' own facts when its answers name none of them",
+  },
   rhythm_grid: { "pitch.notes": SWITCHED, beats: DEMO, bars: DEMO, tempoWord: DEMO },
   movement_court: {
     teamA: NEUTRAL,
@@ -232,4 +256,78 @@ describe("every shipped model", () => {
     }
     expect(open).toEqual([]);
   });
+
+  /**
+   * Review of part de: a value refused in one mode may draw nothing in another ({mirror: {line:
+   * "x-axis"}} needs no `at`). Each preset is tried with every choice of each of its options; for a
+   * fill the model accepts, every value refused as left out must change what is drawn there.
+   */
+  test("a refused value is one the drawing shows, in every mode a preset can switch to", async () => {
+    const k = await kit();
+    // A variant the model cannot draw is not a fill it accepts: undefined, and skipped.
+    const words = async (id: string, p: J) => {
+      const m = (await loadModel(id)) as J;
+      const d = await renderLibraryModel(id, p).catch(() => undefined);
+      if (!d) return undefined;
+      try {
+        m.builds?.(p);
+      } catch {
+        return undefined;
+      }
+      return `${[...d.svg.matchAll(/<text[\s\S]*?<\/text>/g)].map((t) => t[0].replace(/<[^>]+>/g, " ")).join("|")}${JSON.stringify(m.builds?.(p))}`;
+    };
+    const at = (o: J, path: string) => path.split(".").reduce<J>((v, x) => v?.[x], o);
+    const set = (o: J, path: string, v: unknown) => {
+      const c = structuredClone(o);
+      const ks = path.split(".");
+      let a = c;
+      for (const x of ks.slice(0, -1)) a = a[x] ??= {};
+      a[ks.at(-1) as string] = v;
+      return c;
+    };
+    const enums = (s: J, pre = ""): { path: string; values: unknown[] }[] =>
+      Object.entries((s.properties ?? {}) as Record<string, J>).flatMap(([key, v]) => {
+        const path = pre ? `${pre}.${key}` : key;
+        if (v.enum) return [{ path, values: v.enum as unknown[] }];
+        return v.type === "object" && v.properties ? enums(v, path) : [];
+      });
+    const shown: string[] = [];
+    for (const id of Object.keys(DRAWING_PARAMS)) {
+      const m = (await loadModel(id)) as J;
+      if (!m) continue;
+      const always = DRAWING_PARAMS[id]?.always ?? [];
+      for (const p of m.presets ?? []) {
+        if (IS_THE_DEFAULT.has(p.id)) continue;
+        for (const e of enums(m.params))
+          for (const value of e.values) {
+            const own = set(p.params, e.path, value);
+            const full = k.withDefaults(m.params, own);
+            if (!m.validate(full).ok) continue;
+            for (const r of missingDrawingParams(id, own, full)) {
+              if (always.includes(r.path)) continue;
+              const v = at(full, r.path);
+              // Another value the model accepts: one more, longer words, or a list one shorter or longer.
+              const others: unknown[] =
+                typeof v === "number"
+                  ? [v + 1, v - 1]
+                  : typeof v === "string"
+                    ? [`${v}x`]
+                    : Array.isArray(v)
+                      ? [v.slice(1), v.slice(0, -1), [...v, ...v.slice(-1)], [...v].reverse()]
+                      : [];
+              const moved = others
+                .map((o) => set(full, r.path, o))
+                .find(
+                  (o) => JSON.stringify(at(o, r.path)) !== JSON.stringify(v) && m.validate(o).ok,
+                );
+              if (!moved) continue;
+              const before = await words(id, full);
+              if (before !== undefined && before === (await words(id, moved)))
+                shown.push(`${id}/${p.id} ${e.path}=${String(value)}: ${r.path}`);
+            }
+          }
+      }
+    }
+    expect([...new Set(shown)]).toEqual([]);
+  }, 300_000);
 });

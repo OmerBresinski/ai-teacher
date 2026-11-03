@@ -87,7 +87,12 @@ export const DRAWING_PARAMS: Record<string, { always: string[]; when?: (p: J) =>
         : p.mode === "translate"
           ? ["shape", "move.right"]
           : p.mode === "reflect"
-            ? ["shape", "mirror.at"]
+            ? [
+                "shape",
+                ...(["vertical", "horizontal"].includes(String((p.mirror as J | undefined)?.line))
+                  ? ["mirror.at"]
+                  : []),
+              ]
             : ["start.col", "start.row", "goal.col", "goal.row", "steps"],
   },
   data_chart: {
@@ -108,7 +113,7 @@ export const DRAWING_PARAMS: Record<string, { always: string[]; when?: (p: J) =>
   body_map: each("parts"),
   classify_key: {
     always: [],
-    when: (p) => ["things", "items", p.mode === "groups" ? "groups" : "questions"],
+    when: (p) => ["things", "items", ...(p.mode === "groups" ? ["groups"] : [])],
   },
   evolution_adaptation: each("organism", "pressure"),
   microhabitat_survey: each("sites", "creatures"),
@@ -162,7 +167,7 @@ export const DRAWING_PARAMS: Record<string, { always: string[]; when?: (p: J) =>
   colour_mixing: { always: [], when: (p) => (p.mode === "mix" ? ["mixes"] : []) },
   cycle_wheel: {
     always: [],
-    when: () => ["centre", "stages"],
+    when: () => ["stages"],
   },
 };
 
