@@ -60,6 +60,7 @@ import {
   isHistoricalSet,
   isSameSubjectSet,
   makePictureSet,
+  panelErrored,
   type SetAsk,
   type SetPicture,
   STRUCTURE,
@@ -2407,13 +2408,17 @@ export function createWriterPictures(opts: {
       if (!slot || slot.state.status !== "pending") return;
       if (!p) {
         slot.state = { status: "failed" };
-        slot.miss = "generation-refused-or-failed";
+        // TEACH-247 part cy: a panel lost to the provider or the network is an error (retryable
+        // once by the stage, as a single picture is), never a refusal.
+        slot.miss = errored.has(ask.key) ? "error" : "generation-refused-or-failed";
         return;
       }
       sources.set(p.src, p.source);
       // The panel's own aspect, never the slot's.
       slot.state = photoState(p, p.aspect, p.request || requestOf(ask));
     };
+    /** Panels the set ended without because a call failed, not a judge (`panelErrored`). */
+    const errored = new Set<string>();
     /** Panels already shown by `onPanel`: the set's end never sets them twice. */
     const early = new Set<number>();
     const generateSet = (look: typeof setLook) =>
@@ -2443,6 +2448,18 @@ export function createWriterPictures(opts: {
               () => opts.onPlaced?.(group.index, e.ask.key),
               () => undefined,
             );
+          },
+          // TEACH-247 part cy: a landed panel waiting on its judges is `made`, so the settle's
+          // `graceForMade` waits for it as it does for a single generated picture.
+          onEmpty: (k, reason) => {
+            const key = asks[k]?.key;
+            if (key && panelErrored(reason)) errored.add(key);
+          },
+          onMade: (ks, made) => {
+            for (const k of ks) {
+              const slot = panels[k]?.slot;
+              if (slot && slot.state.status === "pending") slot.made = made;
+            }
           },
         },
         look,

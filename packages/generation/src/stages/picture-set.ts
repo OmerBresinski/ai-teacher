@@ -364,6 +364,23 @@ export interface PictureSetDeps {
    * may replace.
    */
   onPanel?(k: number, picture: SetPicture): void;
+  /**
+   * TEACH-247 part cy: a generation for these panels starts (`false`) or has landed, paid and
+   * waiting on its judges (`true`). The caller gives a landed panel the same deadline grace a
+   * single generated picture gets (rivers v4.21b s8: the fourth stage's judge was stopped 0.2 s
+   * after its picture landed, and the slide lost all four).
+   */
+  onMade?(panels: number[], made: boolean): void;
+  /** A panel the set ends without, and its last failure's reason code (TEACH-247 part cy). */
+  onEmpty?(k: number, reason: string | undefined): void;
+}
+
+/**
+ * A panel's failure that is no verdict on the picture (the provider or the network failed, or the
+ * time ran out): the stage may make it again once, as it may a single picture lost to an error.
+ */
+export function panelErrored(reason: string | undefined): boolean {
+  return !!reason && NO_SOLO_AFTER.has(reason);
 }
 
 /**
@@ -533,6 +550,7 @@ export async function makePictureSet(
     const count = () => {
       for (const k of panels) tries[k] = (tries[k] ?? 0) + 1;
     };
+    deps.onMade?.(panels, false);
     const made = await deps.generator
       .generate({
         prompt: p,
@@ -547,6 +565,7 @@ export async function makePictureSet(
     count();
     deps.spent?.(made.costUsd);
     halted();
+    deps.onMade?.(panels, true);
     return made;
   };
   const place = async (
@@ -839,6 +858,7 @@ export async function makePictureSet(
   const outcomes = (out: (SetPicture | undefined)[]) =>
     asks.forEach((a, k) => {
       const why = reasons.get(k)?.reason ?? (capped ? "capped" : undefined);
+      if (!out[k]) deps.onEmpty?.(k, why);
       deps.log({
         ev: "picture-outcome",
         kind: "set",

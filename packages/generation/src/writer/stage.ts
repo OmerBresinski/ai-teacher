@@ -2024,12 +2024,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     relay(i);
   };
   type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
-  /** A slide's failed photo asks that lostPic may fill (sets, fixed shapes and cards have their own paths). */
+  /** A stages strip's panel (TEACH-247 part cy): its slide shows every stage's picture or none. */
+  const setPanel = (a: PhotoAsk) => a.set === "stages";
+  /**
+   * A slide's failed photo asks that lostPic may fill (fixed shapes, cards and sequence sets have
+   * their own paths). TEACH-247 part cy: a stages panel is one: the strip shows pictures on every
+   * stage or on none, so one lost panel took its placed neighbours with it (rivers v4.21b s8). It
+   * is made again once, alone in the set's look, and never drawn or split (`setPanel`).
+   */
   const lostAsks = (i: number) =>
     (asks.get(i) ?? []).filter(
       (a): a is PhotoAsk =>
         a.type === "photo" &&
-        !a.set &&
+        (!a.set || setPanel(a)) &&
         !a.fixedShape &&
         // a card's picture has its own retry and plain-question fallback (ruling 195): a pair
         // slide is never split or redrawn
@@ -2185,7 +2192,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (i < 2) return;
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
-      const kind = run.drawAs?.(i, lost.key);
+      // A stages panel is never drawn alone: it is made again in the set's look, or not at all.
+      const kind = setPanel(lost) ? undefined : run.drawAs?.(i, lost.key);
       if (!kind && !run.retryable?.(i, lost.key)) continue;
       if (kind && run.drawDiagrams && !path.has(i) && (await drawLost(i, lost, kind))) continue;
       again.push(lost);
@@ -2259,10 +2267,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
           // repaint) are laid into the slide here: after the settle a landing relays nothing, so the
           // slide shipped as text with its three paintings made (romans cc-proof s9).
           if (!lostAsks(i).length) {
-            if (a0.some((a) => a.type === "photo" && visualState(i)(a.key).status === "photo")) {
+            // TEACH-247 part cy: the slide is "picture-placed" only when every picture it asks for
+            // is on it. With one still out (pending past the wait), what landed is laid in and the
+            // tail decides (rivers v4.21b s8 logged placed with stage 4 still out, so the tail never
+            // retried it and the strip shipped as numbered text).
+            const photos = (asks.get(i) ?? []).filter((a) => a.type === "photo");
+            const placed = photos.filter((a) => visualState(i)(a.key).status === "photo").length;
+            if (placed) {
               relay(i);
-              path.set(i, "picture-placed");
-              log({ ev: "lost-early-landed", slide: i + 1 });
+              if (placed === photos.length) {
+                path.set(i, "picture-placed");
+                log({ ev: "lost-early-landed", slide: i + 1 });
+              } else log({ ev: "lost-early-partial", slide: i + 1, placed, asked: photos.length });
             }
             return;
           }
@@ -3223,9 +3239,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const others = (asks.get(i) ?? [])
       .filter((a) => a.key !== lost.key)
       .map((a) => visualState(i)(a.key).status);
-    const how0 = !heldPhotoFills(s0, others)
-      ? undefined
-      : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
+    // TEACH-247 part cy: a stages panel is never swapped for a drawing or split off (code would
+    // choose the layout): the writer restages the slide (the reroute below), knowing the picture
+    // could not be shown.
+    const how0 =
+      setPanel(lost) || !heldPhotoFills(s0, others)
+        ? undefined
+        : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
     if (how0) {
       path.set(i, `picture-${how0}`);
       return;
