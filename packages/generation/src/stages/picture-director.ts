@@ -2438,19 +2438,22 @@ export function createWriterPictures(opts: {
     const errored = new Set<string>();
     /** Panels already shown by `onPanel`: the set's end never sets them twice. */
     const early = new Set<number>();
+    // An early remake (Slot.own) runs on the job's signal, not the round's: the settle neither
+    // waits for it nor stops it (as `placeSplit` and `slotDeps`).
+    const setDeps = panels.some(({ slot }) => slot?.own) ? opts.deps : deps;
     const generateSet = (look: typeof setLook) =>
       makePictureSet(
         asks,
         {
           generator: maker.generator,
           save: maker.save,
-          ...directedSetJudges(opts.lesson, deps),
+          ...directedSetJudges(opts.lesson, setDeps),
           ...(maker.grid !== undefined ? { grid: maker.grid } : {}),
           ...(maker.allow ? { allow: maker.allow } : {}),
           ...(maker.spent ? { spent: maker.spent } : {}),
           ...(placed.length ? { placed } : {}),
           signal: AbortSignal.any([
-            deps.signal,
+            setDeps.signal,
             ...panels.flatMap(({ slot }) => (slot ? [slot.stop.signal] : [])),
           ]),
           log: (event) => deps.logger.info({ stage: "generate", ...event }, "picture set"),
@@ -2693,6 +2696,12 @@ export function createWriterPictures(opts: {
           slot.done = new Promise<void>((finish) => queueMicrotask(() => placeSet(setId, finish)));
         }
         slots.set(k, slot);
+        // TEACH-247 part cy: its set's placement is over: a failed panel may be asked again before
+        // the round ends, as a single ask may (without this the early remake silently did nothing).
+        void slot.done.then(
+          () => over.add(slot),
+          () => over.add(slot),
+        );
         return;
       }
       const subjects = opts.maker ? splitSubjects(ask) : undefined;

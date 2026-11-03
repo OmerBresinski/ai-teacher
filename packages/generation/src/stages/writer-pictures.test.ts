@@ -1144,6 +1144,65 @@ describe("split at ask, on real slots (TEACH-167 part b)", () => {
     expect(ai.calls.slice(4).map((c) => c.imageParts ?? 0)).toContain(3);
   });
 
+  test("a stages panel lost before the settle is really made again early, and the settle does not stop or fail it (TEACH-247 part cy)", async () => {
+    const m = splitMaker();
+    let n = 0;
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const inner = m.maker.generator;
+    // Stage 0's solo fails at the provider; its early remake is held past the round's settle.
+    const generator: Pick<ImageGenerator, "model" | "generate"> = {
+      model: inner.model,
+      generate: async (req) => {
+        const at = n++;
+        if (at === 3) throw new ImageGenerationError("down", "server-error", 3, 500);
+        if (at === 4) await held;
+        if (at === 4 && req.signal?.aborted)
+          throw Object.assign(new Error("stopped"), { name: "AbortError" });
+        return inner.generate(req);
+      },
+    };
+    const odd = JSON.stringify({ same: false, odd: [0], why: "a different flower" });
+    const pictures = createWriterPictures({
+      lesson: { ...sampleBriefLesson(), subject: "Science" },
+      country: "UK",
+      images: images({}),
+      deps: recordingDeps(
+        createFakeAi({
+          script: [saw("a cat"), saw("seed head"), saw("seeds"), odd, saw("sunflower")],
+          text: set,
+        }),
+      ),
+      maker: { ...m.maker, generator },
+      direct: async () => {
+        throw new Error("a generated set never asks the director");
+      },
+    });
+    const asks = ["sunflower", "seed head", "seeds"].map((s, k) =>
+      ask({
+        key: `stage.${k}`,
+        shows: `A ${s}`,
+        mustSee: [s],
+        named: false,
+        set: "stages",
+        sameSubject: true,
+      }),
+    );
+    for (const a of asks) pictures.start(12, a, slide);
+    await pictures.whenSlideDone(12, 2000);
+    expect(pictures.state(12, "stage.0").status).toBe("failed");
+    pictures.start(12, asks[0] as WriterPhotoAsk, slide);
+    const remade = pictures.settleSlide(12, 2000);
+    // The round settles while the remake runs: it must neither stop it nor fail the lesson.
+    await pictures.settle(10);
+    release();
+    await remade;
+    expect(n).toBe(5);
+    expect(pictures.state(12, "stage.0").status).toBe("photo");
+  });
+
   test("a remake the judge refuses is not retryable again, though the first loss was an error (TEACH-247 part cy)", async () => {
     const m = splitMaker();
     let n = 0;
