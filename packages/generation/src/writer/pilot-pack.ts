@@ -63,6 +63,9 @@ import t18b3 from "./bundles/pilot-v4.18b-menu/system-KS3.template.txt" with { t
 import t50a1 from "./bundles/pilot-v5.0a/system-KS1.template.txt" with { type: "text" };
 import t50a2 from "./bundles/pilot-v5.0a/system-KS2.template.txt" with { type: "text" };
 import t50a3 from "./bundles/pilot-v5.0a/system-KS3.template.txt" with { type: "text" };
+import t50b1 from "./bundles/pilot-v5.0b/system-KS1.template.txt" with { type: "text" };
+import t50b2 from "./bundles/pilot-v5.0b/system-KS2.template.txt" with { type: "text" };
+import t50b3 from "./bundles/pilot-v5.0b/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -657,6 +660,32 @@ export const PILOT_PACKS = {
       KS1: withFits(v50aSystem(t50a1, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
       KS2: withFits(v50aSystem(t50a2, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
       KS3: withFits(v50aSystem(t50a3, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    routedFits: WAVE_C_ROUTED_FITS,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
+  // v5.0b (6 Nov 2026, test runs only, selected with TJ_PILOT_PACK): v5.0a with one change. "One idea a
+  // slide" now says the members of one list (reasons for one why, kinds, parts) are one idea on one slide,
+  // at KS2 and KS3 only (ruling 306); KS1 text is v5.0a's. Same menu lines (pilot-v50a.ts) and switches.
+  "v5.0b": {
+    id: "v5.0b",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: withFits(v50aSystem(t50b1, "KS1"), "KS1", WAVE_C_ROUTED_FITS),
+      KS2: withFits(v50aSystem(t50b2, "KS2"), "KS2", WAVE_C_ROUTED_FITS),
+      KS3: withFits(v50aSystem(t50b3, "KS3-5"), "KS3-5", WAVE_C_ROUTED_FITS),
     },
     uncapped: true,
     capsFrom: "v4.5",
