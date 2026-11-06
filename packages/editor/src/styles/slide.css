@@ -59,27 +59,38 @@
   line-height: 1;
 }
 /*
- * A fraction in maths (`text/fractions.ts`, set by `serialize.ts`): numerator over a bar over
- * denominator, the way a textbook sets x/4. The fraction is exactly one line tall (`1lh`, top to
- * top with its line), so it never grows the line the layout measured nor runs past a tight box
- * that clips (a worked row's): the numerator sits on the bar at the line's middle, the
- * denominator hangs from it, both at 0.64 of the line's size. The slash (and a side's brackets,
- * which a stacked fraction does not need) stay in the DOM, hidden, for reading and copying.
+ * A fraction in maths (`@tj/slides/fractions`, set by `serialize.ts`): numerator over a bar over
+ * denominator, the way a textbook sets x/4. It is top-aligned in its line and its height is set,
+ * so the line it sits in is exactly as tall as the headless ruler (`text-measure.ts`) counts:
+ * - display type (`--td-frac: 0`, a heading, a worked example's equations): one line tall (`1lh`)
+ *   with the parts at 0.64 of the line's size, so it never grows its line or runs past a tight
+ *   box that clips;
+ * - running text (`--td-frac: 1`, `textTypeCss`): the parts at 0.8 of the line's size, legible
+ *   from the back of a classroom, and the fraction 1.6em tall, so its line is at least that.
+ * The numerator sits on the bar at the fraction's middle, the denominator hangs from it. The
+ * slash (and a side's brackets, which a stacked fraction does not need) stay in the DOM, hidden,
+ * for reading and copying. The numbers are `FRACTION_*` in `@tj/slides/fractions`.
  */
 .td-frac {
   position: relative;
   display: inline-grid;
   grid-template-rows: 1fr 1fr;
-  height: 1lh;
+  height: max(1lh, calc(var(--td-frac, 0) * 1.6em));
   vertical-align: top;
   margin: 0 0.06em;
   text-align: center;
   white-space: nowrap;
+  /* The parts' glyph boxes are taller than their tight lines; clipped at the fraction's box (the
+     whole line's height) with a hair of margin for a heavy digit's foot, they add no more overflow
+     than the line's own words, so an auto-height box measures as it would without the fraction. */
+  overflow: clip;
+  overflow-clip-margin: 0.06em;
 }
 .td-frac-num,
 .td-frac-den {
-  font-size: 0.64em;
-  line-height: 0.82;
+  font-size: calc(0.64em + var(--td-frac, 0) * 0.16em);
+  /* Tighter in display type, so each part stays inside its half of a 1.12 line. */
+  line-height: calc(0.72 + var(--td-frac, 0) * 0.1);
   padding: 0 0.12em;
 }
 .td-frac-num {
@@ -89,7 +100,7 @@
 .td-frac-den {
   align-self: start;
   border-top: max(1px, 0.075em) solid currentColor;
-  padding-top: 0.08em;
+  padding-top: calc(0.04em + var(--td-frac, 0) * 0.04em);
 }
 .td-frac-sr {
   position: absolute;

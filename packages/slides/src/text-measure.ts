@@ -1,6 +1,13 @@
 import type { RichDoc, RichNode, TextPreset, TextStyle, Theme } from "@tj/domain/documents";
 import { ADVANCES, ITALIC_ADVANCES } from "./font-metrics.generated";
 import { FONT_STACKS, type FontKey } from "./fonts";
+import {
+  FRACTION_TALL_EM,
+  findFractions,
+  fractionTall,
+  fractionWidthEm,
+  shownSide,
+} from "./fractions";
 import type { MeasureInput, Measurer } from "./reflow";
 import { floorBelow, type ResolvedText, resolveTextStyle } from "./text-style";
 import { fontFloor, keyStageOf } from "./themes";
@@ -122,6 +129,8 @@ export type LineType = Pick<
   quoteFamily?: string;
   /** The quote face is set italic (`quoteFaceOf(theme).italic`): measured in its italic advances. */
   quoteItalic?: boolean;
+  /** Stacked fractions are set tall (running text, `fractionTall`) rather than inside the line. */
+  tallFractions?: boolean;
 };
 
 /** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
@@ -139,12 +148,48 @@ export type Run = { text: string; bold?: boolean; quote?: boolean; node?: RichNo
  * rule and also records where each line starts; `text-measure.test.ts` holds the two to one count.
  */
 function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number {
+  return breakLines(runs, type, room).lines;
+}
+
+/**
+ * The wrap rule's walk: how many lines, and how many of them hold a stacked fraction
+ * (`./fractions.ts`). A fraction is one unbreakable piece as wide as its wider side at the parts'
+ * size (the renderer's `.td-frac`, an inline grid), not the slash text it is written as.
+ */
+function breakLines(
+  runs: readonly Run[],
+  type: LineType,
+  room: number,
+): { lines: number; fractionLines: number } {
   const t = tablesFor(runs, type);
   const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
+  const flat = runs.map((r) => r.text).join("");
+  const fractions = findFractions(flat);
+  /** Each UTF-16 index's advance in em, tracking included (only needed where fractions are). */
+  const advanceAt: number[] = [];
+  if (fractions.length) {
+    for (const run of runs) {
+      const advances = t.of(run);
+      for (const ch of run.text) {
+        const a = charAdvance(ch.codePointAt(0) ?? 0, advances) + t.tracking;
+        advanceAt.push(a);
+        if (ch.length > 1) advanceAt.push(0);
+      }
+    }
+  }
+  const widthOf = (from: number, to: number) => {
+    const [a, b] = shownSide(flat, from, to);
+    let w = 0;
+    for (let i = a; i < b; i++) w += advanceAt[i] ?? 0;
+    return w;
+  };
   let lines = 1;
   let used = 0;
   let word = 0;
   let space = 0;
+  let wordHasFraction = false;
+  let lastFractionLine = 0;
+  let fractionLines = 0;
   const place = () => {
     if (word === 0) return;
     if (used === 0) used = word;
@@ -158,12 +203,34 @@ function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number
       lines += 1;
       used -= ems;
     }
+    if (wordHasFraction && lastFractionLine !== lines) {
+      fractionLines += 1;
+      lastFractionLine = lines;
+    }
     word = 0;
+    wordHasFraction = false;
   };
+  let at = 0;
+  let next = 0;
   for (const run of runs) {
     const advances = t.of(run);
     const spaceWidth = emWidth(" ", advances, t.tracking);
     for (const ch of run.text) {
+      const i = at;
+      at += ch.length;
+      const f = fractions[next];
+      if (f && i >= f.start) {
+        if (i === f.start) {
+          word += fractionWidthEm(
+            widthOf(f.start, f.slash),
+            widthOf(f.slash + 1, f.end),
+            !!type.tallFractions,
+          );
+          wordHasFraction = true;
+        }
+        if (at >= f.end) next += 1;
+        continue;
+      }
       const code = ch.codePointAt(0) ?? 0;
       if (code === 10) {
         place();
@@ -176,7 +243,7 @@ function linesOfRuns(runs: readonly Run[], type: LineType, room: number): number
     }
   }
   place();
-  return Math.max(1, lines);
+  return { lines: Math.max(1, lines), fractionLines };
 }
 
 /** The advance tables a paragraph's runs need (bold and quote only when a run is), and tracking. */
@@ -221,6 +288,7 @@ export function countLines(
   const r = resolveTextStyle({ preset }, theme);
   const type = {
     ...r,
+    tallFractions: fractionTall(preset),
     ...(weight === undefined ? {} : { fontWeight: weight }),
     ...(fontSize === undefined ? {} : { fontSize }),
   };
@@ -310,9 +378,10 @@ function blocksOf(
   nodes: RichNode[],
   type: LineType,
   room: number,
-): { lines: number; gaps: number } {
+): { lines: number; gaps: number; fractionLines: number } {
   let lines = 0;
   let gaps = 0;
+  let fractionLines = 0;
   nodes.forEach((node, i) => {
     if (i > 0) gaps += 1;
     if (node.type === "bulletList" || node.type === "orderedList") {
@@ -324,12 +393,15 @@ function blocksOf(
         const nested = blocksOf(item.content ?? [], type, inner);
         lines += nested.lines;
         gaps += nested.gaps;
+        fractionLines += nested.fractionLines;
       });
       return;
     }
-    lines += linesOfRuns(runsOf(node), type, room);
+    const b = breakLines(runsOf(node), type, room);
+    lines += b.lines;
+    fractionLines += b.fractionLines;
   });
-  return { lines, gaps };
+  return { lines, gaps, fractionLines };
 }
 
 /** Height in points a rich doc needs in a box, chrome included: the fitting engine's `Measurer`. */
@@ -343,11 +415,24 @@ export const measureHeadless =
       fontSize,
       quoteFamily: quoteFamilyOf(theme),
       quoteItalic: quoteFaceOf(theme).italic,
+      tallFractions: fractionTall(r.preset),
     };
     const upper = r.textTransform === "uppercase";
     const doc = upper ? upperDoc(input.doc) : input.doc;
-    const { lines, gaps } = blocksOf(doc.content ?? [], type, input.width - input.inset);
-    return lines * fontSize * r.lineHeight + gaps * BLOCK_GAP_EM * fontSize + input.chrome;
+    const { lines, gaps, fractionLines } = blocksOf(
+      doc.content ?? [],
+      type,
+      input.width - input.inset,
+    );
+    // A line holding a running-text fraction is the fraction's height when that passes its
+    // leading (`.td-frac`: `height: max(1lh, 1.6em)`, top-aligned in its line).
+    const tall = type.tallFractions ? Math.max(0, FRACTION_TALL_EM - r.lineHeight) : 0;
+    return (
+      lines * fontSize * r.lineHeight +
+      fractionLines * fontSize * tall +
+      gaps * BLOCK_GAP_EM * fontSize +
+      input.chrome
+    );
   };
 
 export function upperDoc(doc: RichDoc): RichDoc {

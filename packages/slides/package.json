@@ -10,6 +10,7 @@
     "./grid": "./src/grid.ts",
     "./geometry": "./src/geometry.ts",
     "./fonts": "./src/fonts.ts",
+    "./fractions": "./src/fractions.ts",
     "./themes": "./src/themes.ts",
     "./factories": "./src/factories.ts",
     "./layouts": "./src/layouts.ts",
