@@ -58,6 +58,47 @@
      The paragraph's own strut still sets the line's height. */
   line-height: 1;
 }
+/*
+ * A fraction in maths (`text/fractions.ts`, set by `serialize.ts`): numerator over a bar over
+ * denominator, the way a textbook sets x/4. The fraction is exactly one line tall (`1lh`, top to
+ * top with its line), so it never grows the line the layout measured nor runs past a tight box
+ * that clips (a worked row's): the numerator sits on the bar at the line's middle, the
+ * denominator hangs from it, both at 0.64 of the line's size. The slash (and a side's brackets,
+ * which a stacked fraction does not need) stay in the DOM, hidden, for reading and copying.
+ */
+.td-frac {
+  position: relative;
+  display: inline-grid;
+  grid-template-rows: 1fr 1fr;
+  height: 1lh;
+  vertical-align: top;
+  margin: 0 0.06em;
+  text-align: center;
+  white-space: nowrap;
+}
+.td-frac-num,
+.td-frac-den {
+  font-size: 0.64em;
+  line-height: 0.82;
+  padding: 0 0.12em;
+}
+.td-frac-num {
+  align-self: end;
+  padding-bottom: 0.06em;
+}
+.td-frac-den {
+  align-self: start;
+  border-top: max(1px, 0.075em) solid currentColor;
+  padding-top: 0.08em;
+}
+.td-frac-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 [data-hl] {
   padding: 0.04em 0.14em;
   margin: 0 -0.14em;
