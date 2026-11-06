@@ -25,6 +25,7 @@ import {
   withActivities,
   withActivityMenu,
 } from "./activities";
+import { checkNotesAnswers, checkWriterSlide, isMaths, swapInSlide } from "./answer-key";
 import { BODY_MODELS } from "./body-figure";
 import { type WriterBundleId, writerBundle } from "./bundle";
 import {
@@ -3760,20 +3761,97 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     if (one && real) got.set(i + 1, one);
     else log({ ev: "notes-redo-miss", slide: i + 1, kept: "deck" });
   }
-  for (const [k, s0] of got) {
-    if (k < 3 || k > n) continue;
+  // ── answer keys (`answer-key.ts`): a maths key code can work out is checked ──
+  // A wrong yes/no whose own reasoning is right is fixed in code; any other wrong key in the notes
+  // gets one rewrite of that slide's note (kept when it leaves fewer wrong keys), and what is still
+  // wrong ships logged. The writer's own keys are fixed the same way or logged (never a rewrite).
+  const maths = isMaths(brief.subject);
+  const lettered = (k: number, s0: SlideNotes): SlideNotes => {
     // A multiple-choice answer starts with the correct letter as shown.
     const a0 = s0.answers;
-    const lettered = Array.isArray(a0)
-      ? a0.map((x, j) => (j === 0 ? (withCorrectLetter(x, plan.slides[k - 1]) ?? x) : x))
-      : withCorrectLetter(a0, plan.slides[k - 1]);
-    const s = { ...s0, answers: lettered };
+    return {
+      ...s0,
+      answers: Array.isArray(a0)
+        ? a0.map((x, j) => (j === 0 ? (withCorrectLetter(x, plan.slides[k - 1]) ?? x) : x))
+        : withCorrectLetter(a0, plan.slides[k - 1]),
+    };
+  };
+  /** Slide k's notes with each yes/no code can fix fixed, and the wrong keys left (`open`). */
+  const keyed = (k: number, s: SlideNotes, report: boolean) => {
+    const qs = maths ? questionsOf((plan.slides[k - 1] ?? {}) as S) : [];
+    const list = Array.isArray(s.answers)
+      ? s.answers.map(String)
+      : typeof s.answers === "string" && qs.length === 1
+        ? [s.answers]
+        : undefined;
+    if (!list) return { s, open: 0 };
+    let open = 0;
+    for (const { index, catches } of checkNotesAnswers(qs, list)) {
+      const fixed = catches.length === 1 ? catches[0]?.fixed : undefined;
+      if (fixed !== undefined) list[index] = fixed;
+      else open += catches.length;
+      if (report)
+        for (const c of catches)
+          log({
+            ev: "answer-key",
+            slide: k,
+            where: "notes",
+            index,
+            kind: c.kind,
+            action: fixed !== undefined ? "fixed" : "shipped",
+            ...(fixed !== undefined ? {} : { level: "warn" }),
+          });
+    }
+    return { s: { ...s, answers: Array.isArray(s.answers) ? list : (list[0] ?? null) }, open };
+  };
+  await Promise.all(
+    [...got].map(async ([k, s0]) => {
+      if (k < 3 || k > n) return;
+      const before = keyed(k, lettered(k, s0), false).open;
+      if (!before) return;
+      log({ ev: "answer-key-rewrite", slide: k, open: before });
+      const one = (await notesCall(k)).get(k);
+      const after = one ? keyed(k, lettered(k, one), false).open : before;
+      if (one && after < before) got.set(k, one);
+      log({ ev: "answer-key-rewritten", slide: k, open: Math.min(before, after) });
+    }),
+  );
+  for (const [k, s0] of got) {
+    if (k < 3 || k > n) continue;
+    const { s } = keyed(k, lettered(k, s0), true);
     const answers = Array.isArray(s.answers)
       ? s.answers.map(String)
       : s.answers
         ? Array<string>(12).fill(String(s.answers))
         : [];
     notes.set(k - 1, { notes: notesText(s), answers });
+  }
+  for (let i = 2; maths && i < n; i++) {
+    const sl = plan.slides[i] as S | undefined;
+    const m = laid.get(i);
+    for (const c of checkWriterSlide(sl)) {
+      const item =
+        c.where === "item" && Array.isArray(sl?.items)
+          ? (sl.items[c.index ?? -1] as S | undefined)
+          : undefined;
+      const was = typeof item?.answer === "string" ? item.answer : undefined;
+      // The writer's own key, swapped where the slide shows or keeps it (its answers, the reveal).
+      const swapped =
+        c.fixed !== undefined && was && m ? swapInSlide(m.slide, was, c.fixed) : undefined;
+      if (swapped && item && c.fixed !== undefined) {
+        laid.set(i, { ...(m as Materialised), slide: swapped });
+        item.answer = c.fixed;
+      }
+      log({
+        ev: "answer-key",
+        slide: i + 1,
+        where: c.where,
+        ...(c.index !== undefined ? { index: c.index } : {}),
+        kind: c.kind,
+        action: swapped ? "fixed" : "flagged",
+        ...(swapped ? {} : { level: "warn" }),
+      });
+    }
   }
   checks = check();
   const textOnlyTeach = Array.from({ length: n }, (_, i) => i).filter(
