@@ -11,3 +11,7 @@ Base: live v4.17. Schema, layouts, switches and writer model are v4.17's; only t
 
 Rationale, kept and dropped rules: `scratchpad/tuning/v5.0a/` (PROGRESS.md, DROPPED.md) and
 `scratchpad/tuning/gateA-v5.0a.md`.
+
+Length budget: the templates are sent as written (no comment can go in them), so their ceilings live in
+`../../prompt-budget.json`, measured as sent by `../../prompt-budget.test.ts`. Any growth needs a
+reasoned step there (METHOD.md rule 7).

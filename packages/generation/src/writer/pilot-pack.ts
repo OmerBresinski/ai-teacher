@@ -649,6 +649,7 @@ export const PILOT_PACKS = {
   // v5.0a (3 Nov 2026, test runs only, selected with TJ_PILOT_PACK): back to basics. v4.17's schema,
   // layouts, switches and writer; the system text is a short first-principles brief plus what code
   // needs, and the code-built menu lines keep their Fits under one short line each (pilot-v50a.ts).
+  // Its templates are sent as written, so the length budget lives in code: prompt-budget.json.
   "v5.0a": {
     id: "v5.0a",
     layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },

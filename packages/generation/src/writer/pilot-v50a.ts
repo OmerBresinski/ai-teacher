@@ -6,6 +6,9 @@ import type { WriterStage } from "./schema";
  * `Fits:` text code generates (every word limit code checks), and the routing prose before it is
  * replaced by one short line per layout: what the layout is and what its fields hold. Each line
  * must be found exactly once with exactly one " Fits: ", so a menu change in code fails loudly here.
+ *
+ * Length budget: the assembled text, these lines included, has a ceiling per key stage in
+ * `prompt-budget.json` (`prompt-budget.test.ts`). Any growth needs a reasoned step there.
  */
 export const V50A_MENU_LINES: Readonly<Record<string, string>> = {
   "items-row":

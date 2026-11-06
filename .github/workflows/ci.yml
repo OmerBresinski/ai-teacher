@@ -119,6 +119,10 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # Depth 2: prompt-budget.test.ts reads prompt-budget.json from the parent commit (HEAD^1)
+        # to check its history is append-only.
+        with:
+          fetch-depth: 2
       - uses: ./.github/actions/setup
 
       - name: Create the test database (mirrors infra/postgres/init)
