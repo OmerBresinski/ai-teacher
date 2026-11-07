@@ -156,8 +156,8 @@ describe("question layout menu lines", () => {
 });
 
 describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
-  test("production runs v4.17", () => {
-    expect(PILOT_PACK_ID).toBe("v4.17");
+  test("production runs v5.0b", () => {
+    expect(PILOT_PACK_ID).toBe("v5.0b");
   });
   for (const stage of STAGES) {
     const req = pilotRequest(PILOT_PACK_ID, KS[stage], {}, (sc) => sc);
@@ -218,13 +218,16 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
     });
   }
   test("the request is smaller than v4.6's: the per-count twins go", () => {
+    // Pinned to v4.17, the last pack whose panel-list line is LAYOUT_WRITER_MENUS' own: v5.0a and
+    // v5.0b keep v4.17's schema but send short code-built menu lines (pilot-v50a.ts).
+    const NOW = "v4.17" as const;
     for (const ks of ["KS1", "KS2", "KS3"] as const) {
       // The panel-list line is left out: its numbers follow the measured table (TEACH-205 part d
       // shortened the side title), not the question layouts this compares.
       // v4.7's line is cut by the menu's own text; v4.6 is frozen text with no builder, so its
       // line goes by prefix. Each cut must remove exactly one line, so neither can miss silently.
       const line = LAYOUT_WRITER_MENUS["panel-list"][ks === "KS3" ? "KS3-5" : ks];
-      const size = (id: "v4.6" | typeof PILOT_PACK_ID) => {
+      const size = (id: "v4.6" | typeof NOW) => {
         const r = pilotRequest(id, ks, {}, (sc) => sc);
         // Wave C (TEACH-110 part v) is new teaching layouts, not the question layouts: left out.
         const st = ks === "KS3" ? "KS3-5" : ks;
@@ -257,7 +260,7 @@ describe(`pilot pack ${PILOT_PACK_ID}: the question layouts`, () => {
           if (/^dg-(river|hydrograph)(-|$)/.test(k)) delete schema.$defs[k];
         return kept.join("\n").length + JSON.stringify(schema).length;
       };
-      expect(size(PILOT_PACK_ID)).toBeLessThan(size("v4.6"));
+      expect(size(NOW)).toBeLessThan(size("v4.6"));
     }
   });
   test("v4.11's pupil-line rule grows v4.10's by at most 900 characters at each key stage", () => {

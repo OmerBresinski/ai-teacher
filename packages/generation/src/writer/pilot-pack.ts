@@ -718,7 +718,9 @@ export function packFromEnv(env: string | undefined, live: PilotPackId): PilotPa
   return env as PilotPackId;
 }
 /** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_LIVE: PilotPackId = "v4.17";
+export const PILOT_PACK_LIVE: PilotPackId = "v5.0b";
+/** The pack a revert goes back to (one line: set PILOT_PACK_LIVE to it). Kept measured by the prompt budget so a revert passes CI. */
+export const PILOT_PACK_REVERT: PilotPackId = "v4.17";
 export const PILOT_PACK_ID: PilotPackId = packFromEnv(
   typeof process === "undefined" ? undefined : process.env.TJ_PILOT_PACK,
   PILOT_PACK_LIVE,

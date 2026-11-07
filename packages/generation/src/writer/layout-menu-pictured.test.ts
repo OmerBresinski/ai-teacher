@@ -147,11 +147,18 @@ describe("KS1 pictured floor (TEACH-247 part cv)", () => {
 });
 
 describe("a pack's picturedFloor is one switch for its menu and its caps (TEACH-247 part cv)", () => {
+  // Pinned to v4.17: the switch rewrites LAYOUT_WRITER_MENUS' items-row and panel-list lines, which
+  // v5.0a and v5.0b replace with short code-built lines (pilot-v50a.ts), so it cannot apply to them.
+  const PACK = "v4.17" as const;
   const prod = writerSchema("KS1", SLIDE_TIER_RANGES.standard);
-  const live = PILOT_PACKS[PILOT_PACK_ID] as PilotPack;
+  const live = PILOT_PACKS[PACK] as PilotPack;
   const switched: PilotPack = { ...live, picturedFloor: true };
-  const off = pilotRequest(PILOT_PACK_ID, "KS1", prod, (s) => s);
-  const on = pilotRequest(PILOT_PACK_ID, "KS1", prod, (s) => s, switched);
+  const off = pilotRequest(PACK, "KS1", prod, (s) => s);
+  const on = pilotRequest(PACK, "KS1", prod, (s) => s, switched);
+
+  test("the live pack does not set the switch (its menu lines have no pieces for it)", () => {
+    expect((PILOT_PACKS[PILOT_PACK_ID] as PilotPack).picturedFloor).toBeFalsy();
+  });
 
   test("the system text carries the switched KS1 counts and Fits, and nothing else changes", () => {
     const fits = (line: string) => must(/ Fits: .*$/.exec(line))[0];
@@ -175,7 +182,7 @@ describe("a pack's picturedFloor is one switch for its menu and its caps (TEACH-
     for (const k of ["items-row", "panel-list"]) expect(defs[k]).toEqual(want[k]);
   });
 
-  test("without the switch the live request is untouched", () => {
-    expect(pilotRequest(PILOT_PACK_ID, "KS1", prod, (s) => s, live)).toEqual(off);
+  test("without the switch the request is untouched", () => {
+    expect(pilotRequest(PACK, "KS1", prod, (s) => s, live)).toEqual(off);
   });
 });

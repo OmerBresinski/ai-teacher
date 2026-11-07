@@ -21,7 +21,7 @@ import { waveCMenu } from "./wave-c";
 /*
  * Pilot pack v5.0a (3 Nov 2026, test runs only): the method's code checks. Every key stage builds,
  * the schema is v4.17's exactly, every limit code checks reaches the model unchanged, and the live
- * pack is untouched: with TJ_PILOT_PACK unset production runs v4.17, byte for byte as before.
+ * pack: with TJ_PILOT_PACK unset production runs PILOT_PACK_LIVE (v5.0b since 7 Nov; revert v4.17).
  */
 type J = Record<string, any>;
 const KS = ["KS1", "KS2", "KS3"] as const;
@@ -40,11 +40,11 @@ const prod: J = {
   },
 };
 
-describe("the live pack is untouched", () => {
-  test("TJ_PILOT_PACK unset: production runs v4.17", () => {
+describe("the live pack", () => {
+  test("TJ_PILOT_PACK unset: production runs v5.0b", () => {
     expect(process.env.TJ_PILOT_PACK ?? "").toBe("");
-    expect(PILOT_PACK_LIVE).toBe("v4.17");
-    expect(PILOT_PACK_ID).toBe("v4.17");
+    expect(PILOT_PACK_LIVE).toBe("v5.0b");
+    expect(PILOT_PACK_ID).toBe("v5.0b");
   });
 
   test("the selector: unset or empty is live, a pack id is that pack, a typo throws", () => {

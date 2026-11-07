@@ -4,7 +4,7 @@ import { labAi, romansLesson } from "../planner/testing";
 import { initialState, recordingDeps, writerFixture } from "../testing";
 import { WRITER_VERSION, writerRoute } from "../writer/ai-services";
 import { LAYOUT_WRITER_MENUS } from "../writer/layout-menu";
-import { ITEMS_ROW_LABELLED, ITEMS_ROW_V417, PILOT_PACK_ID } from "../writer/pilot-pack";
+import { PILOT_PACK_ID, PILOT_PACKS } from "../writer/pilot-pack";
 import { checkedWriterObjectives } from "./objectives";
 import { write } from "./write";
 
@@ -44,10 +44,14 @@ describe("the production writer runs the pilot pack", () => {
     const call = ai.calls.find((c) => c.context?.promptVersion?.endsWith("/lesson"));
     expect(call).toBeDefined();
     const system = call?.systemText ?? "";
-    const stage = romansLesson().ageBand === "ks2" ? "KS2" : "KS3-5";
-    // v4.17 reroutes items-row's long list of parts (no labelled diagram on the writer's menu).
-    for (const menu of Object.values(LAYOUT_WRITER_MENUS))
-      expect(system).toContain(menu[stage].replace(ITEMS_ROW_LABELLED, ITEMS_ROW_V417));
+    const ks = romansLesson().ageBand === "ks2" ? "KS2" : "KS3";
+    // Every layout line of the live pack's own system text reaches the model word for word.
+    const packLines = PILOT_PACKS[PILOT_PACK_ID].system[ks]
+      .split("\n")
+      .filter((l) => /^- [a-z-]+: /.test(l));
+    for (const layout of Object.keys(LAYOUT_WRITER_MENUS))
+      expect(packLines.some((l) => l.startsWith(`- ${layout}: `))).toBe(true);
+    for (const line of packLines) expect(system).toContain(line);
     const schema = (call?.responseFormat as { schema?: { $defs?: Record<string, unknown> } })
       ?.schema;
     const defs = Object.keys(schema?.$defs ?? {});

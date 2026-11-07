@@ -5,7 +5,7 @@ import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch
 import { writerBrief } from "../stages/write";
 import { sampleBriefLesson } from "../testing";
 import { WRITER_BUNDLE_ID, WRITER_BUNDLES } from "./bundle";
-import { PILOT_PACK_LIVE, type PilotPackId } from "./pilot-pack";
+import { PILOT_PACK_LIVE, PILOT_PACK_REVERT, type PilotPackId } from "./pilot-pack";
 import {
   type BudgetStep,
   checkAppendOnly,
@@ -28,8 +28,8 @@ const budget: PromptBudget = JSON.parse(
   readFileSync(new URL("prompt-budget.json", import.meta.url), "utf8"),
 );
 
-// The packs whose writer text is budgeted: v5.0a and whichever pack is live.
-const PACKS = [...new Set<PilotPackId>(["v5.0a", PILOT_PACK_LIVE])];
+// The packs whose writer text is budgeted: v5.0a, whichever pack is live, and the revert pack.
+const PACKS = [...new Set<PilotPackId>(["v5.0a", PILOT_PACK_LIVE, PILOT_PACK_REVERT])];
 const LESSONS = [
   {
     ks: "KS1",

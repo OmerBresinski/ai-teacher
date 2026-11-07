@@ -460,6 +460,186 @@
           "ref": "scratchpad/tuning/amendment-nobloat-draft.md"
         }
       ]
+    },
+    "writer/v5.0b/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20160,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 64560,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22135,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 66279,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20660,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 66493,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22635,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 68367,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21275,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 68156,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 23770,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
+    },
+    "writer/v5.0b/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 69463,
+          "date": "2026-11-07",
+          "reason": "v5.0b live: v5.0a plus one reworded KS2/KS3 line keeping one list's members on one slide (KS1 identical); Gate B ALIGNED",
+          "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
+        }
+      ]
     }
   }
 }

@@ -30,7 +30,7 @@ const NEW_ROUTE =
   "Reasons that a diagram or library model explains go to visual-text beside that figure rather than here.";
 
 describe("pilot pack v4.17", () => {
-  test("production runs v4.17", () => expect(PILOT_PACK_ID).toBe("v4.17"));
+  test("production runs v5.0b (v4.17 is the revert)", () => expect(PILOT_PACK_ID).toBe("v5.0b"));
 
   for (const stage of STAGES) {
     const ks = KS[stage];

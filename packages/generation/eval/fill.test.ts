@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { MenuWordCaps } from "../src/writer/layout-menu";
-import { PILOT_PACK_ID } from "../src/writer/pilot-pack";
+import { PILOT_PACK_ID, PILOT_PACKS } from "../src/writer/pilot-pack";
 import type { WriterStage } from "../src/writer/schema";
 import {
   deckFields,
@@ -189,19 +189,10 @@ describe("fill score (fill.py port, caps from the menu data)", () => {
 describe("plan-only fit check", () => {
   test("is labelled approximate, and every shape it maps is still in the writer prompt", () => {
     expect(planFit([], "KS2").approximate).toBe(true);
-    for (const ks of ["KS1", "KS2", "KS3"]) {
-      const system = readFileSync(
-        join(
-          import.meta.dir,
-          "..",
-          "src",
-          "writer",
-          "bundles",
-          `pilot-${PILOT_PACK_ID}-menu`,
-          `system-${ks}.snapshot.txt`,
-        ),
-        "utf8",
-      );
+    // The live pack's assembled system text: what a `-menu` bundle's snapshot pins (v5.0a and
+    // later keep no snapshot; their templates are sent as written).
+    for (const ks of ["KS1", "KS2", "KS3"] as const) {
+      const system = PILOT_PACKS[PILOT_PACK_ID].system[ks];
       for (const shape of Object.values(PLAN_SHAPES)) expect(system).toContain(shape);
     }
   });
