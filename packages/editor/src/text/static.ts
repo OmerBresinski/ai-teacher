@@ -22,7 +22,7 @@ export function renderDocHTML(doc: RichDoc): string {
   let html = "";
   try {
     if (richDocDepth(doc) > RICH_DOC_MAX_DEPTH) throw new RangeError("rich doc too deep");
-    html = serializeDoc(doc);
+    html = serializeDoc(doc, { fractions: true });
   } catch {
     html = `<p>${escapeHtml(docToPlainText(doc))}</p>`;
   }

@@ -9,6 +9,7 @@ import {
   safeStrikeStep,
   safeTextAlign,
 } from "@tj/domain/documents";
+import { findFractions } from "./fractions";
 
 /*
  * Pure HTML serialiser for the rich-text schema `baseExtensions` produces (ADR 0022 §8, amended
@@ -124,10 +125,10 @@ function inlineContent(node: RichNode): string {
 }
 
 /**
- * Serialise a paragraph's inline children, keeping a mark open across consecutive nodes while it
+ * Serialise inline children, keeping a mark open across consecutive nodes while it
  * is unchanged and closing from the innermost down to the first difference (ProseMirror's rule).
  */
-function inline(children: RichNode[]): string {
+function runs(children: RichNode[]): string {
   let out = "";
   let open: Mark[] = [];
   for (const node of children) {
@@ -157,36 +158,117 @@ function inline(children: RichNode[]): string {
   return out;
 }
 
-function blocks(node: RichNode | RichDoc): string {
-  return (node.content ?? []).map(render).join("");
+/** The inline nodes covering characters `[a, b)` of their text (a hard break is one character). */
+function slice(children: RichNode[], a: number, b: number): RichNode[] {
+  const out: RichNode[] = [];
+  let at = 0;
+  for (const node of children) {
+    const len = node.type === "text" ? (node.text ?? "").length : 1;
+    const from = Math.max(a, at);
+    const to = Math.min(b, at + len);
+    if (from < to) {
+      if (node.type !== "text") out.push(node);
+      else out.push({ ...node, text: (node.text ?? "").slice(from - at, to - at) });
+    }
+    at += len;
+  }
+  return out;
 }
 
-function render(node: RichNode): string {
+/** The colour every run of a fraction shares, so its bar is drawn in it; else none. */
+function sharedColour(nodes: RichNode[]): string | null {
+  const colours = new Set(
+    nodes.map(
+      (n) => safeCssColor(n.marks?.find((m) => m.type === "textStyle")?.attrs?.color) ?? null,
+    ),
+  );
+  const [only] = colours;
+  return colours.size === 1 && only ? only : null;
+}
+
+const SR = (s: string) => `<span class="td-frac-sr">${s}</span>`;
+
+/**
+ * One side of a fraction. A bracketed side drops its brackets from view, as a stacked fraction
+ * needs none (`(x + 2)/3` is x + 2 over 3); they stay for reading like the slash.
+ */
+function fractionPart(nodes: RichNode[], cls: string): string {
+  const text = nodes.map((n) => (n.type === "text" ? (n.text ?? "") : "\n")).join("");
+  const bracketed = text.length > 2 && text.startsWith("(") && text.endsWith(")");
+  const body = bracketed ? SR("(") + runs(slice(nodes, 1, text.length - 1)) + SR(")") : runs(nodes);
+  return `<span class="${cls}">${body}</span>`;
+}
+
+/**
+ * A fraction set stacked (`fractions.ts`): numerator over a bar over denominator. The slash stays
+ * in the DOM, visually hidden, so a screen reader reads and a copy carries "x/4" as written.
+ */
+function fraction(num: RichNode[], den: RichNode[]): string {
+  const colour = sharedColour([...num, ...den]);
+  const style = colour ? ` style="color: ${escapeAttr(colour)};"` : "";
+  return (
+    `<span class="td-frac"${style}>${fractionPart(num, "td-frac-num")}` +
+    `${SR("/")}${fractionPart(den, "td-frac-den")}</span>`
+  );
+}
+
+/**
+ * A paragraph's inline children. With `fractions` (the renderer, not the Tiptap parity path) a
+ * fraction in maths is set stacked; marks close before it and reopen inside each part.
+ */
+function inline(children: RichNode[], fractions: boolean): string {
+  if (!fractions) return runs(children);
+  const text = children
+    .map((n) => (n.type === "text" ? (n.text ?? "") : n.type === "hardBreak" ? "\n" : "\uFFFC"))
+    .join("");
+  const found = findFractions(text);
+  if (!found.length) return runs(children);
+  let out = "";
+  let at = 0;
+  for (const f of found) {
+    out += runs(slice(children, at, f.start));
+    out += fraction(slice(children, f.start, f.slash), slice(children, f.slash + 1, f.end));
+    at = f.end;
+  }
+  return out + runs(slice(children, at, text.length));
+}
+
+type Options = { fractions: boolean };
+
+function blocks(node: RichNode | RichDoc, o: Options): string {
+  return (node.content ?? []).map((n) => render(n, o)).join("");
+}
+
+function render(node: RichNode, o: Options): string {
   switch (node.type) {
     case "paragraph": {
       // Tiptap writes the attribute whenever it is set, `left` included.
       const align = safeTextAlign(node.attrs?.textAlign);
       const style = align ? ` style="text-align: ${align};"` : "";
-      return `<p${style}>${inline(node.content ?? [])}</p>`;
+      return `<p${style}>${inline(node.content ?? [], o.fractions)}</p>`;
     }
     case "bulletList":
-      return `<ul>${blocks(node)}</ul>`;
+      return `<ul>${blocks(node, o)}</ul>`;
     case "orderedList": {
       const start = node.attrs?.start;
       const attr =
         typeof start === "number" && Number.isInteger(start) && start !== 1
           ? ` start="${start}"`
           : "";
-      return `<ol${attr}>${blocks(node)}</ol>`;
+      return `<ol${attr}>${blocks(node, o)}</ol>`;
     }
     case "listItem":
-      return `<li>${blocks(node)}</li>`;
+      return `<li>${blocks(node, o)}</li>`;
     default:
       throw new UnknownRichNodeError(node.type);
   }
 }
 
-/** Serialise a rich doc to the HTML Tiptap would emit for it. Throws on unknown node types. */
-export function serializeDoc(doc: RichDoc): string {
-  return blocks(doc);
+/**
+ * Serialise a rich doc to the HTML Tiptap would emit for it. Throws on unknown node types. With
+ * `fractions`, maths fractions are set stacked (`fractions.ts`), which Tiptap does not do: the
+ * renderer asks for it, the parity tests do not.
+ */
+export function serializeDoc(doc: RichDoc, options: Partial<Options> = {}): string {
+  return blocks(doc, { fractions: options.fractions ?? false });
 }
