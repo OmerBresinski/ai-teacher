@@ -5,6 +5,7 @@
 import type { QuestionData, Slide, SlideElement, Theme } from "@tj/domain/documents";
 import { answerKeyText, answersOffSlide, revealsOwnAnswers } from "@tj/domain/documents";
 import type { BadgeGlyph, ResolvedText } from "@tj/slides";
+import { fractionTall } from "@tj/slides/fractions";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { fontFloor, type TextRole, textRole } from "../../model/themes";
 
@@ -103,6 +104,9 @@ export function textTypeCss(r: ResolvedText): CSSProperties {
     color: r.color,
     textAlign: r.align,
     ["--td-lh" as string]: String(r.lineHeight),
+    // A stacked fraction in running text is set tall, in display type inside its line
+    // (`@tj/slides/fractions`, `slide.css` `.td-frac`).
+    ["--td-frac" as string]: fractionTall(r.preset) ? "1" : "0",
   };
 }
 
