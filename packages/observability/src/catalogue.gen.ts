@@ -4,6 +4,9 @@
 export const EVENT_KEYS: Record<string, readonly string[]> = {
   gen_activity_dropped: ["slide", "why"],
   gen_activity_fixed: ["fixes", "slide"],
+  gen_answer_key: ["action", "index", "kind", "slide"],
+  gen_answer_key_rewrite: ["open", "slide"],
+  gen_answer_key_rewritten: ["open", "slide"],
   gen_body_figure: ["key", "kind", "slide", "to"],
   gen_card_retry: ["asked", "slide", "still"],
   gen_check_look_leak: ["key", "level", "next", "origin", "slide", "template", "why"],
