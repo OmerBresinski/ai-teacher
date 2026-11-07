@@ -48,6 +48,13 @@ worksheet work back into `stages/generate.ts`.
   `plan-objectives`, `plan-facts-objective`, `plan-teach-objective` and `plan-question-set` are
   registered and pinned but called by nothing in `src/stages/` until the objectives-first Plan
   lands; their sample inputs live in `src/prompts/plan-samples.ts`.
+- **Prompts have a length budget.** `src/writer/prompt-budget.json` holds a character ceiling for
+  every writer-facing text as sent: the writer's system text (template plus every code-built menu,
+  Fits line, diagram kind and Models list), its user message and schema, and the notes, repair,
+  restage, pupil-objectives and picture-director prompts. `prompt-budget.test.ts` fails when a text
+  grows past its ceiling or shrinks under it. To change a ceiling, append a step to that entry's
+  `history` (date, reason, ref; a raise cites a LOG.md row, a ruling, Gate B, a PR or a ticket);
+  steps already on master never change. Method: `scratchpad/tuning/METHOD.md` rule 7.
 - No database, pg-boss or HTTP here; no dependency on `apps/*` or `@tj/editor` (`bundle.test.ts`).
 
 ## Layout
