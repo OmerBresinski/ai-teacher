@@ -70,6 +70,18 @@ function serveList(items: unknown[], times = 6) {
   }
 }
 
+function serveTypes(types: unknown[]) {
+  fakeApi.failNext(
+    (request) =>
+      request.method === "GET" && request.path === `/lessons/${lesson.id}/worksheet-types`,
+    () =>
+      new Response(JSON.stringify({ types }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+}
+
 function renderDialog(onLabel = mock((_label: string) => {})) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -157,5 +169,49 @@ describe("LessonWorksheets (WS2)", () => {
     expect(await screen.findByText("Ready")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     await waitFor(() => expect(onLabel).toHaveBeenCalledWith("Worksheet"));
+  });
+
+  it("plan v2 T6: the picker offers the launch types from the api; a greyed one says why and cannot be made", async () => {
+    serveList([]);
+    serveTypes([
+      {
+        type: "exit-ticket",
+        name: "Exit ticket",
+        available: false,
+        reason: "This lesson has no exit ticket to put on a sheet.",
+      },
+    ]);
+    renderDialog();
+    await waitFor(() =>
+      expect(screen.getByText("This lesson has no exit ticket to put on a sheet.")).toBeVisible(),
+    );
+    expect(screen.getByRole("combobox", { name: "Activity type" })).toHaveTextContent(
+      "Exit ticket",
+    );
+    expect(screen.queryByText("Suggested for this lesson")).toBeNull();
+    expect(screen.getByRole("button", { name: "Make a worksheet" })).toBeDisabled();
+  });
+
+  it("plan v2 T6: an available Exit ticket is chosen by default and requested by its id", async () => {
+    serveList([]);
+    serveTypes([{ type: "exit-ticket", name: "Exit ticket", available: true }]);
+    let posted: unknown;
+    fakeApi.failNext(
+      (request) => request.method === "POST" && request.path === `/lessons/${lesson.id}/worksheet`,
+      () => {
+        posted = fakeApi.requests.at(-1)?.body;
+        return new Response(JSON.stringify({ worksheetId: "sheet-2", jobId: "job-3" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    renderDialog();
+    const make = await screen.findByRole("button", { name: "Make a worksheet" });
+    await waitFor(() => expect(make).not.toBeDisabled());
+    fireEvent.click(make);
+    await waitFor(() =>
+      expect(posted).toMatchObject({ recipeId: "exit-ticket", expectedRevision: 2 }),
+    );
   });
 });

@@ -134,10 +134,36 @@ export function canRequestWorksheet(lesson: Lesson, intent: WorksheetIntent) {
   return (
     lesson.plan?.state === "confirmed" &&
     lesson.plan.revision === intent.expectedRevision &&
+    // The sheet is read from the slides (worksheets plan v2 T6): wait until they are written.
     lesson.generation?.stage !== undefined &&
+    lesson.generation.stage !== "planned" &&
     !!lesson.facts
   );
 }
+
+/** One sheet type the lesson's picker offers, greyed with its reason when the slides can't carry it. */
+export type WorksheetTypeOption = {
+  type: string;
+  name: string;
+  available: boolean;
+  reason?: string;
+};
+
+export const lessonWorksheetTypesQuery = (client: QueryClient, id: string, stage?: string) =>
+  queryOptions({
+    // Keyed on the lesson's stage, so the greyed reasons are read again once the slides are written.
+    queryKey: ["library", "lesson-worksheet-types", id, stage ?? "none"],
+    queryFn: async ({ signal }): Promise<WorksheetTypeOption[]> => {
+      const res = await api.lessons[":id"]["worksheet-types"].$get(
+        { param: { id } },
+        sessionRequest(client, signal),
+      );
+      if (res.status !== 200) throw await apiErrorFromResponse(res);
+      const body = await res.json();
+      assertCurrentSession(client);
+      return body.types;
+    },
+  });
 export const lessonWorksheetsQuery = (client: QueryClient, id: string) =>
   queryOptions({
     queryKey: ["library", "lesson-worksheets", id],

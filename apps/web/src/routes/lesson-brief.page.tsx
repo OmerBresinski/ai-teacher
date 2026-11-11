@@ -153,7 +153,7 @@ function LessonIntake({
     () => retried?.slideTier ?? DEFAULT_SLIDE_TIER,
   );
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
-    { id: "initial", recipe: "knowledge-check", minutes: "10" },
+    { id: "initial", recipe: "exit-ticket", minutes: "5" },
   ]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Lesson } from "@tj/domain/documents";
-import { WORKSHEET_RECIPES } from "@tj/editor/worksheet-editor";
 import {
   Button,
   Dialog,
@@ -23,6 +22,7 @@ import {
   failureMessageOf,
   generationHandoff,
   lessonWorksheetsQuery,
+  lessonWorksheetTypesQuery,
   persistWorksheetHandoff,
   requestLessonWorksheet,
   requestWorksheetRetryingOnce,
@@ -65,7 +65,15 @@ export function LessonWorksheets({
     useCallback((notify) => subscribeWorksheetHandoff(client, notify), [client]),
     () => worksheetHandoffSnapshot(client, lesson.id),
   );
-  const [recipeId, setRecipeId] = useState(intent.intent?.recipeId ?? "auto");
+  // The offered launch types for this lesson, greyed with their reasons (worksheets plan v2 T6).
+  const types = useQuery(lessonWorksheetTypesQuery(client, lesson.id, lesson.generation?.stage));
+  const [picked, setRecipeId] = useState<string | undefined>(intent.intent?.recipeId);
+  const typeOptions = types.data ?? [];
+  const recipeId =
+    typeOptions.find((t) => t.type === picked)?.type ??
+    typeOptions.find((t) => t.available)?.type ??
+    typeOptions[0]?.type;
+  const pickedType = typeOptions.find((t) => t.type === recipeId);
   const [minutes, setMinutes] = useState(String(intent.intent?.practiceMinutes ?? 10));
   const [cooldown, setCooldown] = useState(Date.now() - intent.lastRequestedAt < 30_000);
   const active = list.data?.some((item) => item.generatingJobId) ?? false;
@@ -270,21 +278,30 @@ export function LessonWorksheets({
           ) : null}
           <div className="flex flex-col gap-2">
             <Label htmlFor="worksheet-recipe">Activity type</Label>
-            <Select value={recipeId} onValueChange={setRecipeId}>
+            <Select value={recipeId ?? ""} onValueChange={setRecipeId}>
               <SelectTrigger id="worksheet-recipe">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="auto">Suggested for this lesson</SelectItem>
-                  {WORKSHEET_RECIPES.map((recipe) => (
-                    <SelectItem key={recipe.id} value={recipe.id}>
-                      {recipe.name}
+                  {typeOptions.map((option) => (
+                    <SelectItem
+                      key={option.type}
+                      value={option.type}
+                      disabled={!option.available}
+                      data-sheet-type={option.type}
+                    >
+                      {option.name}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
+            {pickedType && !pickedType.available ? (
+              <p className="text-ink-2 text-sm" data-sheet-type-reason>
+                {pickedType.reason}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="worksheet-minutes">Practice time</Label>
@@ -305,9 +322,17 @@ export function LessonWorksheets({
           </div>
           <Button
             disabled={
-              !ready || !list.isSuccess || active || cooldown || request.isPending || intent.pending
+              !ready ||
+              !list.isSuccess ||
+              active ||
+              cooldown ||
+              request.isPending ||
+              intent.pending ||
+              recipeId === undefined ||
+              pickedType?.available !== true
             }
             onClick={() =>
+              recipeId !== undefined &&
               request.mutate({
                 recipeId,
                 practiceMinutes: Number(minutes),

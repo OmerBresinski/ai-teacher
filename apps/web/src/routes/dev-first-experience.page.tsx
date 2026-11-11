@@ -73,7 +73,7 @@ export function DevFirstExperiencePage() {
   const [slideTier, setSlideTier] = useState<SlideTier>("standard");
   const [duration, setDuration] = useState("60");
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
-    { id: "sheet-1", recipe: "knowledge-check", minutes: "10" },
+    { id: "sheet-1", recipe: "exit-ticket", minutes: "5" },
   ]);
   const [includeWorksheets, setIncludeWorksheets] = useState(false);
   const character = useRef<CharacterCapture>(null);
