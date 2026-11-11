@@ -3,7 +3,6 @@ import {
   clearGenerating,
   forWorkspace,
   getDocument,
-  listWorksheetsOfLesson,
   putDocumentAsJob,
   type WorkspaceDb,
 } from "@tj/db";
@@ -237,7 +236,9 @@ export async function runLessonJob<K extends LessonPipelineJob>(
         : {}),
       // Live writing (ADR 0039): drafts ride the job's events, never the lesson row.
       ...(ctx.draft ? { onDraft: ctx.draft } : {}),
-      worksheetQueued: () => waitForWorksheet(() => listWorksheetsOfLesson(ws, lessonId), signal),
+      // No `worksheetQueued`: the exit ticket is always on the slides (T4), and the lesson page
+      // now asks for its sheet only once the slides are written (worksheets plan v2 T6), so the
+      // write stage must not wait for a worksheet row (it would always wait the full 20 s).
       images: imagePlacer(deps, workspaceId, runSignal),
       ...pictureMaker(deps, workspaceId, logger),
       ...(recorder ? { debug: recorder.sink } : {}),

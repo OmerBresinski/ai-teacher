@@ -9,6 +9,7 @@ import {
 } from "@tj/db";
 import type { JobId, LessonId } from "@tj/domain";
 import {
+  isSlideSheetRecipe,
   type Lesson,
   type LessonFacts,
   parseLesson,
@@ -20,16 +21,19 @@ import {
 } from "@tj/domain/documents";
 import {
   buildFrame,
+  buildSheet,
   checkWorksheet,
   type FillDeps,
   fillFrame,
   generateWorksheetFillPrompt,
   isBudgetRefusal,
   repairPrompt,
+  SheetBuildFailure,
   StageFailure,
 } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
+import { SLIDE_SHEET_VERSION } from "@tj/slides/worksheet/exit-sheet";
 import type { WorkerDeps } from "../deps";
 import { effortOverride } from "../effort";
 import { captureCalls, createDebugRecorder, type DebugRecorder } from "../generation-debug";
@@ -51,6 +55,13 @@ import { budgetFailure } from "../job-errors";
  * `20 "Writing the questions"` → the one `small` fill call, persisted as `filled` →
  * `80 "Checking"` → the deterministic checks and at most one repair, persisted as `checked` with
  * usage, findings and `completedAt` → `100 "Worksheet ready"`.
+ *
+ * The launch types (`isSlideSheetRecipe`, worksheets plan v2 T6) take a shorter path: the
+ * lesson's slides as they stand (`lessonDigest`) → `buildSheet` → `gateSheet`, then **one** save,
+ * `checked` and complete (D8). No frame is saved first, so there is never a half sheet that looks
+ * finished; no repair pass runs (D7). A lesson that cannot carry the type fails
+ * `not-enough-lesson`, too few items after the gate `too-few-checked` (`SheetBuildFailure`).
+ * Exit ticket makes no model call, so it does not need the AI configured.
  *
  * Budget: `AI_WORKSHEET_COST_CAP_USD`, seeded from the row's own `generation.usage` when the job
  * reuses a frame an earlier fill left (item 9); the lesson's spend is never read. A fill that
@@ -94,6 +105,52 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         : undefined;
       const row = await loadOwnedWorksheet(ws, worksheetId, jobId);
       const { lesson, facts } = await loadPlannedLesson(ws, lessonId, revision);
+      if (isSlideSheetRecipe(recipeId)) {
+        // The new path (plan v2 T6): digest → build → gate → one save, finished or failed (D8).
+        await ctx.progress(5, "Reading the lesson", {
+          stage: "worksheet",
+          documentUpdatedAt: row.updatedAt.toISOString(),
+        });
+        const stored = parseWorksheet(row.body);
+        const startedAt = new Date().toISOString();
+        const built = buildSheet({
+          recipeId,
+          lesson,
+          worksheetId,
+          now: () => new Date(),
+          ids: uid,
+        });
+        const generation: WorksheetGeneration = {
+          jobId,
+          stage: "checked",
+          startedAt,
+          completedAt: new Date().toISOString(),
+          promptVersions: { build: SLIDE_SHEET_VERSION },
+          // Exit ticket makes no model call; T7 onwards records the fill's usage here.
+          usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+          findings: built.findings,
+          recipeId,
+          practiceMinutes,
+        };
+        const sheet: Worksheet = { ...built.worksheet, createdAt: stored.createdAt, generation };
+        const result = await putDocumentAsJob(ws, worksheetId, sheet, jobId);
+        if (result.status !== "ok") throw new NonRetryableError(`worksheet ${result.status}`);
+        await ctx.progress(100, "Worksheet ready", {
+          stage: "worksheet",
+          documentUpdatedAt: result.row.updatedAt.toISOString(),
+        });
+        logger.info(
+          {
+            lessonId,
+            worksheetId,
+            recipeId,
+            blocks: sheet.blocks.length,
+            dropped: built.findings.length,
+          },
+          "worksheet ready",
+        );
+        return;
+      }
       if (deps.ai.kind === "unconfigured") {
         throw new NonRetryableError(
           "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
@@ -233,6 +290,9 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         thrown = budgetFailure(error);
       } else if (isAiError(error, "unconfigured") || isAiError(error, "invalid_model")) {
         thrown = new NonRetryableError(error.message, { cause: error });
+      } else if (error instanceof SheetBuildFailure) {
+        // The lesson cannot carry this type, or too few items passed the gate: no retry helps.
+        thrown = new NonRetryableError(error.message, { cause: error });
       } else if (error instanceof StageFailure) {
         // The fill missed its schema twice: what it had written stays for the next request.
         thrown = new NonRetryableError(error.message, { cause: error });
@@ -273,6 +333,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
  */
 export function worksheetFailureCode(error: unknown): WorksheetFailureCode | null {
   if (isBudgetRefusal(error)) return "spend-limit";
+  if (error instanceof SheetBuildFailure) return error.code;
   if (error instanceof NonRetryableError) {
     if (error.message === "worksheet missing" || error.message === "lock lost") return null;
     if (
