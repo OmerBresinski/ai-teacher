@@ -327,7 +327,7 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
   const key = !!pt.cards?.length;
   const fig = input.figure;
   const pts = key ? [] : (input.points ?? []).map((p) => (typeof p === "string" ? p : p.text));
-  let solo = !key && pts.length === 0;
+  const solo = !key && pts.length === 0;
   const accent = c.t.colors.accent;
   c.over.push(...pictureTextCapsOver(input, stage));
 
@@ -344,33 +344,20 @@ export function layoutPictureText(c: Ctx, input: TemplateInput, pt: PictureText,
   // A drawn picture (a map, a diagram) is shown whole inside the slide, framed like a library model.
   const whole = !!photo && drawnPicture(photo);
   const other = fig && !model && !photo ? fig : undefined;
-  const geometry = (alone: boolean) => {
-    let w = 0;
-    if (model) {
-      const a = model.drawn.aspect || 1;
-      w = Math.round(Math.min(507, Math.max(373, 373 * a)));
-    } else if (photo) w = fieldWidth(photo.aspect ?? 1.5) + (alone ? SOLO_EXTRA : 0);
-    else if (other) w = fieldWidth(1.2);
-    else if (icon) w = ICON_FIELD;
-    const isWide = w === 0;
-    const cw = isWide
-      ? key
-        ? G.width
-        : 667
-      : 960 - w - COL_GAP - G.margin - (model || whole ? COL_GAP : 0);
-    return { fw: w, wide: isWide, colW: cw, colTop: fieldTop + (isWide ? 5 : 4) };
-  };
-  // A lead alone grows to name size (the gold's lead-only look). A lead too long to end above the
-  // foot at that size takes the plain look instead (the lead's own size and fit ladder, the field
-  // at its width with points), so it never runs off the slide (GOLD1, 11 Nov: recorded Year 1-4
-  // leads of 19-20 words).
-  const leadText = input.lead?.trim() ?? "";
-  if (solo && leadText) {
-    const g = geometry(true);
-    if (!g.wide && g.colTop + hOf(c, leadText, "heading", "heading", g.colW, 400) > FOOT)
-      solo = false;
-  }
-  const { fw, wide, colW, colTop } = geometry(solo);
+  let fw = 0;
+  if (model) {
+    const a = model.drawn.aspect || 1;
+    fw = Math.round(Math.min(507, Math.max(373, 373 * a)));
+  } else if (photo) fw = fieldWidth(photo.aspect ?? 1.5) + (solo ? SOLO_EXTRA : 0);
+  else if (other) fw = fieldWidth(1.2);
+  else if (icon) fw = ICON_FIELD;
+  const wide = fw === 0;
+  const colW = wide
+    ? key
+      ? G.width
+      : 667
+    : 960 - fw - COL_GAP - G.margin - (model || whole ? COL_GAP : 0);
+  const colTop = fieldTop + (wide ? 5 : 4);
 
   // Band: the title zone's declared height reaches the field, so a band joins it.
   const zoneH = wide ? Math.round(titleFoot + 16) : fieldTop;
