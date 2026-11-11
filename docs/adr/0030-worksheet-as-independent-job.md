@@ -146,3 +146,29 @@ TEACH-311 (PR #290) and TEACH-312 (PR #291) landed the contracts this decision u
 - Deleting a lesson still does not delete its worksheets (ADR 0025 §4, F15).
 - Amends ADR 0025 §4, §8, §9 (the recipe move), §10, §11, §12, §15 and §22.
 - Revisit item 5 if the eval shows worksheet answer errors that the deterministic checks miss.
+
+## Amendment (11 Nov 2026, worksheets plan v2, ticket T6) — draft
+
+Sheets are now built from the lesson's slides, not from its facts.
+
+- **Source.** The launch types (`practice`, `quick-quiz`, `key-words`, `exit-ticket`;
+  `SLIDE_SHEET_RECIPE_IDS`) read `lessonDigest(lesson)` (`@tj/slides/worksheet/digest`) when the
+  job runs, so a teacher's slide edits carry over. Facts are still required for the request
+  (item 8 unchanged) and still name the objectives when the objectives slide is unedited.
+- **Path.** For those ids the job goes digest → `buildSheet` → `gateSheet` → **one** save, at
+  `checked` with `completedAt`. No frame is saved first (replaces items 3 and 9 for these ids):
+  there is never a half sheet that could look finished. No repair pass runs (amends item 5): a
+  faulty item is dropped by the gate, never rewritten, and too few left fails the sheet
+  `too-few-checked`. A lesson that cannot carry the type fails `not-enough-lesson`.
+- **Exit ticket** is copied from the exit-ticket slide with no model call ($0). The slide keeps
+  its exit ticket. Years 1-2 drop spoken tasks before the two-item minimum is checked.
+- **Request (amends item 8).** `"auto"` and the retired `knowledge-check` resolve to the default
+  launch type (Exit ticket now; Practice from T7). A known id that is not offered is `422 That
+  worksheet type is not available yet.`; an offered type the lesson's slides cannot carry is `422`
+  with its greyed reason; a lesson whose slides are not yet written is `409 planning`.
+  `GET /lessons/:id/worksheet-types` lists the offered types with those reasons.
+- **Timing.** The lesson page asks for the sheet once the slides are written (stage `generated`),
+  so the write stage no longer waits for a worksheet row (ruling 201's wait is dropped; the exit
+  ticket is always on the slides since T4).
+- **Old ids** keep the frame → fill → check → repair path above until they are removed; they
+  still parse, and the editor's insert menus still offer them (`INSERTABLE_RECIPES`).
