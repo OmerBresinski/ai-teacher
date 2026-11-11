@@ -56,6 +56,50 @@ describe("findFractions: anything not certainly maths stays a slash", () => {
   });
 });
 
+describe("findFractions: a word formula stacks only inside a short equation (NOTATION-PLAN ticket 1)", () => {
+  test.each([
+    ["Use and/or in your answer"],
+    ["and/or"],
+    ["The answer = yes/no"],
+    ["Answer = true/false"],
+    ["Mark each one true/false"],
+    ["his/her = their"],
+    ["Input/output = data"],
+    ["speed = 60 km/h"],
+    ["speed = km/h"],
+    ["Units: speed in km/h = 50"],
+    ["Density in g/cm³ = mass ÷ volume"],
+    ["energy = J/kg"],
+    ["On 2/9/1666 = the date"],
+    ["Visit bbc.co.uk/bitesize = revision"],
+    ["https://example.com/speed = fast"],
+    ["Speed is distance/time"],
+    ["distance/time"],
+    ["Write speed = distance/time in your book, then use it to find each car's speed today"],
+    ["If speed = distance/time and time = 3 then"],
+    ["average speed = total distance/total time"],
+  ])("%p stays a slash", (text) => {
+    expect(stacked(text)).toEqual([]);
+  });
+
+  test.each([
+    ["speed = distance/time", ["distance/time"]],
+    ["Speed = distance/time.", ["distance/time"]],
+    ["density = mass/volume", ["mass/volume"]],
+    ["pressure = force/area", ["force/area"]],
+    ["n = m/Mr", ["m/Mr"]],
+    ["power = energy/time", ["energy/time"]],
+    ["efficiency = useful/total × 100", ["useful/total"]],
+    ["distance/time = speed", ["distance/time"]],
+    ["speed ≈ distance/time", ["distance/time"]],
+    ["speed = (distance travelled)/(time taken)", ["(distance travelled)/(time taken)"]],
+    ["a = (v − u)/t", ["(v − u)/t"]],
+    ["speed = 150/3", ["150/3"]],
+  ])("%p stacks %p", (text, want) => {
+    expect(stacked(text)).toEqual(want);
+  });
+});
+
 const p = (...content: unknown[]) => ({ type: "paragraph", content });
 const t = (text: string, marks?: unknown[]) => ({
   type: "text",
