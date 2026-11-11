@@ -169,7 +169,9 @@ export function examBlocks(
         doc: docFromText(it.question),
         answerLines: answerLinesForMarks(it.marks),
         marks: it.marks,
-        answer: it.markScheme.map((p) => p.trim()).join("\n"),
+        // One point per mark, in order. "; " not "\n": the key prints an answer as one run of
+        // text, so new lines ran the points together (render, 11 Nov).
+        answer: it.markScheme.map((p) => p.trim()).join("; "),
       }),
     ),
   ];

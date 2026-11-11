@@ -137,7 +137,7 @@ describe("writeModelSheet: valid stub answers", () => {
     expect(sheet.worksheet.showMarks).toBe(true);
     const qs = sheet.worksheet.blocks.filter((b) => b.type === "question");
     expect(qs.map((q) => (q.type === "question" ? q.marks : 0))).toEqual([1, 1, 2, 2, 3, 3, 4]);
-    expect(qs[4]?.type === "question" && qs[4].answer?.split("\n")).toHaveLength(3);
+    expect(qs[4]?.type === "question" && qs[4].answer?.split("; ")).toHaveLength(3);
     expect(sheet.promptVersion).toBe("worksheet-exam.v1");
   });
 });
