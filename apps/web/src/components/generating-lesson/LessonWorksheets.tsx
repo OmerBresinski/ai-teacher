@@ -13,17 +13,24 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  toast,
 } from "@tj/ui";
 import { FileText } from "lucide-react";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useJobEvents } from "@/hooks/use-job-events";
 import {
   canRequestWorksheet,
+  failureMessageOf,
   generationHandoff,
   lessonWorksheetsQuery,
   persistWorksheetHandoff,
   requestLessonWorksheet,
+  requestWorksheetRetryingOnce,
+  retryIntentOf,
   subscribeWorksheetHandoff,
+  TRYING_AGAIN_SHORTLY,
+  WORKSHEET_ENTRY_LABEL,
+  worksheetEntryState,
   worksheetHandoffSnapshot,
   worksheetStatusLabel,
 } from "@/lib/lesson-worksheets";
@@ -64,9 +71,56 @@ export function LessonWorksheets({
   const active = list.data?.some((item) => item.generatingJobId) ?? false;
   const activeJob = list.data?.find((item) => item.generatingJobId)?.generatingJobId ?? undefined;
   const stream = useJobEvents(activeJob, client);
+  // The job this screen watched (WS2): when it ends, the entry and a toast say how it went.
+  const watched = useRef<string | undefined>(undefined);
+  if (activeJob) watched.current = activeJob;
+  const [justFinished, setJustFinished] = useState(false);
+  const [waitingSlot, setWaitingSlot] = useState(false);
+  const retry = useMutation(
+    sessionMutation(client, {
+      mutationFn: (choice: {
+        recipeId: string;
+        practiceMinutes: number;
+        expectedRevision: number;
+      }) =>
+        requestWorksheetRetryingOnce(client, lesson.id, choice, {
+          onWaiting: () => setWaitingSlot(true),
+        }),
+      onMutate: () => {
+        setJustFinished(false);
+        intent.lastRequestedAt = Date.now();
+        setCooldown(true);
+      },
+      onError: (error) => toast(error.message),
+      onSettled: () => {
+        setWaitingSlot(false);
+        void list.refetch();
+      },
+    }),
+  );
+  const retryLatest = useRef<() => void>(() => {});
   useEffect(() => {
-    if (stream.terminal) void list.refetch();
-  }, [stream.terminal, list.refetch]);
+    if (!stream.terminal) return;
+    const jobId = watched.current;
+    void list.refetch().then(({ data }) => {
+      const sheet = data?.find((item) => item.generation?.jobId === jobId);
+      if (!sheet || jobId === undefined) return;
+      watched.current = undefined;
+      const failure = failureMessageOf(sheet);
+      if (failure !== null) {
+        setJustFinished(false);
+        toast("Worksheet didn’t finish", {
+          description: failure,
+          action: { label: "Try again", onClick: () => retryLatest.current() },
+        });
+      } else {
+        setJustFinished(true);
+        toast("Worksheet ready", {
+          action: { label: "Open", onClick: () => onOpenWorksheet(sheet.id) },
+        });
+      }
+    });
+  }, [stream.terminal, list.refetch, onOpenWorksheet]);
   const request = useMutation(
     sessionMutation(client, {
       mutationFn: (choice: {
@@ -117,17 +171,30 @@ export function LessonWorksheets({
     intent.attempted = true;
     request.mutate(intent.intent);
   }, [intent, list.isSuccess, active, lesson, request.mutate]);
-  const ready = lesson.plan?.state === "confirmed" && !!lesson.generation && !!lesson.facts;
   const changedPlan = !!intent.intent && lesson.plan?.revision !== intent.intent.expectedRevision;
+  const ready = lesson.plan?.state === "confirmed" && !!lesson.generation && !!lesson.facts;
+  const entry = worksheetEntryState(list.data, justFinished);
+  const failedSheets = list.data?.filter((item) => item.generation?.stage === "failed") ?? [];
+  const retrySheet = (item: (typeof failedSheets)[number]) => {
+    const choice = retryIntentOf(lesson, item);
+    if (choice) retry.mutate(choice);
+  };
+  retryLatest.current = () => {
+    const newest = [...failedSheets].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    if (newest) retrySheet(newest);
+  };
+  const retryBlocked = !ready || active || retry.isPending || request.isPending || intent.pending;
   const label = active
-    ? "Worksheet generating…"
-    : intent.error
-      ? "Check worksheet request"
-      : changedPlan
-        ? "Review worksheet choice"
-        : intent.intent && !intent.attempted
-          ? "Worksheet waiting…"
-          : "Worksheet";
+    ? WORKSHEET_ENTRY_LABEL.making
+    : retry.isPending
+      ? WORKSHEET_ENTRY_LABEL.making
+      : intent.error
+        ? "Check worksheet request"
+        : changedPlan
+          ? "Review worksheet choice"
+          : intent.intent && !intent.attempted
+            ? "Worksheet waiting…"
+            : WORKSHEET_ENTRY_LABEL[entry];
   useEffect(() => {
     onLabel?.(label);
   }, [label, onLabel]);
@@ -152,14 +219,43 @@ export function LessonWorksheets({
               </Button>
             </p>
           ) : null}
-          {list.data?.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3">
-              <Button variant="link" onClick={() => onOpenWorksheet(item.id)}>
-                {item.title}
-              </Button>
-              <span className="text-muted-foreground text-sm">{worksheetStatusLabel(item)}</span>
-            </div>
-          ))}
+          {list.data?.map((item) => {
+            const failure = failureMessageOf(item);
+            return (
+              <div
+                key={item.id}
+                data-worksheet-row={worksheetStatusLabel(item)}
+                className="flex flex-col gap-1"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <Button variant="link" onClick={() => onOpenWorksheet(item.id)}>
+                    {item.title}
+                  </Button>
+                  <span className="text-muted-foreground text-sm">
+                    {worksheetStatusLabel(item)}
+                  </span>
+                </div>
+                {failure !== null && !item.generatingJobId ? (
+                  <div className="flex items-center justify-between gap-3 pl-1">
+                    <p className="text-ink-2 text-sm">{failure}</p>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={retryBlocked}
+                      onClick={() => retrySheet(item)}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+          {waitingSlot ? (
+            <p role="status" className="text-muted-foreground text-sm">
+              {TRYING_AGAIN_SHORTLY}
+            </p>
+          ) : null}
           {intent.error ? (
             <p role="alert">
               {intent.error} Check the list above before trying again; a request may already have

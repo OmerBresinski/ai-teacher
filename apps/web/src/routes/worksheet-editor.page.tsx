@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
 import { WorksheetEditor } from "@tj/editor/worksheet-editor";
+import { toast } from "@tj/ui";
 import { useCallback, useMemo } from "react";
 import { undoToast } from "@/components/library/use-library-actions";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -10,6 +11,7 @@ import { env } from "@/env";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
+import { requestWorksheetRetryingOnce, retryIntentOf } from "@/lib/lesson-worksheets";
 import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
 import { worksheetEditorRoute } from "./documents.route";
 // The editor's stylesheet (theme fonts, the paper, the editing chrome) travels with this route
@@ -35,6 +37,8 @@ export function WorksheetEditorPage() {
   const shellReturn = useShellReturn();
   const options = libraryQueries.document(worksheetId, queryClient);
   const { data } = useQuery(options);
+  // While the sheet's job holds the row the bar says it is being made (WS2).
+  const { data: meta } = useQuery(libraryQueries.documentMeta(worksheetId));
   const save = useSaveWithConflictToast(worksheetId);
   // The sheet's lesson, for the facts the "Add a block" sections are built from (TEACH-183). The
   // same document query the lesson editor uses; nothing is fetched until the sheet names a lesson.
@@ -64,6 +68,23 @@ export function WorksheetEditorPage() {
     });
   }, [softDelete, restore, worksheetId, title, navigate, shellReturn]);
 
+  // Try again on a failed sheet (WS2): the request it was made with, at the lesson's current plan;
+  // the same row is reused, so the teacher goes to the lesson, where the entry says it is making.
+  const retryIntent =
+    data && isFullDocument(data) && "blocks" in data && lesson && isFullDocument(lesson)
+      ? retryIntentOf(lesson as Parameters<typeof retryIntentOf>[0], data)
+      : null;
+  const retry = useMutation({
+    mutationFn: () => {
+      if (!retryIntent || !lessonId) throw new Error("This worksheet can’t be made again here.");
+      return requestWorksheetRetryingOnce(queryClient, lessonId, retryIntent);
+    },
+    onSuccess: () => {
+      if (lessonId) void navigate({ to: "/l/$lessonId", params: { lessonId } });
+    },
+    onError: (error) => toast(error.message),
+  });
+
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
   if (kindOf(data) !== "worksheet" || !("blocks" in data)) {
     return <WrongKindPage document={{ id: data.id, title: data.title, kind: "lesson" }} />;
@@ -78,6 +99,9 @@ export function WorksheetEditorPage() {
       onBack={onBack}
       onPrint={onPrint}
       onDelete={onDelete}
+      onRetry={retryIntent ? () => retry.mutate() : undefined}
+      retrying={retry.isPending}
+      making={!!meta?.generatingJobId}
       facts={facts}
       images={images}
       // Print stays the one-click path; the dialog is where JSON (and, from E3, DOCX) live. Its

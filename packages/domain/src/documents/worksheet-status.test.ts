@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { generatedWorksheet, text, worksheet } from "./fixtures.test-helpers";
-import type { Worksheet, WorksheetBlock, WorksheetGeneration } from "./worksheet";
+import {
+  parseWorksheet,
+  WORKSHEET_FAILURE_CODES,
+  WORKSHEET_FAILURE_MESSAGES,
+  type Worksheet,
+  type WorksheetBlock,
+  type WorksheetGeneration,
+} from "./worksheet";
 import {
   isPlaceholder,
   isUnfinishedWorksheet,
@@ -94,5 +101,42 @@ describe("isUnfinishedWorksheet", () => {
     expect(isUnfinishedWorksheet({ ...blank(), blocks: [question] })).toBe(false);
     const { number: _, ...unnumbered } = question as Extract<WorksheetBlock, { type: "question" }>;
     expect(isUnfinishedWorksheet({ ...finished(), blocks: [unnumbered] })).toBe(false);
+  });
+});
+
+describe("failed sheets (WS2)", () => {
+  const failed = (): Worksheet => ({
+    ...finished(),
+    generation: {
+      ...generation(false),
+      stage: "failed",
+      failure: { code: "spend-limit", message: WORKSHEET_FAILURE_MESSAGES["spend-limit"] },
+    },
+  });
+
+  test("a failed sheet is unfinished for that reason, before any other", () => {
+    expect(unfinishedWorksheetReason(failed())).toBe("failed");
+    // Even a failure saved on a sheet whose blocks look complete does not print.
+    expect(isUnfinishedWorksheet(failed())).toBe(true);
+  });
+
+  test("the schema takes failed with a failure, and still takes a saved sheet without one", () => {
+    expect(parseWorksheet(failed()).generation?.failure?.code).toBe("spend-limit");
+    expect(parseWorksheet(finished()).generation?.failure).toBeUndefined();
+    expect(() =>
+      parseWorksheet({
+        ...failed(),
+        generation: { ...failed().generation, failure: { code: "nope", message: "x" } },
+      }),
+    ).toThrow();
+  });
+
+  test("every failure code has the teacher's words", () => {
+    for (const code of WORKSHEET_FAILURE_CODES) {
+      expect(WORKSHEET_FAILURE_MESSAGES[code].length).toBeGreaterThan(10);
+    }
+    expect(WORKSHEET_FAILURE_MESSAGES["could-not-write"]).toBe(
+      "We couldn’t write this sheet. Try again, or choose another type.",
+    );
   });
 });

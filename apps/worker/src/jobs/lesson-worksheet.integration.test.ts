@@ -299,7 +299,7 @@ describeDb("lesson.worksheet job", () => {
     expect(within ? warning : warning?.severity).toBe(within ? undefined : "warning");
   });
 
-  test("a fill that misses its schema twice fails without retry: the frame stays at framed, lock null; a new job reuses the row", async () => {
+  test("a fill that misses its schema twice fails without retry: saved failed (could-not-write) with the frame's blocks, lock null; a new job reuses the row", async () => {
     const { lessonId, row: lessonBefore } = await confirmedLesson();
     const jobId = newId<JobId>();
     const worksheetId = await worksheetShell(lessonId, jobId);
@@ -316,16 +316,22 @@ describeDb("lesson.worksheet job", () => {
     const framed = parseWorksheet(row?.body);
     expect(framed.generation).toMatchObject({
       jobId,
-      stage: "framed",
+      stage: "failed",
       recipeId: "knowledge-check",
+      failure: {
+        code: "could-not-write",
+        message: "We couldn’t write this sheet. Try again, or choose another type.",
+      },
     });
+    expect(framed.generation?.completedAt).toBeUndefined();
     expect(framed.blocks.map((b) => b.type)).toEqual([
       "instructions",
       "question",
       "question",
       "paragraph",
     ]);
-    expect(framed.generation?.usage.calls).toBe(0);
+    // The two missed calls are on the failed row (the fake prices nothing, so cost stays 0).
+    expect(framed.generation?.usage.calls).toBe(2);
     const lessonAfter = await getDocument(ws(), lessonId);
     expect(lessonAfter?.updatedAt.toISOString()).toBe(lessonBefore.updatedAt.toISOString());
 
@@ -342,6 +348,7 @@ describeDb("lesson.worksheet job", () => {
     expect(done.id).toBe(worksheetId);
     expect(done.createdAt).toBe(framed.createdAt);
     expect(done.generation).toMatchObject({ jobId: again, stage: "checked" });
+    expect(done.generation?.failure).toBeUndefined();
     expect(done.blocks).toHaveLength(6);
     expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBeNull();
   });
@@ -369,7 +376,7 @@ describeDb("lesson.worksheet job", () => {
     expect(parseWorksheet(row?.body).generation?.stage).toBe("framed");
   });
 
-  test("the budget is the worksheet's own: a cap the fill cannot afford fails without a call", async () => {
+  test("the budget is the worksheet's own: a cap the fill cannot afford fails without a call, saved failed (spend-limit)", async () => {
     const { lessonId } = await confirmedLesson();
     const jobId = newId<JobId>();
     const worksheetId = await worksheetShell(lessonId, jobId);
@@ -380,7 +387,10 @@ describeDb("lesson.worksheet job", () => {
     expect(ai.calls).toHaveLength(0);
     const row = await getDocument(ws(), worksheetId);
     expect(row?.generatingJobId).toBeNull();
-    expect(parseWorksheet(row?.body).generation?.stage).toBe("framed");
+    expect(parseWorksheet(row?.body).generation).toMatchObject({
+      stage: "failed",
+      failure: { code: "spend-limit" },
+    });
   });
 
   test("refusals before any call: lock lost, another kind, revision moved, not planned, lesson missing", async () => {
@@ -394,8 +404,9 @@ describeDb("lesson.worksheet job", () => {
         ctxFor(newId<JobId>(), payloadFor(lessonId, worksheetId), depsWith(ai)).ctx,
       ),
     ).rejects.toThrow(new NonRetryableError("lock lost"));
-    // Still locked by its job.
+    // Still locked by its job, and not written: only the lock holder saves a failure.
     expect((await getDocument(ws(), worksheetId))?.generatingJobId).toBe(jobId);
+    expect(parseWorksheet((await getDocument(ws(), worksheetId))?.body).generation).toBeUndefined();
 
     await expect(
       lessonWorksheetJob(ctxFor(jobId, payloadFor(lessonId, lessonId), depsWith(ai)).ctx),
@@ -406,6 +417,13 @@ describeDb("lesson.worksheet job", () => {
         ctxFor(jobId, payloadFor(lessonId, worksheetId, { revision: 2 }), depsWith(ai)).ctx,
       ),
     ).rejects.toThrow(new NonRetryableError("revision moved"));
+    // Stopped before the frame: the shell gets a generation that says why.
+    expect(parseWorksheet((await getDocument(ws(), worksheetId))?.body).generation).toMatchObject({
+      jobId,
+      stage: "failed",
+      recipeId: "knowledge-check",
+      failure: { code: "lesson-changed" },
+    });
 
     const unplanned = await confirmedLesson({ stage: null });
     const jobB = newId<JobId>();
@@ -423,5 +441,8 @@ describeDb("lesson.worksheet job", () => {
     expect(ai.calls).toHaveLength(0);
     // A refusal after the ownership check still releases this job's lock.
     expect((await getDocument(ws(), sheetC))?.generatingJobId).toBeNull();
+    expect(parseWorksheet((await getDocument(ws(), sheetC))?.body).generation?.failure?.code).toBe(
+      "lesson-changed",
+    );
   });
 });

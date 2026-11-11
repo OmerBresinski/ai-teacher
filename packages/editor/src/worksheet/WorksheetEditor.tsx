@@ -90,6 +90,14 @@ export type WorksheetEditorProps = {
    * Without it the bar has no button.
    */
   onDelete?: () => void;
+  /**
+   * Make the same sheet again, offered on the bar of a failed sheet (`generation.stage: "failed"`).
+   * `retrying` greys it while the request is in flight.
+   */
+  onRetry?: () => void;
+  retrying?: boolean;
+  /** The sheet's job still holds it (`generatingJobId`): the bar says it is being made. */
+  making?: boolean;
   /** Pexels search + pick for the image block's Replace popover, injected by the app. */
   images?: ImageSearchClient;
   /**
@@ -113,6 +121,9 @@ export function WorksheetEditor({
   onPrint,
   exportSlot,
   onDelete,
+  onRetry,
+  retrying,
+  making,
   facts,
   images,
 }: WorksheetEditorProps) {
@@ -494,7 +505,16 @@ export function WorksheetEditor({
                   printBlocked={unfinished ? UNFINISHED_PRINT_BLOCKED : oversize.length > 0}
                   autosave={autosave}
                 />
-                {unfinished ? <UnfinishedBar reason={unfinished} onDelete={onDelete} /> : null}
+                {unfinished ? (
+                  <UnfinishedBar
+                    reason={unfinished}
+                    detail={worksheet.generation?.failure?.message}
+                    making={making}
+                    onDelete={onDelete}
+                    onRetry={onRetry}
+                    retrying={retrying}
+                  />
+                ) : null}
                 <SaveFailedBar autosave={autosave} />
                 <div
                   ref={columnRef}

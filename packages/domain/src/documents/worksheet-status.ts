@@ -24,7 +24,7 @@ export function isPlaceholder(block: WorksheetBlock): boolean {
 }
 
 /** Why a sheet is unfinished, first match wins; `null` when it is finished. */
-export type UnfinishedReason = "not-completed" | "placeholder" | "missing-answer";
+export type UnfinishedReason = "failed" | "not-completed" | "placeholder" | "missing-answer";
 
 const hasPlaceholderQuestion = (block: WorksheetBlock): boolean =>
   "doc" in block &&
@@ -42,6 +42,7 @@ function missingAnswer(block: WorksheetBlock): boolean {
 export function unfinishedWorksheetReason(
   sheet: Pick<Worksheet, "blocks" | "generation">,
 ): UnfinishedReason | null {
+  if (sheet.generation?.stage === "failed") return "failed";
   if (sheet.generation && !sheet.generation.completedAt) return "not-completed";
   if (sheet.blocks.some((b) => isPlaceholder(b) || hasPlaceholderQuestion(b))) return "placeholder";
   // A hand-made sheet's answers are the teacher's business (the block hints say so); only a
@@ -51,7 +52,7 @@ export function unfinishedWorksheetReason(
 }
 
 /**
- * True when the sheet must not look finished: the job never completed, a placeholder is still on
+ * True when the sheet must not look finished: the job failed or never completed, a placeholder is still on
  * the sheet, or a generated sheet has a numbered question with no answer. A blank hand-made sheet
  * (no `generation`, no placeholders) is never unfinished.
  */

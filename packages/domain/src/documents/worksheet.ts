@@ -62,8 +62,42 @@ export type Worksheet = {
   generation?: WorksheetGeneration;
 };
 
-export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked"] as const;
+/**
+ * `failed` is terminal: the job stopped and saved why (`generation.failure`) before it let the
+ * row go. The next request for the lesson reuses the row, as it reuses a `framed` one.
+ */
+export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked", "failed"] as const;
 export type WorksheetGenerationStage = (typeof WORKSHEET_GENERATION_STAGES)[number];
+
+/**
+ * Why a worksheet job stopped (WORKSHEETS-PLAN v2 §3c, T2). `too-few-checked` and
+ * `not-enough-lesson` have no producer yet: the sheet gate (T7) and the greyed types (T6) add them.
+ */
+export const WORKSHEET_FAILURE_CODES = [
+  "could-not-write",
+  "too-few-checked",
+  "spend-limit",
+  "lesson-changed",
+  "not-enough-lesson",
+] as const;
+export const WorksheetFailureCodeSchema = z.enum(WORKSHEET_FAILURE_CODES);
+export type WorksheetFailureCode = z.infer<typeof WorksheetFailureCodeSchema>;
+
+/** The teacher's words for each failure, saved as `failure.message` and shown wherever it shows. */
+export const WORKSHEET_FAILURE_MESSAGES: Record<WorksheetFailureCode, string> = {
+  "could-not-write": "We couldn’t write this sheet. Try again, or choose another type.",
+  "too-few-checked":
+    "We couldn’t write enough checked questions for this lesson. Try again, or choose another type.",
+  "spend-limit": "This sheet reached its spending limit before it was finished. Try again later.",
+  "lesson-changed": "The lesson changed while the sheet was being made. Try again.",
+  "not-enough-lesson": "This lesson doesn’t have enough in it for this type of sheet.",
+};
+
+export const WorksheetFailureSchema = z.strictObject({
+  code: WorksheetFailureCodeSchema,
+  message: z.string(),
+});
+export type WorksheetFailure = z.infer<typeof WorksheetFailureSchema>;
 
 /**
  * The nine worksheet recipes by id (Worksheets and activities, rulings 46 to 55). The recipes
@@ -103,6 +137,8 @@ export const WorksheetGenerationSchema = z.strictObject({
   findings: z.array(FindingSchema),
   recipeId: RecipeIdSchema,
   practiceMinutes: z.number().int().positive(),
+  /** Set only at `stage: "failed"`: why the job stopped. */
+  failure: WorksheetFailureSchema.optional(),
 });
 export type WorksheetGeneration = z.infer<typeof WorksheetGenerationSchema>;
 
