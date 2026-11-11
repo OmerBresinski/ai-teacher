@@ -3,7 +3,7 @@ import { newWorksheet, numberQuestions } from "./worksheet-factories";
 import {
   type Job,
   suggestRecipe,
-  WORKSHEET_RECIPES,
+  INSERTABLE_RECIPES as WORKSHEET_RECIPES,
   type WorksheetRecipe,
 } from "./worksheet-recipes";
 

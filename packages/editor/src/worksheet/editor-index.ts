@@ -5,6 +5,9 @@
  * into its chunk. The page that mounts `WorksheetEditor` imports `@tj/editor/styles/worksheet-edit.css`.
  */
 
+// The Exit ticket sheet as the worker builds it (worksheets plan v2 T6), for `/worksheets/new`.
+export { lessonDigest } from "@tj/slides/worksheet/digest";
+export { exitTicketBlocks } from "@tj/slides/worksheet/exit-sheet";
 export { DEMO_LESSON_FACTS } from "../model/demo-facts";
 export { getTheme } from "../model/themes";
 export {
@@ -28,6 +31,7 @@ export {
 export {
   JOBS,
   type Job,
+  OFFERED_RECIPES,
   recipeById,
   WORKSHEET_RECIPES,
   type WorksheetRecipe,
