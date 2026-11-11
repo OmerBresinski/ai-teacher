@@ -199,6 +199,9 @@ function rememberedSubject(remembered: ReturnType<typeof readLastClass>): string
   return subject.trim() || undefined;
 }
 
+/** The offered types the worker writes with a model call (T7); not made on this page. */
+const MODEL_WRITTEN = new Set(["practice", "exam-style"]);
+
 /* ---- Source ------------------------------------------------------------------ */
 
 function SourceStep({
@@ -388,9 +391,11 @@ function KindStep({
   const theme = getTheme(lesson.themeId);
   // Plan v2 T6: only the offered launch types, the old seven hidden. Exit ticket is the lesson's
   // own exit-ticket slide, so its card is greyed with the reason when the slides have none.
+  // Plan v2 T7: Practice and Exam practice are written by the worker's model call, which this
+  // page (a sheet made in the browser) cannot run, so it offers only what it can build here.
   const shown = useMemo(
     () =>
-      OFFERED_RECIPES.map((recipe) => {
+      OFFERED_RECIPES.filter((recipe) => !MODEL_WRITTEN.has(recipe.id)).map((recipe) => {
         const fromSlides = recipe.id === "exit-ticket" ? exitSheet : null;
         return {
           recipe,
@@ -400,7 +405,9 @@ function KindStep({
       }),
     [facts, exitSheet],
   );
-  const suggestedId = DEFAULT_SHEET_RECIPE_ID;
+  const suggestedId = shown.some(({ recipe }) => recipe.id === DEFAULT_SHEET_RECIPE_ID)
+    ? DEFAULT_SHEET_RECIPE_ID
+    : (shown[0]?.recipe.id ?? DEFAULT_SHEET_RECIPE_ID);
   const chosen = shown.find(({ recipe }) => recipe.id === (state.recipeId ?? suggestedId));
   const selected = chosen && !chosen.greyed ? chosen.recipe : null;
   const reason = selected ? null : (chosen?.greyed ?? "Choose a kind of sheet.");

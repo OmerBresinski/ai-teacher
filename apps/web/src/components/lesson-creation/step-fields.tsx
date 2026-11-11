@@ -1,5 +1,6 @@
 import {
   OFFERED_RECIPE_IDS,
+  offeredForYear,
   SLIDE_TIER_RANGES,
   SLIDE_TIERS,
   type SlideSheetRecipeId,
@@ -344,11 +345,17 @@ const SHEET_TYPE_LABELS: Record<SlideSheetRecipeId, string> = {
   "quick-quiz": "Quick quiz",
   "key-words": "Key words",
   "exit-ticket": "Exit ticket",
+  "exam-style": "Exam practice",
 };
-// The old seven stay parseable but are no longer offered (plan v2 T6).
-const RECIPES = OFFERED_RECIPE_IDS.map((value) => ({ value, label: SHEET_TYPE_LABELS[value] }));
+// The old seven stay parseable but are no longer offered (plan v2 T6). Exam practice shows for
+// Years 10 and 11 only (T7).
+const recipesFor = (yearGroup: string | undefined) =>
+  OFFERED_RECIPE_IDS.filter((value) => offeredForYear(value, yearNumberOf(yearGroup))).map(
+    (value) => ({ value, label: SHEET_TYPE_LABELS[value] }),
+  );
 export function WorksheetStep({
   worksheets,
+  yearGroup,
   maxWorksheets = Infinity,
   onChange,
   onBack,
@@ -356,6 +363,8 @@ export function WorksheetStep({
   onSkip,
 }: {
   worksheets: WorksheetDraft[];
+  /** The brief's year group: Exam practice is offered to Years 10 and 11 only. */
+  yearGroup?: string;
   maxWorksheets?: number;
   onChange: (worksheets: WorksheetDraft[]) => void;
   onBack: () => void;
@@ -388,7 +397,7 @@ export function WorksheetStep({
               <ChoiceField
                 label="Activity type"
                 value={worksheet.recipe}
-                options={RECIPES}
+                options={recipesFor(yearGroup)}
                 onChange={(recipe) =>
                   onChange(
                     worksheets.map((item) =>
@@ -424,7 +433,7 @@ export function WorksheetStep({
             onClick={() =>
               onChange([
                 ...worksheets,
-                { id: crypto.randomUUID(), recipe: "exit-ticket", minutes: "5" },
+                { id: crypto.randomUUID(), recipe: "practice", minutes: "15" },
               ])
             }
           >
