@@ -11,6 +11,7 @@ import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
 import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
+import { NO_FIGURE } from "./materialise";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
 import { fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
@@ -692,7 +693,31 @@ const WORDS_ONLY_FROM = [
   "big-picture",
 ];
 
+/**
+ * A slide re-laid without its figure (`wordsFallback`). With `goldNoPicture` (a pack whose menu
+ * retired explain, `PilotPack.goldNoPictureFallback`), a picture-and-text slide that would become
+ * explain keeps the gold picture-and-text's no-picture look instead: a writer-form `visual-text`
+ * carries the NO_FIGURE mark `normalise` reads, a catalogue `picture-text` or `diagram-text`
+ * becomes `picture-text` with no picture. Every other slide, and every other pack, is unchanged.
+ */
 export function fixedFallback(
+  slide: S,
+  lost: { type: string; kind?: string; labels?: string[]; key?: string },
+  parts: string[],
+  maxSteps: number,
+  opts: { goldNoPicture?: boolean } = {},
+): { slide: S; how: string } {
+  const r = wordsFallback(slide, lost, parts, maxSteps);
+  if (!opts.goldNoPicture || r.slide.template !== "explain") return r;
+  const from = String(slide.template);
+  if (from === "visual-text")
+    return { slide: { ...r.slide, template: "visual-text", [NO_FIGURE]: true }, how: r.how };
+  if (from === "picture-text" || from === "diagram-text")
+    return { slide: { ...r.slide, template: "picture-text" }, how: r.how };
+  return r;
+}
+
+function wordsFallback(
   slide: S,
   lost: { type: string; kind?: string; labels?: string[]; key?: string },
   parts: string[],

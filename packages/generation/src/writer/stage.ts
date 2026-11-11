@@ -961,6 +961,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const libbedSystem = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
   // Wave C (TEACH-110 part v): a model may go to figure-slide or step-model, as their lines say.
   const waveC = !!(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).waveC);
+  // v5.1b-gold: a figure code drops from a picture-and-text slide keeps the gold no-picture look.
+  const goldDrop = {
+    goldNoPicture: !!(
+      run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldNoPictureFallback
+    ),
+  };
   const modelLines = run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).modelLines;
   // The fit table the writer's own measure reads (`charsOver`, the repair's room): the gold one for a
   // pack that states its limits from it (`PilotPack.goldFits`), the frozen one otherwise.
@@ -2993,14 +2999,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
-    const fb = fixedFallback(orig, lost, parts, maxSteps);
+    const fb = fixedFallback(orig, lost, parts, maxSteps, goldDrop);
     swapSlide(i, fb.slide);
     if (!over().length) {
       log({ ev: "restage-fallback", slide: i + 1, mode, how: fb.how });
       return fb.how;
     }
     restore(i, orig, n0, oldAsks);
-    swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0).slide);
+    swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0, goldDrop).slide);
     // The last resort never ships overflow: what still does not fit moves to continuation slides.
     if (over().length && continueSlide(i, () => ({ status: "failed" }))) {
       log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
@@ -3235,7 +3241,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (!dangles(i))
         return void log({ ev: "unshown-strip", slide: i + 1, removed, how: "sentences" });
     }
-    swapSlide(i, fixedFallback(plan.slides[i] as S, { type: "photo" }, [], 0).slide);
+    swapSlide(i, fixedFallback(plan.slides[i] as S, { type: "photo" }, [], 0, goldDrop).slide);
     if (!dangles(i)) return void log({ ev: "unshown-strip", slide: i + 1, removed, how: "bare" });
     restore(i, s0, n0, oldAsks);
     log({ ev: "unshown-strip", slide: i + 1, removed, how: "left" });
@@ -3243,9 +3249,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** Slide i without its figure, as a text-only full-width slide; undone if it would overflow. */
   const textOnly = (i: number) => {
     const s0 = plan.slides[i] as S;
-    const words = fixedFallback(s0, { type: "photo" }, [], 0).slide;
-    // only a figure layout changes template (to explain); any other slide is already words
-    if (words.template === s0.template) return;
+    const words = fixedFallback(s0, { type: "photo" }, [], 0, goldDrop).slide;
+    // only a figure layout changes template (to explain, or for a goldNoPictureFallback pack to the
+    // marked no-picture look); any other slide is already words
+    if (words.template === s0.template && words[NO_FIGURE] !== true) return;
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, words);
