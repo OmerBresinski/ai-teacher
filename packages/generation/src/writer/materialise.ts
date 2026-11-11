@@ -15,6 +15,7 @@ import {
   REASON_PENDING_ICON,
   type TemplateInput,
   type TemplatePoint,
+  type TemplateResult,
   workedPanelFrom,
 } from "@tj/slides/templates";
 import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
@@ -130,6 +131,8 @@ export type Materialised = {
   diagramWarnings?: string[];
   /** Tile visuals (`col.n`, `seq.n`) whose diagram the layout could not show: failed, never empty. */
   lost?: string[];
+  /** Which code drew the slide (`TemplateResult.drawer`): logged, never saved. */
+  drawer?: TemplateResult["drawer"];
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -1384,6 +1387,7 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     ...(r.diagram ? { diagram: r.diagram } : {}),
     ...(r.diagramWarnings ? { diagramWarnings: r.diagramWarnings } : {}),
     ...(lost.length ? { lost } : {}),
+    ...(r.drawer ? { drawer: r.drawer } : {}),
   });
 }
 
@@ -1417,7 +1421,7 @@ export function codeObjectives(ctx: Omit<MaterialiseCtx, "visual">): Materialise
     ...r.slide,
     elements: [{ ...group, authoredBy: "ai" } as unknown as Slide["elements"][number]],
   };
-  return aiAuthored({ slide, over: r.over });
+  return aiAuthored({ slide, over: r.over, ...(r.drawer ? { drawer: r.drawer } : {}) });
 }
 
 /** The title slide in code from the brief, before the writer answers. */
@@ -1427,7 +1431,7 @@ export function codeTitle(brief: Brief, ctx: { theme: Theme; stage: Stage }): Ma
     ctx.theme,
     ctx.stage,
   );
-  return aiAuthored({ slide: r.slide, over: r.over });
+  return aiAuthored({ slide: r.slide, over: r.over, ...(r.drawer ? { drawer: r.drawer } : {}) });
 }
 
 /** The questions on a slide (the answerable check and the notes' answers). */

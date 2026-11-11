@@ -3895,6 +3895,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       id: p.id,
       open: p.open,
     });
+  // Gold alignment (11 Nov 2026): which code drew each deck slide, by index (`TemplateResult.drawer`:
+  // gold, legacy or no gold). Read by genlab's analyse for the legacy-drawn count; never saved.
+  log({ ev: "drawers", drawers: Array.from({ length: n }, (_, i) => laid.get(i)?.drawer ?? null) });
   log({
     ev: "summary",
     textOnlyTeach,

@@ -436,6 +436,59 @@ export type TemplateResult = {
   droppedPictures?: number[];
   /** One entry per field with its length and measured limits: the live "62/80" counters. */
   fields?: FieldReport[];
+  /** Which code drew the slide (the gold-alignment guard): never drawn on the slide, never saved. */
+  drawer?: Drawer;
+};
+
+/**
+ * Which code drew a laid slide (gold alignment, 11 Nov 2026). Not drawn and not saved: it travels
+ * on the layout result only, for the guard (`gold-manifest.test.ts` in @tj/generation) and the
+ * generation logs (`ev: "drawers"`).
+ * - `gold:` an approved gold design's port.
+ * - `legacy:` an old drawer for content a gold design exists for (ported or a mock-up only). It is
+ *   kept so saved documents and old writer JSON lay out as they always did; a new lesson reaches
+ *   one only on a path the gold manifest lists as a known gap.
+ * - `nogold:` a layout no gold design exists for (title, explain, picture sequence, equation hero).
+ */
+export type Drawer = `gold:${string}` | `legacy:${string}` | `nogold:${string}`;
+
+/** The drawer of each template that has one way of drawing; branching cases set their own. */
+const DRAWER_OF: Partial<Record<string, Drawer>> = {
+  title: "nogold:title",
+  // The frame gold's objectives (ruling 233) is a pilot mock-up only: never ported.
+  objectives: "legacy:objectives",
+  explain: "nogold:explain",
+  "big-picture": "legacy:big-picture",
+  "big-diagram": "legacy:big-diagram",
+  "picture-sequence": "nogold:picture-sequence",
+  compare: "nogold:compare",
+  "equation-hero": "nogold:equation-hero",
+  hinge: "gold:hinge",
+  worked: "gold:worked",
+  figure: "gold:figure",
+  practice: "gold:practice",
+  "exit-ticket": "gold:exit-ticket",
+  // The v13 activities redesign is a pilot mock-up only: these are the pre-gold drawers.
+  pair: "legacy:activity",
+  "group-sort": "legacy:activity",
+  sequence: "legacy:activity",
+  choose: "legacy:activity",
+  "odd-one-out": "legacy:activity",
+  label: "legacy:activity",
+  "cards-grid": "nogold:cards-grid",
+  "panel-list": "gold:panel-list",
+  "items-row": "gold:items-row",
+  "banner-text": "nogold:banner-text",
+  // The ruling 203 P5 hook; its gold (hook2, ruling 233) is a pilot mock-up only.
+  hook: "legacy:hook",
+  "split-compare": "gold:split-compare",
+  "side-by-side": "gold:side-by-side",
+  stages: "gold:stages",
+  source: "gold:source",
+  reasons: "gold:reasons",
+  myth: "gold:myth",
+  // The v13 discussion gold is a pilot mock-up only.
+  discussion: "legacy:discussion",
 };
 
 /** split-compare's name for a FieldReport. */
@@ -2053,7 +2106,11 @@ function layoutOnce(
       return layoutOnce({ ...input, template: "diagram-text" }, theme, stage, opts, headingCap);
     // The strip sits on the slide's foot, so the body is not moved down under a taller heading.
     return {
-      result: { slide: { kind: KIND["big-diagram"], elements: c.els }, over: c.over },
+      result: {
+        slide: { kind: KIND["big-diagram"], elements: c.els },
+        over: c.over,
+        drawer: "legacy:big-diagram-cards",
+      },
       bodyFromHeading: true,
     };
   }
@@ -2064,6 +2121,7 @@ function layoutOnce(
   // Ruling 203 (P5): a hook whose picture failed is a discussion prompt, never an empty dark slide.
   if (input.template === "hook" && !hookOk(input)) input = asPrompt(input);
   const tpl = input.template;
+  let drawer: Drawer = DRAWER_OF[tpl] ?? `nogold:${tpl}`;
   let background: Slide["background"];
   const raw = input.points ?? [];
   const pts = raw.map(pointText);
@@ -2261,9 +2319,14 @@ function layoutOnce(
       // TEACH-75 part ae (C6): the tucked field and the key card look.
       const pt = pictureTextOf(input);
       if (pt) {
+        drawer = "gold:picture-text";
         layoutPictureText(c, input, pt, stage);
         break;
       }
+      // LEGACY (saved documents and old writer JSON only): the old picture or diagram beside the
+      // words. A new lesson's picture-text slide carries `pictureText` (the gold, above); a data
+      // diagram beside words has no gold design (gold manifest, known gap).
+      drawer = tpl === "picture-text" ? "legacy:picture-text" : "legacy:diagram-text";
       heading(c, input.heading);
       const mark = c.els.length;
       const overMark = c.over.length;
@@ -2292,6 +2355,9 @@ function layoutOnce(
       c.over.push(...sideOver);
       break;
     }
+    // LEGACY for a photo or a library model (saved documents and old writer JSON only): a new
+    // lesson's big visual takes the gold figure slide (materialise). A new lesson reaches this only
+    // for a data diagram or chart (no gold design) or a caption the figure cannot hold (gold manifest).
     case "big-diagram": {
       const head = heading(c, input.heading);
       // A library model drawn as the slide body: the drawing is the slide under the heading, its
@@ -2525,6 +2591,8 @@ function layoutOnce(
       c.s = s0;
       break;
     }
+    // LEGACY (saved documents and old writer JSON only): a new lesson's photo takes the gold figure
+    // slide; it reaches this only with a caption the figure cannot hold (gold manifest, known gap).
     case "big-picture": {
       // One photo across the band at its own shape, centred; an optional one-line caption under.
       heading(c, input.heading);
@@ -2635,9 +2703,12 @@ function layoutOnce(
       // TEACH-75 part af: one step with its library model (title, one line, stage).
       const step = stepModelOf(input);
       if (step) {
+        drawer = "gold:steps-model";
         layoutStepModel(c, input, step, stage);
         break;
       }
+      // The numbered list: the steps-family gold (ruling 219) is a pilot mock-up only.
+      drawer = "legacy:steps";
       heading(c, input.heading);
       if (input.figure) {
         numbered(c, pts, G.left.x, G.left.w, "steps");
@@ -2659,9 +2730,12 @@ function layoutOnce(
     case "question-set": {
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.
       if (isQuickCheck(input)) {
+        drawer = "gold:question-set";
         layoutQuestionSet(c, input);
         break;
       }
+      // LEGACY: a question set without its answers, or with a figure (code never lends it one).
+      drawer = "legacy:question-set";
       heading(c, input.heading);
       const qs = input.questions ?? [];
       if (input.figure) {
@@ -2767,6 +2841,7 @@ function layoutOnce(
       ...(c.notes ? { notes: c.notes } : {}),
     },
     over: c.over,
+    drawer,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
     ...(c.lost?.length ? { lost: c.lost } : {}),
     ...(c.tight !== undefined ? { tight: c.tight } : {}),
