@@ -18,6 +18,7 @@ import {
   type WorkspaceId,
 } from "@tj/domain";
 import {
+  isUnfinishedWorksheet,
   type Lesson,
   lessonFromBrief,
   parseLesson,
@@ -34,6 +35,7 @@ import {
   RECIPE_PROMPT_VERSION,
   resolveRecipe,
 } from "@tj/slides";
+import { fixtureLesson } from "@tj/slides/worksheet/fixtures";
 import pino from "pino";
 import type { WorkerDeps } from "../deps";
 import { memoryStorage } from "../testing/memory-storage";
@@ -98,7 +100,12 @@ describeDb("lesson.worksheet job", () => {
    * running beside the sheet) unless told otherwise.
    */
   async function confirmedLesson(
-    opts: { lockedBy?: JobId | null; revision?: number; stage?: "planned" | null } = {},
+    opts: {
+      lockedBy?: JobId | null;
+      revision?: number;
+      stage?: "planned" | "generated" | null;
+      slides?: Lesson["slides"];
+    } = {},
   ) {
     const lessonId = newId<LessonId>();
     const planJobId = newId<JobId>();
@@ -111,12 +118,13 @@ describeDb("lesson.worksheet job", () => {
     const lesson: Lesson = {
       ...base,
       facts,
+      ...(opts.slides ? { slides: opts.slides } : {}),
       ...(opts.stage === null
         ? {}
         : {
             generation: {
               jobId: planJobId,
-              stage: "planned",
+              stage: opts.stage ?? "planned",
               startedAt: "2026-09-06T10:00:00.000Z",
               promptVersions: {},
               usage: { calls: 3, inputTokens: 100, outputTokens: 50, costUsd: 0.02 },
@@ -257,46 +265,77 @@ describeDb("lesson.worksheet job", () => {
     expect(JSON.stringify(sheet.blocks)).not.toContain(exitStem);
   });
 
-  test("exit ticket at 10 minutes: the schema admits only questions; the time is within 30% or a warning is recorded", async () => {
-    const { lessonId } = await confirmedLesson();
+  test("plan v2 T6: Exit ticket is read from the exit-ticket slide, no model call, saved once as checked", async () => {
+    const rivers = fixtureLesson("rivers");
+    const { lessonId, row: lessonBefore } = await confirmedLesson({
+      stage: "generated",
+      slides: rivers.slides,
+    });
     const jobId = newId<JobId>();
     const worksheetId = await worksheetShell(lessonId, jobId);
-    const answer = JSON.stringify({
-      slots: [
-        {
-          index: 5,
-          blocks: [
-            {
-              type: "question",
-              text: "Why can you pour a liquid but not a solid?",
-              answer: "Liquid particles slide past each other; solid particles are held in place.",
-              answerLines: 4,
-              marks: 2,
-              factRefs: ["q7", "o1"],
-            },
-          ],
-        },
-      ],
+    const ai = scriptedWorksheetAi();
+    const { ctx, events } = ctxFor(
+      jobId,
+      payloadFor(lessonId, worksheetId, { recipeId: "exit-ticket", practiceMinutes: 5 }),
+      depsWith(ai),
+    );
+    await lessonWorksheetJob(ctx);
+    expect(ai.calls).toHaveLength(0);
+    // No frame first (D8): one read step, then ready.
+    expect(events.map((e) => [e.percent, e.message])).toEqual([
+      [5, "Reading the lesson"],
+      [100, "Worksheet ready"],
+    ]);
+    const row = await getDocument(ws(), worksheetId);
+    expect(row?.generatingJobId).toBeNull();
+    expect(events[1]?.documentUpdatedAt).toBe(row?.updatedAt.toISOString());
+    const sheet = parseWorksheet(row?.body);
+    expect(sheet.generation).toMatchObject({
+      jobId,
+      stage: "checked",
+      recipeId: "exit-ticket",
+      practiceMinutes: 5,
+      promptVersions: { build: "worksheet-slides.v1" },
+      usage: { calls: 0, costUsd: 0 },
+      findings: [],
     });
-    const ai = scriptedWorksheetAi({ fill: answer });
-    await lessonWorksheetJob(
+    expect(sheet.generation?.completedAt).toBeDefined();
+    const qs = sheet.blocks.filter((b) => b.type === "question");
+    expect(qs).toHaveLength(3);
+    expect(qs.every((b) => b.type === "question" && (b.answer ?? "").trim().length > 0)).toBe(true);
+    expect(isUnfinishedWorksheet(sheet)).toBe(false);
+    expect(sheet.lessonId).toBe(lessonId);
+    // The lesson row is never written.
+    expect((await getDocument(ws(), lessonId))?.updatedAt.toISOString()).toBe(
+      lessonBefore.updatedAt.toISOString(),
+    );
+  });
+
+  test("plan v2 T6: a lesson with no exit-ticket slide fails not-enough-lesson, no retry, no blocks", async () => {
+    const slides = fixtureLesson("rivers").slides.filter((s) => s.kind !== "exit-ticket");
+    const { lessonId } = await confirmedLesson({ stage: "generated", slides });
+    const jobId = newId<JobId>();
+    const worksheetId = await worksheetShell(lessonId, jobId);
+    const ai = scriptedWorksheetAi();
+    const run = lessonWorksheetJob(
       ctxFor(
         jobId,
-        payloadFor(lessonId, worksheetId, { recipeId: "exit-ticket", practiceMinutes: 10 }),
+        payloadFor(lessonId, worksheetId, { recipeId: "exit-ticket", practiceMinutes: 5 }),
         depsWith(ai),
       ).ctx,
     );
-    expect(ai.calls[0]?.promptText).toContain("slot 5: 1–2 blocks; types: question");
-    const sheet = parseWorksheet((await getDocument(ws(), worksheetId))?.body);
+    await expect(run).rejects.toBeInstanceOf(NonRetryableError);
+    expect(ai.calls).toHaveLength(0);
+    const row = await getDocument(ws(), worksheetId);
+    expect(row?.generatingJobId).toBeNull();
+    const sheet = parseWorksheet(row?.body);
     expect(sheet.generation).toMatchObject({
-      stage: "checked",
+      stage: "failed",
       recipeId: "exit-ticket",
-      practiceMinutes: 10,
+      failure: { code: "not-enough-lesson" },
     });
-    const minutes = estimateMinutes(sheet.blocks);
-    const within = Math.abs(minutes - 10) * 100 <= 10 * 30;
-    const warning = sheet.generation?.findings.find((f) => f.check === "practice-time");
-    expect(within ? warning : warning?.severity).toBe(within ? undefined : "warning");
+    expect(sheet.blocks).toEqual([]);
+    expect(isUnfinishedWorksheet(sheet)).toBe(true);
   });
 
   test("a fill that misses its schema twice fails without retry: saved failed (could-not-write) with the frame's blocks, lock null; a new job reuses the row", async () => {
