@@ -108,9 +108,10 @@ export function writerBrief(lesson: Lesson): Brief {
     readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
     language: lesson.language ?? "en-GB",
     durationMin: b?.durationMin ?? lesson.facts?.durationMin ?? 60,
-    // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
-    // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
-    exitTicketOnSlides: b?.worksheet !== true,
+    // The writer reads the flag through its user turn (rulings 141, 148). The exit ticket is
+    // always on the last slide, worksheet or not (worksheets plan T4, 11 Nov item 46): the Exit
+    // ticket sheet copies it from there, so the writer gets the same request either way.
+    exitTicketOnSlides: true,
     slides: slideRange(b),
   };
 }

@@ -79,12 +79,12 @@ describe("the writer's key stage", () => {
     expect(writerBrief(year12()).year).toBe(12);
   });
 
-  test("ruling 201: the exit ticket is on the slides unless a worksheet was queued", () => {
+  test("worksheets plan T4: the exit ticket is on the slides, worksheet ticked or not", () => {
     const withWorksheet = (worksheet: boolean | undefined): Lesson => {
       const lesson = year12();
       return { ...lesson, brief: { topic: "Memory", durationMin: 60, worksheet } };
     };
-    expect(writerBrief(withWorksheet(true)).exitTicketOnSlides).toBe(false);
+    expect(writerBrief(withWorksheet(true)).exitTicketOnSlides).toBe(true);
     expect(writerBrief(withWorksheet(false)).exitTicketOnSlides).toBe(true);
     // A lesson confirmed before the field existed had no worksheet queued with it.
     expect(writerBrief(withWorksheet(undefined)).exitTicketOnSlides).toBe(true);
@@ -117,10 +117,10 @@ describe("the writer's key stage", () => {
       expect(writerBrief(lesson).exitTicketOnSlides).toBe(true);
     });
 
-    test("the worksheet job exists: the exit ticket stays on the worksheet", async () => {
+    test("the worksheet job exists: the exit ticket still goes on the slides (T4)", async () => {
       const lesson = await withQueuedWorksheet(asked(), deps(true).d);
       expect(lesson.brief?.worksheet).toBe(true);
-      expect(writerBrief(lesson).exitTicketOnSlides).toBe(false);
+      expect(writerBrief(lesson).exitTicketOnSlides).toBe(true);
     });
 
     test("no worksheet asked for: nothing is looked up", async () => {
@@ -129,6 +129,49 @@ describe("the writer's key stage", () => {
       expect(await withQueuedWorksheet(none, d)).toBe(none);
       expect(calls).toEqual([]);
     });
+  });
+});
+
+describe("worksheets plan T4: the writer request keeps the exit ticket on the last slide", () => {
+  const requestFor = async (worksheet: boolean): Promise<WriterReq> => {
+    const lesson = { ...year12(), brief: { topic: "Memory", durationMin: 60, worksheet } };
+    let writer: WriterReq | undefined;
+    const services: WriterServices = {
+      log: () => {},
+      writer: async (req) => {
+        writer = req;
+        return { text: JSON.stringify(fixture.main), usd: 0, ms: 1, finishReason: "stop" } as never;
+      },
+      chat: async () => {
+        throw new Error("no answers in this run");
+      },
+    };
+    // The saved output predates `close`, so the run itself is refused (no exit ticket); only the
+    // request it sent is read here.
+    await runWriter({ brief: writerBrief(lesson), objectives: fixture.objectives, services }).catch(
+      () => undefined,
+    );
+    if (!writer) throw new Error("no writer request sent");
+    return writer;
+  };
+  type CloseSchema = { properties: { close: { anyOf: { $ref: string }[] } } };
+  const closeOf = (req: WriterReq) => (req.schema as CloseSchema).properties.close.anyOf;
+
+  for (const worksheet of [true, false]) {
+    test(`worksheet ${worksheet ? "ticked" : "not ticked"}: close is the exit ticket`, async () => {
+      const req = await requestFor(worksheet);
+      expect(req.user).toContain("Close (the last slide, after slides): the exit ticket.");
+      expect(req.user).not.toContain("on their worksheet");
+      const close = closeOf(req).map((r) => String(r.$ref).split("/").pop() ?? "");
+      expect(close.length).toBeGreaterThan(0);
+      expect(close.every((n) => n.split("~")[0] === "exit-ticket")).toBe(true);
+    });
+  }
+
+  test("ticking the worksheet sends the writer the same request", async () => {
+    const [ticked, unticked] = [await requestFor(true), await requestFor(false)];
+    expect(ticked.user).toBe(unticked.user);
+    expect(ticked.schema).toEqual(unticked.schema);
   });
 });
 

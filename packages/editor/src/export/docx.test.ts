@@ -2,8 +2,12 @@ import { describe, expect, it, mock } from "bun:test";
 import { inflateRawSync } from "node:zlib";
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { Packer } from "docx";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { docFromText } from "../model/factories";
 import { numberQuestions } from "../model/worksheet-factories";
+import { FlowItemContent, SheetHeader } from "../worksheet/BlockContent";
+import { sheetHead } from "../worksheet/sheet-head";
 import { generateWordSearch } from "../worksheet/word-search";
 import { buildWorksheetDocx, decodeImage, docxFilename, resolveImage } from "./docx";
 
@@ -469,5 +473,113 @@ describe("resolveImage (TEACH-272 §1)", () => {
     } finally {
       globalThis.fetch = original;
     }
+  });
+});
+
+/* T3: one header rule for print and Word. */
+
+const decode = (text: string) =>
+  text
+    .replace(/&nbsp;|\u00a0/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'");
+
+/** The words Word shows, one entry per paragraph, in reading order. */
+function wordLines(xml: string): string[] {
+  return [...xml.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)]
+    .map((p) => [...p[0].matchAll(/<w:t(?: [^>]*)?>([^<]*)<\/w:t>/g)].map((t) => t[1]).join(""))
+    .map((line) => decode(line).trim())
+    .filter((line) => line !== "");
+}
+
+/** The words the print route shows for the header and the self-assessment strip, in order. */
+function printLines(worksheet: Worksheet): string[] {
+  const html = renderToStaticMarkup(
+    createElement(
+      "div",
+      null,
+      createElement(SheetHeader, { worksheet }),
+      worksheet.selfAssessment
+        ? createElement(FlowItemContent, { item: { kind: "rag" }, worksheet, mode: "print" })
+        : null,
+    ),
+  );
+  return html
+    .split(/<(?:h1|p|li|div)[^>]*>/)
+    .map((chunk) => decode(chunk.replace(/<[^>]+>/g, "")).trim())
+    .filter((line) => line !== "");
+}
+
+function headSheet(overrides: Partial<Worksheet["header"]> = {}, selfAssessment = true): Worksheet {
+  return {
+    ...everyBlockSheet(),
+    blocks: [],
+    includeAnswerKey: false,
+    selfAssessment,
+    header: {
+      showName: false,
+      showDate: false,
+      showClass: false,
+      title: "Rivers: erosion and deposition",
+      subtitle: "To explain how a meander forms.",
+      criteria: [
+        "I can name the inner and outer bank",
+        "",
+        "I can explain where erosion happens",
+        "I can explain where deposition happens",
+        "I can draw a meander",
+        "I can name an ox-bow lake",
+      ],
+      ...overrides,
+    },
+  };
+}
+
+describe("header rule: print and Word match (worksheets plan T3)", () => {
+  it("prints the same title, objective and up to four criteria, in the same order", async () => {
+    const sheet = headSheet();
+    const head = sheetHead(sheet);
+    expect(head.criteria).toEqual([
+      "I can name the inner and outer bank",
+      "I can explain where erosion happens",
+      "I can explain where deposition happens",
+      "I can draw a meander",
+    ]);
+    const expected = [
+      head.title,
+      head.objective,
+      "Tick what you can do now",
+      ...head.criteria,
+      "How confident do you feel?",
+    ];
+    const word = wordLines((await xmlFor(sheet)).xml).map((line) => line.replace(/^☐\s+/, ""));
+    const print = printLines(sheet);
+    const pick = (lines: string[]) => lines.filter((line) => expected.includes(line));
+    expect(pick(word)).toEqual(expected as string[]);
+    expect(pick(print)).toEqual(expected as string[]);
+    // Neither prints the fifth criterion, and Word no longer repeats the criteria under the title.
+    expect(word.join("\n")).not.toContain("ox-bow");
+    expect(print.join("\n")).not.toContain("ox-bow");
+    expect(word.filter((line) => line === "I can draw a meander")).toHaveLength(1);
+  });
+
+  it("prints no tick boxes in either when the self-assessment strip is off", async () => {
+    const sheet = headSheet({}, false);
+    const word = wordLines((await xmlFor(sheet)).xml);
+    const print = printLines(sheet);
+    for (const lines of [word, print]) {
+      expect(lines).toContain("Rivers: erosion and deposition");
+      expect(lines).toContain("To explain how a meander forms.");
+      expect(lines.join("\n")).not.toContain("I can");
+    }
+  });
+
+  it("falls back to the document title in both when the header has none", async () => {
+    const sheet = { ...headSheet({ title: "" }), title: "Rivers sheet" };
+    expect(wordLines((await xmlFor(sheet)).xml)[0]).toBe("Rivers sheet");
+    expect(printLines(sheet)[0]).toBe("Rivers sheet");
   });
 });

@@ -39,6 +39,7 @@ import { resolveImageSrc } from "../images/resolve-src";
 import { answerKey, matchingOrder, optionLetter } from "../worksheet/answers";
 import { gapWidths } from "../worksheet/gaps";
 import { LINE_GAP, PAGE_PAD, pageMetrics } from "../worksheet/metrics";
+import { CRITERIA_HEADING, sheetHead } from "../worksheet/sheet-head";
 import { buildWordSearch, solutionMask, wordSearchLead } from "../worksheet/word-search";
 import { imageCredentials } from "./image-credentials";
 import { slugify } from "./json";
@@ -638,6 +639,7 @@ function blockChildren(
 
 function headerChildren(worksheet: Worksheet): (Paragraph | Table)[] {
   const { header } = worksheet;
+  const head = sheetHead(worksheet);
   const fields: string[] = [];
   if (header.showName) fields.push("Name: ______________________________");
   if (header.showDate) fields.push("Date: ____________________");
@@ -659,7 +661,7 @@ function headerChildren(worksheet: Worksheet): (Paragraph | Table)[] {
       spacing: { before: twip(8), after: twip(6) },
       children: [
         new TextRun({
-          text: header.title || worksheet.title,
+          text: head.title,
           bold: true,
           color: INK,
           size: halfPt(16),
@@ -667,22 +669,30 @@ function headerChildren(worksheet: Worksheet): (Paragraph | Table)[] {
       ],
     }),
   );
-  if (header.subtitle) out.push(plain(header.subtitle, { size: 10.5, after: 6 }));
-  for (const criterion of header.criteria ?? []) {
-    out.push(plain(`☐  ${criterion}`, { size: 10.5, after: 4 }));
-  }
+  // The criteria are not repeated here: they print in the self-assessment strip, as on paper.
+  if (head.objective) out.push(plain(head.objective, { size: 10.5, after: 6 }));
   out.push(plain("", { after: 8 }));
   return out;
 }
 
-/** Red / Amber / Green, told apart by their labels, never by colour. */
-function ragChildren(): Paragraph[] {
+/**
+ * The self-assessment strip, as on paper (`RagStrip`): the criteria as tick boxes under "Tick what
+ * you can do now", then Red / Amber / Green, told apart by their labels, never by colour.
+ */
+function ragChildren(worksheet: Worksheet): Paragraph[] {
+  const { criteria } = sheetHead(worksheet);
   return [
     new Paragraph({
       text: "",
       spacing: { before: twip(10), after: twip(6) },
       border: { top: hairline },
     }),
+    ...(criteria.length > 0
+      ? [
+          plain(CRITERIA_HEADING, { size: 10.5, bold: true, after: 4 }),
+          ...criteria.map((criterion) => plain(`☐  ${criterion}`, { size: 10.5, after: 4 })),
+        ]
+      : []),
     plain("How confident do you feel?", { size: 10.5, after: 4 }),
     plain("◯  Red        ◯  Amber        ◯  Green", { size: 11, after: 6 }),
   ];
@@ -745,7 +755,7 @@ export async function buildWorksheetDocx(
   const gaps = gapWidths(worksheet.blocks);
   for (const block of worksheet.blocks)
     children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id)));
-  if (worksheet.selfAssessment) children.push(...ragChildren());
+  if (worksheet.selfAssessment) children.push(...ragChildren(worksheet));
   if (includeAnswerKey) children.push(...answerKeyChildren(worksheet, metrics.contentW));
 
   const section: ISectionOptions = {
