@@ -962,6 +962,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // Wave C (TEACH-110 part v): a model may go to figure-slide or step-model, as their lines say.
   const waveC = !!(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).waveC);
   const modelLines = run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).modelLines;
+  // The fit table the writer's own measure reads (`charsOver`, the repair's room): the gold one for a
+  // pack that states its limits from it (`PilotPack.goldFits`), the frozen one otherwise.
+  const fitO =
+    run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldFits ? { gold: true } : {};
   const system0 = modelLines
     ? withV51ModelLines(libbedSystem, writerStageOfKey(stageKey))
     : waveC
@@ -2666,10 +2670,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const own = String((plan.slides[i] as S)?.template ?? "");
     // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
-    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot));
+    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot, fitO));
     // A restaging call is told its room: in words on a pack run, as its fault lines are.
     if (mode !== "fit") {
-      const room = roomLine(plan.slides[i], stageKey, !!pilot);
+      const room = roomLine(plan.slides[i], stageKey, !!pilot, fitO);
       if (room) faultLines.push(room);
     }
     const u = fillTemplate(tpl, brief, {

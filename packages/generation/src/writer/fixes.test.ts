@@ -3,8 +3,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { countMiss } from "./count";
 import {
+  charsOver,
   fitTable,
   fnv,
+  repairTerms,
   roomLine,
   shuffleHinge,
   withCorrectLetter,
@@ -194,5 +196,34 @@ describe("a restage is told its room in the run's unit", () => {
   });
   test("some layout has a room line, so the cases above test something", () => {
     expect(cases.some(([st, t]) => roomLine({ template: t }, st, true) !== "")).toBe(true);
+  });
+});
+
+describe("the writer's measure reads the gold table for a gold pack (v5.1-gold)", () => {
+  // 100 characters: inside the frozen table's picture-and-text lead (188 KS1) and over the gold's (72).
+  const lead = "word ".repeat(20).trim().padEnd(100, ".");
+  const slide = {
+    template: "visual-text",
+    heading: "Plants",
+    lead,
+    points: [],
+    figure: { kind: "model" },
+  };
+  test("the default read is the frozen table, unchanged", () => {
+    expect(charsOver(slide, "KS1")).toEqual([]);
+    expect(charsOver(slide, "KS1", true, {})).toEqual(charsOver(slide, "KS1", true));
+  });
+  test("a gold read measures the lead against the gold picture-and-text number", () => {
+    expect(charsOver(slide, "KS1", false, { gold: true })).toEqual([
+      "lead: 100 characters, room 72 (28 over)",
+    ]);
+    expect(repairTerms("overflow: Lead 600/497pt", slide, "KS1", false, { gold: true })).toBe(
+      "overflow: lead: 100 characters, room 72 (28 over)",
+    );
+  });
+  test("a gold read keeps the frozen heading cap (the gold table's 160 is not a cap, D2)", () => {
+    const h = { ...slide, lead: "Short.", heading: "H".repeat(40) };
+    expect(charsOver(h, "KS1", false, { gold: true })).toEqual(charsOver(h, "KS1"));
+    expect(charsOver(h, "KS1")).toEqual(["heading: 40 characters, room 34 (6 over)"]);
   });
 });

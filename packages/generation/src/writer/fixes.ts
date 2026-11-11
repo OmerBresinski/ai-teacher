@@ -340,6 +340,14 @@ function extraLayouts(group: string): FitGroup["layouts"] {
  * writer bundle, so a bundle that does not ask keeps the lab's numbers.
  */
 export type FitOpts = { hingeCards?: boolean; gold?: boolean };
+/**
+ * The heading cap a slide with no heading number of its own is measured against. The gold table's
+ * top-level heading (160 characters) is not a usable cap (v5.1-gold WIRED-NOTES D2): the gold pack
+ * states its headings from the frozen table's measured heading (`headingWords`), so the gold read
+ * measures them against that same number. The default read is unchanged.
+ */
+const headingCap = (F: FitGroup, stage: string, o: FitOpts): number =>
+  o.gold ? (baseFit(false)[stage]?.heading ?? F.heading) : F.heading;
 export const fitTable = (o: FitOpts = {}): Record<string, FitGroup> => {
   const groups = baseFit(!!o.gold);
   if (!o.hingeCards) return groups;
@@ -389,9 +397,15 @@ export function wordsOver(words: number, chars: number, room: number) {
  * pack run (`words`) as `field: N words, room about M (K over)`. The slide's way of filling its
  * layout is matched by its item count and figure.
  */
-export function charsOver(slide: unknown, stage: string, words = false): string[] {
+export function charsOver(
+  slide: unknown,
+  stage: string,
+  words = false,
+  /** The table a pack reads (`{ gold }` for a `PilotPack.goldFits` pack); default the frozen one. */
+  o: FitOpts = {},
+): string[] {
   const s = (slide ?? {}) as S;
-  const F = fitTable()[stage];
+  const F = fitTable(o)[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return [];
   const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
@@ -432,7 +446,7 @@ export function charsOver(slide: unknown, stage: string, words = false): string[
     if (cap && t.length > cap) out.push(line(field, t.length, wordCount(t), cap));
   };
   // A layout's own title cap (the cover's three lines, `cover-fits.ts`) wins over the group's.
-  over("heading", s.heading, v.heading ?? F.heading, false);
+  over("heading", s.heading, v.heading ?? headingCap(F, stage, o), false);
   if (typeof s.lead === "string") over("lead", s.lead, lim.item);
   if (typeof s.instruction === "string")
     over("instruction", s.instruction, v.noInstruction ? 1 : lim.instruction);
@@ -568,12 +582,19 @@ export function titleOneThing(s: S): { slide: S; how?: string } {
  * source: the heading at `wordsWithin`, a body field at `shownFor`, the comfortable room), so the
  * room line and the menu agree. A field whose room is under one word is left out, never "1 word".
  */
-export function roomLine(slide: unknown, stage: string, words = false): string {
+export function roomLine(
+  slide: unknown,
+  stage: string,
+  words = false,
+  /** The table a pack reads, as `charsOver` takes it. */
+  o: FitOpts = {},
+): string {
   const s = { ...((slide ?? {}) as S) };
   for (const k of ["figure", "picture", "diagram"]) s[k] = null;
-  const F = fitTable()[stage];
+  const F = fitTable(o)[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return "";
+  const head = headingCap(F, stage, o);
   const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
     (k) => Array.isArray(s[k]),
   );
@@ -587,11 +608,11 @@ export function roomLine(slide: unknown, stage: string, words = false): string {
   const lim = v?.limit;
   if (!lim) return "";
   if (!words)
-    return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+    return `room: the heading up to ${head} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
   const ws = writerStageOfKey(stage);
   const template = String(s.template);
   const parts = [
-    ["the heading", wordsWithin(F.heading, ws)],
+    ["the heading", wordsWithin(head, ws)],
     ["each item", shownFor(lim.item, ws, fitNeedKey(template, "points[]"))],
     ["all the slide's text", shownFor(lim.total, ws)],
     ...(lim.instruction ? [["an instruction", shownFor(lim.instruction, ws)] as const] : []),
@@ -747,10 +768,17 @@ export function fixedFallback(
  * room (on a pack run, `words`: how many words, as the pack's menu counts), never "about N lines". A fault no field explains keeps its slot name with the overflow
  * said as a share of the room.
  */
-export function repairTerms(fault: string, slide?: unknown, stage?: string, words = false): string {
+export function repairTerms(
+  fault: string,
+  slide?: unknown,
+  stage?: string,
+  words = false,
+  /** The table a pack reads, as `charsOver` takes it. */
+  o: FitOpts = {},
+): string {
   const m = /^(overflow|clipped): (.*?)\s*(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt\b(.*)$/.exec(fault);
   if (!m) return fault;
-  const fields = slide && stage ? charsOver(slide, stage, words) : [];
+  const fields = slide && stage ? charsOver(slide, stage, words, o) : [];
   if (fields.length) return `${m[1]}: ${fields.join("; ")}`;
   const used = Number(m[3]);
   const room = Number(m[4]);
