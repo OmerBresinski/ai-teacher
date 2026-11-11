@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { canonicalArrows } from "@tj/slides/arrow";
+import { EQUATION_NAMES } from "@tj/slides/maths-text";
 import { PT_NAMES } from "@tj/slides/templates/picture-text";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
 import { slideRoles } from "./role";
@@ -150,6 +151,10 @@ const stable = (e: El) => {
     const { fontSize: _f, ...ts } = rest.textStyle as El;
     return { ...rest, textStyle: ts };
   }
+  // Notation ticket 2: the equation slide's formula and steps keep each operator with its term by a
+  // no-break space after it (`formulaText`); the lab set an ordinary space. Same words and symbols.
+  if (rest.name === EQUATION_NAMES.formula || rest.name === EQUATION_NAMES.step)
+    return JSON.parse(JSON.stringify(rest).replaceAll("\u00a0", " ")) as El;
   return rest;
 };
 
