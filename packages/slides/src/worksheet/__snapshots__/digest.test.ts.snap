@@ -1,0 +1,743 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`lessonDigest on the recorded lessons halves: snapshot 1`] = `
+{
+  "asked": [
+    {
+      "answer": "One quarter",
+      "kind": "mc",
+      "options": [
+        "One whole",
+        "One quarter",
+        "One half",
+      ],
+      "question": "A rectangle has four equal parts. What is one part?",
+      "slide": 5,
+    },
+    {
+      "answer": "Two equal parts, one shaded",
+      "kind": "practice",
+      "question": "Draw a rectangle. Split it equally and shade one half.",
+      "slide": 7,
+    },
+    {
+      "answer": "7 counters",
+      "kind": "practice",
+      "question": "Share 14 counters equally into two groups. Find half.",
+      "slide": 7,
+      "working": "14 ÷ 2 = 7",
+    },
+    {
+      "answer": "2 counters",
+      "kind": "practice",
+      "question": "Share 8 counters equally into four groups. Find one quarter.",
+      "slide": 9,
+      "working": "8 ÷ 4 = 2",
+    },
+    {
+      "answer": "1 counter",
+      "kind": "practice",
+      "question": "Share 4 counters equally into four groups. Find one quarter.",
+      "slide": 9,
+      "working": "4 ÷ 4 = 1",
+    },
+    {
+      "answer": "4 counters",
+      "kind": "mc",
+      "options": [
+        "12 counters",
+        "4 counters",
+        "8 counters",
+      ],
+      "question": "What is one quarter of 16 counters?",
+      "slide": 11,
+    },
+    {
+      "answer": "9 shells",
+      "kind": "practice",
+      "question": "Mia shares 18 shells equally between two pots. How many per pot?",
+      "slide": 12,
+      "working": "18 ÷ 2 = 9",
+    },
+    {
+      "answer": "8 marbles",
+      "kind": "practice",
+      "question": "Four bags each hold a quarter of 16 marbles. How many marbles fill two bags?",
+      "slide": 12,
+      "working": "16 ÷ 4 = 4; 4 + 4 = 8",
+    },
+    {
+      "answer": "Two equal parts, one shaded; 9",
+      "kind": "exit",
+      "question": "Draw a square. Shade half. Find half of 18.",
+      "slide": 13,
+      "working": "18 ÷ 2 = 9",
+    },
+    {
+      "answer": "4 counters",
+      "kind": "exit",
+      "question": "What is one quarter of 16 counters?",
+      "slide": 13,
+      "working": "16 ÷ 4 = 4",
+    },
+  ],
+  "lesson": {
+    "keyStage": "KS1",
+    "language": "en-GB",
+    "level": "standard",
+    "readingLevel": "Year 2",
+    "subject": "Maths",
+    "title": "Halves and quarters",
+    "yearGroup": "Year 2",
+  },
+  "misconceptions": [
+    "Pupils may think any two parts make halves, even if the parts are different sizes. Explain that halves must be equal in size.",
+    "Pupils may think any four parts make quarters. Emphasise that quarters are four equal parts, not just four parts.",
+    "“One whole” means all four parts together, not one part. “One half” is one of two equal parts; with four equal parts, one part is one quarter.",
+    "Pupils may count all ten counters as the answer, or split them into groups that are not equal. Check that both groups have the same number; five and five make ten.",
+    "For the drawing, pupils may shade an unequal part and still call it half; both parts must be equal. For 14, pupils may give 14 or 2 instead of the number in each equal group. Share the counters one at a time between two groups; each group gets 7.",
+    "Pupils may think the answer is 12 because that is the total, or may share unequally. Show that four equal groups of three account for all 12 counters.",
+    "Pupils may divide by two rather than by four, giving 4 for the first task or 2 for the second. Remind them that quarters require four equal groups, then count the objects in one group.",
+    "Pupils may answer 20, the total, or give the number of groups rather than the number in one group. Check that four groups of five use all 20 counters.",
+    "“12 counters” may show that the pupil has taken 4 away from 16 rather than sharing into four equal groups. “8 counters” may show that they have found half instead of a quarter. Explain that four groups of four make 16, so one group contains 4.",
+    "For the shells, pupils may divide 18 by 3 because they count the two pots and Mia as three sharers. Share between the two pots only: 9 in each. For the marbles, pupils may give 4 because that is a quarter of 16, but the question asks for two bags. Two groups of 4 make 8.",
+    "For the drawing, pupils may shade unequal parts; halves must be equal. For half of 18, pupils may give 18 or 2 instead of 9; sharing into two equal groups gives 9 in each. For a quarter of 16, pupils may give 8 by finding half or 12 by subtracting 4; four equal groups contain 4 each.",
+  ],
+  "objectives": [
+    "Spot one half or one quarter in a shape split into equal parts.",
+    "Find half of up to 20 things by sharing them into two equal groups.",
+    "Find a quarter of up to 20 things by sharing them into four equal groups.",
+  ],
+  "taught": [
+    {
+      "heading": "One half",
+      "slide": 3,
+      "text": "One half is one of two equal parts of a shape.",
+    },
+    {
+      "heading": "One quarter",
+      "slide": 4,
+      "text": "One quarter is one of four equal parts of a shape.",
+    },
+    {
+      "heading": "Half of ten",
+      "slide": 6,
+      "text": "Share 10 counters equally into two groups. Each group has 5.",
+    },
+    {
+      "heading": "Quarter of twelve",
+      "slide": 8,
+      "text": "Share 12 counters equally into four groups. Each group has 3.",
+    },
+    {
+      "heading": "Quarter of twenty",
+      "slide": 10,
+      "text": "Share 20 counters equally into four groups. Each group has 5.",
+    },
+  ],
+  "terms": [],
+}
+`;
+
+exports[`lessonDigest on the recorded lessons halves: snapshot 2`] = `
+[
+  {
+    "available": true,
+    "type": "practice",
+  },
+  {
+    "available": true,
+    "type": "quick-quiz",
+  },
+  {
+    "available": false,
+    "reason": "This lesson doesn't have enough key words for a sheet",
+    "type": "key-words",
+  },
+  {
+    "available": true,
+    "type": "exit-ticket",
+  },
+]
+`;
+
+exports[`lessonDigest on the recorded lessons romans: snapshot 1`] = `
+{
+  "asked": [
+    {
+      "answer": "They could check the trader and goods before allowing a crossing.",
+      "kind": "mc",
+      "options": [
+        "They could make sure nobody ever crossed the frontier.",
+        "They could let the trader cross without checking any goods.",
+        "They could check the trader and goods before allowing a crossing.",
+      ],
+      "question": "Why might soldiers stop a trader at a gate?",
+      "slide": 7,
+    },
+    {
+      "answer": "A fort",
+      "kind": "practice",
+      "question": "Where could soldiers live while guarding the wall?",
+      "slide": 10,
+    },
+    {
+      "answer": "A milecastle",
+      "kind": "practice",
+      "question": "What small guarded post stood along the wall?",
+      "slide": 10,
+    },
+    {
+      "answer": "A gate",
+      "kind": "practice",
+      "question": "Where could travellers cross under a guard’s watch?",
+      "slide": 10,
+    },
+    {
+      "answer": "AD 122; northern England",
+      "kind": "practice",
+      "question": "When did Hadrian order the wall, and which part of England did it cross?",
+      "slide": 11,
+    },
+    {
+      "answer": "It made crossing harder, giving soldiers a better chance to watch for attacks.",
+      "kind": "practice",
+      "question": "Explain one way the wall helped soldiers defend Roman Britain against an attack.",
+      "slide": 11,
+    },
+    {
+      "answer": "Soldiers could direct them to a guarded gate and check the people and goods.",
+      "kind": "practice",
+      "question": "A group approaches the wall with goods. Explain how soldiers could control their crossing.",
+      "slide": 12,
+    },
+    {
+      "answer": "A fort housed soldiers, while a milecastle provided a small guarded post along the wall.",
+      "kind": "practice",
+      "question": "Explain how a fort and a milecastle could both help soldiers guard the frontier.",
+      "slide": 12,
+    },
+    {
+      "answer": "AD 122; northern England",
+      "kind": "exit",
+      "question": "When and where did Hadrian order the wall built?",
+      "slide": 13,
+    },
+    {
+      "answer": "Soldiers could check people and goods at the gates.",
+      "kind": "exit",
+      "question": "How did guarded gates help control movement across the frontier?",
+      "slide": 13,
+    },
+    {
+      "answer": "Forts housed soldiers, and milecastles provided small guarded posts along the wall.",
+      "kind": "exit",
+      "question": "How did forts and milecastles help soldiers guard the wall?",
+      "slide": 13,
+    },
+  ],
+  "lesson": {
+    "keyStage": "KS2",
+    "language": "en-GB",
+    "level": "standard",
+    "readingLevel": "Year 4",
+    "subject": "History",
+    "title": "Why build Hadrian’s Wall?",
+    "yearGroup": "Year 4",
+  },
+  "misconceptions": [
+    "Pupils may think Hadrian’s Wall was built before the Romans came to Britain, or that Hadrian built it himself. Clarify that Hadrian was the emperor who ordered its construction in AD 122; Roman soldiers and workers built it.",
+    "Pupils may place the wall across the whole of Britain or think it ran north to south. Rehearse that it crossed northern England from west to east.",
+    "Pupils may think the wall made crossing impossible or stopped every attack. It made crossings harder and helped soldiers watch for danger, but it did not make the frontier impossible to cross or guarantee that no attack could happen.",
+    "Pupils may think gates were simply open entrances, or that people could cross anywhere without checks. Explain that guarded gates gave soldiers a place to check travellers and goods; crossings were controlled, not necessarily forbidden.",
+    "The first option suggests the wall could prevent every crossing; correct this by explaining that gates controlled crossings rather than making them impossible. The second option misses the purpose of the guard: soldiers checked goods before allowing a crossing. The third option is correct.",
+    "Pupils may think forts, milecastles and gates all did the same job. Clarify that forts housed soldiers, milecastles were small guarded posts along the Wall, and gates controlled crossings.",
+    "For the first prompt, a milecastle is a small post, not the main place soldiers lived; a fort is the expected answer. For the second, a fort is larger than the small guarded post described; that is a milecastle. For the third, a fort or milecastle is not the crossing place; travellers crossed under guard at a gate.",
+    "Pupils may give the date without the location, or describe the wall as stopping every attack. A complete answer gives AD 122 and northern England; explain that the wall helped soldiers watch for danger but did not make attack impossible.",
+    "Pupils may say the group could cross anywhere, or that soldiers would never let traders through. Clarify that guards could check people and goods at a gate, then allow a crossing. They may also treat a fort and milecastle as the same structure; state their different roles.",
+    "Pupils may give only the date or only the location in the first answer; ask for both. They may say gates stopped everyone crossing; remind them that guards checked crossings. They may swap forts and milecastles; reinforce that forts housed soldiers and milecastles were small posts.",
+  ],
+  "objectives": [
+    "Identify when and where Emperor Hadrian ordered a wall built in Roman Britain.",
+    "Explain how Hadrian’s Wall defended Roman Britain and controlled movement across its frontier.",
+    "Describe how Roman soldiers used forts, milecastles and gates to guard Hadrian’s Wall.",
+  ],
+  "taught": [
+    {
+      "heading": "An emperor’s order",
+      "slide": 3,
+      "text": "In AD 122, Emperor Hadrian ordered a wall to be built across northern Britain, then part of the Roman Empire.",
+    },
+    {
+      "heading": "Where was the wall?",
+      "slide": 4,
+      "text": "The wall crossed northern England from the west coast to the east coast.",
+    },
+    {
+      "heading": "A defended frontier",
+      "slide": 5,
+      "text": "The wall marked a frontier, or boundary, of Roman Britain. It made crossings harder and helped soldiers watch for attacks.",
+    },
+    {
+      "heading": "Controlling movement",
+      "slide": 6,
+      "text": "Gates allowed people to cross at guarded places. Soldiers could check people and goods instead of letting everyone cross freely.",
+    },
+    {
+      "heading": "Guarding the wall",
+      "namedItems": [
+        {
+          "meaning": "These housed soldiers stationed along the wall.",
+          "name": "Forts",
+        },
+        {
+          "meaning": "These small guarded posts stood along the wall.",
+          "name": "Milecastles",
+        },
+        {
+          "meaning": "These provided guarded places to cross.",
+          "name": "Gates",
+        },
+      ],
+      "slide": 8,
+      "text": "",
+    },
+    {
+      "heading": "Structures along the wall",
+      "slide": 9,
+      "text": "Forts, milecastles and gates helped soldiers guard the frontier.",
+    },
+  ],
+  "terms": [
+    {
+      "meaning": "These housed soldiers stationed along the wall.",
+      "slide": 8,
+      "term": "Forts",
+    },
+    {
+      "meaning": "These small guarded posts stood along the wall.",
+      "slide": 8,
+      "term": "Milecastles",
+    },
+    {
+      "meaning": "These provided guarded places to cross.",
+      "slide": 8,
+      "term": "Gates",
+    },
+  ],
+}
+`;
+
+exports[`lessonDigest on the recorded lessons romans: snapshot 2`] = `
+[
+  {
+    "available": true,
+    "type": "practice",
+  },
+  {
+    "available": true,
+    "type": "quick-quiz",
+  },
+  {
+    "available": false,
+    "reason": "This lesson doesn't have enough key words for a sheet",
+    "type": "key-words",
+  },
+  {
+    "available": true,
+    "type": "exit-ticket",
+  },
+]
+`;
+
+exports[`lessonDigest on the recorded lessons rivers: snapshot 1`] = `
+{
+  "asked": [
+    {
+      "answer": "On the inner bank, where slower water deposits sediment.",
+      "kind": "mc",
+      "options": [
+        "On the outer bank, where faster water deposits sediment.",
+        "On the outer bank, where slower water deposits sediment.",
+        "On the inner bank, where slower water deposits sediment.",
+      ],
+      "question": "At a bend, where will sediment deposit as water slows?",
+      "slide": 6,
+    },
+    {
+      "answer": "Abrasion",
+      "kind": "practice",
+      "question": "In an invented example, river-borne pebbles scrape a channel. Which erosion process is this?",
+      "slide": 8,
+    },
+    {
+      "answer": "Attrition",
+      "kind": "practice",
+      "question": "In an invented example, river-borne stones collide and become rounder. Which erosion process is this?",
+      "slide": 8,
+    },
+    {
+      "answer": "Solution",
+      "kind": "practice",
+      "question": "In an invented example, acidic river water dissolves limestone. Which erosion process is this?",
+      "slide": 8,
+    },
+    {
+      "answer": "The outer bank erodes, while sediment deposits on the slower-flowing inner bank.",
+      "kind": "practice",
+      "question": "A river flows faster at a bend's outer bank. Explain how the two banks change.",
+      "slide": 9,
+    },
+    {
+      "answer": "High flow cuts through the neck, and deposition seals the old bend off from the channel.",
+      "kind": "practice",
+      "question": "A bend's neck has narrowed. Explain how high flow and deposition can turn the bend into an oxbow lake.",
+      "slide": 9,
+    },
+    {
+      "answer": "Water forces air into cracks, weakening the channel.",
+      "kind": "exit",
+      "question": "How does hydraulic action weaken cracks in a river channel?",
+      "slide": 10,
+    },
+    {
+      "answer": "Water flows more slowly there, so sediment is deposited.",
+      "kind": "exit",
+      "question": "Why does sediment collect on the inner bank of a meander?",
+      "slide": 10,
+    },
+    {
+      "answer": "Erosion narrows the neck; water cuts through it and deposition seals the old bend.",
+      "kind": "exit",
+      "question": "How can erosion of neighbouring bends lead to an oxbow lake?",
+      "slide": 10,
+    },
+  ],
+  "lesson": {
+    "keyStage": "KS3",
+    "language": "en-GB",
+    "level": "standard",
+    "readingLevel": "Year 9",
+    "subject": "Geography",
+    "title": "Rivers: erosion and meanders",
+    "yearGroup": "Year 9",
+  },
+  "misconceptions": [
+    "Pupils may think the inner bank erodes because water travels around the whole bend. The fastest flow is near the outer bank, so erosion is strongest there; slower water on the inner bank deposits sediment. A river cliff forms on the outer bank and a slip-off slope on the inner bank.",
+    "Choosing the first option confuses erosion by fast flow with deposition. Choosing the second recognises that slower water deposits sediment but places it on the wrong bank. Remind pupils that flow is slower on the inner bank, so sediment is deposited there.",
+    "Pupils may think the old bend disappears as soon as the neck narrows. The river first cuts through the narrow neck during high flow; deposition then seals the ends of the abandoned bend, leaving an oxbow lake.",
+    "Abrasion is pebbles scraping the channel, not colliding with one another. Attrition is stones colliding and becoming smaller and rounder, not scraping the channel. Solution is acidic water dissolving limestone, not sediment being carried away.",
+    "Pupils may think faster water deposits sediment on the outer bank, or that slower water erodes the inner bank. Link faster flow with erosion and slower flow with deposition. They may think a neck cut-off alone makes an oxbow lake; explain that deposition must also seal the old channel from the river.",
+    "For question 1, pupils may say the water simply scrapes the crack; hydraulic action forces air into it and weakens the rock. For question 2, pupils may say sediment collects where water is fastest; slower flow on the inner bank loses energy and deposits sediment. For question 3, pupils may leave out either the neck cut-through or the deposition that isolates the old bend; both are needed to explain oxbow-lake formation.",
+  ],
+  "objectives": [
+    "Describe how hydraulic action, abrasion, attrition and solution erode river channels.",
+    "Explain how water speed causes erosion on outer banks and deposition on inner banks of meanders.",
+    "Explain how meander migration and neck cut-off form oxbow lakes.",
+  ],
+  "taught": [
+    {
+      "heading": "River erosion processes",
+      "namedItems": [
+        {
+          "meaning": "Water forces air into cracks, weakening the channel.",
+          "name": "Hydraulic action",
+        },
+        {
+          "meaning": "Rock fragments carried by water scrape the channel.",
+          "name": "Abrasion",
+        },
+        {
+          "meaning": "Carried rock fragments collide, becoming smaller and rounder.",
+          "name": "Attrition",
+        },
+        {
+          "meaning": "Acidic river water dissolves soluble rock, such as limestone.",
+          "name": "Solution",
+        },
+      ],
+      "slide": 3,
+      "text": "",
+    },
+    {
+      "heading": "Water speed across a meander",
+      "slide": 4,
+      "text": 
+"Water flows faster near the outer bank of a bend.
+Faster water erodes the outer bank, creating a steep river cliff.
+Slower water deposits sediment on the inner bank, forming a slip-off slope."
+,
+    },
+    {
+      "heading": "From meander to oxbow lake",
+      "namedItems": [
+        {
+          "meaning": "Outer-bank erosion makes bends move across the floodplain.",
+          "name": "Migration",
+        },
+        {
+          "meaning": "Erosion narrows the land between neighbouring bend ends.",
+          "name": "Neck",
+        },
+        {
+          "meaning": "During high flow, water cuts through the neck.",
+          "name": "Cut-off",
+        },
+        {
+          "meaning": "Deposition seals the old bend, leaving an oxbow lake.",
+          "name": "Isolation",
+        },
+      ],
+      "slide": 5,
+      "text": "",
+    },
+    {
+      "heading": "Meander migration and cut-off",
+      "slide": 7,
+      "text": "The bend grows, then becomes isolated from the channel.",
+    },
+  ],
+  "terms": [
+    {
+      "meaning": "Water forces air into cracks, weakening the channel.",
+      "slide": 3,
+      "term": "Hydraulic action",
+    },
+    {
+      "meaning": "Rock fragments carried by water scrape the channel.",
+      "slide": 3,
+      "term": "Abrasion",
+    },
+    {
+      "meaning": "Carried rock fragments collide, becoming smaller and rounder.",
+      "slide": 3,
+      "term": "Attrition",
+    },
+    {
+      "meaning": "Acidic river water dissolves soluble rock, such as limestone.",
+      "slide": 3,
+      "term": "Solution",
+    },
+    {
+      "meaning": "Outer-bank erosion makes bends move across the floodplain.",
+      "slide": 5,
+      "term": "Migration",
+    },
+    {
+      "meaning": "Erosion narrows the land between neighbouring bend ends.",
+      "slide": 5,
+      "term": "Neck",
+    },
+    {
+      "meaning": "During high flow, water cuts through the neck.",
+      "slide": 5,
+      "term": "Cut-off",
+    },
+    {
+      "meaning": "Deposition seals the old bend, leaving an oxbow lake.",
+      "slide": 5,
+      "term": "Isolation",
+    },
+  ],
+}
+`;
+
+exports[`lessonDigest on the recorded lessons rivers: snapshot 2`] = `
+[
+  {
+    "available": true,
+    "type": "practice",
+  },
+  {
+    "available": true,
+    "type": "quick-quiz",
+  },
+  {
+    "available": true,
+    "type": "key-words",
+  },
+  {
+    "available": true,
+    "type": "exit-ticket",
+  },
+]
+`;
+
+exports[`lessonDigest on the recorded lessons rates: snapshot 1`] = `
+{
+  "asked": [
+    {
+      "answer": "2 cm³/s",
+      "kind": "mc",
+      "options": [
+        "30 cm³/s",
+        "0.5 cm³/s",
+        "2 cm³/s",
+      ],
+      "question": "What is the mean rate when 60 cm³ forms in 30 seconds?",
+      "slide": 5,
+    },
+    {
+      "answer": "3 cm³/s",
+      "kind": "practice",
+      "question": "A reaction produces 84 cm³ of hydrogen in 28 seconds. Calculate its mean rate.",
+      "slide": 9,
+      "working": "84 cm³ ÷ 28 s = 3 cm³/s",
+    },
+    {
+      "answer": "Use the same acid volume, magnesium mass and temperature; record gas volume over time for each concentration.",
+      "kind": "practice",
+      "question": "How would you compare two acid concentrations fairly when magnesium reacts with the acid?",
+      "slide": 9,
+    },
+    {
+      "answer": "Yes, 2.4 cm³/s",
+      "kind": "practice",
+      "question": "A reaction produces 72 cm³ in 30 seconds. Would its mean rate exceed 2 cm³/s?",
+      "slide": 9,
+      "working": "72 cm³ ÷ 30 s = 2.4 cm³/s",
+    },
+    {
+      "answer": "3 cm³/s",
+      "kind": "exit",
+      "question": "A reaction produces 45 cm³ of gas in 15 seconds. Calculate its mean rate.",
+      "slide": 10,
+      "working": "45 cm³ ÷ 15 s = 3 cm³/s",
+    },
+    {
+      "answer": "Measure gas volume over time at different concentrations, keeping magnesium mass, acid volume and temperature the same.",
+      "kind": "exit",
+      "question": "How would you investigate acid concentration's effect on magnesium, measuring gas and controlling variables?",
+      "slide": 10,
+    },
+    {
+      "answer": "More acid particles per volume cause more frequent successful collisions with magnesium, increasing the reaction rate.",
+      "kind": "exit",
+      "question": "Why does increasing acid concentration increase the rate of its reaction with magnesium?",
+      "slide": 10,
+    },
+  ],
+  "lesson": {
+    "keyStage": "KS4",
+    "language": "en-GB",
+    "level": "standard",
+    "readingLevel": "Year 11",
+    "subject": "Chemistry",
+    "title": "Rates of reaction",
+    "yearGroup": "Year 11",
+  },
+  "misconceptions": [
+    "Pupils may think the gas syringe measures the acid or the magnesium. It measures the volume of hydrogen gas collected. They may also treat the rate as the final gas volume alone; rate includes time taken.",
+    "Pupils may multiply 48 by 24, or give 2 cm³ without a time unit. Rate is volume divided by time, so the unit is cm³/s.",
+    "A, 30 cm³/s, suggests pupils multiplied 60 by 30. C, 2 cm³/s, suggests they may have remembered the previous example or divided incorrectly. Calculate 60 ÷ 30 = 2 cm³/s.",
+    "Pupils may change magnesium mass, acid volume or temperature as well as concentration, making it unclear what caused a rate difference. Keep those variables the same and change only acid concentration. They may also forget that the bung must be fitted promptly, allowing hydrogen to escape and making the measured volume unreliable.",
+    "Pupils may say that higher concentration makes each acid particle move faster, or that particles themselves become more reactive. It means there are more acid particles in each unit of volume, so collisions with magnesium happen more frequently. Only successful collisions lead to reaction.",
+    "For the first task, pupils may multiply 84 by 28; divide volume by time to get 3 cm³/s. For the fair comparison, changing magnesium mass, acid volume or temperature as well as concentration would make the result hard to interpret; keep these fixed. For the final task, pupils may compare 72 with 2 without using the time; calculate 72 ÷ 30 = 2.4 cm³/s.",
+    "Pupils may give 45 ÷ 15 with no unit; the rate is 3 cm³/s. In the investigation answer, changing more than concentration makes it an unfair test; keep acid volume, magnesium mass and temperature constant. In the explanation, ‘more particles’ alone is incomplete unless linked to more frequent successful collisions with magnesium.",
+  ],
+  "objectives": [
+    "Calculate the mean rate of reaction in cm³/s from gas volume and measured time.",
+    "Describe how to investigate the effect of hydrochloric acid concentration on its reaction with magnesium, measuring gas volume over time and controlling the mass of magnesium and temperature.",
+    "Explain why increasing hydrochloric acid concentration increases the rate of reaction with magnesium, using collision theory and the frequency of successful collisions.",
+  ],
+  "taught": [
+    {
+      "heading": "Measure gas and calculate rate",
+      "slide": 3,
+      "text": 
+"Magnesium reacts with hydrochloric acid to produce hydrogen gas and magnesium chloride.
+A gas syringe collects hydrogen so its volume can be measured.
+Mean rate is the gas volume produced divided by the time taken."
+,
+    },
+    {
+      "heading": "48 cm³ of gas in 24 seconds",
+      "slide": 4,
+      "text": "",
+      "worked": [
+        "Write the mean rate formula: Mean rate = gas volume ÷ time",
+        "Substitute the measured values: Mean rate = 48 cm³ ÷ 24 s",
+        "Calculate the rate: Mean rate = 2 cm³/s",
+      ],
+    },
+    {
+      "heading": "Investigate acid concentration",
+      "slide": 6,
+      "text": "",
+      "worked": [
+        "Add a measured volume of hydrochloric acid to a flask; connect it to a gas syringe.",
+        "Add a measured mass of magnesium, quickly fit the bung and start the timer.",
+        "Record the gas volume at regular time intervals until it stops increasing; repeat for reliability.",
+        "Repeat with different acid concentrations, keeping acid volume, magnesium mass and temperature the same; compare mean rates.",
+      ],
+    },
+    {
+      "heading": "Why does concentrated acid react faster?",
+      "namedItems": [
+        {
+          "meaning": "Higher concentration means more acid particles in the same volume.",
+          "name": "More particles",
+        },
+        {
+          "meaning": "Acid particles collide with the magnesium surface more frequently.",
+          "name": "More collisions",
+        },
+        {
+          "meaning": "Successful collisions happen more frequently, so hydrogen is produced more quickly.",
+          "name": "Faster reaction",
+        },
+      ],
+      "slide": 7,
+      "text": "",
+    },
+    {
+      "heading": "Concentration and collisions",
+      "slide": 8,
+      "text": "More acid particles per volume cause more frequent collisions with magnesium.",
+    },
+  ],
+  "terms": [
+    {
+      "meaning": "Higher concentration means more acid particles in the same volume.",
+      "slide": 7,
+      "term": "More particles",
+    },
+    {
+      "meaning": "Acid particles collide with the magnesium surface more frequently.",
+      "slide": 7,
+      "term": "More collisions",
+    },
+    {
+      "meaning": "Successful collisions happen more frequently, so hydrogen is produced more quickly.",
+      "slide": 7,
+      "term": "Faster reaction",
+    },
+  ],
+}
+`;
+
+exports[`lessonDigest on the recorded lessons rates: snapshot 2`] = `
+[
+  {
+    "available": true,
+    "type": "practice",
+  },
+  {
+    "available": true,
+    "type": "quick-quiz",
+  },
+  {
+    "available": false,
+    "reason": "This lesson doesn't have enough key words for a sheet",
+    "type": "key-words",
+  },
+  {
+    "available": true,
+    "type": "exit-ticket",
+  },
+  {
+    "available": true,
+    "type": "exam-style",
+  },
+]
+`;

@@ -1,6 +1,6 @@
 import { LayoutList } from "lucide-react";
 import type { ReactNode } from "react";
-import { WORKSHEET_RECIPES, type WorksheetRecipe } from "../model/worksheet-recipes";
+import { INSERTABLE_RECIPES, type WorksheetRecipe } from "../model/worksheet-recipes";
 import { BLOCK_GROUPS, BLOCK_SPECS, type BlockGroup, type BlockSpec } from "./block-types";
 
 /**
@@ -39,7 +39,7 @@ export const SLASH_ITEMS: SlashItem[] = [
     keywords: spec.keywords ?? [],
     pick: { kind: "block", spec },
   })),
-  ...WORKSHEET_RECIPES.map<SlashItem>((recipe) => ({
+  ...INSERTABLE_RECIPES.map<SlashItem>((recipe) => ({
     id: `section-${recipe.id}`,
     label: recipe.name,
     description: recipe.line,

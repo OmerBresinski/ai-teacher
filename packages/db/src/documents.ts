@@ -343,8 +343,9 @@ export async function listWorksheetsOfLesson(
 
 /**
  * Which worksheet row `POST /lessons/:id/worksheet` should use (TDD T6/T7): a locked sheet wins
- * (`generating`), then an unlocked one left at `framed` by a failed fill (`reusable`); otherwise
- * `none` and the caller creates a row. A finished (`filled`/`checked`) sheet is never reused.
+ * (`generating`), then an unlocked one left at `framed` by a failed fill or saved `failed` by its
+ * job (`reusable`), so Try again fills the same sheet; otherwise `none` and the caller creates a
+ * row. A finished (`filled`/`checked`) sheet is never reused.
  */
 export async function findWorksheetForGeneration(
   ws: WorkspaceDb,
@@ -353,8 +354,9 @@ export async function findWorksheetForGeneration(
   const rows = await listWorksheetsOfLesson(ws, lessonId);
   const generating = rows.find((row) => row.generatingJobId !== null);
   if (generating !== undefined) return { kind: "generating", row: generating };
-  const framed = rows.find((row) => (row.body as Worksheet).generation?.stage === "framed");
-  return framed !== undefined ? { kind: "reusable", row: framed } : { kind: "none" };
+  const stage = (row: DocumentRow) => (row.body as Worksheet).generation?.stage;
+  const reusable = rows.find((row) => stage(row) === "framed" || stage(row) === "failed");
+  return reusable !== undefined ? { kind: "reusable", row: reusable } : { kind: "none" };
 }
 
 /** The lesson `POST /lessons` created for `requestId` (ADR 0029 idempotency), or `null`. */

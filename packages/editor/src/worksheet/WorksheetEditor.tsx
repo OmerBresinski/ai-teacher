@@ -1,5 +1,6 @@
 import type { QueryKey } from "@tanstack/react-query";
 import type { Id, LessonFacts, RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import { unfinishedWorksheetReason } from "@tj/domain/documents";
 import { Button } from "@tj/ui";
 import { Plus } from "lucide-react";
 import {
@@ -44,6 +45,8 @@ import {
 import type { SlashItem } from "./slash-items";
 import { BlockToolbar } from "./toolbar/BlockToolbar";
 import { useTypingSessionState } from "./typing-session";
+import { UnfinishedBar } from "./UnfinishedBar";
+import { UNFINISHED_PRINT_BLOCKED } from "./unfinished-copy";
 import { useBlockDrag } from "./use-block-drag";
 import { useWorksheetHistory } from "./use-worksheet-history";
 import { useWorksheetSessionState } from "./use-worksheet-session";
@@ -82,6 +85,19 @@ export type WorksheetEditorProps = {
   onPrint: () => void;
   /** Where the export menu sits once it exists (E1 / E3). */
   exportSlot?: ReactNode;
+  /**
+   * Delete the sheet, offered on the bar an unfinished sheet shows (`isUnfinishedWorksheet`).
+   * Without it the bar has no button.
+   */
+  onDelete?: () => void;
+  /**
+   * Make the same sheet again, offered on the bar of a failed sheet (`generation.stage: "failed"`).
+   * `retrying` greys it while the request is in flight.
+   */
+  onRetry?: () => void;
+  retrying?: boolean;
+  /** The sheet's job still holds it (`generatingJobId`): the bar says it is being made. */
+  making?: boolean;
   /** Pexels search + pick for the image block's Replace popover, injected by the app. */
   images?: ImageSearchClient;
   /**
@@ -104,6 +120,10 @@ export function WorksheetEditor({
   onBack,
   onPrint,
   exportSlot,
+  onDelete,
+  onRetry,
+  retrying,
+  making,
   facts,
   images,
 }: WorksheetEditorProps) {
@@ -466,6 +486,7 @@ export function WorksheetEditor({
   const active = session.activeBlockId;
   const activeBlock = active ? worksheet.blocks.find((b) => b.id === active) : undefined;
   const oversizeSet = new Set(oversize);
+  const unfinished = unfinishedWorksheetReason(worksheet);
 
   return (
     <WorksheetProvider value={worksheet}>
@@ -481,9 +502,19 @@ export function WorksheetEditor({
                   onBack={onBack}
                   onPrint={onPrint}
                   exportSlot={exportSlot}
-                  printBlocked={oversize.length > 0}
+                  printBlocked={unfinished ? UNFINISHED_PRINT_BLOCKED : oversize.length > 0}
                   autosave={autosave}
                 />
+                {unfinished ? (
+                  <UnfinishedBar
+                    reason={unfinished}
+                    detail={worksheet.generation?.failure?.message}
+                    making={making}
+                    onDelete={onDelete}
+                    onRetry={onRetry}
+                    retrying={retrying}
+                  />
+                ) : null}
                 <SaveFailedBar autosave={autosave} />
                 <div
                   ref={columnRef}

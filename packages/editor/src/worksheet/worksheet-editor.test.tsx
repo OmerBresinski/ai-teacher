@@ -847,3 +847,126 @@ describe("block guides (TEACH-194)", () => {
     expect(container.querySelectorAll(".ws-column .ws-warning")).toHaveLength(1);
   });
 });
+
+/* WS1: an unfinished sheet (`isUnfinishedWorksheet`) never looks finished in the editor. */
+describe("unfinished worksheet (WS1)", () => {
+  const placeholderSheet = (): Worksheet => {
+    const sheet = starterWorksheet("Half made");
+    sheet.blocks = numberQuestions([
+      ...sheet.blocks,
+      {
+        id: uid(),
+        type: "question",
+        doc: docFromText("Write a question on the topic"),
+        answerLines: 2,
+      },
+    ]);
+    return sheet;
+  };
+
+  test("shows the bar with its reason and Delete, and Print is off with the reason", () => {
+    const onDelete = mock(() => {});
+    const { onPrint } = renderWorksheetEditor(placeholderSheet(), { onDelete });
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveTextContent("This worksheet didn’t finish.");
+    expect(bar).toHaveTextContent("Some questions are still placeholders.");
+    fireEvent.click(within(bar).getByRole("button", { name: "Delete" }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+
+    const print = screen.getByRole("button", { name: "Print" });
+    expect(print).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(print);
+    expect(onPrint).not.toHaveBeenCalled();
+  });
+
+  test("a job that never completed says so", () => {
+    const sheet: Worksheet = {
+      ...starterWorksheet("Stopped"),
+      generation: {
+        jobId: "job-1",
+        stage: "framed",
+        startedAt: "2026-09-06T10:01:00.000Z",
+        promptVersions: {},
+        usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+        findings: [],
+        recipeId: "knowledge-check",
+        practiceMinutes: 10,
+      },
+    };
+    renderWorksheetEditor(sheet);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "It stopped before every question was written.",
+    );
+  });
+
+  const failedSheet = (): Worksheet => ({
+    ...starterWorksheet("Failed"),
+    generation: {
+      jobId: "job-2",
+      stage: "failed",
+      startedAt: "2026-09-06T10:01:00.000Z",
+      promptVersions: {},
+      usage: { calls: 2, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+      findings: [],
+      recipeId: "knowledge-check",
+      practiceMinutes: 10,
+      failure: {
+        code: "could-not-write",
+        message: "We couldn’t write this sheet. Try again, or choose another type.",
+      },
+    },
+  });
+
+  test("WS2: a failed sheet shows the job's reason, Try again and Delete; Print stays off", () => {
+    const onRetry = mock(() => {});
+    const onDelete = mock(() => {});
+    const { onPrint } = renderWorksheetEditor(failedSheet(), { onRetry, onDelete });
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveAttribute("data-unfinished-bar", "failed");
+    expect(bar).toHaveTextContent("This worksheet didn’t finish.");
+    expect(bar).toHaveTextContent(
+      "We couldn’t write this sheet. Try again, or choose another type.",
+    );
+    fireEvent.click(within(bar).getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(within(bar).getByRole("button", { name: "Delete" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+    expect(onPrint).not.toHaveBeenCalled();
+  });
+
+  test("WS2: Try again is greyed while its request runs, and absent without onRetry", () => {
+    const first = renderWorksheetEditor(failedSheet(), { onRetry: () => {}, retrying: true });
+    expect(
+      within(screen.getByRole("status")).getByRole("button", { name: "Try again" }),
+    ).toBeDisabled();
+    first.unmount();
+    renderWorksheetEditor(failedSheet(), { onDelete: () => {} });
+    expect(
+      within(screen.getByRole("status")).queryByRole("button", { name: "Try again" }),
+    ).toBeNull();
+  });
+
+  test("WS2: a sheet its job still holds says it is being made, with no buttons", () => {
+    const base = failedSheet();
+    if (!base.generation) throw new Error("fixture has no generation");
+    const sheet: Worksheet = {
+      ...base,
+      generation: { ...base.generation, stage: "framed", failure: undefined },
+    };
+    renderWorksheetEditor(sheet, { making: true, onDelete: () => {}, onRetry: () => {} });
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveAttribute("data-unfinished-bar", "making");
+    expect(bar).toHaveTextContent("This worksheet is still being made.");
+    expect(within(bar).queryByRole("button")).toBeNull();
+    expect(screen.getByRole("button", { name: "Print" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("a finished hand-made sheet has no bar and prints", async () => {
+    const { onPrint } = renderWorksheetEditor();
+    expect(document.querySelector("[data-unfinished-bar]")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Print" }));
+    });
+    await waitFor(() => expect(onPrint).toHaveBeenCalledTimes(1));
+  });
+});

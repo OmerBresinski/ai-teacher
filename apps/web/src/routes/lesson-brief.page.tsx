@@ -153,7 +153,7 @@ function LessonIntake({
     () => retried?.slideTier ?? DEFAULT_SLIDE_TIER,
   );
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
-    { id: "initial", recipe: "knowledge-check", minutes: "10" },
+    { id: "initial", recipe: "practice", minutes: "15" },
   ]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -577,6 +577,7 @@ function LessonIntake({
             ) : (
               <WorksheetStep
                 worksheets={worksheets}
+                yearGroup={brief.yearGroup}
                 onChange={setWorksheets}
                 maxWorksheets={1}
                 onBack={() => setStep("objectives")}

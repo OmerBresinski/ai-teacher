@@ -35,6 +35,10 @@ export const SLOT_TYPES: Record<RecipeId, FillBlockType[]> = {
   "worked-example": ["question"],
   reading: ["paragraph"],
   "exam-style": [],
+  // Built from the slides (plan v2, T6): never framed, so nothing to fill.
+  practice: [],
+  "quick-quiz": [],
+  "key-words": [],
 };
 
 /**

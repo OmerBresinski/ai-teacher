@@ -115,6 +115,100 @@ describe("WorksheetEditorPage", () => {
     }
   });
 
+  it("an unfinished sheet shows the bar; Delete soft-deletes it and goes back (WS1)", async () => {
+    const row = fakeApi.rows.get("fraction-practice");
+    if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
+    row.body = {
+      ...row.body,
+      generation: {
+        jobId: "job-1",
+        stage: "framed",
+        startedAt: "2026-09-06T10:01:00.000Z",
+        promptVersions: {},
+        usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+        findings: [],
+        recipeId: "knowledge-check",
+        practiceMinutes: 10,
+      },
+    };
+    renderPage();
+    await findTopBarTitle();
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveTextContent("This worksheet didn’t finish.");
+    expect(screen.getByRole("button", { name: "Print" })).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(within(bar).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+    expect(fakeApi.rows.get("fraction-practice")?.deletedAt).not.toBeNull();
+  });
+
+  const failedGeneration = {
+    jobId: "job-2",
+    stage: "failed" as const,
+    startedAt: "2026-09-06T10:01:00.000Z",
+    promptVersions: {},
+    usage: { calls: 2, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+    findings: [],
+    recipeId: "exit-ticket" as const,
+    practiceMinutes: 15,
+    failure: {
+      code: "could-not-write" as const,
+      message: "We couldn’t write this sheet. Try again, or choose another type.",
+    },
+  };
+
+  it("WS2: a failed sheet shows its reason; Try again asks for the same sheet and goes to the lesson", async () => {
+    const row = fakeApi.rows.get("fraction-practice");
+    const lessonRow = fakeApi.rows.get("demo-water-cycle");
+    if (!row || !("blocks" in row.body) || !lessonRow || !("slides" in lessonRow.body))
+      throw new Error("fixture missing");
+    row.body = { ...row.body, lessonId: "demo-water-cycle", generation: failedGeneration };
+    lessonRow.body = {
+      ...lessonRow.body,
+      plan: { state: "confirmed", revision: 4, jobId: "plan-job" },
+    } as typeof lessonRow.body;
+    let posted: unknown;
+    fakeApi.failNext(
+      (request) =>
+        request.method === "POST" && request.path === "/lessons/demo-water-cycle/worksheet",
+      () => {
+        posted = fakeApi.requests.at(-1)?.body;
+        return new Response(JSON.stringify({ worksheetId: "fraction-practice", jobId: "job-3" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    renderPage();
+    await findTopBarTitle();
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveTextContent(
+      "We couldn’t write this sheet. Try again, or choose another type.",
+    );
+    const retry = await within(bar).findByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: "/l/$lessonId",
+        params: { lessonId: "demo-water-cycle" },
+      }),
+    );
+    expect(posted).toEqual({ expectedRevision: 4, recipeId: "exit-ticket", practiceMinutes: 15 });
+  });
+
+  it("WS2: a sheet its job still holds says it is being made", async () => {
+    const row = fakeApi.rows.get("fraction-practice");
+    if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
+    row.body = {
+      ...row.body,
+      generation: { ...failedGeneration, stage: "framed", failure: undefined },
+    };
+    fakeApi.setGenerating("fraction-practice", "job-9");
+    renderPage();
+    await findTopBarTitle();
+    expect(await screen.findByText("This worksheet is still being made.")).toBeVisible();
+    expect(within(screen.getByRole("status")).queryByRole("button")).toBeNull();
+  });
+
   it("row 10: a lesson id on the worksheet route shows WrongKindPage with a link to the lesson", async () => {
     worksheetId = "demo-water-cycle";
     renderPage();

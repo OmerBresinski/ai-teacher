@@ -67,55 +67,26 @@ describe("WorksheetCreatePage", () => {
     await waitFor(() => expect(recentLessons()).toHaveLength(3));
   });
 
-  it("row 2: the water cycle's Kind shows nine miniatures from its facts, Suggested and minutes; Practise leaves three", async () => {
+  it("row 2 (plan v2 T6): the water cycle's Kind offers only Exit ticket, the old seven and the job chips hidden; no exit slide greys it", async () => {
     search = { lesson: "demo-water-cycle" };
     show();
-    await waitFor(() => expect(kinds()).toHaveLength(9));
-    expect(step("kind")).toHaveAttribute("data-facts", "lesson");
-    expect(document.querySelector("[data-example-facts-hint]")).toBeNull();
-    expect(document.querySelectorAll(".ws-mini .ws-page")).toHaveLength(9);
-    // The nine pills; each miniature's own header line reads the minutes too (UX ruling 60).
-    const pills = screen
-      .getAllByText(/^about \d+ min$/)
-      .filter((element) => !element.classList.contains("ws-meta"));
-    expect(pills).toHaveLength(9);
-    // The miniatures are the lesson's own facts: its vocabulary, its questions, its header.
-    expect(recipe("cloze")).toHaveTextContent("evaporation");
-    expect(recipe("cloze")?.querySelector(".ws-mini .ws-title")).toHaveTextContent(
-      /^The water cycle$/,
-    );
-    expect(recipe("exit-ticket")).toHaveTextContent(
-      "What is the name for liquid water turning into a gas?",
-    );
-    expect(screen.getAllByText("Suggested", { exact: true })).toHaveLength(1);
-    expect(recipe("misconception-check")).toHaveTextContent("Suggested");
-    // The suggestion is selected until a card is picked.
-    expect(recipe("misconception-check")?.querySelector(".ws-recipe-pick")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    // Row 7: the tier row.
-    expect(document.querySelector('[data-tier="core"]')).toHaveAttribute("data-selected", "true");
-    expect(document.querySelector('button[data-tier="core"]')).toBeNull();
-    expect(document.querySelector('[data-tier="support"]')).toBeDisabled();
-    expect(document.querySelector('[data-tier="challenge"]')).toBeDisabled();
-    expect(screen.getByText("Support and Challenge: arrive with generation.")).toBeVisible();
-
-    // Row 3: Practise.
-    fireEvent.click(screen.getByRole("button", { name: "Practise" }));
-    expect(kinds()).toHaveLength(3);
-    for (const name of ["cloze", "matching", "worked-example"]) expect(recipe(name)).not.toBeNull();
-    // The suggestion is hidden by the chip, so nothing is chosen and Continue says so.
+    await waitFor(() => expect(kinds()).toHaveLength(1));
+    expect(recipe("exit-ticket")).not.toBeNull();
+    for (const old of ["knowledge-check", "cloze", "matching", "word-search", "exam-style"]) {
+      expect(recipe(old)).toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: "Practise" })).toBeNull();
+    expect(recipe("exit-ticket")).toHaveTextContent("Suggested");
+    // The demo lesson has no exit-ticket slide, so the sheet cannot be made from it.
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    expect(screen.getByText("Choose a kind of sheet.")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Practise" }));
-    expect(kinds()).toHaveLength(9);
+    expect(screen.getByText("This lesson has no exit ticket to put on a sheet.")).toBeVisible();
+    expect(document.querySelector('[data-tier="core"]')).toHaveAttribute("data-selected", "true");
   });
 
   it("row 5: ?lesson= opens Kind for that lesson; Escape returns to Source with it chosen; Enter continues", async () => {
     search = { lesson: "demo-water-cycle" };
     show();
-    await waitFor(() => expect(kinds()).toHaveLength(9));
+    await waitFor(() => expect(kinds()).toHaveLength(1));
     expect(step("kind")).toHaveTextContent("For The water cycle.");
     // Row 8: Escape returns to Source, from anywhere on the step (bound on window).
     fireEvent.keyDown(window, { key: "Escape" });
@@ -153,13 +124,15 @@ describe("WorksheetCreatePage", () => {
   it("a lesson without facts says its miniatures are built from example facts", async () => {
     search = { lesson: "roman-roads" };
     show();
-    await waitFor(() => expect(kinds()).toHaveLength(9));
+    await waitFor(() => expect(kinds()).toHaveLength(1));
     expect(step("kind")).toHaveAttribute("data-facts", "example");
     expect(document.querySelector("[data-example-facts-hint]")).toHaveTextContent(
       /^Built from example facts until this lesson has its own$/,
     );
     // The header is this lesson's, not the example lesson's.
-    expect(recipe("cloze")?.querySelector(".ws-mini .ws-title")).toHaveTextContent(/^Roman roads$/);
-    expect(recipe("knowledge-check")).toHaveTextContent("Suggested");
+    expect(recipe("exit-ticket")?.querySelector(".ws-mini .ws-title")).toHaveTextContent(
+      /^Roman roads$/,
+    );
+    expect(recipe("exit-ticket")).toHaveTextContent("Suggested");
   });
 });

@@ -333,6 +333,26 @@ describe("POST /lessons/:id/worksheet and GET /lessons/:id/worksheets guards and
     });
   });
 
+  test.each(["cloze", "quick-quiz", "word-search", "key-words"])(
+    "plan v2 T7: %s is a known type not offered yet, 422 before anything is read",
+    async (recipeId) => {
+      const res = await testApp().request(WORKSHEET_PATH, post({ ...validWorksheet, recipeId }));
+      expect(res.status).toBe(422);
+      expect((await errorBody(res)).error).toMatchObject({
+        code: "unprocessable",
+        message: "That worksheet type is not available yet.",
+      });
+    },
+  );
+
+  test.each(["auto", "practice", "exam-style", "exit-ticket", "knowledge-check"])(
+    "plan v2 T7: %s passes the type check (then 503 with no job runtime)",
+    async (recipeId) => {
+      const res = await testApp().request(WORKSHEET_PATH, post({ ...validWorksheet, recipeId }));
+      expect(res.status).toBe(503);
+    },
+  );
+
   test("400 for a non-UUID lesson id on both routes", async () => {
     expect((await testApp().request("/lessons/nope/worksheet", post(validWorksheet))).status).toBe(
       400,

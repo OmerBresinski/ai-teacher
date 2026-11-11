@@ -5,6 +5,7 @@ import type { Lesson, Worksheet } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
+import { docFromText } from "../model/factories";
 import { demoLibrary } from "../model/starter";
 import { ExportControl, exportLoaders, PPTX_FONT_NOTE } from "./ExportControl";
 import * as paint from "./paint";
@@ -425,5 +426,29 @@ describe("ExportControl (TEACH-112)", () => {
       HTMLAnchorElement.prototype.click = original;
       exportLoaders.docx = realDocx;
     }
+  });
+});
+
+/* WS1: PDF and Word are off for an unfinished sheet, and the dialog says why. */
+describe("ExportControl on an unfinished worksheet (WS1)", () => {
+  it("disables Export PDF and Export Word with the reason; JSON still exports", async () => {
+    const user = userEvent.setup();
+    const sheet = demoWorksheet();
+    sheet.blocks = [
+      ...sheet.blocks,
+      { id: "ph", type: "paragraph", doc: docFromText("Generation writes this part: questions") },
+    ];
+    const { onOpenPrint } = renderControl(sheet);
+    await openDialog(user);
+
+    const reason = "This worksheet isn’t finished, so it can’t be printed yet.";
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+    expect(screen.getByText(reason)).toBeVisible();
+    await user.click(pickTab("Word"));
+    expect(screen.getByRole("button", { name: "Export Word" })).toBeDisabled();
+    expect(screen.getByText(reason)).toBeVisible();
+    await user.click(pickTab("JSON"));
+    expect(screen.getByRole("button", { name: "Export JSON" })).toBeEnabled();
+    expect(onOpenPrint).not.toHaveBeenCalled();
   });
 });

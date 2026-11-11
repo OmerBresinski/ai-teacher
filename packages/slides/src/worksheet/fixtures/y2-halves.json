@@ -1,0 +1,4185 @@
+{
+  "recording": "20261109-135439-record-y2-halves-s3base",
+  "title": "Halves and quarters",
+  "subject": "Maths",
+  "yearGroup": "Year 2",
+  "topic": "Halves and quarters of shapes and amounts",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "Top view of juicy watermelon halves on a rustic wooden table, showcasing vibrant colors and texture.",
+          "fit": "cover",
+          "src": "/files/01a1c096-f679-73fd-ae34-358520e82bce/images/01a1c098-a473-709d-9289-56aea3efb65b.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "36504184",
+            "pageUrl": "https://www.pexels.com/photo/freshly-sliced-watermelons-on-wooden-surface-36504184/",
+            "evidence": {
+              "alt": "Top view of juicy watermelon halves on a rustic wooden table, showcasing vibrant colors and texture.",
+              "count": "several",
+              "visible": ["Halves and quarters of shapes and"],
+              "thumbnail": "https://images.pexels.com/photos/36504184/pexels-photo-36504184.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280",
+              "promptVersion": "pick-or-requery-photo.v20"
+            },
+            "provider": "pexels",
+            "photographer": "ARGA",
+            "photographerUrl": "https://www.pexels.com/@arga-26647557"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 192,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#A31F2E",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 121,
+          "w": 402.67,
+          "x": 58,
+          "y": 228,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Halves and quarters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 56,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 700,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 467,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 467,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Spot one half or one quarter in a shape split into equal parts.",
+                "Find half of up to 20 things by sharing them into two equal groups.",
+                "Find a quarter of up to 20 things by sharing them into four equal groups."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 60,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 46,
+                "autoHeight": true,
+                "fontWeight": 700,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 122,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 6,
+              "stroke": "#A31F2E",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 152,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#A31F2E",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 94,
+              "w": 752,
+              "x": 83,
+              "y": 130,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Spot one half or one quarter in a shape split into equal parts.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 236,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 6,
+              "stroke": "#A31F2E",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 266,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#A31F2E",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 94,
+              "w": 752,
+              "x": 83,
+              "y": 244,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Find half of up to 20 things by sharing them into two equal groups.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 109,
+              "w": 832,
+              "x": 8,
+              "y": 350,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 6,
+              "stroke": "#A31F2E",
+              "strokeWidth": 2
+            },
+            {
+              "h": 50,
+              "w": 50,
+              "x": 13,
+              "y": 380,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#A31F2E",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 28,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 94,
+              "w": 752,
+              "x": 83,
+              "y": 358,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Find a quarter of up to 20 things by sharing them into four equal groups.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 33,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s3",
+      "kind": "diagram",
+      "notes": "Running\nAbout 3 minutes. Ask pupils to look carefully at the model and tell a partner what makes the parts halves. Take one or two explanations.\n\nMisconceptions\nPupils may think any two parts make halves, even if the parts are different sizes. Explain that halves must be equal in size.\n\nBackground\nA shape can be split into equal halves in different ways; the parts do not have to look identical in orientation.",
+      "elements": [
+        {
+          "h": 52,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s3-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One half",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 371,
+          "w": 386,
+          "x": 287,
+          "y": 106,
+          "id": "d-s3-Diagram-0",
+          "alt": "A square is split into two equal parts, with one part shaded.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 3,
+          "diagram": {
+            "kind": "library",
+            "model": "fractions",
+            "params": {
+              "text": {},
+              "title": "Fractions",
+              "whole": "a shape",
+              "words": true,
+              "amount": 12,
+              "things": "counters",
+              "convertTo": "both",
+              "fractions": [
+                {
+                  "value": "1/2"
+                }
+              ],
+              "operation": "show",
+              "representation": "rectangle"
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 47,
+          "w": 832,
+          "x": 64,
+          "y": 485,
+          "id": "d-s3-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One half is one of two equal parts of a shape.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "notes": "Running\nAbout 3 minutes. Ask pupils to explain to a partner how they know the model shows quarters. Invite a pupil to state the definition.\n\nMisconceptions\nPupils may think any four parts make quarters. Emphasise that quarters are four equal parts, not just four parts.\n\nBackground\nA quarter is one of four equal parts of a whole. Four quarters make one whole.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s4-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One quarter",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 371,
+          "w": 264,
+          "x": 348,
+          "y": 106,
+          "id": "d-s4-Diagram-0",
+          "alt": "A circle is split into four equal parts, with one part shaded.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 3,
+          "diagram": {
+            "kind": "library",
+            "model": "fractions",
+            "params": {
+              "text": {},
+              "title": "Fractions",
+              "whole": "shape",
+              "words": false,
+              "amount": 12,
+              "things": "counters",
+              "convertTo": "both",
+              "fractions": [
+                {
+                  "value": "1/4"
+                }
+              ],
+              "operation": "show",
+              "representation": "circle"
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 48,
+          "w": 832,
+          "x": 64,
+          "y": 485,
+          "id": "d-s4-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One quarter is one of four equal parts of a shape.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s5",
+      "kind": "multiple-choice",
+      "notes": "Running\nGive pupils about 2 minutes to choose an answer independently, then ask them to explain their choice to a partner. Take a few responses and confirm the answer as a class.\n\nAnswers\nB: One quarter\n\nMisconceptions\n“One whole” means all four parts together, not one part. “One half” is one of two equal parts; with four equal parts, one part is one quarter.\n\nBackground\nA quarter is one of four equal parts of a whole. The parts must be equal in size, not just four separate regions.",
+      "elements": [
+        {
+          "h": 369,
+          "w": 960,
+          "x": 0,
+          "y": 171,
+          "id": "d-s5-surface_field-b-0",
+          "fill": "#FFF1A6",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 104,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s5-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A rectangle has four equal parts. What is one part?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 507,
+          "x": 64,
+          "y": 209,
+          "id": "d-s5-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 227,
+          "id": "d-s5-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#A31F2E",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 352,
+          "x": 150,
+          "y": 231,
+          "id": "d-s5-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One whole",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 507,
+          "x": 64,
+          "y": 306,
+          "id": "d-s5-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 324,
+          "id": "d-s5-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#805000",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 352,
+          "x": 150,
+          "y": 328,
+          "id": "d-s5-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One quarter",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 507,
+          "x": 64,
+          "y": 403,
+          "id": "d-s5-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 421,
+          "id": "d-s5-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 352,
+          "x": 150,
+          "y": 425,
+          "id": "d-s5-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One half",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 278,
+          "w": 198,
+          "x": 651,
+          "y": 209,
+          "id": "d-s5-Diagram-0",
+          "alt": "A circle is split into four equal parts, with one part shaded.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 3,
+          "diagram": {
+            "kind": "library",
+            "model": "fractions",
+            "params": {
+              "text": {},
+              "title": "Fractions",
+              "whole": "shape",
+              "words": false,
+              "amount": 12,
+              "things": "counters",
+              "convertTo": "both",
+              "fractions": [
+                {
+                  "value": "1/4"
+                }
+              ],
+              "operation": "show",
+              "representation": "circle"
+            }
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s5-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s5-Option-1",
+            "correct": true
+          },
+          {
+            "id": "d-s5-Option-2",
+            "correct": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "s6",
+      "kind": "diagram",
+      "notes": "Running\nAbout 4 minutes. Model or use counters to share the ten objects into two equal groups. Ask pupils to count each group and state how this gives half.\n\nMisconceptions\nPupils may count all ten counters as the answer, or split them into groups that are not equal. Check that both groups have the same number; five and five make ten.\n\nBackground\nSharing equally into two groups is a practical way to find half. The answer is the number in one group, not the total number shared.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Half of ten",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 324,
+          "w": 740,
+          "x": 110,
+          "y": 125,
+          "id": "d-s6-Diagram-0",
+          "alt": "Ten counters are shared into two groups of five.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 4,
+          "diagram": {
+            "kind": "library",
+            "model": "equal_groups",
+            "params": {
+              "grid": {
+                "a": 23,
+                "b": 14
+              },
+              "size": 5,
+              "text": {},
+              "turn": false,
+              "title": "Equal groups",
+              "groups": 2,
+              "layout": "groups",
+              "object": "counter",
+              "addition": true,
+              "division": "sharing",
+              "remainder": 0,
+              "showFacts": false,
+              "countSteps": true
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 832,
+          "x": 64,
+          "y": 465,
+          "id": "d-s6-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Share 10 counters equally into two groups. Each group has 5.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s7",
+      "kind": "open-response",
+      "notes": "Running\nAbout 6 minutes. Pupils draw and shade independently, then share 14 counters into two equal groups. Ask them to check the groups match before writing the number in one group.\n\nAnswers\n1. A rectangle split into two equal parts, with one part shaded.\n2. 7\n\nMisconceptions\nFor the drawing, pupils may shade an unequal part and still call it half; both parts must be equal. For 14, pupils may give 14 or 2 instead of the number in each equal group. Share the counters one at a time between two groups; each group gets 7.\n\nBackground\nA rectangle can be divided into halves in more than one way, provided the two areas are equal.",
+      "elements": [
+        {
+          "h": 52,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s7-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Find halves",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 141,
+          "id": "d-s7-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 64,
+          "y": 166,
+          "id": "d-s7-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 124,
+          "w": 392,
+          "x": 64,
+          "y": 223,
+          "id": "d-s7-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Draw a rectangle. Split it equally and shade one half.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 141,
+          "id": "d-s7-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 504,
+          "y": 166,
+          "id": "d-s7-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 124,
+          "w": 392,
+          "x": 504,
+          "y": 223,
+          "id": "d-s7-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Share 14 counters equally into two groups. Find half.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "working": ["", "14 ÷ 2 = 7"],
+        "modelAnswer": "1. Two equal parts, one shaded\n2. 7 counters"
+      }
+    },
+    {
+      "id": "s8",
+      "kind": "diagram",
+      "notes": "Running\nAbout 4 minutes. Use counters or the model to share 12 into four equal groups. Have pupils count one group and check that all four groups are equal.\n\nMisconceptions\nPupils may think the answer is 12 because that is the total, or may share unequally. Show that four equal groups of three account for all 12 counters.\n\nBackground\nFinding a quarter by sharing uses four equal groups; the number in one group is one quarter.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s8-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Quarter of twelve",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 325,
+          "w": 664,
+          "x": 148,
+          "y": 106,
+          "id": "d-s8-Diagram-0",
+          "alt": "Twelve counters are shared into four groups of three.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 4,
+          "diagram": {
+            "kind": "library",
+            "model": "equal_groups",
+            "params": {
+              "grid": {
+                "a": 23,
+                "b": 14
+              },
+              "size": 3,
+              "text": {},
+              "turn": false,
+              "title": "Equal groups",
+              "groups": 4,
+              "layout": "groups",
+              "object": "counter",
+              "addition": true,
+              "division": "sharing",
+              "remainder": 0,
+              "showFacts": false,
+              "countSteps": true
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 94,
+          "w": 832,
+          "x": 64,
+          "y": 439,
+          "id": "d-s8-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Share 12 counters equally into four groups. Each group has 3.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s9",
+      "kind": "open-response",
+      "notes": "Running\nAbout 5 minutes. Pupils work through both questions, drawing or using counters to make four equal groups. Ask them to explain how they checked their sharing.\n\nAnswers\n1. 2\n2. 1\n\nMisconceptions\nPupils may divide by two rather than by four, giving 4 for the first task or 2 for the second. Remind them that quarters require four equal groups, then count the objects in one group.\n\nBackground\nThese examples use totals that divide exactly into four equal groups: 8 gives groups of 2, and 4 gives groups of 1.",
+      "elements": [
+        {
+          "h": 52,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s9-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Find quarters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 141,
+          "id": "d-s9-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 64,
+          "y": 166,
+          "id": "d-s9-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 392,
+          "x": 64,
+          "y": 223,
+          "id": "d-s9-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Share 8 counters equally into four groups. Find one quarter.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 141,
+          "id": "d-s9-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 504,
+          "y": 166,
+          "id": "d-s9-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 392,
+          "x": 504,
+          "y": 223,
+          "id": "d-s9-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Share 4 counters equally into four groups. Find one quarter.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "working": ["8 ÷ 4 = 2", "4 ÷ 4 = 1"],
+        "modelAnswer": "1. 2 counters\n2. 1 counter"
+      }
+    },
+    {
+      "id": "s10",
+      "kind": "diagram",
+      "notes": "Running\nAbout 4 minutes. Work through the sharing with counters or the model. Ask pupils to verify the result by counting in fours groups of five, or by adding 5 four times.\n\nMisconceptions\nPupils may answer 20, the total, or give the number of groups rather than the number in one group. Check that four groups of five use all 20 counters.\n\nBackground\nRepeated sharing into four groups reinforces that one quarter of 20 is found by sharing 20 equally, not by taking away four.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s10-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Quarter of twenty",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 325,
+          "w": 751,
+          "x": 105,
+          "y": 106,
+          "id": "d-s10-Diagram-0",
+          "alt": "Twenty counters are shared into four groups of five.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 4,
+          "diagram": {
+            "kind": "library",
+            "model": "equal_groups",
+            "params": {
+              "grid": {
+                "a": 23,
+                "b": 14
+              },
+              "size": 5,
+              "text": {},
+              "turn": false,
+              "title": "Equal groups",
+              "groups": 4,
+              "layout": "groups",
+              "object": "counter",
+              "addition": true,
+              "division": "sharing",
+              "remainder": 0,
+              "showFacts": false,
+              "countSteps": true
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 94,
+          "w": 832,
+          "x": 64,
+          "y": 439,
+          "id": "d-s10-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Share 20 counters equally into four groups. Each group has 5.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s11",
+      "kind": "multiple-choice",
+      "notes": "Running\nAbout 3 minutes. Pupils choose an answer independently, then explain how four equal groups help them check it.\n\nAnswers\nB: 4 counters\n\nMisconceptions\n“12 counters” may show that the pupil has taken 4 away from 16 rather than sharing into four equal groups. “8 counters” may show that they have found half instead of a quarter. Explain that four groups of four make 16, so one group contains 4.\n\nBackground\nThis checks whether pupils distinguish quarters from halves and can connect equal sharing to the written answer.",
+      "elements": [
+        {
+          "h": 369,
+          "w": 960,
+          "x": 0,
+          "y": 171,
+          "id": "d-s11-surface_field-b-0",
+          "fill": "#FFF1A6",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 112,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s11-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "What is one quarter of 16 counters?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 209,
+          "id": "d-s11-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 227,
+          "id": "d-s11-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#A31F2E",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 43,
+          "w": 677,
+          "x": 150,
+          "y": 231,
+          "id": "d-s11-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "12 counters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 306,
+          "id": "d-s11-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 324,
+          "id": "d-s11-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#805000",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 43,
+          "w": 677,
+          "x": 150,
+          "y": 328,
+          "id": "d-s11-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "4 counters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 84,
+          "w": 832,
+          "x": 64,
+          "y": 403,
+          "id": "d-s11-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 48,
+          "w": 48,
+          "x": 83,
+          "y": 421,
+          "id": "d-s11-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 12,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 24.96,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 43,
+          "w": 677,
+          "x": 150,
+          "y": 425,
+          "id": "d-s11-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "8 counters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 32,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s11-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s11-Option-1",
+            "correct": true
+          },
+          {
+            "id": "d-s11-Option-2",
+            "correct": false
+          }
+        ]
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "notes": "Running\nAllow about 5 minutes. Pupils solve both problems independently, showing how they share the amounts. Then pair them to check their answers and explain how they know the shares are equal.\n\nAnswers\n1. 9 shells per pot.\n2. 8 marbles.\n\nMisconceptions\nFor the shells, pupils may divide 18 by 3 because they count the two pots and Mia as three sharers. Share between the two pots only: 9 in each. For the marbles, pupils may give 4 because that is a quarter of 16, but the question asks for two bags. Two groups of 4 make 8.\n\nBackground\nTwo quarters make one half. Here, two bags hold half of the 16 marbles: 8.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s12-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Sharing problems",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 278,
+          "w": 360,
+          "x": 64,
+          "y": 141,
+          "id": "d-s12-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 143,
+          "w": 330,
+          "x": 79,
+          "y": 209,
+          "id": "d-s12-Diagram-0",
+          "alt": "Twenty counters are shared into four groups of five.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 4,
+          "diagram": {
+            "kind": "library",
+            "model": "equal_groups",
+            "params": {
+              "grid": {
+                "a": 23,
+                "b": 14
+              },
+              "size": 5,
+              "text": {},
+              "turn": false,
+              "title": "Equal groups",
+              "groups": 4,
+              "layout": "groups",
+              "object": "counter",
+              "addition": true,
+              "division": "sharing",
+              "remainder": 0,
+              "showFacts": false,
+              "countSteps": true
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 467,
+          "y": 141,
+          "id": "d-s12-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 109,
+          "w": 372,
+          "x": 524,
+          "y": 141,
+          "id": "d-s12-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Mia shares 18 shells equally between two pots. How many per pot?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 429,
+          "x": 467,
+          "y": 268,
+          "id": "d-s12-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 467,
+          "y": 292,
+          "id": "d-s12-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 144,
+          "w": 372,
+          "x": 524,
+          "y": 292,
+          "id": "d-s12-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Four bags each hold a quarter of 16 marbles. How many marbles fill two bags?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "working": ["18 ÷ 2 = 9", "16 ÷ 4 = 4; 4 + 4 = 8"],
+        "modelAnswer": "1. 9 shells\n2. 8 marbles"
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s13",
+      "kind": "exit-ticket",
+      "notes": "Running\nAbout 5 minutes. Pupils complete the exit ticket independently. Collect or check their work to identify who can show equal halves and share amounts into two or four equal groups.\n\nAnswers\n1. A square split into two equal parts, with one part shaded; for example, a vertical or horizontal split through the middle.\n2. 9\n3. 4 counters\n\nMisconceptions\nFor the drawing, pupils may shade unequal parts; halves must be equal. For half of 18, pupils may give 18 or 2 instead of 9; sharing into two equal groups gives 9 in each. For a quarter of 16, pupils may give 8 by finding half or 12 by subtracting 4; four equal groups contain 4 each.\n\nBackground\nThe ticket checks shape halves, finding half by equal sharing, and finding a quarter by equal sharing.",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s13-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 247,
+          "w": 960,
+          "x": 0,
+          "y": 293,
+          "id": "d-s13-surface_field-b-0",
+          "fill": "#FFF1A6",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 223.5,
+          "w": 746,
+          "x": 107,
+          "y": 204,
+          "id": "d-s13-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 150,
+          "y": 228,
+          "id": "d-s13-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 86,
+          "w": 603,
+          "x": 207,
+          "y": 228,
+          "id": "d-s13-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Draw a square. Shade half. Find half of 18.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 334,
+          "id": "d-s13-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 150,
+          "y": 359,
+          "id": "d-s13-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 28,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 45,
+          "w": 603,
+          "x": 207,
+          "y": 359,
+          "id": "d-s13-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "What is one quarter of 16 counters?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "working": ["18 ÷ 2 = 9", "16 ÷ 4 = 4"],
+        "modelAnswer": "1. Two equal parts, one shaded; 9\n2. 4 counters"
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "YA5bRVpRrI",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "U0rUkszVUp",
+          "fill": "#FFF1A6",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "Y5pFDtWiCe",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#2E7D32",
+          "strokeWidth": 6
+        },
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "pUT917HSiq",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 39,
+          "w": 832,
+          "x": 64,
+          "y": 369,
+          "id": "MVQhsdkuhA",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard",
+      "teacherEdited": true
+    },
+    {
+      "id": "NoazwYdC11",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "BnWG3-apvT",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 301,
+          "x": 595,
+          "y": 46,
+          "id": "u3z0zFpJv4",
+          "fill": "#FFF1A6",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 620,
+          "y": 57,
+          "id": "U-vKV9olHi",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 301,
+          "x": 659,
+          "y": 55,
+          "id": "F1FahAtetl",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "pqXTgx8nDB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 19,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 38,
+          "w": 190,
+          "x": 64,
+          "y": 175,
+          "id": "vhvivIOavy",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Find halves",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 147,
+          "id": "S7_u1k5_BR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 147,
+          "id": "Sk_j48TgVa",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 146,
+          "id": "bsgZnYv_3C",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 46,
+          "w": 538,
+          "x": 358,
+          "y": 146,
+          "id": "Uo2TjRr3sH",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Two equal parts, one shaded",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 211,
+          "id": "BtbAJWRef6",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 211,
+          "id": "dAaWKX8rVM",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 210,
+          "id": "5ompRoTJlr",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 46,
+          "w": 207,
+          "x": 358,
+          "y": 210,
+          "id": "h3-VRYGLDq",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "7 counters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 39,
+          "w": 310,
+          "x": 586,
+          "y": 214,
+          "id": "AmO8xdgDTv",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "14 ÷ 2 = 7",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 1,
+          "w": 832,
+          "x": 64,
+          "y": 287,
+          "id": "GmCkWl0YTF",
+          "fill": "#F5C9CF",
+          "name": "Rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 322,
+          "id": "yOKNRAQ8L6",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 19,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 38,
+          "w": 190,
+          "x": 64,
+          "y": 351,
+          "id": "Ms6XLUAGQe",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Find quarters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 323,
+          "id": "HjaXp-DPVB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 323,
+          "id": "QndmHgVNlx",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 322,
+          "id": "gnQBHnvlzS",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 46,
+          "w": 211,
+          "x": 358,
+          "y": 322,
+          "id": "uU4JhAdag8",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2 counters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 39,
+          "w": 306,
+          "x": 590,
+          "y": 326,
+          "id": "TsO7_qPufL",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "8 ÷ 4 = 2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 387,
+          "id": "go8es7LJhM",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 387,
+          "id": "JO9m6xya9x",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 386,
+          "id": "pjpn7B_CX0",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 46,
+          "w": 211,
+          "x": 358,
+          "y": 386,
+          "id": "smvJHOJzvR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1 counter",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 39,
+          "w": 306,
+          "x": 590,
+          "y": 390,
+          "id": "PrO4ZeCpTo",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "4 ÷ 4 = 1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 2
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    },
+    {
+      "id": "9qtdUdcvA_",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 60,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "VLIq_aveaD",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 46,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 52,
+          "w": 301,
+          "x": 595,
+          "y": 46,
+          "id": "LkNUFNzjj3",
+          "fill": "#FFF1A6",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 620,
+          "y": 57,
+          "id": "rQChkgtZNt",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 301,
+          "x": 659,
+          "y": 55,
+          "id": "yiGYGsqdZU",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "lBHXL8OHvl",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 19,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 72,
+          "w": 190,
+          "x": 64,
+          "y": 175,
+          "id": "tnFGc55nyR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Sharing problems",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 147,
+          "id": "A9wdHkUgtY",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 147,
+          "id": "gEcje0sJGb",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 146,
+          "id": "X9YVZedEqF",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 46,
+          "w": 195,
+          "x": 358,
+          "y": 146,
+          "id": "UUQOi5a0t9",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "9 shells",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 39,
+          "w": 322,
+          "x": 574,
+          "y": 150,
+          "id": "TnTWUlaFlw",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "18 ÷ 2 = 9",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 211,
+          "id": "POrcs2H1Bl",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 211,
+          "id": "2cecZdJUte",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 210,
+          "id": "QMIRaw-IIn",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 46,
+          "w": 195,
+          "x": 358,
+          "y": 210,
+          "id": "5r5DAATjG_",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "8 marbles",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 39,
+          "w": 322,
+          "x": 574,
+          "y": 214,
+          "id": "L2upffFKe-",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "16 ÷ 4 = 4; 4 + 4 = 8",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 1,
+          "w": 832,
+          "x": 64,
+          "y": 287,
+          "id": "p2e1Gp96fD",
+          "fill": "#F5C9CF",
+          "name": "Rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true
+        },
+        {
+          "h": 38,
+          "w": 190,
+          "x": 64,
+          "y": 322,
+          "id": "jPVouFpHJd",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 323,
+          "id": "C4mS7-e5-b",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 323,
+          "id": "rIsoWy0y5P",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 322,
+          "id": "OfFWr_FTyW",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 89,
+          "w": 362,
+          "x": 358,
+          "y": 322,
+          "id": "jwRv7B99jC",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Two equal parts, one shaded; 9",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 39,
+          "w": 155,
+          "x": 741,
+          "y": 326,
+          "id": "BMfNm_-R0S",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "18 ÷ 2 = 9",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 301,
+          "y": 430,
+          "id": "BzfM2g6e45",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 41,
+          "w": 41,
+          "x": 358,
+          "y": 430,
+          "id": "lr8vf9vhy0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 23,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 43,
+          "w": 43,
+          "x": 357,
+          "y": 429,
+          "id": "kUQQIuI8fk",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 46,
+          "w": 362,
+          "x": 358,
+          "y": 429,
+          "id": "XGvWjOQh3E",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "4 counters",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 33,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 39,
+          "w": 155,
+          "x": 741,
+          "y": 433,
+          "id": "Iwkmhr_wS6",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "16 ÷ 4 = 4",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 2
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    }
+  ]
+}

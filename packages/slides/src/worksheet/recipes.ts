@@ -2,6 +2,9 @@ import type { Id, LessonFacts, RecipeId, WorksheetBlock } from "@tj/domain/docum
 import {
   BLOCK_GUIDES,
   FILL_GAP_BANK_INSTRUCTION,
+  OFFERED_RECIPE_IDS,
+  PLACEHOLDER_PREFIX,
+  PLACEHOLDER_QUESTION,
   WORD_SEARCH_MAX_SIZE,
   WORKSHEET_RECIPE_IDS,
 } from "@tj/domain/documents";
@@ -49,10 +52,18 @@ export type WorksheetRecipe = {
   /** Whole minutes the recipe is designed to take, low to high. */
   minutes: [number, number];
   build: (facts?: LessonFacts) => WorksheetBlock[];
+  /**
+   * Built only from the lesson's slides, by the worker (worksheets plan v2, T6): `build` makes
+   * nothing, so the facts-based pickers and the editor's insert menus leave it out.
+   */
+  slidesOnly?: true;
 };
 
-/** The copy on a question the teacher has to write. */
-export const PLACEHOLDER_QUESTION = "Write a question on the topic";
+/*
+ * The placeholder copy and `isPlaceholder` moved to `@tj/domain` (`worksheet-status.ts`) so
+ * `isUnfinishedWorksheet` reads the same strings; re-exported here under their old names.
+ */
+export { isPlaceholder, PLACEHOLDER_PREFIX, PLACEHOLDER_QUESTION } from "@tj/domain/documents";
 
 /** Recorded on every block a recipe derives from facts. */
 export const RECIPE_PROMPT_VERSION = "worksheet-recipes.v1";
@@ -78,19 +89,9 @@ const instructions = (text: string, refs?: string[]): WorksheetBlock =>
 const paragraph = (text: string, refs?: string[]): WorksheetBlock =>
   cite({ id: uid(), type: "paragraph", doc: docFromText(text) }, refs);
 
-/** The prefix on the paragraph a recipe leaves for the model; `isPlaceholder` finds it again. */
-export const PLACEHOLDER_PREFIX = "Generation writes this part: ";
-
 /** A paragraph that says what the model will write in its place. */
 const placeholder = (text: string, refs?: string[]): WorksheetBlock =>
   paragraph(`${PLACEHOLDER_PREFIX}${text}`, refs);
-
-/** True for the paragraph a recipe left for the model to replace. */
-export function isPlaceholder(block: WorksheetBlock): boolean {
-  if (block.type !== "paragraph") return false;
-  const first = block.doc.content?.[0]?.content?.[0];
-  return typeof first?.text === "string" && first.text.startsWith(PLACEHOLDER_PREFIX);
-}
 
 function question(text: string, marks: number, answer?: string, refs?: string[]): Question {
   const block: Question = {
@@ -191,7 +192,7 @@ const PLACEHOLDER_TERMS = ["Term one", "Term two", "Term three", "Term four"];
 const exitTicket: WorksheetRecipe = {
   id: "exit-ticket",
   name: "Exit ticket",
-  line: "Three quick questions and one thing they learned, on the way out.",
+  line: "The lesson's own exit ticket on paper, with its answers.",
   jobs: ["check"],
   minutes: [5, 5],
   build: (facts) => {
@@ -434,8 +435,8 @@ const reading: WorksheetRecipe = {
 
 const examStyle: WorksheetRecipe = {
   id: "exam-style",
-  name: "Exam style",
-  line: "Six questions with marks in brackets, on their own page.",
+  name: "Exam practice",
+  line: "GCSE-style questions with marks and a mark scheme (Years 10 and 11).",
   jobs: ["assess"],
   minutes: [30, 45],
   build: (facts) => {
@@ -450,6 +451,41 @@ const examStyle: WorksheetRecipe = {
   },
 };
 
+/*
+ * The launch types written from the slides (plan v2 §2). Their sheets are built by the worker
+ * from `lessonDigest`, never from facts, so `build` is empty. Listed so the catalogue matches
+ * `WORKSHEET_RECIPE_IDS`; offered only once each lands (`OFFERED_RECIPE_IDS`: T7, T8, T9).
+ */
+const slidesOnly = (recipe: Omit<WorksheetRecipe, "build" | "slidesOnly">): WorksheetRecipe => ({
+  ...recipe,
+  build: () => [],
+  slidesOnly: true,
+});
+
+const practice = slidesOnly({
+  id: "practice",
+  name: "Practice",
+  line: "New questions on the lesson, easier to harder, ending on a challenge.",
+  jobs: ["practise", "homework"],
+  minutes: [10, 20],
+});
+
+const quickQuiz = slidesOnly({
+  id: "quick-quiz",
+  name: "Quick quiz",
+  line: "New multiple choice on the lesson's facts and ideas.",
+  jobs: ["check", "revise"],
+  minutes: [5, 10],
+});
+
+const keyWords = slidesOnly({
+  id: "key-words",
+  name: "Key words",
+  line: "Match the lesson's words to their meanings, then use them in sentences.",
+  jobs: ["starter", "revise"],
+  minutes: [10, 15],
+});
+
 /** In catalogue order, the order of `WORKSHEET_RECIPE_IDS` (`recipes.test.ts` holds them equal). */
 export const WORKSHEET_RECIPES: readonly WorksheetRecipe[] = [
   exitTicket,
@@ -461,7 +497,22 @@ export const WORKSHEET_RECIPES: readonly WorksheetRecipe[] = [
   workedExample,
   reading,
   examStyle,
+  practice,
+  quickQuiz,
+  keyWords,
 ];
+
+/** The recipes built from facts: what the editor's insert menus and the facts previews show. */
+export const INSERTABLE_RECIPES: readonly WorksheetRecipe[] = WORKSHEET_RECIPES.filter(
+  (r) => !r.slidesOnly,
+);
+
+/** The types a teacher can ask for today, in picker order (`OFFERED_RECIPE_IDS`). */
+export const OFFERED_RECIPES: readonly WorksheetRecipe[] = OFFERED_RECIPE_IDS.map((id) => {
+  const recipe = WORKSHEET_RECIPES.find((r) => r.id === id);
+  if (!recipe) throw new Error(`Offered worksheet type ${id} has no catalogue entry`);
+  return recipe;
+});
 
 export function recipeById(id: string): WorksheetRecipe | undefined {
   return WORKSHEET_RECIPES.find((r) => r.id === id);
