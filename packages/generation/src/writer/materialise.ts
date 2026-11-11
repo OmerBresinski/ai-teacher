@@ -24,7 +24,6 @@ import {
   FIGURE_CAPTION_TWO_LINE_FITS,
   FIGURE_TOO_SMALL,
   FIGURE_WIDE_ASPECT,
-  figureSlideAllowed,
 } from "@tj/slides/templates/figure-rules";
 import { isSameSubjectSet } from "../stages/picture-set";
 import { activityWords } from "./activities";
@@ -179,6 +178,10 @@ const pts = (v: unknown): TemplatePoint[] =>
       })
     : [];
 
+/** A point as the gold's plain look draws it: a label (or a callout's) kept as "Label: text". */
+const asPlainPoint = (p: TemplatePoint): string =>
+  typeof p === "string" ? p : p.label ? `${p.label}: ${p.text}` : p.text;
+
 const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" in (f as object);
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
@@ -186,19 +189,6 @@ const isPic = (f: unknown): f is Pic =>
 /** A figure the diagram library draws (`kind: "model"`). */
 export const isModel = (f: unknown): boolean =>
   isDia(f) && (f as { kind?: unknown }).kind === "model";
-/** TEACH-239 part b (C7): a big visual asking for a library model may become the figure slide. */
-const isModelSlide = (s: unknown): boolean => {
-  const o = (s ?? {}) as S;
-  return (
-    o.template === "figure" ||
-    (["big-visual", "big-diagram"].includes(str(o.template)) &&
-      (isModel(o.figure) || isModel(o.diagram)))
-  );
-};
-/** A drawn library model wider than the figure slide's threshold (narrower ones go beside words). */
-const wideModel = (f: Figure | undefined): boolean =>
-  !!f && "drawn" in f && !!f.drawn.bare && f.drawn.aspect > FIGURE_WIDE_ASPECT;
-
 /**
  * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
  * output that still carries them, read in the notes rather than dropped. The stage logs it.
@@ -587,6 +577,24 @@ export function toInput(
       const points = pts(s.points);
       if (template === "diagram-text" && points.length && studyFigure(f) && teaches(raw))
         return { template: "big-diagram", heading, lead, points, figure: f };
+      // Gold alignment (11 Nov 2026): a drawn library model near-square enough for the side field
+      // (the gold's own rule, `fitsSideField`: aspect at most FIGURE_WIDE_ASPECT) takes the gold picture-and-text design. A wide model
+      // or a data diagram beside words has no gold design and keeps the old layout (gold manifest).
+      if (
+        template === "diagram-text" &&
+        f &&
+        "drawn" in f &&
+        f.drawn.bare &&
+        (f.drawn.aspect || 1) <= FIGURE_WIDE_ASPECT
+      )
+        return {
+          template: "picture-text",
+          heading,
+          lead,
+          points: points.map(asPlainPoint),
+          figure: f,
+          pictureText: {},
+        } as TemplateInput;
       // Wave C (TEACH-110 part v): picture-text's key cards and the icon shown if the picture fails.
       // Every new picture-text slide takes the gold picture-and-text design (TEACH-75 part ae), with
       // or without cards or an icon: `pictureText` is what selects it. Saved slides keep their
@@ -613,7 +621,9 @@ export function toInput(
         template: f || pictureText ? template : "explain",
         heading,
         lead,
-        points: pts(s.points),
+        // The gold's plain look draws a point's words only: a labelled point (the retired callout,
+        // `points-1-key-fig`) keeps its label as the gold folds a key card, "Label: text".
+        points: pictureText ? points.map(asPlainPoint) : points,
         figure: f,
         ...(pictureText ? { pictureText } : {}),
       } as TemplateInput;
@@ -626,13 +636,13 @@ export function toInput(
       // A long table's slide moved across the slide (table-pack.ts, `cardsUnder`) carries its
       // points as key cards (ruling 194); other big visuals' points are read in the notes.
       const cards = template === "big-diagram" && s.cardsUnder === true ? pts(s.points) : [];
-      // TEACH-239 part b (C7): a wide library model is the lesson's figure slide (ruling 229).
-      if (
-        !cards.length &&
-        wideModel(f) &&
-        figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide)
-      )
-        return { template: "figure", heading, ...(lead ? { lead } : {}), figure: f };
+      // Gold alignment (11 Nov 2026): a photo or a library model across the slide is the gold
+      // figure slide (v13 "Figure slide (was big visual)"), every one in the lesson, through the
+      // figure route's own caption rule. A data diagram or chart (no gold design) keeps the old one.
+      const ask = s[template === "big-picture" ? "picture" : "diagram"];
+      // A model the library refused, drawn by a data drawer instead (`{ diagram }`), is a data diagram.
+      if (!cards.length && f && ("photo" in f || "drawn" in f) && (isPic(ask) || isModel(ask)))
+        return toInput({ ...s, template: "figure", caption: lead ?? "" }, ctx, mark, missing);
       return f
         ? {
             template,
@@ -972,8 +982,13 @@ export function toInput(
         ...(lead ? { lead } : {}),
         ...(s.accentWord ? { accentWord: str(s.accentWord) } : {}),
         rows,
-        // The title panel's own picture (menu v4.3 `panel: {picture}`); shares and none are none.
-        panel: panelPic ? { picture: panelPic } : null,
+        // The title panel's own picture (menu v4.3 `panel: {picture}`), or its pie (`shares`, the
+        // gold draws it); none is none.
+        panel: panelPic
+          ? { picture: panelPic }
+          : pn && Array.isArray(pn.shares) && pn.shares.length
+            ? { shares: (pn.shares as unknown[]).map(Number) }
+            : null,
       } as TemplateInput;
     }
     case "split-compare":
@@ -1054,7 +1069,9 @@ export function toInput(
           ctx.stage,
         ).over.includes(FIGURE_TOO_SMALL);
       const longCaption = !fits || !roomy;
-      if (longCaption || !figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
+      // LEGACY on purpose (gold manifest, known gap): a caption the figure cannot hold in two lines
+      // keeps the old big layout, whose lead wraps, rather than lose its words to the ellipsis.
+      if (longCaption)
         return f
           ? {
               template: "photo" in f ? "big-picture" : "big-diagram",

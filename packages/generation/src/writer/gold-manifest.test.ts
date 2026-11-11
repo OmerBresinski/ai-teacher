@@ -120,3 +120,17 @@ describe("gold manifest: every field a gold reads is written, set by code, or a 
       }
     });
 });
+
+test("panel-list's pie (panel.shares) reaches the gold", async () => {
+  const { toInput } = await import("./materialise");
+  const e = GOLD_MANIFEST.find((x) => x.layout === "panel-list") as GoldEntry;
+  const ctx = {
+    brief: { subject: "science", topic: "plants" },
+    theme: getTheme("studio", "ks2"),
+    stage: "ks2",
+    index: 2,
+    plan: { slides: [] },
+    visual: () => ({ status: "failed" }),
+  } as unknown as Parameters<typeof toInput>[1];
+  expect((toInput(e.sample.slide, ctx) as { panel?: unknown }).panel).toEqual({ shares: [3, 1] });
+});

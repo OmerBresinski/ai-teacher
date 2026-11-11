@@ -118,7 +118,6 @@ export const GOLD_MANIFEST: GoldEntry[] = [
   {
     layout: "visual-text",
     variant: "photo, a labelled point (points-1-key-fig, the retired callout)",
-    todo: "the gold's plain column draws a point's text only: the label is dropped",
     gold: "gold:picture-text",
     legacy: "legacy:picture-text",
     sample: {
@@ -167,7 +166,6 @@ export const GOLD_MANIFEST: GoldEntry[] = [
   {
     layout: "visual-text",
     variant: "near-square library model beside the words",
-    todo: "diagram-text never sets pictureText, so a near-square model gets the old side panel",
     gold: "gold:picture-text",
     legacy: "legacy:diagram-text",
     sample: { slide: vt("points-0-fig", { figure: modelAsk }), visual: { diagram: MODEL_SQUARE } },
@@ -211,7 +209,6 @@ export const GOLD_MANIFEST: GoldEntry[] = [
   {
     layout: "big-visual",
     variant: "near-square library model",
-    todo: "big-visual reaches the figure slide only for a wide model",
     gold: "gold:figure",
     legacy: "legacy:big-diagram",
     sample: { slide: bv(modelAsk), visual: { diagram: MODEL_SQUARE } },
@@ -219,7 +216,6 @@ export const GOLD_MANIFEST: GoldEntry[] = [
   {
     layout: "big-visual",
     variant: "second library model in the lesson",
-    todo: "figureSlideAllowed (ruling 229) sends every model after the first to the old big diagram",
     gold: "gold:figure",
     legacy: "legacy:big-diagram",
     sample: {
@@ -239,7 +235,6 @@ export const GOLD_MANIFEST: GoldEntry[] = [
     layout: "big-visual",
     variant: "photo",
     gold: "gold:figure",
-    todo: "big-visual photos go to the old big picture",
     legacy: "legacy:big-picture",
     sample: { slide: bv(picAsk), visual: { picture: PHOTO } },
   },
@@ -283,7 +278,6 @@ export const GOLD_MANIFEST: GoldEntry[] = [
   {
     layout: "figure",
     variant: "second figure slide in the lesson",
-    todo: "figureSlideAllowed sends a second figure slide to the old big diagram",
     gold: "gold:figure",
     legacy: "legacy:big-diagram",
     sample: {

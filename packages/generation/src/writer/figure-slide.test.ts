@@ -85,23 +85,21 @@ describe("writer: the figure slide", () => {
     expect(i.accentWord).toBe("water cycle");
     expect(i.figure && "drawn" in i.figure).toBe(true);
   });
-  test("ruling 229: a second figure slide, or one beside a diagram slide, is the old big visual", () => {
+  test("gold alignment (11 Nov 2026): every figure slide and big-visual model keeps the gold; ruling 229's one-a-lesson re-lay is retired", () => {
     const two = [figureSlide, { template: "explain" }, figureSlide];
     expect(
       toInput(
         figureSlide,
         ctx(two, 2, () => drawn(2.27)),
       ).template,
-    ).toBe("big-diagram");
+    ).toBe("figure");
     const beside = [{ template: "diagram-text", diagram: model }, figureSlide];
     expect(
       toInput(
         figureSlide,
         ctx(beside, 1, () => drawn(2.27)),
       ).template,
-    ).toBe("big-diagram");
-  });
-  test("ruling 229: a wide big-visual model earlier takes the lesson's one figure slide", () => {
+    ).toBe("figure");
     const big: S = { template: "big-visual", heading: "Rain", lead: "It falls.", figure: model };
     const lesson = [big, { template: "explain" }, figureSlide];
     const laid = lesson.map(
@@ -111,8 +109,7 @@ describe("writer: the figure slide", () => {
           ctx(lesson, i, () => drawn(2.27)),
         ).template,
     );
-    expect(laid).toEqual(["figure", "explain", "big-diagram"]);
-    expect(laid.filter((t) => t === "figure")).toHaveLength(1);
+    expect(laid).toEqual(["figure", "explain", "figure"]);
   });
   test("a failed model is the icon plate; with no icon the words stand alone", () => {
     const failed = () => ({ status: "failed" });
@@ -122,7 +119,7 @@ describe("writer: the figure slide", () => {
     const { icon: _, ...noIcon } = figureSlide;
     expect(toInput(noIcon, ctx([noIcon], 0, failed)).template).toBe("explain");
   });
-  test("a big visual's library model wider than 1.45 comes here; a narrower one does not", () => {
+  test("a big visual's library model of any shape comes here (the figure gold draws it as large as its shape allows)", () => {
     const big: S = { template: "big-visual", heading: "Rain", lead: "It falls.", figure: model };
     expect(
       toInput(
@@ -135,7 +132,7 @@ describe("writer: the figure slide", () => {
         big,
         ctx([big], 0, () => drawn(1.2)),
       ).template,
-    ).toBe("big-diagram");
+    ).toBe("figure");
   });
 });
 
