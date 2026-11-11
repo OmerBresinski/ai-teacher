@@ -125,7 +125,7 @@ export type PracticeInput = { digest: LessonDigest; counts: PracticeCounts };
 
 export function practicePrompt(yearGroup: string): StructuredPrompt<PracticeInput> {
   return {
-    version: "worksheet-practice.v1",
+    version: "worksheet-practice.v2",
     system: [
       PRACTICE_SYSTEM,
       BAND_TEXT[bandOf(yearGroup)],

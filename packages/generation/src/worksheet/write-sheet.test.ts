@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { lessonDigest } from "@tj/slides/worksheet/digest";
+import { answerSpace } from "@tj/slides/worksheet/exit-sheet";
 import { fixtureLesson } from "@tj/slides/worksheet/fixtures";
 import {
   STUB_EXAM_RATES,
@@ -74,6 +75,26 @@ describe("prompt assembly", () => {
     expect(user).toContain("  Answer: 3 cm³/s (working: 84 cm³ ÷ 28 s = 3 cm³/s)");
     expect(digestBrief(digest, { mistakes: true })).not.toContain("{{");
   });
+  test("v2 clauses reach the assembled system text", () => {
+    const y2 = practicePrompt("Year 2").system;
+    const y11 = practicePrompt("Year 11").system;
+    for (const clause of [
+      "make no two of them the same task on new numbers",
+      "No two calculations on the sheet have the same result.",
+      "draw, shade, sketch, label, circle or colour",
+      "Never word a question so that its answer only repeats the question back.",
+      "never as a sentence with a gap to fill",
+    ]) {
+      expect(y2).toContain(clause);
+      expect(y11).toContain(clause);
+    }
+    expect(y2).toContain("at least two items on the sheet are tasks of that kind");
+    // Every draw verb the prompt names gets the builder's drawing box.
+    for (const verb of ["draw", "shade", "sketch", "label", "circle", "colour"]) {
+      expect(answerSpace(`${verb[0]?.toUpperCase()}${verb.slice(1)} it.`, undefined)).toBe("draw");
+    }
+    expect(y11).not.toContain("at least two items on the sheet are tasks of that kind");
+  });
   test("practice counts follow D9", () => {
     expect(practiceCounts("Year 2", 10)).toEqual({ warmUp: 2, core: 1, total: 4 });
     expect(practiceCounts("Year 2", 20)).toEqual({ warmUp: 2, core: 3, total: 6 });
@@ -97,7 +118,7 @@ describe("writeModelSheet: valid stub answers", () => {
       expect(ai.calls).toHaveLength(1);
       expect(ai.calls[0]?.modelClass).toBe("small");
       expect(ai.calls[0]?.context).toMatchObject({
-        promptVersion: "worksheet-practice.v1",
+        promptVersion: "worksheet-practice.v2",
         effort: "low",
       });
       expect(sheet.findings).toEqual([]);
@@ -271,6 +292,16 @@ describe("item rules", () => {
   test("a Year 3+ calculation without working is refused", () => {
     expect(practiceFaults(item({ working: null }), { digest })).toContain(
       "calculates but gives no working",
+    );
+  });
+  test("a question with a gap to fill is refused (v2: no gap-fill block yet)", () => {
+    expect(
+      practiceFaults(item({ question: "Complete: the rate is _____ cm³/s.", working: null }), {
+        digest,
+      }),
+    ).toContain("leaves a gap to fill in the question");
+    expect(practiceFaults(item({}), { digest })).not.toContain(
+      "leaves a gap to fill in the question",
     );
   });
   test("copy check: same words, or 80% overlap with the same numbers", () => {

@@ -345,7 +345,7 @@ describeDb("lesson.worksheet job", () => {
     expect(sheet.generation).toMatchObject({
       stage: "checked",
       recipeId: "practice",
-      promptVersions: { build: "worksheet-slides.v1", write: "worksheet-practice.v1" },
+      promptVersions: { build: "worksheet-slides.v1", write: "worksheet-practice.v2" },
       usage: { calls: 1, inputTokens: 2500, outputTokens: 1500 },
       findings: [],
     });

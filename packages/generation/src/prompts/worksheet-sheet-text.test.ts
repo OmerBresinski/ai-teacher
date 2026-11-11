@@ -4,8 +4,8 @@ import * as T from "./worksheet-sheet-text";
 
 /* The prompt text is the prompt engineer's, byte-for-byte: these are the drafts' SHA-256s. */
 const SOURCE_SHA256: Record<keyof typeof T, string> = {
-  PRACTICE_SYSTEM: "9ae7ddfbd622b8aafd89728cfbf53bb1e595f9762b8426164fb3891ab6ecab9f",
-  PRACTICE_BAND_Y1_2: "6ace249f9cc796c985b35806673e94674cdd616a7d7efb97cf93cacde95d967c",
+  PRACTICE_SYSTEM: "c074cd639fc4efc75d4f48c70129c371796edc8239934f8089a74b2f4b35ba04",
+  PRACTICE_BAND_Y1_2: "2ca4f90ee223f01f82aa85337390f8f64aa69b2a477f0b53784c9c4b6550edae",
   PRACTICE_BAND_Y3_9: "2f89cbcd00cac0375cd8eb26997ae0c31f03a6044146dc1339f6c6d14c17ebf5",
   PRACTICE_BAND_Y10_11: "045c08acb9de0c27ced4d3bab803eeb7a38321895ca74c90b6aa7749b99a7de1",
   NOTATION_KS1: "80d88fa0ba8d215fe51d69aaf33b104969d861e8fbaf491a9061525a4c86b2cf",

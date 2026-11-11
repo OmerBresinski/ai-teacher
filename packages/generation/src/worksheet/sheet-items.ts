@@ -60,6 +60,9 @@ export type ExamOutput = { items: ExamItem[] };
 const LESSON_REFERENCE =
   /\b(slides?|the lesson|lesson notes|teacher's notes|as you (have )?(learned|learnt)|you learned|digest|the brief)\b/i;
 
+/** A gap to fill ("from _____ to _____"): the sheet has no gap-fill block, so it would print above ruled lines. */
+const GAP = /_{3,}/;
+
 const CALC_QUESTION = /^\W*(calculate|work out|find)\b|\d\s*[+\-−×÷/=]\s*\d/i;
 const numbersIn = (text: string): string[] => text.match(/\d+(?:\.\d+)?/g) ?? [];
 const words = (text: string) => new Set(normaliseText(text).split(/\s+/).filter(Boolean));
@@ -123,6 +126,7 @@ function commonFaults(
 export function practiceFaults(item: PracticeItem, ctx: Context): string[] {
   const out = commonFaults(item, ctx);
   if (isNonAnswer(item.answer)) out.push("has no answer");
+  if (GAP.test(item.question)) out.push("leaves a gap to fill in the question");
   const early = isEarlyYears(ctx.digest.lesson.yearGroup);
   if (!early && CALC_QUESTION.test(item.question) && !item.working?.trim()) {
     out.push("calculates but gives no working");
