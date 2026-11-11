@@ -62,8 +62,16 @@ const DIA = { diagram: { kind: "cycle", alt: "c", steps: ["Egg", "Chick", "Hen"]
  * single-field ceilings come from "first" and "lead".
  */
 let LONG: "all" | "first" | "lead" = "all";
+/**
+ * Gold alignment (11 Nov 2026): measure each writer layout on the look a new lesson draws. A photo
+ * beside words is the gold picture and text (`pictureText`, a labelled point folded "Label: text"
+ * as toInput folds it), and a photo across the slide the gold figure slide. A data diagram keeps
+ * its old layout (no gold design draws one). Off: the old table, which the lab pin and the live
+ * pack's frozen bytes read (`fit-table.gen.json`); on: `fit-table-gold.gen.json` for a new pack.
+ */
+let GOLD = false;
 const REST = 16;
-function input(doc: Doc, v: Variant, n0: number, h: number, ins: number): TemplateInput {
+export function fitInput(doc: Doc, v: Variant, n0: number, h: number, ins: number): TemplateInput {
   const n = LONG === "all" ? n0 : REST;
   const leadN = LONG === "first" ? REST : n0;
   const fig = v.figure === "photo" ? PH : v.figure === "diagram" ? DIA : undefined;
@@ -71,6 +79,18 @@ function input(doc: Doc, v: Variant, n0: number, h: number, ins: number): Templa
     Array.from({ length: k }, (_, i) => sample(i === 0 && LONG === "first" ? n0 : n, i * 3 + 1));
   const base = { template: doc.id, heading: sample(h, 7) } as TemplateInput;
   const c = v.counts as Record<string, number>;
+  if (GOLD && doc.id === "picture-text")
+    return {
+      ...base,
+      lead: sample(leadN),
+      points: v.keyCards
+        ? items(c.points ?? 1).map((text, i) => `${sample(KEY_LABEL, i * 5)}: ${text}`)
+        : items(c.points ?? 0),
+      figure: PH,
+      pictureText: {},
+    } as TemplateInput;
+  if (GOLD && doc.id === "big-picture")
+    return { ...base, template: "figure", lead: sample(leadN), figure: PH } as TemplateInput;
   switch (doc.id) {
     case "title":
       return { ...base, lead: sample(leadN), ...(fig ? { figure: fig } : {}) } as TemplateInput;
@@ -281,7 +301,19 @@ const QUESTIONS = new Set(["question-set", "practice", "exit-ticket"]);
 const MIN_ITEM = 30;
 const STARVE = new Set([...QUESTIONS]);
 
-export function measureFit() {
+/** Runs `f` with the gold switch on (the guard builds the measurer's own inputs with it). */
+export function measureGoldInput<T>(f: () => T): T {
+  const was = GOLD;
+  GOLD = true;
+  try {
+    return f();
+  } finally {
+    GOLD = was;
+  }
+}
+
+export function measureFit(o: { gold?: boolean } = {}) {
+  GOLD = !!o.gold;
   const out: Record<string, unknown> = {};
   for (const g of Object.keys(GROUPS) as Group[]) {
     const byId = new Map(TEMPLATE_DOCS.map((d) => [d.id as string, d]));
@@ -289,7 +321,7 @@ export function measureFit() {
     // Round 9 calibration: the heading band holds two lines; the cap is the longest heading the
     // layout keeps clean (round 7 headings over one line shipped clean).
     const heading = largest(
-      (h) => clean(g, () => input(explain, explain.variants[0] as Variant, 10, h, 0)),
+      (h) => clean(g, () => fitInput(explain, explain.variants[0] as Variant, 10, h, 0)),
       160,
     );
     const headingOne = Math.min(heading, oneLine(g, G.width, "heading"));
@@ -313,7 +345,7 @@ export function measureFit() {
         // cards with pictures: the picture falls under 4:3) is measured, and offered, with one.
         let hd = heading;
         const fitAt = (h: number) =>
-          Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, h, 0)))));
+          Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => fitInput(d, v, k, h, 0)))));
         if (fitAt(heading) < MIN_ITEM)
           for (let h = headingOne; h >= 12; h -= 4)
             if (fitAt(h) >= Math.min(MIN_ITEM, 20)) {
@@ -323,7 +355,9 @@ export function measureFit() {
         // Round 9 (coordinator): a question slide with a figure whose questions would get under
         // MIN_ITEM characters with an instruction line has no instruction line (KS1-2 held 22-24).
         const fit = (insN: number) =>
-          Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, hd, insN)))));
+          Math.min(
+            ...vs.map(([d, v]) => largest((k) => clean(g, () => fitInput(d, v, k, hd, insN)))),
+          );
         const ins0 = QUESTIONS.has(w) ? oneLine(g, figure ? G.left.w : 760) : 0;
         const n0 = fit(ins0);
         const noIns = QUESTIONS.has(w) && figure && n0 < MIN_ITEM && fit(0) >= MIN_ITEM;
@@ -339,7 +373,7 @@ export function measureFit() {
             ...vs.flatMap(([d, v]) =>
               (["first", "lead"] as const).map((mode) => {
                 LONG = mode;
-                const r = largest((k) => clean(g, () => input(d, v, k, hd, insN)));
+                const r = largest((k) => clean(g, () => fitInput(d, v, k, hd, insN)));
                 LONG = "all";
                 return r || 240;
               }),
@@ -347,7 +381,9 @@ export function measureFit() {
           );
         // A question slide without its instruction line has that line's room for its questions.
         const bare = ins
-          ? Math.min(...vs.map(([d, v]) => largest((k) => clean(g, () => input(d, v, k, hd, 0)))))
+          ? Math.min(
+              ...vs.map(([d, v]) => largest((k) => clean(g, () => fitInput(d, v, k, hd, 0)))),
+            )
           : 0;
         const v0 = vs[0]?.[1] as Variant;
         return {
@@ -378,26 +414,33 @@ export function measureFit() {
         (k) =>
           clean(
             g,
-            () => ({ ...input(eq, v, 10, heading, 0), formula: sample(k) }) as TemplateInput,
+            () => ({ ...fitInput(eq, v, 10, heading, 0), formula: sample(k) }) as TemplateInput,
           ),
         80,
       );
     };
     out[g] = { heading, formula: formula(false), formulaBesideFigure: formula(true), layouts };
   }
+  const gold = GOLD;
+  GOLD = false;
   return {
-    note: "generated by lab/bakeoff/fit-table.ts (layoutTemplate with every field at its limit, every theme of the group); do not edit",
+    note: gold
+      ? "generated by packages/slides/src/templates/fit-table.ts --gold: each writer layout measured on the look a new lesson draws (gold picture and text, gold figure slide), every theme of the group; do not edit"
+      : "generated by lab/bakeoff/fit-table.ts (layoutTemplate with every field at its limit, every theme of the group); do not edit",
     groups: out,
   };
 }
 
 if (import.meta.main) {
   // bun packages/slides/src/templates/fit-table.ts --hinge-cards packages/generation/src/writer/hinge-cards.gen.json
+  // bun packages/slides/src/templates/fit-table.ts --gold packages/generation/src/writer/fit-table-gold.gen.json
   const cards = process.argv[2] === "--hinge-cards";
-  const out = cards ? (process.argv[3] ?? "hinge-cards.json") : OUT;
+  const gold = process.argv[2] === "--gold";
+  const out =
+    cards || gold ? (process.argv[3] ?? (cards ? "hinge-cards.json" : "fit-gold.json")) : OUT;
   writeFileSync(
     out,
-    `${cards ? JSON.stringify(measureHingeCards(), null, 2) : JSON.stringify(measureFit(), null, 1)}\n`,
+    `${cards ? JSON.stringify(measureHingeCards(), null, 2) : JSON.stringify(measureFit({ gold }), null, 1)}\n`,
   );
   console.log("wrote", out);
 }
