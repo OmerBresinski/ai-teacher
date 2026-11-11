@@ -115,9 +115,52 @@ export const WORKSHEET_RECIPE_IDS = [
   "worked-example",
   "reading",
   "exam-style",
+  // Worksheets plan v2 (T6): the launch types written from the lesson's slides.
+  "practice",
+  "quick-quiz",
+  "key-words",
 ] as const;
 export const RecipeIdSchema = z.enum(WORKSHEET_RECIPE_IDS);
 export type RecipeId = z.infer<typeof RecipeIdSchema>;
+
+/**
+ * The launch sheet types (worksheets plan v2 §2): built from the lesson's slides as they stand
+ * (`lessonDigest`), saved once, finished or failed (D8), with no frame and no repair pass (D7).
+ * `exit-ticket` is the old id, rebuilt from the exit-ticket slide.
+ */
+export const SLIDE_SHEET_RECIPE_IDS = [
+  "practice",
+  "quick-quiz",
+  "key-words",
+  "exit-ticket",
+] as const;
+export type SlideSheetRecipeId = (typeof SLIDE_SHEET_RECIPE_IDS)[number];
+
+export function isSlideSheetRecipe(id: string): id is SlideSheetRecipeId {
+  return (SLIDE_SHEET_RECIPE_IDS as readonly string[]).includes(id);
+}
+
+/**
+ * The types a teacher can ask for today, in picker order. Only Exit ticket until Practice (T7),
+ * Quick quiz (T8) and Key words (T9) land; the old seven are hidden but still parse.
+ */
+export const OFFERED_RECIPE_IDS: readonly SlideSheetRecipeId[] = ["exit-ticket"];
+
+/** What `"auto"` (and the retired default, `knowledge-check`) means today: Practice from T7. */
+export const DEFAULT_SHEET_RECIPE_ID: SlideSheetRecipeId = "exit-ticket";
+
+/**
+ * The offered type a request names, `"auto"` and `knowledge-check` mapped to the default, or
+ * `null` when the type is not offered (the API answers 422 `WORKSHEET_TYPE_UNAVAILABLE_MESSAGE`).
+ */
+export function offeredRecipeFor(id: string): SlideSheetRecipeId | null {
+  const wanted = id === "auto" || id === "knowledge-check" ? DEFAULT_SHEET_RECIPE_ID : id;
+  return (OFFERED_RECIPE_IDS as readonly string[]).includes(wanted)
+    ? (wanted as SlideSheetRecipeId)
+    : null;
+}
+
+export const WORKSHEET_TYPE_UNAVAILABLE_MESSAGE = "That worksheet type is not available yet.";
 
 /** The practice times `POST /lessons/:id/worksheet` offers (ADR 0030 item 8). */
 export const PRACTICE_MINUTES_OPTIONS = [5, 10, 15, 20, 30, 45] as const;

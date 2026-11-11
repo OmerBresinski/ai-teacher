@@ -2,10 +2,12 @@
 // `../model/worksheet-recipes` import in the editor keeps resolving.
 export {
   defaultPracticeMinutes,
+  INSERTABLE_RECIPES,
   isPlaceholder,
   isRecipeId,
   JOBS,
   type Job,
+  OFFERED_RECIPES,
   PLACEHOLDER_PREFIX,
   PLACEHOLDER_QUESTION,
   RECIPE_PROMPT_VERSION,
