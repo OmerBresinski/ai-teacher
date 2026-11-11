@@ -1,6 +1,6 @@
 import type { TextElement, Theme } from "@tj/domain/documents";
 import { fittedFontSize, HEADING_NAME } from "@tj/slides";
-import { mathsElement } from "@tj/slides/maths-text";
+import { mathsElement } from "@tj/slides/maths-names";
 import { TriangleAlert } from "lucide-react";
 import { type CSSProperties, lazy, type ReactNode, type Ref, Suspense } from "react";
 import {

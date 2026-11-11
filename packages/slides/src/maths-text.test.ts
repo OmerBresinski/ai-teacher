@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { RichDoc } from "@tj/domain/documents";
 import { findFractions } from "./fractions";
+import { WORKED_MATHS_NAMES } from "./maths-names";
 import { EQUATION_NAMES, formulaText, mathsElement, mathText } from "./maths-text";
 import { layoutTemplate } from "./templates/index";
 import { WORKED_NAMES } from "./templates/worked";
@@ -131,4 +132,8 @@ describe("mathsElement: which boxes hold maths, by name", () => {
     for (const w of widths) expect(at(w, true)).toBeLessThanOrEqual(at(w, false));
     expect(widths.some((w) => at(w, true) < at(w, false))).toBe(true);
   });
+});
+
+test("the editor's maths names are the worked gold's own (no template import on the editor path)", () => {
+  expect(WORKED_MATHS_NAMES).toEqual({ left: WORKED_NAMES.left, right: WORKED_NAMES.right });
 });

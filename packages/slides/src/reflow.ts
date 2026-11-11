@@ -80,7 +80,7 @@ import type {
 import { isLayoutGroup, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { contains, type Rect } from "./geometry";
 import { BASELINE, SPACE } from "./grid";
-import { mathsElement } from "./maths-text";
+import { mathsElement } from "./maths-names";
 import { OPTION, SAFE_BOTTOM, withSafety } from "./metrics";
 import { ladderStops, resolveFontSize, resolveTextStyle, STEPPABLE } from "./text-style";
 import { fontFloor, type TextRole } from "./themes";
