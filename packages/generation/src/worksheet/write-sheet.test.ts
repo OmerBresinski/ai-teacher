@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createFakeAi } from "@tj/ai/testing";
 import { richDocToPlainText } from "@tj/domain/documents";
 import { lessonDigest } from "@tj/slides/worksheet/digest";
+import { answerSpace } from "@tj/slides/worksheet/exit-sheet";
 import { fixtureLesson } from "@tj/slides/worksheet/fixtures";
 import {
   STUB_EXAM_RATES,
@@ -20,7 +21,14 @@ import { NOTATION_KS1, PRACTICE_BAND_Y1_2, PRACTICE_SYSTEM } from "../prompts/wo
 import { recordingDeps } from "../testing";
 import { StageFailure } from "../types";
 import { SheetBuildFailure, writeModelSheet } from "./build";
-import { copiesAsked, examFaults, practiceFaults, workingFault } from "./sheet-items";
+import {
+  copiesAsked,
+  examFaults,
+  practiceFaults,
+  repeatedResults,
+  workingFault,
+} from "./sheet-items";
+import { practiceBlocks } from "./write-sheet";
 
 /* T7: stubbed model only (STUB CONTENT, hand-written); no paid or API call. */
 
@@ -74,10 +82,32 @@ describe("prompt assembly", () => {
     expect(user).toContain("  Answer: 3 cm³/s (working: 84 cm³ ÷ 28 s = 3 cm³/s)");
     expect(digestBrief(digest, { mistakes: true })).not.toContain("{{");
   });
+  test("v2 clauses reach the assembled system text", () => {
+    const y2 = practicePrompt("Year 2").system;
+    const y11 = practicePrompt("Year 11").system;
+    for (const clause of [
+      "make no two of them the same task on new numbers",
+      "No two calculations on the sheet have the same result.",
+      "draw, shade, sketch, label, circle or colour",
+      "Never word a question so that its answer only repeats the question back.",
+      "never as a sentence with a gap to fill",
+    ]) {
+      expect(y2).toContain(clause);
+      expect(y11).toContain(clause);
+    }
+    expect(y2).toContain("at least two items on the sheet are tasks of that kind");
+    // Every draw verb the prompt names gets the builder's drawing box.
+    for (const verb of ["draw", "shade", "sketch", "label", "circle", "colour"]) {
+      expect(answerSpace(`${verb[0]?.toUpperCase()}${verb.slice(1)} it.`, undefined)).toBe("draw");
+    }
+    expect(y11).not.toContain("at least two items on the sheet are tasks of that kind");
+  });
   test("practice counts follow D9", () => {
-    expect(practiceCounts("Year 2", 10)).toEqual({ warmUp: 2, core: 1, total: 4 });
+    expect(practiceCounts("Year 2", 10)).toEqual({ warmUp: 2, core: 3, total: 6 });
     expect(practiceCounts("Year 2", 20)).toEqual({ warmUp: 2, core: 3, total: 6 });
     expect(practiceCounts("Year 9", 10).total).toBe(6);
+    expect(practiceCounts("Year 2", 15)).toEqual({ warmUp: 2, core: 3, total: 6 });
+    expect(practiceCounts("Year 11", 15)).toEqual({ warmUp: 2, core: 5, total: 8 });
     expect(practiceCounts("Year 9", 20).total).toBe(10);
   });
   test("exam marks plan: 1,1,2,2,3,3,4 by default", () => {
@@ -87,7 +117,7 @@ describe("prompt assembly", () => {
 
 describe("writeModelSheet: valid stub answers", () => {
   for (const [name, stub, minutes, items] of [
-    ["halves", STUB_PRACTICE_HALVES, 10, 4],
+    ["halves", STUB_PRACTICE_HALVES, 10, 6],
     ["romans", STUB_PRACTICE_ROMANS, 15, 8],
     ["rivers", STUB_PRACTICE_RIVERS, 15, 8],
     ["rates", STUB_PRACTICE_RATES, 15, 8],
@@ -97,7 +127,7 @@ describe("writeModelSheet: valid stub answers", () => {
       expect(ai.calls).toHaveLength(1);
       expect(ai.calls[0]?.modelClass).toBe("small");
       expect(ai.calls[0]?.context).toMatchObject({
-        promptVersion: "worksheet-practice.v1",
+        promptVersion: "worksheet-practice.v2",
         effort: "low",
       });
       expect(sheet.findings).toEqual([]);
@@ -272,6 +302,37 @@ describe("item rules", () => {
     expect(practiceFaults(item({ working: null }), { digest })).toContain(
       "calculates but gives no working",
     );
+  });
+  test("a question with a gap to fill is refused (v2: no gap-fill block yet)", () => {
+    expect(
+      practiceFaults(item({ question: "Complete: the rate is _____ cm³/s.", working: null }), {
+        digest,
+      }),
+    ).toContain("leaves a gap to fill in the question");
+    expect(practiceFaults(item({}), { digest })).not.toContain(
+      "leaves a gap to fill in the question",
+    );
+  });
+  test("a repeated calculation result is found by index (retry-only, never dropped)", () => {
+    const w = (working: string | null) => ({ working });
+    expect([
+      ...repeatedResults([
+        w("84 ÷ 28 = 3 cm³/s"),
+        w(null),
+        w("45 ÷ 15 = 3 cm³/s"),
+        w("72 ÷ 30 = 2.4 cm³/s"),
+      ]),
+    ]).toEqual([2]);
+    expect(practiceFaults(item({}), { digest })).not.toContain(
+      "has the same calculation result as another item",
+    );
+  });
+  test("a kept item with a repeated result is logged, not dropped", () => {
+    const out = clone(STUB_PRACTICE_RATES);
+    const first = nth(out.core, 0);
+    out.core[1] = { ...first, question: `${first.question} Show your method.` };
+    const built = practiceBlocks(out, digest, () => "x");
+    expect(built.findings.map((f) => f.check)).toContain("sheet-gate:repeated-result");
   });
   test("copy check: same words, or 80% overlap with the same numbers", () => {
     const asked = [

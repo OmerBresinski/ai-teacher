@@ -22,6 +22,7 @@ import {
   practiceFaults,
   practiceSchemaFor,
   repeatedQuestions,
+  repeatedResults,
 } from "./sheet-items";
 
 /*
@@ -93,6 +94,17 @@ export function practiceBlocks(
     ];
     for (const f of faults) findings.push(drop(where, f));
     return faults.length === 0;
+  });
+  // v2: a repeated calculation result is retried once by the schema, never dropped; log what is left.
+  const sameResult = repeatedResults(all.map(([, it]) => it));
+  all.forEach(([where, _], n) => {
+    if (keep[n] && sameResult.has(n))
+      findings.push({
+        check: "sheet-gate:repeated-result",
+        severity: "warning",
+        target: { blockId: where },
+        message: `Kept ${where}: it has the same calculation result as another item.`,
+      });
   });
   const year = digest.lesson.yearGroup;
   const kept = keep.filter(Boolean).length;
