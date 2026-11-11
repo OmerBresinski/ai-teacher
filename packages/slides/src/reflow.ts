@@ -80,6 +80,7 @@ import type {
 import { isLayoutGroup, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import { contains, type Rect } from "./geometry";
 import { BASELINE, SPACE } from "./grid";
+import { mathsElement } from "./maths-text";
 import { OPTION, SAFE_BOTTOM, withSafety } from "./metrics";
 import { ladderStops, resolveFontSize, resolveTextStyle, STEPPABLE } from "./text-style";
 import { fontFloor, type TextRole } from "./themes";
@@ -117,6 +118,8 @@ export type MeasureInput = {
   inset: number;
   /** Vertical chrome inside the box. */
   chrome: number;
+  /** The box holds maths (`maths-text.ts` `mathsElement`): its fractions are found as maths. */
+  maths?: boolean;
 };
 
 /** Height in slide points the box needs, chrome included. */
@@ -350,6 +353,8 @@ export function textPartsOf(
   inset: number;
   chrome: number;
   autoHeight: boolean;
+  /** A maths box by name (`mathsElement`): the ruler finds its fractions as the renderer does. */
+  maths?: boolean;
 } | null {
   if (el.type === "text" || el.type === "gap-text") {
     const pad = el.style.padding ?? 0;
@@ -360,6 +365,7 @@ export function textPartsOf(
       inset: pad * 2,
       chrome: pad * 2,
       autoHeight: el.style.autoHeight !== false,
+      ...(el.type === "text" && mathsElement(el.name) ? { maths: true } : {}),
     };
   }
   if (el.type === "option") {
@@ -487,6 +493,7 @@ function layoutPass(slide: Slide, theme: Theme, measure: Measurer, sizes: Map<Id
       fontSize: sizeOf(theme, parts, sizes.get(slot.el.id)),
       inset: parts.inset,
       chrome: parts.chrome,
+      maths: parts.maths,
     });
     slot.h = Math.max(1, Math.round(measured));
   }

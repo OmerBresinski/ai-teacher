@@ -5,9 +5,9 @@
  * ranges; `@tj/editor`'s `serialize.ts` draws them, the headless ruler (`text-measure.ts`) measures
  * them, and the editor (Tiptap) still shows and edits `x/4`.
  *
- * A side of the fraction is one atom: a number (`4`, `0.5`, `3x`), one letter (`x`, with `²`/`³`)
- * or a bracket of maths (`(x + 2)`). Multi-letter words never match, so `and/or`, `km/h`, `A/Bs`
- * stay as they are. A slash with a slash, a dot-letter or a colon beside it is a date or an
+ * A side of the fraction is one atom: a number (`4`, `0.5`, `3x`), one letter (`x`, with `²`/`³`),
+ * a bracket of maths (`(x + 2)`, `(distance travelled)`) or one word (`distance`, `Mr`, maths text
+ * only, below). A slash with a slash, a dot-letter or a colon beside it is a date or an
  * address (`2/9/1666`, `example.com/3`, `https://…`) and never matches.
  *
  * A match is stacked only when its text is certainly maths, one of:
@@ -15,6 +15,15 @@
  * - "of" after it: `3/4 of 20`;
  * - the whole paragraph is maths tokens and the fraction has a letter: a worked row's `x/4` cell.
  * Otherwise it stays a slash: `24/7`, `50/50`, `A/B testing`, `9/11`, `speed in m/s`.
+ *
+ * Maths text (`{ maths: true }`: a text box whose job is maths, `maths-text.ts` `mathsElement`: a
+ * worked example's equation cells, the equation slide's formula and steps) also stacks what the
+ * rules above cannot vouch for: a bare `150/3` or `distance/time` in a worked row's right cell and
+ * a word formula, `speed = distance/time`, `n = m/Mr`. Never a pair of units (`km/h`, `g/cm³`,
+ * `J/kg`), a letter fraction after a number (`50 km/h`) or a prose pair (`and/or`, `true/false`).
+ * Anywhere else a word side never stacks, so `colour = red/blue` and `and/or` stay as they are. A
+ * longer word side takes brackets, which stack everywhere: `(distance travelled)/(time taken)`
+ * (NOTATION-PLAN ticket 1).
  *
  * Units stay inline (`5 m/s`, `60 km/h`, `g/cm³`): a textbook prints a compound unit with a slash
  * or a negative index, never stacked. A letter fraction straight after a number is a unit.
@@ -67,9 +76,11 @@ export type FractionRange = {
 
 const NUMBER = String.raw`\d+(?:\.\d+)?[a-zA-Z]?[²³]?`;
 const LETTER = "[a-zA-Z][²³]?";
+/** A word side of a word formula (`distance`, `Mr`): stacked only in maths text. */
+const WORD = "[a-zA-Z]{2,}[²³]?";
 /** A bracket of maths only: digits, single letters, operators, spaces, no nested bracket or slash. */
 const GROUP = String.raw`\((?:[\d.a-zA-Z²³+\-−×÷*^ ]){1,40}\)`;
-const ATOM = `(?:${GROUP}|${NUMBER}|${LETTER})`;
+const ATOM = `(?:${GROUP}|${NUMBER}|${WORD}|${LETTER})`;
 /**
  * Before the numerator: not a letter, digit, dot, slash, colon or the like (a word, a decimal, a
  * path). After the denominator: not a letter, digit, slash, and no dot or colon leading into more.
@@ -88,11 +99,25 @@ const isMathsParagraph = (text: string): boolean => {
   return words.length > 0 && words.every((w) => MATHS_TOKEN.test(w) && !/[a-zA-Z]{2,}/.test(w));
 };
 
+const isWord = (side: string): boolean => /^[a-zA-Z]{2,}[²³]?$/.test(side);
+/** Units: two of these either side of a slash are a compound unit (`km/h`, `g/cm³`), never stacked. */
+const UNIT = new Set(
+  "m s h g kg mg km cm mm dm m² m³ cm² cm³ dm³ mol l ml min hr N J kJ W kW kWh V A Pa kPa K C mph".split(
+    " ",
+  ),
+);
+/** Prose pairs written with a slash: never a word formula. */
+const PROSE_PAIR = new Set(
+  "and/or either/or yes/no true/false he/she his/her him/her s/he on/off in/out input/output pass/fail before/after male/female w/o n/a".split(
+    " ",
+  ),
+);
 /** The operator beside `text[i]` going `dir` (-1 left, +1 right), skipping spaces. */
 function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
   let i = from;
   let spaced = false;
-  while (i >= 0 && i < text.length && text[i] === " ") {
+  // A space or a no-break space (`maths-text.ts` glues an operator to its term with one).
+  while (i >= 0 && i < text.length && (text[i] === " " || text[i] === "\u00A0")) {
     i += dir;
     spaced = true;
   }
@@ -104,8 +129,11 @@ function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
   return false;
 }
 
+/** Where the text sits: `maths` when its box is maths (a worked equation cell, a formula). */
+export type FractionContext = { maths?: boolean };
+
 /** The fractions in `text` that are certainly maths, in order and not overlapping. */
-export function findFractions(text: string): FractionRange[] {
+export function findFractions(text: string, context: FractionContext = {}): FractionRange[] {
   if (!text.includes("/")) return [];
   const out: FractionRange[] = [];
   let whole: boolean | undefined;
@@ -127,7 +155,10 @@ export function findFractions(text: string): FractionRange[] {
       operatorBeside(text, end, 1) ||
       /^\s+of\s+[\p{N}a-zA-Z(]/u.test(text.slice(end)) ||
       (letters && wholeMaths());
-    if (maths) out.push({ start, slash, end });
+    if (maths && !isWord(num) && !isWord(den)) out.push({ start, slash, end });
+    else if (context.maths && !(UNIT.has(num) && UNIT.has(den))) {
+      if (!PROSE_PAIR.has(`${num}/${den}`.toLowerCase())) out.push({ start, slash, end });
+    }
   }
   return out;
 }

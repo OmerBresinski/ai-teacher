@@ -1285,6 +1285,7 @@ function textNeed(el: TextElement, slide: Slide, t: Theme): number {
       inset: parts.inset,
       chrome: parts.chrome,
       ...(parts.style ? { style: parts.style } : {}),
+      maths: parts.maths,
       ...(parts.role ? { role: parts.role } : {}),
     }),
   );

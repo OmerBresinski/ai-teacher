@@ -36,8 +36,10 @@ import {
   hasCoverFallback,
 } from "../cover-comps";
 import { uid } from "../factories";
+import { FRACTION_TALL_EM, findFractions } from "../fractions";
 import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
+import { EQUATION_NAMES, formulaText } from "../maths-text";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
@@ -595,6 +597,7 @@ function measure(
   w: number,
   weight?: number,
   lh?: number,
+  maths?: boolean,
 ): number {
   const size = c.s[role];
   const lines = countLines(
@@ -604,6 +607,7 @@ function measure(
     w,
     weight ?? weightOf(role, c.t),
     size,
+    maths,
   );
   return Math.ceil(lines * size * (lh ?? lhOf(c.t, role)));
 }
@@ -623,9 +627,11 @@ function text(
     lineHeight?: number;
     /** The size is the layout's gold size, drawn as given (`TextStyle.fixedSize`, ruling 21 A). */
     fixedSize?: boolean;
+    /** A maths box (`maths-text.ts` `mathsElement`): its fractions measured as drawn. */
+    maths?: boolean;
   } = {},
 ): TextElement {
-  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight);
+  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight, extra.maths);
   const el: TextElement = {
     id: uid(),
     type: "text",
@@ -1653,8 +1659,10 @@ function equationHero(c: Ctx, input: TemplateInput) {
     const el = text(c, input.lead, "lead", { x, y, w }, { weight: 700, name: "Lead" });
     y += el.h + 16;
   }
-  const formula = input.formula?.trim() ?? "";
-  const fh = measure(c, formula, "heading", inner);
+  // The formula and its steps set as maths: a true minus, a unit kept with its number, each
+  // operator kept with the term after it (NOTATION-PLAN ticket 2, `maths-text.ts`).
+  const formula = formulaText(input.formula?.trim() ?? "");
+  const fh = measure(c, formula, "heading", inner, undefined, undefined, true);
   box(c, { x, y, w, h: fh + 2 * G.inset }, wash(c.t), { name: "Formula panel" });
   text(
     c,
@@ -1662,8 +1670,9 @@ function equationHero(c: Ctx, input: TemplateInput) {
     "heading",
     { x: x + G.inset, y: y + G.inset, w: inner },
     {
-      name: "Formula",
+      name: EQUATION_NAMES.formula,
       color: c.t.colors.ink,
+      maths: true,
     },
   );
   const lines = Math.round(fh / (c.s.heading * LH.heading));
@@ -1671,7 +1680,19 @@ function equationHero(c: Ctx, input: TemplateInput) {
   if (!wordsFit(c, formula, "heading", inner, c.s.heading)) c.over.push("formula word too wide");
   y += fh + 2 * G.inset + 18;
   for (const p of input.points ?? []) {
-    const el = text(c, pointText(p), "body", { x: x + G.inset, y, w: inner }, { name: "Step" });
+    const step = formulaText(pointText(p));
+    const el = text(
+      c,
+      step,
+      "body",
+      { x: x + G.inset, y, w: inner },
+      { name: EQUATION_NAMES.step, maths: true },
+    );
+    // A step's stacked fraction is running text, set 1.6 em tall (`fractions.ts`): its line grows
+    // past the body leading, which the line count alone does not see.
+    if (findFractions(step, { maths: true }).length) {
+      el.h += Math.ceil(Math.max(0, FRACTION_TALL_EM - lhOf(c.t, "body")) * c.s.body);
+    }
     y += el.h + 10;
   }
   const used = Math.round(y - 10 - G.band.y);

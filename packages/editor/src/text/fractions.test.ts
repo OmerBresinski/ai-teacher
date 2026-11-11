@@ -56,6 +56,71 @@ describe("findFractions: anything not certainly maths stays a slash", () => {
   });
 });
 
+/** The fractions found in a maths box (a worked equation cell, the equation slide's formula). */
+const stackedMaths = (s: string) =>
+  findFractions(s, { maths: true }).map((f) => s.slice(f.start, f.end));
+
+describe("findFractions: a word side stacks only in a maths box (NOTATION-PLAN ticket 1)", () => {
+  test.each([
+    ["Use and/or in your answer"],
+    ["and/or"],
+    ["The answer = yes/no"],
+    ["colour = red/blue"],
+    ["speed = distance/time"],
+    ["density = mass/volume"],
+    ["Mark each one true/false"],
+    ["Input/output = data"],
+    ["speed = km/h"],
+    ["Density in g/cm³ = mass ÷ volume"],
+    ["Visit bbc.co.uk/bitesize = revision"],
+    ["https://example.com/speed = fast"],
+    ["distance/time"],
+    ["150/3"],
+    ["24/7"],
+  ])("%p outside a maths box stays a slash", (text) => {
+    expect(stacked(text)).toEqual([]);
+  });
+
+  test.each([
+    ["distance/time", ["distance/time"]],
+    ["150/3", ["150/3"]],
+    ["speed = distance/time", ["distance/time"]],
+    ["Speed = distance/time.", ["distance/time"]],
+    ["density = mass/volume", ["mass/volume"]],
+    ["pressure = force/area", ["force/area"]],
+    ["n = m/Mr", ["m/Mr"]],
+    ["efficiency = useful/total × 100", ["useful/total"]],
+    ["speed =\u00A0distance/time", ["distance/time"]],
+    ["x/4 + 3 = 8", ["x/4"]],
+    ["speed = (distance travelled)/(time taken)", ["(distance travelled)/(time taken)"]],
+  ])("%p in a maths box stacks %p", (text, want) => {
+    expect(stackedMaths(text)).toEqual(want);
+  });
+
+  test.each([
+    ["km/h"],
+    ["50 km/h"],
+    ["speed = 50 km/h"],
+    ["g/cm³"],
+    ["J/kg"],
+    ["and/or"],
+    ["true/false"],
+    ["On 2/9/1666"],
+    ["bbc.co.uk/bitesize"],
+  ])("%p in a maths box still stays a slash (unit, prose pair, date, address)", (text) => {
+    expect(stackedMaths(text)).toEqual([]);
+  });
+});
+
+describe("renderDocHTML in a maths box", () => {
+  test("a bare 150/3 stacks only when the box is maths; the plain render is unchanged", () => {
+    const d = docFromText("150/3");
+    expect(renderDocHTML(d)).toBe("<p>150/3</p>");
+    expect(renderDocHTML(d, { maths: true })).toContain('<span class="td-frac">');
+    expect(renderDocHTML(d)).toBe("<p>150/3</p>");
+  });
+});
+
 const p = (...content: unknown[]) => ({ type: "paragraph", content });
 const t = (text: string, marks?: unknown[]) => ({
   type: "text",

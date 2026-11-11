@@ -8,6 +8,8 @@ import {
 import { serializeDoc } from "./serialize";
 
 const cache = new WeakMap<RichDoc, string>();
+/** Maths boxes' renders (`maths`), kept apart: the same doc may be drawn in both. */
+const mathsCache = new WeakMap<RichDoc, string>();
 
 /**
  * Render a rich doc to HTML with no editor instance. Pure TypeScript (`./serialize`), so the
@@ -16,17 +18,19 @@ const cache = new WeakMap<RichDoc, string>();
  * A doc nested deeper than `RICH_DOC_MAX_DEPTH` (only possible for content stored before the
  * schema was closed, TEACH-277) takes the same fallback without entering the recursive serialiser.
  */
-export function renderDocHTML(doc: RichDoc): string {
-  const hit = cache.get(doc);
+export function renderDocHTML(doc: RichDoc, options: { maths?: boolean } = {}): string {
+  const maths = options.maths === true;
+  const store = maths ? mathsCache : cache;
+  const hit = store.get(doc);
   if (hit) return hit;
   let html = "";
   try {
     if (richDocDepth(doc) > RICH_DOC_MAX_DEPTH) throw new RangeError("rich doc too deep");
-    html = serializeDoc(doc, { fractions: true });
+    html = serializeDoc(doc, { fractions: true, maths });
   } catch {
     html = `<p>${escapeHtml(docToPlainText(doc))}</p>`;
   }
-  cache.set(doc, html);
+  store.set(doc, html);
   return html;
 }
 
