@@ -6,7 +6,7 @@
 
 import type { ExamOutput, PracticeOutput } from "../worksheet/sheet-items";
 
-/** Year 2 maths, halves and quarters; 10 minutes → 4 items (2 warm-up, 1 core, 1 challenge). */
+/** Year 2 maths, halves and quarters; 10 minutes → 6 items (2 warm-up, 3 core, 1 challenge; core floor 3). */
 export const STUB_PRACTICE_HALVES: PracticeOutput = {
   warmUp: [
     {
@@ -31,6 +31,20 @@ export const STUB_PRACTICE_HALVES: PracticeOutput = {
       question: "Share 24 counters equally into four groups. Write how many are in one group.",
       working: null,
       answer: "6 counters",
+    },
+    {
+      slides: [4],
+      builds: "new-context",
+      question: "Draw a square. Split it into four equal parts and shade one quarter.",
+      working: null,
+      answer: "A square in four equal parts, one part shaded",
+    },
+    {
+      slides: [6],
+      builds: "same-skill-new-numbers",
+      question: "Share 16 shells equally into two groups. Write how many are in each group.",
+      working: null,
+      answer: "8 shells",
     },
   ],
   challenge: {

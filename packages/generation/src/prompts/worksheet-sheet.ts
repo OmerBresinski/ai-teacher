@@ -107,12 +107,13 @@ export function digestBrief(digest: LessonDigest, options: { mistakes: boolean }
 
 export type PracticeCounts = { warmUp: number; core: number; total: number };
 
-/** D9: Years 1-2 4-6 items, Years 3-11 6-10; 10 minutes or less → low end, 20 or more → high. */
+/** D9: Years 1-2 4-6 items, Years 3-11 6-10, by minutes; core never below 3, so Years 1-2 run 6. */
 export function practiceCounts(yearGroup: string, practiceMinutes: number): PracticeCounts {
   const [low, high] = bandOf(yearGroup) === "y1-2" ? [4, 6] : [6, 10];
   const t = Math.min(1, Math.max(0, (practiceMinutes - 10) / 10));
-  const total = Math.round(low + t * (high - low));
-  return { warmUp: 2, core: total - 3, total };
+  // Lead, 11 Nov (v2 BUILDER §1): core is never below 3, so the mix and drawing rules can be met.
+  const core = Math.max(3, Math.round(low + t * (high - low)) - 3);
+  return { warmUp: 2, core, total: 2 + core + 1 };
 }
 
 const LEVEL_LINE = {

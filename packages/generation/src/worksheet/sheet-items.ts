@@ -174,6 +174,25 @@ export function repeatedQuestions(questions: readonly string[]): Set<number> {
   return out;
 }
 
+/** The result a calculation's working ends on ("= v"), or null when it has no working. */
+export function workingResult(working: string | null): number | null {
+  const v = working ? /=\s*(−?-?\d+(?:\.\d+)?)[^=]*$/.exec(working)?.[1] : undefined;
+  return v === undefined ? null : Number(v.replace("−", "-"));
+}
+
+/** Indices of items whose calculation result an earlier item already has (v2: retry-only). */
+export function repeatedResults(items: readonly { working: string | null }[]): Set<number> {
+  const seen = new Set<number>();
+  const out = new Set<number>();
+  items.forEach((it, i) => {
+    const v = workingResult(it.working);
+    if (v === null) return;
+    if (seen.has(v)) out.add(i);
+    seen.add(v);
+  });
+  return out;
+}
+
 /**
  * The Practice schema: exactly 2 warm-ups, core 1..7 (shape; the SHEET line's exact count is an
  * editorial rule), one challenge. With `soft`, the item rules are left out.
@@ -201,12 +220,17 @@ export function practiceSchemaFor(
         );
       }
       const repeats = repeatedQuestions(all.map(([, , it]) => it.question));
+      const sameResult = repeatedResults(all.map(([, , it]) => it));
       all.forEach(([key, i, it], n) => {
         const path = i === null ? [key] : [key, i];
         const label = i === null ? "The challenge" : `${key} item ${i + 1}`;
         for (const fault of practiceFaults(it, ctx))
           issues.addIssue(editorialIssue(`${label} ${fault}.`, path));
         if (repeats.has(n)) issues.addIssue(editorialIssue(`${label} repeats another item.`, path));
+        if (sameResult.has(n))
+          issues.addIssue(
+            editorialIssue(`${label} has the same calculation result as another item.`, path),
+          );
       });
     }) as z.ZodType<PracticeOutput>;
 }
