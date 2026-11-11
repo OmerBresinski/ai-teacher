@@ -5,7 +5,11 @@ import { RichText } from "../slide/elements/RichText";
 import { escapeHtml, isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, type FillGapBlock, matchingOrder, optionLetter } from "./answers";
 import { sheetSummary } from "./metrics";
+import { CRITERIA_HEADING, printableCriteria, sheetHead } from "./sheet-head";
 import { WordSearchView } from "./WordSearch";
+
+// Re-exported where they always lived; the rule itself is shared with the Word export.
+export { CRITERIA_HEADING, printableCriteria };
 
 /**
  * The sheet itself (TeachDeck `components/worksheet/BlockContent.tsx`): one static renderer per
@@ -347,7 +351,7 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
           <div className="ws-header-line" />
         </>
       ) : null}
-      <h1 className="ws-title">{header.title || worksheet.title}</h1>
+      <h1 className="ws-title">{sheetHead(worksheet).title}</h1>
       {header.subtitle !== undefined ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
@@ -377,17 +381,7 @@ export function CriteriaList({ criteria }: { criteria?: string[] }) {
   );
 }
 
-/**
- * The criteria that print. A blank line is the editor's (a line still to be typed into), not the
- * pupil's: a bare box under the heading says nothing, so it is dropped wherever the document came
- * from, the API included.
- */
-export const printableCriteria = (criteria?: string[]): string[] =>
-  (criteria ?? []).filter((text) => text.trim() !== "");
-
 const RAG_STEPS = ["Red", "Amber", "Green"] as const;
-
-export const CRITERIA_HEADING = "Tick what you can do now";
 
 /**
  * The self-assessment strip (research/02 decision 15): the success criteria under "Tick what you
