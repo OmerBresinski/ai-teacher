@@ -84,14 +84,18 @@ describe("worksheet recipes", () => {
     expect(recipeById("nope")).toBeUndefined();
   });
 
-  test("plan v2 T6: the three launch types are slides-only and not offered; Exit ticket is", () => {
+  test("plan v2 T7: Practice, Exam practice and Exit ticket are offered; the other two are not yet", () => {
     expect(WORKSHEET_RECIPES.filter((r) => r.slidesOnly).map((r) => r.id)).toEqual([
       "practice",
       "quick-quiz",
       "key-words",
     ]);
     expect(INSERTABLE_RECIPES).toHaveLength(9);
-    expect(OFFERED_RECIPES.map((r) => r.id)).toEqual(["exit-ticket"]);
+    expect(OFFERED_RECIPES.map((r) => r.id).sort()).toEqual([
+      "exam-style",
+      "exit-ticket",
+      "practice",
+    ]);
   });
 
   test("the catalogue is the domain's id list, in order, so the request schema and the job agree", () => {

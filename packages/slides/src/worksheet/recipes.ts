@@ -435,8 +435,8 @@ const reading: WorksheetRecipe = {
 
 const examStyle: WorksheetRecipe = {
   id: "exam-style",
-  name: "Exam style",
-  line: "Six questions with marks in brackets, on their own page.",
+  name: "Exam practice",
+  line: "GCSE-style questions with marks and a mark scheme (Years 10 and 11).",
   jobs: ["assess"],
   minutes: [30, 45],
   build: (facts) => {

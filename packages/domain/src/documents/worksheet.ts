@@ -126,13 +126,15 @@ export type RecipeId = z.infer<typeof RecipeIdSchema>;
 /**
  * The launch sheet types (worksheets plan v2 §2): built from the lesson's slides as they stand
  * (`lessonDigest`), saved once, finished or failed (D8), with no frame and no repair pass (D7).
- * `exit-ticket` is the old id, rebuilt from the exit-ticket slide.
+ * `exit-ticket` is the old id, rebuilt from the exit-ticket slide; `exam-style` is the old id,
+ * written new for Years 10-11 as Exam practice (T7).
  */
 export const SLIDE_SHEET_RECIPE_IDS = [
   "practice",
   "quick-quiz",
   "key-words",
   "exit-ticket",
+  "exam-style",
 ] as const;
 export type SlideSheetRecipeId = (typeof SLIDE_SHEET_RECIPE_IDS)[number];
 
@@ -144,10 +146,19 @@ export function isSlideSheetRecipe(id: string): id is SlideSheetRecipeId {
  * The types a teacher can ask for today, in picker order. Only Exit ticket until Practice (T7),
  * Quick quiz (T8) and Key words (T9) land; the old seven are hidden but still parse.
  */
-export const OFFERED_RECIPE_IDS: readonly SlideSheetRecipeId[] = ["exit-ticket"];
+export const OFFERED_RECIPE_IDS: readonly SlideSheetRecipeId[] = [
+  "practice",
+  "exam-style",
+  "exit-ticket",
+];
 
-/** What `"auto"` (and the retired default, `knowledge-check`) means today: Practice from T7. */
-export const DEFAULT_SHEET_RECIPE_ID: SlideSheetRecipeId = "exit-ticket";
+/** What `"auto"` (and the retired default, `knowledge-check`) means: Practice (T7). */
+export const DEFAULT_SHEET_RECIPE_ID: SlideSheetRecipeId = "practice";
+
+/** Exam practice is offered to Years 10 and 11 only (plan v2 §2). */
+export function offeredForYear(type: SlideSheetRecipeId, year: number | undefined): boolean {
+  return type !== "exam-style" || year === 10 || year === 11;
+}
 
 /**
  * The offered type a request names, `"auto"` and `knowledge-check` mapped to the default, or
