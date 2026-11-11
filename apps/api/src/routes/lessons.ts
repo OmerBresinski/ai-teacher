@@ -84,12 +84,14 @@ import {
   type Lesson,
   lessonFromBrief,
   OFFERED_RECIPE_IDS,
+  offeredForYear,
   offeredRecipeFor,
   PlanLessonSchema,
   RequestWorksheetSchema,
   type SourceRef,
   WORKSHEET_TYPE_UNAVAILABLE_MESSAGE,
   type Worksheet,
+  yearNumberOf,
 } from "@tj/domain/documents";
 import { cancel, enqueue } from "@tj/jobs";
 import { defaultPracticeMinutes, isRecipeId, newWorksheet, recipeById } from "@tj/slides";
@@ -281,7 +283,8 @@ export function offeredSheetTypes(
 ): { type: string; name: string; available: boolean; reason?: string }[] {
   const written = slidesWritten(lesson);
   const availability = written ? availableTypes(lessonDigest(lesson)) : [];
-  return OFFERED_RECIPE_IDS.map((type) => {
+  const year = yearNumberOf(lesson.yearGroup);
+  return OFFERED_RECIPE_IDS.filter((type) => offeredForYear(type, year)).map((type) => {
     const name = recipeById(type)?.name ?? type;
     if (!written) {
       return { type, name, available: false, reason: WORKSHEET_SLIDES_PENDING_MESSAGE };
@@ -869,8 +872,8 @@ export function lessonRoutes(
           if (input.recipeId !== "auto" && !isRecipeId(input.recipeId)) {
             throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
           }
-          // Plan v2 T6: `auto` (and the retired `knowledge-check`) is Exit ticket until Practice
-          // lands (T7); a known type that is not offered yet is refused before any lookup.
+          // Plan v2 T7: `auto` (and the retired `knowledge-check`) is Practice; a known type that is
+          // not offered yet is refused before any lookup.
           const offered = offeredRecipeFor(input.recipeId);
           if (offered === null) {
             throw new HTTPException(422, { message: WORKSHEET_TYPE_UNAVAILABLE_MESSAGE });
@@ -907,8 +910,11 @@ export function lessonRoutes(
             });
           }
           // Greyed for this lesson (too little on its slides): refused with the greyed reason.
+          // Not listed for this lesson at all (Exam practice outside Years 10-11): unavailable.
           const greyed = offeredSheetTypes(lesson).find((t) => t.type === offered);
-          if (greyed?.available === false) {
+          if (!greyed)
+            throw new HTTPException(422, { message: WORKSHEET_TYPE_UNAVAILABLE_MESSAGE });
+          if (greyed.available === false) {
             throw new HTTPException(422, { message: greyed.reason });
           }
           const recipe = recipeById(offered);

@@ -333,8 +333,8 @@ describe("POST /lessons/:id/worksheet and GET /lessons/:id/worksheets guards and
     });
   });
 
-  test.each(["cloze", "practice", "word-search", "exam-style"])(
-    "plan v2 T6: %s is a known type not offered yet, 422 before anything is read",
+  test.each(["cloze", "quick-quiz", "word-search", "key-words"])(
+    "plan v2 T7: %s is a known type not offered yet, 422 before anything is read",
     async (recipeId) => {
       const res = await testApp().request(WORKSHEET_PATH, post({ ...validWorksheet, recipeId }));
       expect(res.status).toBe(422);
@@ -345,8 +345,8 @@ describe("POST /lessons/:id/worksheet and GET /lessons/:id/worksheets guards and
     },
   );
 
-  test.each(["auto", "exit-ticket", "knowledge-check"])(
-    "plan v2 T6: %s passes the type check (then 503 with no job runtime)",
+  test.each(["auto", "practice", "exam-style", "exit-ticket", "knowledge-check"])(
+    "plan v2 T7: %s passes the type check (then 503 with no job runtime)",
     async (recipeId) => {
       const res = await testApp().request(WORKSHEET_PATH, post({ ...validWorksheet, recipeId }));
       expect(res.status).toBe(503);

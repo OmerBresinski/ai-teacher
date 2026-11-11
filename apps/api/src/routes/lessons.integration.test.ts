@@ -1066,8 +1066,8 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       return { lessonId: row.id as LessonId, row };
     }
 
-    // Plan v2 T6: "auto" is Exit ticket until Practice lands (T7).
-    const suggested = resolveRecipe("exit-ticket");
+    // Plan v2 T7: "auto" is Practice.
+    const suggested = resolveRecipe("practice");
 
     test("202 { worksheetId, jobId }: a locked worksheet row with lesson_id, the resolved payload, the lesson untouched; the job clears the lock", async () => {
       const { lessonId, row: lessonBefore } = await seedConfirmed();
@@ -1218,10 +1218,10 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       });
     });
 
-    test("422 for a type not offered yet (cloze, practice); nothing written", async () => {
+    test("422 for a type not offered yet (cloze, quick-quiz); nothing written", async () => {
       const { lessonId } = await seedConfirmed();
       // Three requests per test is the limiter's allowance here; the rest are in lessons.test.ts.
-      for (const recipeId of ["cloze", "practice"]) {
+      for (const recipeId of ["cloze", "quick-quiz"]) {
         const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
           expectedRevision: 1,
           recipeId,
@@ -1234,7 +1234,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(0);
     });
 
-    test("knowledge-check (the retired default) maps to Exit ticket, as auto does", async () => {
+    test("knowledge-check (the retired default) maps to Practice, as auto does", async () => {
       const { lessonId } = await seedConfirmed();
       const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
         expectedRevision: 1,
@@ -1243,15 +1243,18 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       expect(res.status).toBe(202);
       const { jobId } = (await res.json()) as Accepted;
       expect((await jobData("lesson.worksheet", jobId))?.payload).toMatchObject({
-        recipeId: "exit-ticket",
-        practiceMinutes: 5,
+        recipeId: "practice",
+        practiceMinutes: defaultPracticeMinutes(suggested),
       });
     });
 
     test("greyed: a lesson with no exit-ticket slide is 422 with the reason; GET worksheet-types says why", async () => {
       const noExit = fixtureLesson("rivers").slides.filter((s) => s.kind !== "exit-ticket");
       const { lessonId } = await seedConfirmed({ slides: noExit });
-      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
+        expectedRevision: 1,
+        recipeId: "exit-ticket",
+      });
       expect(res.status).toBe(422);
       expect(await errorOf(res)).toMatchObject({
         message: "This lesson has no exit ticket to put on a sheet.",
@@ -1260,6 +1263,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       const greyed = await (await getJson(wsA, `/lessons/${lessonId}/worksheet-types`)).json();
       expect(greyed).toEqual({
         types: [
+          { type: "practice", name: "Practice", available: true },
           {
             type: "exit-ticket",
             name: "Exit ticket",
@@ -1271,7 +1275,10 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       const ok = await seedConfirmed();
       const offered = await (await getJson(wsA, `/lessons/${ok.lessonId}/worksheet-types`)).json();
       expect(offered).toEqual({
-        types: [{ type: "exit-ticket", name: "Exit ticket", available: true }],
+        types: [
+          { type: "practice", name: "Practice", available: true },
+          { type: "exit-ticket", name: "Exit ticket", available: true },
+        ],
       });
       expect((await getJson(wsB, `/lessons/${ok.lessonId}/worksheet-types`)).status).toBe(404);
     });
