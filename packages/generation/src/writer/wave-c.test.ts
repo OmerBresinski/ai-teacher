@@ -316,6 +316,8 @@ describe("every picture-text slide takes the gold design (layout audit rec. 1, 1
       index: 3,
       plan: { slides: [] },
       visual,
+      // A gold-looks pack (`PilotPack.goldFits`): the live pack keeps the old routing (below).
+      goldLooks: true,
     } as unknown as Parameters<typeof materialise>[1];
     return ctx;
   };
@@ -328,6 +330,25 @@ describe("every picture-text slide takes the gold design (layout audit rec. 1, 1
       h: number;
     }[];
   const named = (e: ReturnType<typeof els>, n: string) => e.filter((x) => x.name === n);
+
+  test("the live pack (no goldLooks): no cards and no icon keeps the old layout; a failed picture is explain", async () => {
+    const { toInput } = await import("./materialise");
+    const live = (v: (k: string) => unknown) =>
+      ({ ...(at(v) as object), goldLooks: undefined }) as unknown as Parameters<typeof toInput>[1];
+    const input = toInput(plain, live(photo)) as unknown as {
+      template: string;
+      pictureText?: unknown;
+    };
+    expect(input.template).toBe("picture-text");
+    expect(input.pictureText).toBeUndefined();
+    const failed = toInput(
+      plain,
+      live(() => ({ status: "failed" })),
+    ) as unknown as {
+      template: string;
+    };
+    expect(failed.template).toBe("explain");
+  });
 
   test("no cards and no icon: pictureText is set and the photo is the field, bleeding off the corner", async () => {
     const { toInput } = await import("./materialise");

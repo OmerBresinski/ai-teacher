@@ -643,10 +643,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const chat: WriterServices["chat"] = (r) =>
     run.services.chat({ ...r, system: localise(r.system), user: localise(r.user) });
   const themeId = brief.teacherTheme ?? brief.theme;
-  const base: { brief: Brief; theme: Theme; stage: Brief["keyStage"] } = {
+  const base: { brief: Brief; theme: Theme; stage: Brief["keyStage"]; goldLooks?: boolean } = {
     brief,
     theme: getTheme(themeId, brief.keyStage),
     stage: brief.keyStage,
+    // A pack whose limits are measured on the gold looks draws its slides on them (materialise).
+    ...(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldFits
+      ? { goldLooks: true }
+      : {}),
   };
   const plan: Plan = {
     slides: [],
