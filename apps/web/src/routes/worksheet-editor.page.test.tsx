@@ -115,6 +115,32 @@ describe("WorksheetEditorPage", () => {
     }
   });
 
+  it("an unfinished sheet shows the bar; Delete soft-deletes it and goes back (WS1)", async () => {
+    const row = fakeApi.rows.get("fraction-practice");
+    if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
+    row.body = {
+      ...row.body,
+      generation: {
+        jobId: "job-1",
+        stage: "framed",
+        startedAt: "2026-09-06T10:01:00.000Z",
+        promptVersions: {},
+        usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+        findings: [],
+        recipeId: "knowledge-check",
+        practiceMinutes: 10,
+      },
+    };
+    renderPage();
+    await findTopBarTitle();
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveTextContent("This worksheet didn’t finish.");
+    expect(screen.getByRole("button", { name: "Print" })).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(within(bar).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: "/" }));
+    expect(fakeApi.rows.get("fraction-practice")?.deletedAt).not.toBeNull();
+  });
+
   it("row 10: a lesson id on the worksheet route shows WrongKindPage with a link to the lesson", async () => {
     worksheetId = "demo-water-cycle";
     renderPage();

@@ -295,3 +295,28 @@ describe("documentKind", () => {
     expect(DocumentKindSchema.options).toEqual(["lesson", "worksheet", "series"]);
   });
 });
+
+describe("worksheet cover: unfinished (WS1)", () => {
+  test("carries isUnfinishedWorksheet of the whole sheet, past the cover's own blocks", () => {
+    const sheet = worksheet();
+    expect(worksheetCoverOf(sheet).unfinished).toBeUndefined();
+    const filler = Array.from({ length: COVER_BLOCKS + 2 }, (_, i) => ({
+      id: `p${i}`,
+      type: "paragraph" as const,
+      doc: text("Read the passage."),
+    }));
+    const late = {
+      id: "ph",
+      type: "paragraph" as const,
+      doc: text("Generation writes this part: x"),
+    };
+    const unfinished = { ...sheet, blocks: [...filler, late] };
+    const cover = worksheetCoverOf(unfinished);
+    expect(cover.blocks.some((b) => b.id === "ph")).toBe(false);
+    expect(cover.unfinished).toBe(true);
+    // It survives the list response's parse.
+    const summary = summarise(unfinished);
+    const parsed = DocumentSummarySchema.parse(JSON.parse(JSON.stringify(summary)));
+    expect(isWorksheetCover(parsed.cover) && parsed.cover.unfinished).toBe(true);
+  });
+});

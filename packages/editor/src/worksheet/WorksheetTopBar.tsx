@@ -29,8 +29,11 @@ export type WorksheetTopBarProps = {
   onPrint: () => void;
   /** Where the export menu sits once it exists (E1 / E3). */
   exportSlot?: ReactNode;
-  /** The sheet has a block that will not fit a page: Print is off until it is fixed. */
-  printBlocked: boolean;
+  /**
+   * Print is off until it is fixed: `true` when a block will not fit a page, or the reason in
+   * words when there is another one (an unfinished sheet).
+   */
+  printBlocked: boolean | string;
   autosave: Autosave<Worksheet>;
 };
 
@@ -97,7 +100,7 @@ export function WorksheetTopBar({
           </Button>
         </Tooltip>
         {printBlocked ? (
-          <Tooltip label={PRINT_BLOCKED}>
+          <Tooltip label={typeof printBlocked === "string" ? printBlocked : PRINT_BLOCKED}>
             <Button variant="primary" size="sm" aria-disabled="true" className="opacity-50">
               <Printer aria-hidden size={16} strokeWidth={1.5} />
               Print

@@ -847,3 +847,64 @@ describe("block guides (TEACH-194)", () => {
     expect(container.querySelectorAll(".ws-column .ws-warning")).toHaveLength(1);
   });
 });
+
+/* WS1: an unfinished sheet (`isUnfinishedWorksheet`) never looks finished in the editor. */
+describe("unfinished worksheet (WS1)", () => {
+  const placeholderSheet = (): Worksheet => {
+    const sheet = starterWorksheet("Half made");
+    sheet.blocks = numberQuestions([
+      ...sheet.blocks,
+      {
+        id: uid(),
+        type: "question",
+        doc: docFromText("Write a question on the topic"),
+        answerLines: 2,
+      },
+    ]);
+    return sheet;
+  };
+
+  test("shows the bar with its reason and Delete, and Print is off with the reason", () => {
+    const onDelete = mock(() => {});
+    const { onPrint } = renderWorksheetEditor(placeholderSheet(), { onDelete });
+    const bar = screen.getByRole("status");
+    expect(bar).toHaveTextContent("This worksheet didn’t finish.");
+    expect(bar).toHaveTextContent("Some questions are still placeholders.");
+    fireEvent.click(within(bar).getByRole("button", { name: "Delete" }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+
+    const print = screen.getByRole("button", { name: "Print" });
+    expect(print).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(print);
+    expect(onPrint).not.toHaveBeenCalled();
+  });
+
+  test("a job that never completed says so", () => {
+    const sheet: Worksheet = {
+      ...starterWorksheet("Stopped"),
+      generation: {
+        jobId: "job-1",
+        stage: "framed",
+        startedAt: "2026-09-06T10:01:00.000Z",
+        promptVersions: {},
+        usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+        findings: [],
+        recipeId: "knowledge-check",
+        practiceMinutes: 10,
+      },
+    };
+    renderWorksheetEditor(sheet);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "It stopped before every question was written.",
+    );
+  });
+
+  test("a finished hand-made sheet has no bar and prints", async () => {
+    const { onPrint } = renderWorksheetEditor();
+    expect(document.querySelector("[data-unfinished-bar]")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Print" }));
+    });
+    await waitFor(() => expect(onPrint).toHaveBeenCalledTimes(1));
+  });
+});

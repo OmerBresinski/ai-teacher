@@ -25,6 +25,7 @@ import {
   requestLessonWorksheet,
   subscribeWorksheetHandoff,
   worksheetHandoffSnapshot,
+  worksheetStatusLabel,
 } from "@/lib/lesson-worksheets";
 import { sessionMutation } from "@/lib/session-boundary";
 
@@ -156,13 +157,7 @@ export function LessonWorksheets({
               <Button variant="link" onClick={() => onOpenWorksheet(item.id)}>
                 {item.title}
               </Button>
-              <span className="text-muted-foreground text-sm">
-                {item.generatingJobId
-                  ? "Generating…"
-                  : item.generation?.completedAt
-                    ? "Ready"
-                    : "Incomplete"}
-              </span>
+              <span className="text-muted-foreground text-sm">{worksheetStatusLabel(item)}</span>
             </div>
           ))}
           {intent.error ? (

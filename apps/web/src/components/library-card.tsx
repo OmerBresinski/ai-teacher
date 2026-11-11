@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { DocumentSummary } from "@tj/domain/documents";
+import { type DocumentSummary, isWorksheetCover } from "@tj/domain/documents";
 import { minutesForMarks } from "@tj/editor/worksheet-metrics";
 import {
   Button,
@@ -15,6 +15,7 @@ import {
   IconButton,
   ListSurfaceCell,
   ListSurfaceRow,
+  StatusPill,
   Tooltip,
   toast,
   useInlineRename,
@@ -147,6 +148,25 @@ export function worksheetEffort(doc: Pick<DocumentSummary, "kind" | "marks">): s
   return `${minutesForMarks(doc.marks ?? 0)} min`;
 }
 
+/**
+ * A worksheet the job left half made, or one still carrying placeholder questions
+ * (`isUnfinishedWorksheet`, carried on the summary's cover as `unfinished`).
+ */
+export function isUnfinishedCard(doc: Pick<DocumentSummary, "kind" | "cover">): boolean {
+  return doc.kind === "worksheet" && isWorksheetCover(doc.cover) && doc.cover.unfinished === true;
+}
+
+/** The label beside an unfinished sheet's meta line, in the grid and in the list. */
+export const UNFINISHED_LABEL = "Unfinished";
+
+function UnfinishedPill() {
+  return (
+    <StatusPill tone="warning" quiet className="relative z-2">
+      {UNFINISHED_LABEL}
+    </StatusPill>
+  );
+}
+
 /** The kind as a 16px glyph in the meta line, with the word in a tooltip (TeachDeck `KindIcon`). */
 function KindIcon({ kind }: { kind: DocumentSummary["kind"] }) {
   const Glyph = kind === "lesson" ? Presentation : FileText;
@@ -187,10 +207,13 @@ export const LibraryCard = memo(function LibraryCard({
   });
   const subject = yearAndSubject(doc);
   const effort = worksheetEffort(doc);
-  const primaryLabel = doc.kind === "lesson" ? "Present" : "Print";
+  // An unfinished sheet cannot print (its print route says why), so its card opens it instead.
+  const unfinished = isUnfinishedCard(doc);
+  const primaryLabel = doc.kind === "lesson" ? "Present" : unfinished ? "Open" : "Print";
 
   function primaryAction(): void {
     if (doc.kind === "lesson") onAction("present", doc);
+    else if (unfinished) onAction("open", doc);
     else openWorksheetPrint(doc.id);
   }
 
@@ -236,7 +259,7 @@ export const LibraryCard = memo(function LibraryCard({
         </ListSurfaceCell>
         <ListSurfaceCell className="w-32 truncate text-meta text-ink-3">{subject}</ListSurfaceCell>
         <ListSurfaceCell className="w-[152px] text-meta text-ink-3">
-          {effort ?? sizeOf(doc)}
+          {unfinished ? <UnfinishedPill /> : (effort ?? sizeOf(doc))}
         </ListSurfaceCell>
         <ListSurfaceCell className="w-24 text-meta text-ink-3">
           <EditedTime updatedAt={doc.updatedAt} />
@@ -274,6 +297,7 @@ export const LibraryCard = memo(function LibraryCard({
   ) : (
     <>
       <KindIcon kind={doc.kind} />
+      {unfinished ? <UnfinishedPill /> : null}
       {subject ? <span className="min-w-0 truncate">{subject}</span> : null}
       {subject ? <span aria-hidden>·</span> : null}
       {effort ? <span className="shrink-0">{effort}</span> : null}
@@ -309,6 +333,8 @@ export const LibraryCard = memo(function LibraryCard({
               >
                 {doc.kind === "lesson" ? (
                   <Play aria-hidden size={16} />
+                ) : unfinished ? (
+                  <SquareArrowOutUpRight aria-hidden size={16} />
                 ) : (
                   <Printer aria-hidden size={16} />
                 )}

@@ -2,6 +2,8 @@ import type { Id, LessonFacts, RecipeId, WorksheetBlock } from "@tj/domain/docum
 import {
   BLOCK_GUIDES,
   FILL_GAP_BANK_INSTRUCTION,
+  PLACEHOLDER_PREFIX,
+  PLACEHOLDER_QUESTION,
   WORD_SEARCH_MAX_SIZE,
   WORKSHEET_RECIPE_IDS,
 } from "@tj/domain/documents";
@@ -51,8 +53,11 @@ export type WorksheetRecipe = {
   build: (facts?: LessonFacts) => WorksheetBlock[];
 };
 
-/** The copy on a question the teacher has to write. */
-export const PLACEHOLDER_QUESTION = "Write a question on the topic";
+/*
+ * The placeholder copy and `isPlaceholder` moved to `@tj/domain` (`worksheet-status.ts`) so
+ * `isUnfinishedWorksheet` reads the same strings; re-exported here under their old names.
+ */
+export { isPlaceholder, PLACEHOLDER_PREFIX, PLACEHOLDER_QUESTION } from "@tj/domain/documents";
 
 /** Recorded on every block a recipe derives from facts. */
 export const RECIPE_PROMPT_VERSION = "worksheet-recipes.v1";
@@ -78,19 +83,9 @@ const instructions = (text: string, refs?: string[]): WorksheetBlock =>
 const paragraph = (text: string, refs?: string[]): WorksheetBlock =>
   cite({ id: uid(), type: "paragraph", doc: docFromText(text) }, refs);
 
-/** The prefix on the paragraph a recipe leaves for the model; `isPlaceholder` finds it again. */
-export const PLACEHOLDER_PREFIX = "Generation writes this part: ";
-
 /** A paragraph that says what the model will write in its place. */
 const placeholder = (text: string, refs?: string[]): WorksheetBlock =>
   paragraph(`${PLACEHOLDER_PREFIX}${text}`, refs);
-
-/** True for the paragraph a recipe left for the model to replace. */
-export function isPlaceholder(block: WorksheetBlock): boolean {
-  if (block.type !== "paragraph") return false;
-  const first = block.doc.content?.[0]?.content?.[0];
-  return typeof first?.text === "string" && first.text.startsWith(PLACEHOLDER_PREFIX);
-}
 
 function question(text: string, marks: number, answer?: string, refs?: string[]): Question {
   const block: Question = {

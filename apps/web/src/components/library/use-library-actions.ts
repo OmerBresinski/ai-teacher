@@ -16,7 +16,7 @@ type DocumentAction = Parameters<LibraryCardProps["onAction"]>[0];
 type SeriesAction = Parameters<SeriesCardProps["onAction"]>[0];
 
 /** Toast once the store confirms, so Undo never offers to restore something still being deleted. */
-function undoToast(title: string, restore: () => void): () => void {
+export function undoToast(title: string, restore: () => void): () => void {
   return () =>
     toast(`Deleted “${title}”`, {
       duration: UNDO_MS,

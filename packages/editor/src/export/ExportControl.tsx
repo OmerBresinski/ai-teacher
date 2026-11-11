@@ -1,5 +1,5 @@
 import type { Lesson, Worksheet } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import { isUnfinishedWorksheet, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
 import {
   Button,
   cn,
@@ -27,6 +27,7 @@ import { prepareDiagramFonts } from "../images/diagram-fonts";
 import { Segmented } from "../kit/Segmented";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
+import { UNFINISHED_PRINT_BLOCKED } from "../worksheet/unfinished-copy";
 import { downloadBlob } from "./download";
 import { downloadLessonJSON, downloadWorksheetJSON } from "./json";
 import { waitForSlidePaint } from "./paint";
@@ -171,7 +172,11 @@ export function ExportControl({
   // PDF and PNG read the range; PowerPoint and JSON take the whole document.
   const rangeApplies = !!lesson && (format === "pdf" || format === "png");
   const empty = rangeApplies && range.ok && range.indices.length === 0;
-  const blocked = (rangeApplies && !!rangeError) || empty || !!run;
+  // An unfinished sheet (`isUnfinishedWorksheet`) prints placeholders and "No answer recorded":
+  // PDF and Word stay off and say why. JSON is the stored document, so it stays on.
+  const unfinishedBlocked =
+    worksheet && (format === "pdf" || format === "docx") && isUnfinishedWorksheet(document);
+  const blocked = (rangeApplies && !!rangeError) || empty || !!run || unfinishedBlocked;
 
   const close = () => {
     setOpen(false);
@@ -396,10 +401,13 @@ export function ExportControl({
                 )}
               </>
             ) : (
-              <Note>
-                The sheet prints at its saved page size. The answer key follows the worksheet's own
-                setting.
-              </Note>
+              <>
+                <Note>
+                  The sheet prints at its saved page size. The answer key follows the worksheet's
+                  own setting.
+                </Note>
+                {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
+              </>
             )}
           </TabsContent>
           {lesson ? (
@@ -454,6 +462,7 @@ export function ExportControl({
                 Every question, box and line as real Word text and tables, in Calibri. The answer
                 key goes on a page of its own at the end.
               </Note>
+              {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
             </TabsContent>
           ) : null}
           <TabsContent value="json" className="pt-2">

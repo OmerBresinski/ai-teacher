@@ -175,3 +175,16 @@ export async function requestLessonWorksheet(
   assertCurrentSession(client);
   return result;
 }
+
+/**
+ * The status beside a sheet in the dialog. "Incomplete" is `isUnfinishedWorksheet`, which the api
+ * evaluates on the whole body (`unfinished`), so a sheet that finished with placeholder questions
+ * or a missing answer is not called Ready.
+ */
+export function worksheetStatusLabel(item: {
+  generatingJobId?: string | null;
+  unfinished: boolean;
+}): "Generating…" | "Ready" | "Incomplete" {
+  if (item.generatingJobId) return "Generating…";
+  return item.unfinished ? "Incomplete" : "Ready";
+}

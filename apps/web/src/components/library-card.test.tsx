@@ -136,6 +136,42 @@ describe("LibraryCard", () => {
     expect(lessonCard.container).toHaveTextContent("7 slides");
   });
 
+  it("labels an unfinished worksheet Unfinished and opens it instead of printing (WS1)", () => {
+    const cover = {
+      kind: "worksheet" as const,
+      header: { showName: true, showDate: true, showClass: false },
+      blocks: [],
+      pageSize: "A4" as const,
+    };
+    const base = { ...lesson, id: "w1", kind: "worksheet" as const, itemCount: 3, marks: 2 };
+    const unfinished: DocumentSummary = { ...base, cover: { ...cover, unfinished: true } };
+
+    const grid = renderCard(unfinished);
+    expect(screen.getByText("Unfinished")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Print" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(grid.onAction).toHaveBeenCalledWith("open", unfinished);
+    cleanup();
+
+    render(
+      <TooltipProvider>
+        <table>
+          <tbody>
+            <LibraryCard doc={unfinished} view="list" onAction={mock()} onRename={mock()} />
+          </tbody>
+        </table>
+      </TooltipProvider>,
+    );
+    expect(screen.getByText("Unfinished")).toBeVisible();
+    expect(screen.queryByText("5 min")).toBeNull();
+    cleanup();
+
+    // A finished sheet has no label and keeps Print.
+    renderCard({ ...base, cover });
+    expect(screen.queryByText("Unfinished")).toBeNull();
+    expect(screen.getByRole("button", { name: "Print" })).toBeVisible();
+  });
+
   it("handles inline rename lifecycle in grid and list views", async () => {
     const { container, onRename } = renderCard();
     const article = container.querySelector("article");

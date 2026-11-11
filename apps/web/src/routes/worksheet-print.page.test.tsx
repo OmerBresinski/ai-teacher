@@ -118,6 +118,47 @@ describe("WorksheetPrintPage", () => {
     await settle();
   });
 
+  it("an unfinished sheet never prints, even with ?auto=1, and says why (WS1)", async () => {
+    const print = mock(() => {});
+    const original = window.print;
+    window.print = print;
+    try {
+      const row = fakeApi.rows.get("fraction-practice");
+      if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
+      row.body = {
+        ...row.body,
+        blocks: [
+          ...row.body.blocks,
+          {
+            id: "ph",
+            type: "paragraph",
+            doc: {
+              type: "doc",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Generation writes this part: questions" }],
+                },
+              ],
+            },
+          },
+        ],
+      };
+      search = { auto: "1" };
+      const { container } = renderPage();
+      expect(await screen.findByText("This worksheet didn’t finish.")).toBeVisible();
+      expect(
+        screen.getByText("This worksheet isn’t finished, so it can’t be printed yet."),
+      ).toBeVisible();
+      expect(screen.getByText("Open the worksheet")).toHaveAttribute("to", "/w/$worksheetId");
+      expect(container.querySelectorAll(".ws-page")).toHaveLength(0);
+      await settle();
+      expect(print).not.toHaveBeenCalled();
+    } finally {
+      window.print = original;
+    }
+  });
+
   it("a lesson id on the print route shows WrongKindPage rather than crashing", async () => {
     worksheetId = "demo-water-cycle";
     const { container } = renderPage();

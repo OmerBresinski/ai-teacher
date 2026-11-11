@@ -80,6 +80,7 @@ import {
 import {
   CreateLessonSchema,
   GenerateLessonSchema,
+  isUnfinishedWorksheet,
   type Lesson,
   lessonFromBrief,
   PlanLessonSchema,
@@ -971,9 +972,12 @@ export function lessonRoutes(
             throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
           }
           const rows = await listWorksheetsOfLesson(ws, lessonId);
+          // `unfinished` is read from the whole body, so a row whose promoted cover predates the
+          // flag is still labelled right in the lesson's Worksheet dialog.
           const items = rows.map(({ body, ...summary }) => ({
             ...toSummaryJson(summary),
             generation: (body as Worksheet).generation,
+            unfinished: isUnfinishedWorksheet(body as Worksheet),
           }));
           return c.json({ items });
         },

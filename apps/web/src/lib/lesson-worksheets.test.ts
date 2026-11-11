@@ -8,6 +8,7 @@ import {
   persistWorksheetHandoff,
   rememberWorksheetIntent,
   subscribeWorksheetHandoff,
+  worksheetStatusLabel,
 } from "./lesson-worksheets";
 
 function client(user = "teacher", workspace = "class") {
@@ -64,5 +65,13 @@ describe("worksheet intent isolation and reload", () => {
       false,
     );
     expect(canRequestWorksheet({ ...lesson, facts: undefined }, intent)).toBe(false);
+  });
+});
+
+describe("worksheetStatusLabel (WS1)", () => {
+  it("is Incomplete whenever the api says isUnfinishedWorksheet, Ready otherwise", () => {
+    expect(worksheetStatusLabel({ generatingJobId: "job", unfinished: true })).toBe("Generating…");
+    expect(worksheetStatusLabel({ generatingJobId: null, unfinished: true })).toBe("Incomplete");
+    expect(worksheetStatusLabel({ generatingJobId: null, unfinished: false })).toBe("Ready");
   });
 });

@@ -10,6 +10,7 @@ import {
   type WorksheetHeader,
   WorksheetSchema,
 } from "./worksheet";
+import { isUnfinishedWorksheet } from "./worksheet-status";
 
 /*
  * Document summary (ADR 0024 §3; glossary "Document summary"). The list-endpoint shape of a
@@ -55,6 +56,13 @@ export type WorksheetCover = {
   pageSize: PageSize;
   /** Mirrors `Worksheet.showMarks` so the miniature prints what the sheet prints. */
   showMarks?: boolean;
+  /**
+   * `isUnfinishedWorksheet` of the whole sheet, set only when true, so the Library can label the
+   * card "Unfinished" without the body (the cover holds only page 1's first blocks). It rides on
+   * the `cover` jsonb column, so it needs no migration; a row written before it existed reads as
+   * finished until its next write or `db:backfill-summaries`.
+   */
+  unfinished?: true;
 };
 
 export const WorksheetCoverSchema = z.object({
@@ -63,6 +71,7 @@ export const WorksheetCoverSchema = z.object({
   blocks: z.array(WorksheetBlockSchema),
   pageSize: z.enum(["A4", "Letter"]),
   showMarks: z.boolean().optional(),
+  unfinished: z.literal(true).optional(),
 }) as z.ZodType<WorksheetCover>;
 
 /** Blocks a worksheet cover carries: the card is one frame high, so page 1's first few. */
@@ -233,6 +242,7 @@ export function worksheetCoverOf(sheet: Worksheet): WorksheetCover {
     blocks,
     pageSize: sheet.pageSize,
     ...(sheet.showMarks !== undefined ? { showMarks: sheet.showMarks } : {}),
+    ...(isUnfinishedWorksheet(sheet) ? { unfinished: true as const } : {}),
   };
 }
 

@@ -1,15 +1,16 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ExportControl } from "@tj/editor/export";
 import { WorksheetEditor } from "@tj/editor/worksheet-editor";
 import { useCallback, useMemo } from "react";
+import { undoToast } from "@/components/library/use-library-actions";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { env } from "@/env";
 import { useSaveWithConflictToast } from "@/hooks/use-save-with-conflict-toast";
 import { imageSearchFor } from "@/lib/images";
 import { useShellReturn } from "@/lib/last-shell";
-import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
+import { isFullDocument, kindOf, libraryMutations, libraryQueries } from "@/lib/library";
 import { worksheetEditorRoute } from "./documents.route";
 // The editor's stylesheet (theme fonts, the paper, the editing chrome) travels with this route
 // only (ADR 0022 §8): Vite ships it with the lazy chunk, so none of it reaches the initial bundle.
@@ -49,6 +50,19 @@ export function WorksheetEditorPage() {
   const onPrint = useCallback(() => {
     openWorksheetPrint(worksheetId);
   }, [worksheetId]);
+  // Offered on the bar an unfinished sheet shows: the library's soft delete with its Undo toast,
+  // then back to where the teacher came from.
+  const { mutate: softDelete } = useMutation(libraryMutations.softDeleteDocument(queryClient));
+  const { mutate: restore } = useMutation(libraryMutations.restoreDocument(queryClient));
+  const title = data?.title ?? "";
+  const onDelete = useCallback(() => {
+    softDelete(worksheetId, {
+      onSuccess: () => {
+        undoToast(title, () => restore(worksheetId))();
+        void navigate({ to: shellReturn });
+      },
+    });
+  }, [softDelete, restore, worksheetId, title, navigate, shellReturn]);
 
   if (!data || !isFullDocument(data)) return <RoutePendingPage />;
   if (kindOf(data) !== "worksheet" || !("blocks" in data)) {
@@ -63,6 +77,7 @@ export function WorksheetEditorPage() {
       onSave={save}
       onBack={onBack}
       onPrint={onPrint}
+      onDelete={onDelete}
       facts={facts}
       images={images}
       // Print stays the one-click path; the dialog is where JSON (and, from E3, DOCX) live. Its
