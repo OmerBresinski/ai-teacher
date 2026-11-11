@@ -390,6 +390,28 @@ describe.each(LESSONS)("replay %s", (b) => {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
           continue;
         }
+        // e2e-11nov: the equation slide's formula is set on one line (stepped down) or broken
+        // before its relation, never mid-side, so its panel and the steps under it may sit higher.
+        // Same boxes, words and order; only y and h move.
+        if (
+          ["Formula panel", EQUATION_NAMES.formula, EQUATION_NAMES.step].includes(String(w.name))
+        ) {
+          // A break before the relation is a hard break between two runs: fold it to the space.
+          const fold = (x: El): El =>
+            JSON.parse(
+              JSON.stringify(x).replace(
+                /"\},\{"type":"hardBreak"\},\{"type":"text","text":"/g,
+                " ",
+              ),
+            ) as El;
+          const { y: _y, h: _h, ...rest } = fold(stable(e));
+          const { y: _wy, h: _wh, ...wantRest } = stable(w);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
+          continue;
+        }
         expect({ at: `s${i + 1} #${k}`, el: stable(e) }).toEqual({
           at: `s${i + 1} #${k}`,
           el: stable(w),
