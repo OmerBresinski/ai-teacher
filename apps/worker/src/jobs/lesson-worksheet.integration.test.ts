@@ -26,7 +26,13 @@ import {
   type Worksheet,
 } from "@tj/domain/documents";
 import { assignFactIds, generateWorksheetFillPrompt, stemPlan } from "@tj/generation";
-import { FIXTURES, routed, scriptedWorksheetAi, worksheetScript } from "@tj/generation/testing";
+import {
+  FIXTURES,
+  routed,
+  STUB_PRACTICE_RIVERS,
+  scriptedWorksheetAi,
+  worksheetScript,
+} from "@tj/generation/testing";
 import { NonRetryableError, type ProgressExtra } from "@tj/jobs";
 import {
   defaultPracticeMinutes,
@@ -309,6 +315,67 @@ describeDb("lesson.worksheet job", () => {
     expect((await getDocument(ws(), lessonId))?.updatedAt.toISOString()).toBe(
       lessonBefore.updatedAt.toISOString(),
     );
+  });
+
+  test("plan v2 T7: Practice is one small call (stub answer), saved once as checked with its usage", async () => {
+    const rivers = fixtureLesson("rivers");
+    const { lessonId } = await confirmedLesson({ stage: "generated", slides: rivers.slides });
+    const jobId = newId<JobId>();
+    const worksheetId = await worksheetShell(lessonId, jobId);
+    const ai = createFakeAi({
+      script: [{ text: JSON.stringify(STUB_PRACTICE_RIVERS) }],
+      usage: { inputTokens: 2500, outputTokens: 1500 },
+    });
+    const { ctx, events } = ctxFor(
+      jobId,
+      payloadFor(lessonId, worksheetId, { recipeId: "practice", practiceMinutes: 15 }),
+      depsWith(ai),
+    );
+    await lessonWorksheetJob(ctx);
+    expect(ai.calls).toHaveLength(1);
+    expect(ai.calls[0]?.modelClass).toBe("small");
+    expect(events.map((e) => [e.percent, e.message])).toEqual([
+      [5, "Reading the lesson"],
+      [20, "Writing the questions"],
+      [100, "Worksheet ready"],
+    ]);
+    const row = await getDocument(ws(), worksheetId);
+    expect(row?.generatingJobId).toBeNull();
+    const sheet = parseWorksheet(row?.body);
+    expect(sheet.generation).toMatchObject({
+      stage: "checked",
+      recipeId: "practice",
+      promptVersions: { build: "worksheet-slides.v1", write: "worksheet-practice.v1" },
+      usage: { calls: 1, inputTokens: 2500, outputTokens: 1500 },
+      findings: [],
+    });
+    expect(sheet.blocks.filter((b) => b.type === "question")).toHaveLength(8);
+    expect(isUnfinishedWorksheet(sheet)).toBe(false);
+  });
+
+  test("plan v2 T7: a Practice answer that is not JSON twice fails could-not-write, no retry", async () => {
+    const { lessonId } = await confirmedLesson({
+      stage: "generated",
+      slides: fixtureLesson("rivers").slides,
+    });
+    const jobId = newId<JobId>();
+    const worksheetId = await worksheetShell(lessonId, jobId);
+    const ai = createFakeAi({ script: [{ text: "Sorry" }, { text: "{ nope" }] });
+    const run = lessonWorksheetJob(
+      ctxFor(
+        jobId,
+        payloadFor(lessonId, worksheetId, { recipeId: "practice", practiceMinutes: 15 }),
+        depsWith(ai),
+      ).ctx,
+    );
+    await expect(run).rejects.toBeInstanceOf(NonRetryableError);
+    expect(ai.calls).toHaveLength(2);
+    const sheet = parseWorksheet((await getDocument(ws(), worksheetId))?.body);
+    expect(sheet.generation).toMatchObject({
+      stage: "failed",
+      failure: { code: "could-not-write" },
+    });
+    expect(sheet.blocks).toEqual([]);
   });
 
   test("plan v2 T6: a lesson with no exit-ticket slide fails not-enough-lesson, no retry, no blocks", async () => {

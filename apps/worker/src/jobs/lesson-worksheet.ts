@@ -20,6 +20,7 @@ import {
   type WorksheetGeneration,
 } from "@tj/domain/documents";
 import {
+  type BuiltSheet,
   buildFrame,
   buildSheet,
   checkWorksheet,
@@ -27,9 +28,11 @@ import {
   fillFrame,
   generateWorksheetFillPrompt,
   isBudgetRefusal,
+  isModelSheetRecipe,
   repairPrompt,
   SheetBuildFailure,
   StageFailure,
+  writeModelSheet,
 } from "@tj/generation";
 import { defineJob, NonRetryableError } from "@tj/jobs";
 import { RECIPE_PROMPT_VERSION, resolveRecipe, uid } from "@tj/slides";
@@ -61,7 +64,9 @@ import { budgetFailure } from "../job-errors";
  * `checked` and complete (D8). No frame is saved first, so there is never a half sheet that looks
  * finished; no repair pass runs (D7). A lesson that cannot carry the type fails
  * `not-enough-lesson`, too few items after the gate `too-few-checked` (`SheetBuildFailure`).
- * Exit ticket makes no model call, so it does not need the AI configured.
+ * Exit ticket makes no model call, so it does not need the AI configured. Practice and Exam
+ * practice (T7) make one `small` call (`writeModelSheet`) on a fresh worksheet budget, between
+ * `20 "Writing the questions"` and the one save; its usage and prompt version are recorded.
  *
  * Budget: `AI_WORKSHEET_COST_CAP_USD`, seeded from the row's own `generation.usage` when the job
  * reuses a frame an earlier fill left (item 9); the lesson's spend is never read. A fill that
@@ -113,21 +118,63 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         });
         const stored = parseWorksheet(row.body);
         const startedAt = new Date().toISOString();
-        const built = buildSheet({
-          recipeId,
-          lesson,
-          worksheetId,
-          now: () => new Date(),
-          ids: uid,
-        });
+        let built: BuiltSheet;
+        let promptVersions: WorksheetGeneration["promptVersions"] = { build: SLIDE_SHEET_VERSION };
+        let usage: WorksheetGeneration["usage"] = {
+          calls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+        };
+        if (isModelSheetRecipe(recipeId)) {
+          // Practice and Exam practice (T7): one small call on a fresh, capped budget.
+          if (deps.ai.kind === "unconfigured") {
+            throw new NonRetryableError(
+              "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
+            );
+          }
+          const jobBudget = createBudget({
+            capUsd: deps.worksheetCapUsd,
+            capTokens: deps.caps.capTokens,
+          });
+          budget = jobBudget;
+          await ctx.progress(20, "Writing the questions", {
+            stage: "worksheet",
+            documentUpdatedAt: row.updatedAt.toISOString(),
+          });
+          const written = await writeModelSheet(
+            { recipeId, lesson, worksheetId, now: () => new Date(), ids: uid, practiceMinutes },
+            {
+              ai: captureCalls(deps.ai, recorder),
+              budget: jobBudget,
+              signal,
+              logger: logger.child({ lessonId, worksheetId, recipeId, practiceMinutes }),
+              now: () => new Date(),
+              ids: uid,
+              context: { lessonId, jobId },
+              ...effortOverride(deps.reasoningEffort),
+            },
+          );
+          built = written;
+          promptVersions = { build: SLIDE_SHEET_VERSION, write: written.promptVersion };
+          usage = jobBudget.totals();
+        } else {
+          built = buildSheet({
+            recipeId,
+            lesson,
+            worksheetId,
+            now: () => new Date(),
+            ids: uid,
+          });
+        }
         const generation: WorksheetGeneration = {
           jobId,
           stage: "checked",
           startedAt,
           completedAt: new Date().toISOString(),
-          promptVersions: { build: SLIDE_SHEET_VERSION },
-          // Exit ticket makes no model call; T7 onwards records the fill's usage here.
-          usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+          promptVersions,
+          // Exit ticket makes no model call (zero); Practice and Exam practice record the call's.
+          usage,
           findings: built.findings,
           recipeId,
           practiceMinutes,
