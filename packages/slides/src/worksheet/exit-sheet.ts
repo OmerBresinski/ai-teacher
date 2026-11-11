@@ -40,17 +40,137 @@ export function answerWithWorking(item: Pick<DigestAsked, "answer" | "working">)
 
 const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
-const MIN_LINES = 2;
-const MAX_LINES = 6;
+/** About 5 cm: a blank bordered box to draw, shade or label in. */
+export const DRAW_BOX_PT = 128;
+/** Space to show the working and write the answer. */
+export const WORKING_BOX_PT = 48;
+/** One ruled line's height, for a labelled part's one-line box. */
+const LINE_PT = 28;
+
+/** The kind of space a task needs (Lead review of T6, item A1). */
+export type AnswerSpace = "draw" | "calculation" | "explain" | "short";
+
+const DRAW = /\b(draw|shade|sketch|label|circle|colour|color)\b/i;
+const EXPLAIN = /^\W*(explain|how|why|describe|compare|suggest|evaluate|justify|discuss)\b/i;
+const CALC = /\d\s*[+\-−×x÷*/=]\s*\d|\b(calculate|work out)\b/i;
 
 /**
- * Lines to write on: about one per ten words of the model answer, 2 to 6 (the block guide's
- * range). Years 1-2 write a word or a number: 2 lines, or 4 for a drawing task.
+ * Draw, shade, sketch, label or circle → a drawing box; a calculation (working on the slide, or
+ * sums in the task) → working space; explain / how / why → 3-4 lines; anything else is a word or
+ * a number → one line (more only when the model answer is long).
  */
-export function exitAnswerLines(item: DigestAsked, early: boolean): number {
-  if (early) return /^\W*draw\b/i.test(item.question) ? 4 : MIN_LINES;
-  const lines = Math.ceil(wordCount(item.answer) / 10);
-  return Math.min(MAX_LINES, Math.max(MIN_LINES, lines));
+export function answerSpace(task: string, working: string | undefined): AnswerSpace {
+  if (DRAW.test(task)) return "draw";
+  if (working?.trim() || CALC.test(task)) return "calculation";
+  if (EXPLAIN.test(task)) return "explain";
+  return "short";
+}
+
+/** Lines for a task written on ruled lines (explain or short). */
+export function answerLinesFor(
+  space: "explain" | "short",
+  answer: string,
+  yearGroup: string,
+): number {
+  const year = isEarlyYears(yearGroup) ? 2 : Number(/\d+/.exec(yearGroup)?.[0]) || 7;
+  if (space === "explain") return year >= 10 ? 4 : year <= 2 ? 2 : 3;
+  const words = wordCount(answer);
+  return words <= 4 ? 1 : Math.min(4, Math.max(2, Math.ceil(words / 10)));
+}
+
+/** The blocks under a task (or a lettered part) that give the pupil room to answer. */
+function spaceBlocks(
+  space: AnswerSpace,
+  answer: string,
+  yearGroup: string,
+  ids: () => string,
+  label?: string,
+): WorksheetBlock[] {
+  const box = (heightPt: number, text?: string): WorksheetBlock => ({
+    id: ids(),
+    type: "answer-box",
+    heightPt,
+    ...(text ? { label: text } : {}),
+  });
+  if (space === "draw") return [box(DRAW_BOX_PT, label)];
+  // One box for the working and the answer, so a short sheet stays on one page.
+  if (space === "calculation") {
+    return [box(WORKING_BOX_PT, label ? `${label} Working and answer` : "Working and answer")];
+  }
+  const lines = answerLinesFor(space, answer, yearGroup);
+  return label ? [box(lines * LINE_PT, label)] : [{ id: ids(), type: "lines", count: lines }];
+}
+
+const sentencesOf = (text: string): string[] =>
+  (text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? []).map((s) => s.trim()).filter(Boolean);
+
+/**
+ * A slide task that packs several tasks into one line, with an answer in matching ";" parts:
+ * "Draw a square. Shade half. Find half of 18." / "Two equal parts, one shaded; 9" becomes
+ * (a) "Draw a square. Shade half." (b) "Find half of 18." Each of the last parts is one sentence;
+ * the first takes the rest. Anything else stays whole (`undefined`).
+ */
+export function letteredParts(
+  item: Pick<DigestAsked, "question" | "answer">,
+): { task: string; answer: string }[] | undefined {
+  const answers = item.answer
+    .split(";")
+    .map((a) => a.trim())
+    .filter(Boolean);
+  if (answers.length < 2) return undefined;
+  const sentences = sentencesOf(item.question);
+  if (sentences.length < answers.length) return undefined;
+  const cut = sentences.length - (answers.length - 1);
+  const tasks = [sentences.slice(0, cut).join(" "), ...sentences.slice(cut)];
+  return tasks.map((task, i) => ({ task, answer: answers[i] as string }));
+}
+
+const LETTERS = "abcdefgh";
+
+/** One exit task as blocks: the numbered question, then its answer space (lettered when split). */
+function taskBlocks(item: DigestAsked, yearGroup: string, ids: () => string): WorksheetBlock[] {
+  const parts = letteredParts(item);
+  if (!parts) {
+    const space = answerSpace(item.question, item.working);
+    const ruled = space === "explain" || space === "short";
+    return [
+      {
+        id: ids(),
+        type: "question",
+        doc: docFromText(item.question),
+        answerLines: ruled ? answerLinesFor(space, item.answer, yearGroup) : 0,
+        answer: answerWithWorking(item),
+      },
+      ...(ruled ? [] : spaceBlocks(space, item.answer, yearGroup, ids)),
+    ];
+  }
+  // The working belongs to the last part (it is where the slide's sum ends).
+  const last = parts.length - 1;
+  const label = (i: number) => `${LETTERS[i]})`;
+  const answer = parts
+    .map(
+      (p, i) =>
+        `${label(i)} ${i === last ? answerWithWorking({ answer: p.answer, working: item.working }) : p.answer}`,
+    )
+    .join("; ");
+  return [
+    {
+      id: ids(),
+      type: "question",
+      doc: docFromText(parts.map((p, i) => `${label(i)} ${p.task}`).join("\n")),
+      answerLines: 0,
+      answer,
+    },
+    ...parts.flatMap((p, i) =>
+      spaceBlocks(
+        answerSpace(p.task, i === last ? item.working : undefined),
+        p.answer,
+        yearGroup,
+        ids,
+        label(i),
+      ),
+    ),
+  ];
 }
 
 /**
@@ -64,19 +184,10 @@ export function exitTicketBlocks(digest: LessonDigest, ids: () => string = uid):
   if (items.length < EXIT_TICKET_MIN_ITEMS) {
     return { ok: false, code: "not-enough-lesson", reason: UNAVAILABLE_REASONS["exit-ticket"] };
   }
-  const early = isEarlyYears(digest.lesson.yearGroup);
   const blocks: WorksheetBlock[] = [
     { id: ids(), type: "heading", doc: docFromText(EXIT_SHEET_HEADING), level: 1 },
     { id: ids(), type: "instructions", doc: docFromText(EXIT_SHEET_INSTRUCTION) },
-    ...items.map(
-      (item): WorksheetBlock => ({
-        id: ids(),
-        type: "question",
-        doc: docFromText(item.question),
-        answerLines: exitAnswerLines(item, early),
-        answer: answerWithWorking(item),
-      }),
-    ),
+    ...items.flatMap((item) => taskBlocks(item, digest.lesson.yearGroup, ids)),
   ];
   return { ok: true, blocks: numberQuestions(blocks) };
 }

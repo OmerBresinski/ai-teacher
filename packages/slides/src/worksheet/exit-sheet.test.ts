@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { richDocToPlainText, type Slide, type WorksheetBlock } from "@tj/domain/documents";
 import { availableTypes, isSpokenTask, lessonDigest, UNAVAILABLE_REASONS } from "./digest";
-import { answerWithWorking, EXIT_SHEET_HEADING, exitTicketBlocks } from "./exit-sheet";
+import {
+  answerSpace,
+  answerWithWorking,
+  DRAW_BOX_PT,
+  EXIT_SHEET_HEADING,
+  exitTicketBlocks,
+  letteredParts,
+  WORKING_BOX_PT,
+} from "./exit-sheet";
 import { fixtureLesson, type WorksheetFixtureName } from "./fixtures";
 
 /*
@@ -25,22 +33,37 @@ function questions(name: WorksheetFixtureName) {
 }
 
 describe("exitTicketBlocks per fixture", () => {
-  test("Y2 halves: both tasks (drawing stays), working in brackets, 4 lines to draw, 2 to write", () => {
+  test("Y2 halves: the packed task splits into lettered parts; a drawing box, working space", () => {
     const { blocks, qs } = questions("halves");
     expect(blocks[0]).toMatchObject({ type: "heading", level: 1 });
     expect(text(blocks[0] as WorksheetBlock)).toBe(EXIT_SHEET_HEADING);
     expect(blocks[1]?.type).toBe("instructions");
     expect(qs.map(text)).toEqual([
-      "Draw a square. Shade half. Find half of 18.",
+      "a) Draw a square. Shade half.\nb) Find half of 18.",
       "What is one quarter of 16 counters?",
     ]);
     expect(qs.map((q) => q.answer)).toEqual([
-      "Two equal parts, one shaded; 9 (18 ÷ 2 = 9)",
+      "a) Two equal parts, one shaded; b) 9 (18 ÷ 2 = 9)",
       "4 counters (16 ÷ 4 = 4)",
     ]);
-    expect(qs.map((q) => q.answerLines)).toEqual([4, 2]);
     expect(qs.map((q) => q.number)).toEqual([1, 2]);
-    expect(qs.every((q) => q.marks === undefined)).toBe(true);
+    expect(qs.every((q) => q.answerLines === 0 && q.marks === undefined)).toBe(true);
+    const spaces = blocks
+      .slice(2)
+      .map((b) =>
+        b.type === "answer-box"
+          ? `box:${b.label ?? ""}:${b.heightPt}`
+          : b.type === "lines"
+            ? `lines:${b.count}`
+            : b.type,
+      );
+    expect(spaces).toEqual([
+      "question",
+      `box:a):${DRAW_BOX_PT}`,
+      `box:b) Working and answer:${WORKING_BOX_PT}`,
+      "question",
+      `box:Working and answer:${WORKING_BOX_PT}`,
+    ]);
   });
 
   test("Y4 Romans: three tasks with the slide's answers", () => {
@@ -51,7 +74,7 @@ describe("exitTicketBlocks per fixture", () => {
     expect(qs.every((q) => (q.answer ?? "").length > 0)).toBe(true);
   });
 
-  test("Y9 rivers: three tasks, answer space from answer length", () => {
+  test("Y9 rivers: three how/why tasks, three lines each", () => {
     const { qs } = questions("rivers");
     expect(qs.map(text)).toEqual([
       "How does hydraulic action weaken cracks in a river channel?",
@@ -59,10 +82,7 @@ describe("exitTicketBlocks per fixture", () => {
       "How can erosion of neighbouring bends lead to an oxbow lake?",
     ]);
     expect(qs[1]?.answer).toBe("Water flows more slowly there, so sediment is deposited.");
-    for (const q of qs) {
-      expect(q.answerLines).toBeGreaterThanOrEqual(2);
-      expect(q.answerLines).toBeLessThanOrEqual(6);
-    }
+    expect(qs.map((q) => q.answerLines)).toEqual([3, 3, 3]);
   });
 
   test("Y11 rates: every task has an answer, working carried", () => {
@@ -128,4 +148,18 @@ test("answerWithWorking keeps an answer that already shows its working", () => {
     "9 (18 ÷ 2 = 9)",
   );
   expect(answerWithWorking({ answer: "9" })).toBe("9");
+});
+
+test("answer space by task type, and lettered parts only when the answer has matching parts", () => {
+  expect(answerSpace("Label the diagram.", undefined)).toBe("draw");
+  expect(answerSpace("Work out 84 ÷ 28.", undefined)).toBe("calculation");
+  expect(answerSpace("What is half of 8?", "8 ÷ 2 = 4")).toBe("calculation");
+  expect(answerSpace("Why does sediment collect there?", undefined)).toBe("explain");
+  expect(answerSpace("Name the emperor.", undefined)).toBe("short");
+  expect(
+    letteredParts({ question: "When and where was it built?", answer: "AD 122; northern England" }),
+  ).toBeUndefined();
+  expect(
+    letteredParts({ question: "Draw a square. Shade half.", answer: "A square, half shaded" }),
+  ).toBeUndefined();
 });

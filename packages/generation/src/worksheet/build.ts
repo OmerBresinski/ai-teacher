@@ -68,6 +68,9 @@ function headerOf(lesson: Lesson, digest: LessonDigest): Worksheet["header"] {
   };
 }
 
+const hasCriteria = (lesson: Lesson, digest: LessonDigest): boolean =>
+  (headerOf(lesson, digest).criteria?.length ?? 0) > 0;
+
 /**
  * Build the sheet from the lesson's slides as they stand now and gate it. Throws
  * `SheetBuildFailure` when the lesson cannot carry the type (`not-enough-lesson`) or too few
@@ -98,6 +101,8 @@ export function buildSheet(input: BuildSheetInput): BuiltSheet {
     header: headerOf(lesson, digest),
     blocks,
     includeAnswerKey: true,
+    // The T3 header rule prints every objective (up to four) as "I can" tick boxes in the strip.
+    ...(hasCriteria(lesson, digest) ? { selfAssessment: true } : {}),
     pageSize: "A4",
     lessonId: lesson.id,
     ...(lesson.ageBand !== undefined ? { ageBand: lesson.ageBand } : {}),

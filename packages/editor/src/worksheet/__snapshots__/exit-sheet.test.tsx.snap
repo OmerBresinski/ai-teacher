@@ -5,13 +5,13 @@ exports[`Exit ticket sheet answer key halves: every question has its answer 1`] 
   {
     "id": "halves-3",
     "lines": [
-      "Two equal parts, one shaded; 9 (18 ÷ 2 = 9)",
+      "a) Two equal parts, one shaded; b) 9 (18 ÷ 2 = 9)",
     ],
     "marks": undefined,
     "number": 1,
   },
   {
-    "id": "halves-4",
+    "id": "halves-6",
     "lines": [
       "4 counters (16 ÷ 4 = 4)",
     ],
