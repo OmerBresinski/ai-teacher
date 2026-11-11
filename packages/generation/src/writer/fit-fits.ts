@@ -2,6 +2,7 @@ import { fitsLine as activityFitsLine, type WriterActivity } from "./activities"
 import c1 from "./bundles/pilot-v4.5/base-KS1.schema.json" with { type: "json" };
 import c2 from "./bundles/pilot-v4.5/base-KS2.schema.json" with { type: "json" };
 import c3 from "./bundles/pilot-v4.5/base-KS3.schema.json" with { type: "json" };
+import type { FitOpts } from "./fixes";
 import type { WriterStage } from "./schema";
 import { MIN_SHOWN_WORDS, offerable, PLAN_SHARE, shownFor } from "./shown-cap";
 import { defCaps, fitNeedKey, fitsLines, measuredFitDefs } from "./slot-fill";
@@ -58,10 +59,10 @@ function countOf(key: string): { family: string; count?: number } {
 }
 
 /** One layout's fits (`layout~key` defs) in the order the caps schema gives them. */
-function fitDefs(stage: WriterStage, layout: string): [string, J][] {
+function fitDefs(stage: WriterStage, layout: string, o: FitOpts = {}): [string, J][] {
   const own = CAPS[stage].$defs as Record<string, J>;
   // The caps code checks: the measured fit table over v4.5's (pilot-pack's caps request).
-  const defs = { ...own, ...measuredFitDefs(own, stage) };
+  const defs = { ...own, ...measuredFitDefs(own, stage, o) };
   const out = Object.entries(defs).filter(([k]) => k.startsWith(`${layout}~`));
   if (!out.length) throw new Error(`fit fits: no ${layout} fits at ${stage}`);
   return out;
@@ -76,10 +77,10 @@ function bodyWords(stage: WriterStage, layout: string, def: J, fitKey = ""): num
 }
 
 /** The fit keys offered per layout at a stage: the floor, then no cliff within a family. */
-export function fitOffer(stage: WriterStage): Record<string, string[]> {
+export function fitOffer(stage: WriterStage, o: FitOpts = {}): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const layout of FIT_LAYOUTS) {
-    const fits = fitDefs(stage, layout).map(([k, def]) => {
+    const fits = fitDefs(stage, layout, o).map(([k, def]) => {
       const key = k.slice(layout.length + 1);
       return { key, ...countOf(key), words: bodyWords(stage, layout, def, key) };
     });
@@ -103,10 +104,10 @@ export function fitOffer(stage: WriterStage): Record<string, string[]> {
 }
 
 /** The `layout~key` defs a pack drops from the schema it sends, so the writer cannot pick them. */
-export function droppedFits(stage: WriterStage): string[] {
-  const offer = fitOffer(stage);
+export function droppedFits(stage: WriterStage, o: FitOpts = {}): string[] {
+  const offer = fitOffer(stage, o);
   return FIT_LAYOUTS.flatMap((layout) =>
-    fitDefs(stage, layout)
+    fitDefs(stage, layout, o)
       .map(([k]) => k)
       .filter((k) => !offer[layout]?.includes(k.slice(layout.length + 1))),
   );
@@ -129,11 +130,13 @@ export function fitSlots(
   stage: WriterStage,
   /** Fits a pack routes elsewhere (`PilotPack.routedFits`): not sent, so not in the Fits. */
   routed: readonly string[] = [],
+  /** `gold`: the Fits from the table measured on the gold looks (`PilotPack.goldFits`). */
+  o: FitOpts = {},
 ): Record<string, string> {
-  const offer = fitOffer(stage);
+  const offer = fitOffer(stage, o);
   const $defs: J = {};
   for (const layout of FIT_LAYOUTS)
-    for (const [k, def] of fitDefs(stage, layout))
+    for (const [k, def] of fitDefs(stage, layout, o))
       if (offer[layout]?.includes(k.slice(layout.length + 1)) && !routed.includes(k))
         $defs[k] = def;
   const { heading } = fitsLines({ $defs }, stage, { namedLabels: true, pack: true });

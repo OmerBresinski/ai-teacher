@@ -1,6 +1,6 @@
 import HINGE_CAPACITY from "@tj/slides/templates/hinge-capacity.json" with { type: "json" };
 import { isWriterActivity } from "./activities";
-import { charsOver, fitTable } from "./fixes";
+import { charsOver, type FitOpts, fitTable } from "./fixes";
 import { capWords, fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
 import { validate } from "./strict-subset";
 import { waveCCountCaps } from "./wave-c";
@@ -205,8 +205,8 @@ function variantDef(
 }
 
 /** The layouts slot-fill covers: those the fit table measured for the stage. */
-export function slotLayouts(stage: string): Record<string, FitVariant[]> {
-  const F = fitTable()[stage];
+export function slotLayouts(stage: string, o: FitOpts = {}): Record<string, FitVariant[]> {
+  const F = fitTable(o)[stage];
   if (!F) throw new Error(`slot-fill: no fit table for ${stage}`);
   const out: Record<string, FitVariant[]> = {};
   for (const [name, L] of Object.entries(F.layouts))
@@ -336,10 +336,15 @@ const wordsAt = (stage: string, pack: boolean, layout = "", fitKey = "") => {
  * slides' tables when they move (18 Oct 2026: master's title sizes left v4.5's title lead at 100
  * and 240 characters where 48-56 and 104-106 fit). The hook keeps its own (a listed exception).
  */
-export function measuredFitDefs(defs: Record<string, J>, stage: string): Record<string, J> {
-  const heading = (fitTable()[stage] as J | undefined)?.heading as number;
+export function measuredFitDefs(
+  defs: Record<string, J>,
+  stage: string,
+  /** `gold`: the table measured on the gold looks (a pack that asks for it). Default: the frozen table. */
+  o: FitOpts = {},
+): Record<string, J> {
+  const heading = (fitTable(o)[stage] as J | undefined)?.heading as number;
   const out: Record<string, J> = {};
-  for (const [layout, vs] of Object.entries(slotLayouts(stage))) {
+  for (const [layout, vs] of Object.entries(slotLayouts(stage, o))) {
     if (layout === "hook") continue;
     for (const v of vs) {
       const name = `${layout}~${fitKey(v)}`;

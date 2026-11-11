@@ -6,6 +6,7 @@ import { gridFit } from "./cards-grid-fits";
 import { EXIT_TICKET } from "./close";
 import { coverFit } from "./cover-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
+import goldFitData from "./fit-table-gold.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
 import { rowFit } from "./items-row-fits";
@@ -300,18 +301,28 @@ type FitGroup = {
   layouts: Record<string, { fields: string[]; variants: FitVariant[] }>;
 };
 let FIT: Record<string, FitGroup> | undefined;
-/** The pinned table plus the layouts measured outside it (UX ruling 203), per group; built once. */
-const baseFit = (): Record<string, FitGroup> => {
+let GOLD_FIT: Record<string, FitGroup> | undefined;
+/**
+ * The pinned table plus the layouts measured outside it (UX ruling 203), per group; built once.
+ * `gold` reads the table measured on the gold looks (`fit-table-gold.gen.json`, 11 Nov 2026), which
+ * only a pack that asks for it reads (`PilotPack.goldFits`); the default stays the frozen table.
+ */
+const baseFit = (gold = false): Record<string, FitGroup> => {
+  if (gold) {
+    GOLD_FIT ??= withExtra((goldFitData as unknown as { groups: Record<string, FitGroup> }).groups);
+    return GOLD_FIT;
+  }
   if (FIT) return FIT;
-  const groups = (fitData as unknown as { groups: Record<string, FitGroup> }).groups;
-  FIT = Object.fromEntries(
+  FIT = withExtra((fitData as unknown as { groups: Record<string, FitGroup> }).groups);
+  return FIT;
+};
+const withExtra = (groups: Record<string, FitGroup>): Record<string, FitGroup> =>
+  Object.fromEntries(
     Object.entries(groups).map(([g, F]) => [
       g,
       { ...F, layouts: { ...F.layouts, ...extraLayouts(g) } },
     ]),
   );
-  return FIT;
-};
 /** Ruling 203 layouts' fit, from the renderer's own capacity tables. */
 function extraLayouts(group: string): FitGroup["layouts"] {
   return {
@@ -328,8 +339,9 @@ function extraLayouts(group: string): FitGroup["layouts"] {
  * the lab's caps, which let an option shrink and wrap to 4 lines in a 3-across card. Opt-in per
  * writer bundle, so a bundle that does not ask keeps the lab's numbers.
  */
-export const fitTable = (o: { hingeCards?: boolean } = {}): Record<string, FitGroup> => {
-  const groups = baseFit();
+export type FitOpts = { hingeCards?: boolean; gold?: boolean };
+export const fitTable = (o: FitOpts = {}): Record<string, FitGroup> => {
+  const groups = baseFit(!!o.gold);
   if (!o.hingeCards) return groups;
   const cards = (hingeData as { groups: Record<string, HingeCards> }).groups;
   return Object.fromEntries(
