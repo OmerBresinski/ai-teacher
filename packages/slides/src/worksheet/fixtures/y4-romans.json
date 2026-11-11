@@ -1,0 +1,4503 @@
+{
+  "recording": "20261109-133356-record-y4-romans-s3base",
+  "title": "Why build Hadrian’s Wall?",
+  "subject": "History",
+  "yearGroup": "Year 4",
+  "topic": "Why the Romans built Hadrian's Wall",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "Hadrian's Wall west of Housesteads 3: A stretch of Hadrian's Wall about 1 mile west of the Roman Fort near Housesteads.",
+          "fit": "cover",
+          "src": "/files/01a1c083-fcdb-77cf-a3b1-e5a1915ac3d7/images/01a1c084-8fcb-777a-9dca-a1096e299a23.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "commons-2987920",
+            "author": "Steven Fruitsmaak",
+            "licence": "Public domain",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_west_of_Housesteads_3.jpg",
+            "evidence": {
+              "alt": "Hadrian's Wall west of Housesteads 3: A stretch of Hadrian's Wall about 1 mile west of the Roman Fort near Housesteads.",
+              "count": "one",
+              "visible": ["stone wall", "rolling hills"],
+              "thumbnail": "data:image/jpeg;base64,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",
+              "promptVersion": "pick-or-requery-photo.v20"
+            },
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_west_of_Housesteads_3.jpg",
+            "photographer": "Steven Fruitsmaak",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_west_of_Housesteads_3.jpg"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 165,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#A31F2E",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 175,
+          "w": 402.67,
+          "x": 58,
+          "y": 201,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why build Hadrian’s Wall?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#1A52A8",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 54.666666666666664,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 700,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 467,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 467,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Identify when and where Emperor Hadrian ordered a wall built in Roman Britain.",
+                "Explain how Hadrian’s Wall defended Roman Britain and controlled movement across its frontier.",
+                "Describe how Roman soldiers used forts, milecastles and gates to guard Hadrian’s Wall."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 62,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 48,
+                "autoHeight": true,
+                "fontWeight": 700,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 106,
+              "w": 832,
+              "x": 8,
+              "y": 123,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 6,
+              "stroke": "#A31F2E",
+              "strokeWidth": 2
+            },
+            {
+              "h": 44,
+              "w": 44,
+              "x": 18,
+              "y": 154,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#A31F2E",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 83,
+              "w": 751,
+              "x": 79,
+              "y": 135,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Identify when and where Emperor Hadrian ordered a wall built in Roman Britain.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 106,
+              "w": 832,
+              "x": 8,
+              "y": 238,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 6,
+              "stroke": "#A31F2E",
+              "strokeWidth": 2
+            },
+            {
+              "h": 44,
+              "w": 44,
+              "x": 18,
+              "y": 269,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#A31F2E",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 83,
+              "w": 751,
+              "x": 79,
+              "y": 250,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Explain how Hadrian’s Wall defended Roman Britain and controlled movement across its frontier.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 106,
+              "w": 832,
+              "x": 8,
+              "y": 353,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 6,
+              "stroke": "#A31F2E",
+              "strokeWidth": 2
+            },
+            {
+              "h": 44,
+              "w": 44,
+              "x": 18,
+              "y": 384,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#A31F2E",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 83,
+              "w": 751,
+              "x": 79,
+              "y": 365,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Describe how Roman soldiers used forts, milecastles and gates to guard Hadrian’s Wall.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#232120",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s3",
+      "kind": "content",
+      "notes": "Running\nAbout 4 minutes. Ask pupils to say when the order was given and who gave it. Take a few responses, then ask them to tell a partner what “ordered” means here.\n\nMisconceptions\nPupils may think Hadrian’s Wall was built before the Romans came to Britain, or that Hadrian built it himself. Clarify that Hadrian was the emperor who ordered its construction in AD 122; Roman soldiers and workers built it.\n\nBackground\nAD 122 is nearly 2,000 years ago. Hadrian was Roman emperor from AD 117 to 138.",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s3-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "An emperor’s order",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 118,
+          "w": 680,
+          "x": 64,
+          "y": 242,
+          "id": "d-s3-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "In AD 122, Emperor Hadrian ordered a wall to be built across northern Britain, then part of the Roman Empire.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "notes": "Running\nAbout 5 minutes. Pupils use the diagram to trace the wall’s direction with a finger, then tell a partner where it ran. Check that they include both northern England and west to east.\n\nAnswers\nAcross northern England, from the west coast to the east coast.\n\nMisconceptions\nPupils may place the wall across the whole of Britain or think it ran north to south. Rehearse that it crossed northern England from west to east.\n\nBackground\nThe wall ran across what is now northern England. The Roman province of Britannia covered parts of what is now England and Wales.",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s4-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where was the wall?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 292,
+          "w": 443,
+          "x": 259,
+          "y": 127,
+          "id": "d-s4-Diagram-0",
+          "alt": "A map of Britain shows Hadrian’s Wall crossing northern England between the Solway Firth and the River Tyne.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 2,
+          "diagram": {
+            "kind": "library",
+            "model": "hist_map",
+            "params": {
+              "text": {},
+              "dates": "bc-ad",
+              "north": true,
+              "title": "Journeys on a map",
+              "events": [],
+              "region": "uk",
+              "routes": [],
+              "scaleBar": true,
+              "dateRange": {
+                "to": "AD 130",
+                "from": "AD 120"
+              },
+              "frontiers": [
+                {
+                  "line": "hadrians_wall",
+                  "label": "",
+                  "colour": "auto"
+                }
+              ],
+              "territories": [],
+              "todayBorders": false
+            },
+            "typeScale": 1.3425299401197606
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 69,
+          "w": 832,
+          "x": 64,
+          "y": 435,
+          "id": "d-s4-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The wall crossed northern England from the west coast to the east coast.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s5",
+      "kind": "image-text",
+      "notes": "Running\nSpend about 5 minutes. Pupils study the picture and explain to a partner how a wall could help defend a frontier. Take a few answers and draw out that it made crossings harder and helped soldiers watch for attacks.\n\nMisconceptions\nPupils may think the wall made crossing impossible or stopped every attack. It made crossings harder and helped soldiers watch for danger, but it did not make the frontier impossible to cross or guarantee that no attack could happen.\n\nBackground\nThe picture is a reconstruction at Vindolanda, south of the original line of Hadrian’s Wall. It helps pupils imagine the wall, but it is not a photograph of the wall in its original position.",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s5-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A defended frontier",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 235,
+          "w": 392,
+          "x": 64,
+          "y": 184,
+          "id": "d-s5-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The wall marked a frontier, or boundary, of Roman Britain. It made crossings harder and helped soldiers watch for attacks.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 328,
+          "w": 246,
+          "x": 650,
+          "y": 160,
+          "id": "d-s5-Photo-0",
+          "alt": "Hadrian's Wall reconstruction at Vindolanda: A reconstruction, not on the original line of the Wall but at Vindolanda, some 1.67 km south of the Wall. Some details speculative but widely accepted, in ",
+          "fit": "cover",
+          "src": "/files/01a1c083-fcdb-77cf-a3b1-e5a1915ac3d7/images/01a1c084-be9e-7150-a127-d6248bb2c373.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 6,
+          "source": {
+            "id": "commons-129509988",
+            "author": "Richard Keatinge",
+            "licence": "CC BY-SA 4.0",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_reconstruction_at_Vindolanda.jpg",
+            "evidence": {
+              "alt": "Hadrian's Wall reconstruction at Vindolanda: A reconstruction, not on the original line of the Wall but at Vindolanda, some 1.67 km south of the Wall. Some details speculative but widely accepted, in ",
+              "count": "one",
+              "visible": ["stone frontier wall", "open land beyond"],
+              "thumbnail": "data:image/jpeg;base64,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",
+              "promptVersion": "pick-or-requery-photo.v20"
+            },
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_reconstruction_at_Vindolanda.jpg",
+            "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+            "photographer": "Richard Keatinge",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:Hadrian%27s_Wall_reconstruction_at_Vindolanda.jpg"
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "kind": "image-text",
+      "notes": "Running\nAbout 5 minutes. Pupils explain to a partner why a guarded crossing could be more useful than allowing people to cross anywhere. Invite a couple of pairs to share.\n\nMisconceptions\nPupils may think gates were simply open entrances, or that people could cross anywhere without checks. Explain that guarded gates gave soldiers a place to check travellers and goods; crossings were controlled, not necessarily forbidden.\n\nBackground\nChecking people and goods could help soldiers monitor movement across the frontier. It did not mean that every traveller was an enemy or that all trade stopped.",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Controlling movement",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 237,
+          "w": 392,
+          "x": 64,
+          "y": 184,
+          "id": "d-s6-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Gates allowed people to cross at guarded places. Soldiers could check people and goods instead of letting everyone cross freely.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 261,
+          "w": 392,
+          "x": 504,
+          "y": 194,
+          "id": "d-s6-Photo-0",
+          "alt": "A guarded gate in Hadrian’s Wall, with Roman soldiers checking travellers and their goods as they pass through.",
+          "fit": "cover",
+          "src": "/files/01a1c083-fcdb-77cf-a3b1-e5a1915ac3d7/images/01a1c085-ae8a-72a0-be93-abdd0e7f4445.png",
+          "name": "Photo",
+          "type": "image",
+          "radius": 6,
+          "source": {
+            "id": "01a1c085-ae8a-72a0-be93-abdd0e7f4445",
+            "caption": "Artist's reconstruction",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s7",
+      "kind": "multiple-choice",
+      "notes": "Running\nAbout 5 minutes. Pupils choose an answer independently, then compare with a partner and explain their choice. Take the correct answer and ask why the other choices do not fit.\n\nAnswers\nC: They could check the trader and goods before allowing a crossing.\n\nMisconceptions\nThe first option suggests the wall could prevent every crossing; correct this by explaining that gates controlled crossings rather than making them impossible. The second option misses the purpose of the guard: soldiers checked goods before allowing a crossing. The third option is correct.\n\nBackground\nControlling a frontier means monitoring and managing who or what crosses it, not necessarily stopping all movement.",
+      "elements": [
+        {
+          "h": 365,
+          "w": 960,
+          "x": 0,
+          "y": 175,
+          "id": "d-s7-surface_field-b-0",
+          "fill": "#FFF1A6",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 108,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s7-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why might soldiers stop a trader at a gate?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 89,
+          "w": 832,
+          "x": 64,
+          "y": 203,
+          "id": "d-s7-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 83,
+          "y": 229,
+          "id": "d-s7-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#A31F2E",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 19.76,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 67,
+          "w": 694,
+          "x": 140,
+          "y": 214,
+          "id": "d-s7-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They could make sure nobody ever crossed the frontier.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 26.666666666666668,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 89,
+          "w": 832,
+          "x": 64,
+          "y": 305,
+          "id": "d-s7-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 83,
+          "y": 331,
+          "id": "d-s7-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#805000",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 19.76,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 67,
+          "w": 694,
+          "x": 140,
+          "y": 316,
+          "id": "d-s7-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They could let the trader cross without checking any goods.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 26.666666666666668,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 89,
+          "w": 832,
+          "x": 64,
+          "y": 407,
+          "id": "d-s7-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 83,
+          "y": 433,
+          "id": "d-s7-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 19.76,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 67,
+          "w": 694,
+          "x": 140,
+          "y": 418,
+          "id": "d-s7-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "They could check the trader and goods before allowing a crossing.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 26.666666666666668,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s7-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s7-Option-1",
+            "correct": false
+          },
+          {
+            "id": "d-s7-Option-2",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "s8",
+      "kind": "content",
+      "notes": "",
+      "elements": [
+        {
+          "h": 521,
+          "w": 960,
+          "x": 0,
+          "y": 0,
+          "id": "d-s8-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 960,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "items": [
+                {
+                  "name": "Forts",
+                  "text": "These housed soldiers stationed along the wall."
+                },
+                {
+                  "name": "Milecastles",
+                  "text": "These small guarded posts stood along the wall."
+                },
+                {
+                  "name": "Gates",
+                  "text": "These provided guarded places to cross."
+                }
+              ],
+              "heading": "Guarding the wall",
+              "ordered": false,
+              "template": "items-row"
+            },
+            "template": "items-row"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 960,
+              "x": 0,
+              "y": 0,
+              "id": "d-s8-layout:~Background-0",
+              "fill": "#FFFDF7",
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 62,
+              "w": 832,
+              "x": 64,
+              "y": 46,
+              "id": "d-s8-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Guarding the wall",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 48,
+                "autoHeight": true,
+                "fontWeight": 700,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 37,
+              "w": 260,
+              "x": 53,
+              "y": 231,
+              "id": "d-s8-layout:items.0.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Forts",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 700,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 115,
+              "w": 260,
+              "x": 53,
+              "y": 270,
+              "id": "d-s8-layout:items.0.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "These housed soldiers stationed along the wall.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 37,
+              "w": 260,
+              "x": 350,
+              "y": 231,
+              "id": "d-s8-layout:items.1.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Milecastles",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 700,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 153,
+              "w": 260,
+              "x": 350,
+              "y": 270,
+              "id": "d-s8-layout:items.1.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "These small guarded posts stood along the wall.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 37,
+              "w": 260,
+              "x": 647,
+              "y": 231,
+              "id": "d-s8-layout:items.2.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Gates",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#1A52A8",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 700,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 115,
+              "w": 260,
+              "x": 647,
+              "y": 270,
+              "id": "d-s8-layout:items.2.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "These provided guarded places to cross.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#5C5752",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 29,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s9",
+      "kind": "image-text",
+      "notes": "Running\nAllow about 4 minutes. Explain how the three structures worked together. Ask pupils to say which structure soldiers lived in and which was a small guarded post; take answers from the class.\n\nMisconceptions\nPupils may think forts, milecastles and gates all did the same job. Clarify that forts housed soldiers, milecastles were small guarded posts along the Wall, and gates controlled crossings.\n\nBackground\nMilecastles were placed at roughly Roman-mile intervals along the Wall. They were much smaller than forts and helped soldiers watch sections of the frontier between larger bases.",
+      "elements": [
+        {
+          "h": 54,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s9-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Structures along the wall",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 232,
+          "w": 349,
+          "x": 306,
+          "y": 160,
+          "id": "d-s9-Photo-0",
+          "alt": "Reconstruction of Hadrian's wall - geograph.org.uk - 407926: Reconstruction of Hadrian's wall The south west of the stone fort a Vindolanda are replicas of sections of Hadrian's wall. This is a recons",
+          "fit": "cover",
+          "src": "/files/01a1c083-fcdb-77cf-a3b1-e5a1915ac3d7/images/01a1c084-ce39-77a7-a7a0-ce8a79ee29c5.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 6,
+          "source": {
+            "id": "commons-12923478",
+            "author": "Phil Champion",
+            "licence": "CC BY-SA 2.0",
+            "pageUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_of_Hadrian%27s_wall_-_geograph.org.uk_-_407926.jpg",
+            "evidence": {
+              "alt": "Reconstruction of Hadrian's wall - geograph.org.uk - 407926: Reconstruction of Hadrian's wall The south west of the stone fort a Vindolanda are replicas of sections of Hadrian's wall. This is a recons",
+              "count": "one",
+              "visible": ["small milecastle"],
+              "thumbnail": "data:image/jpeg;base64,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",
+              "promptVersion": "pick-or-requery-photo.v20"
+            },
+            "provider": "commons",
+            "sourceUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_of_Hadrian%27s_wall_-_geograph.org.uk_-_407926.jpg",
+            "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+            "photographer": "Phil Champion",
+            "photographerUrl": "https://commons.wikimedia.org/wiki/File:Reconstruction_of_Hadrian%27s_wall_-_geograph.org.uk_-_407926.jpg"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 82,
+          "w": 832,
+          "x": 64,
+          "y": 406,
+          "id": "d-s9-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Forts, milecastles and gates helped soldiers guard the frontier.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "kind": "open-response",
+      "notes": "Running\nAbout 5 minutes. Pupils answer the three prompts individually, then check their answers in pairs. Ask them to give one reason for each match.\n\nAnswers\n1. A fort.\n2. A milecastle.\n3. A gate.\n\nMisconceptions\nFor the first prompt, a milecastle is a small post, not the main place soldiers lived; a fort is the expected answer. For the second, a fort is larger than the small guarded post described; that is a milecastle. For the third, a fort or milecastle is not the crossing place; travellers crossed under guard at a gate.\n\nBackground\nThe structures had different jobs but worked together: forts housed soldiers, milecastles provided guarded posts, and gates controlled crossings.",
+      "elements": [
+        {
+          "h": 38,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s10-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Which structure?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 418,
+          "w": 288,
+          "x": 672,
+          "y": 139,
+          "id": "d-s10-surface_field-b-0",
+          "fill": "#FFF1A6",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 64,
+          "y": 232,
+          "id": "d-s10-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17.3,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 62,
+          "w": 521,
+          "x": 119,
+          "y": 219,
+          "id": "d-s10-Question-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where could soldiers live while guarding the wall?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Question",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 22,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 715,
+          "y": 232,
+          "id": "d-s10-Answer_to_come-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#F9E6E3",
+          "name": "Answer to come",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#A31F2E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 40,
+          "x": 713,
+          "y": 230,
+          "id": "d-s10-Answer_cover-0",
+          "fill": "#FFF1A6",
+          "name": "Answer cover",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 213,
+          "x": 715,
+          "y": 234,
+          "id": "d-s10-Answer-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A fort",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 23.333333333333332,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 64,
+          "y": 333,
+          "id": "d-s10-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17.3,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 31,
+          "w": 521,
+          "x": 119,
+          "y": 336,
+          "id": "d-s10-Question-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "What small guarded post stood along the wall?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Question",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 22,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 715,
+          "y": 333,
+          "id": "d-s10-Answer_to_come-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#F9E6E3",
+          "name": "Answer to come",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#A31F2E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 40,
+          "x": 713,
+          "y": 331,
+          "id": "d-s10-Answer_cover-1",
+          "fill": "#FFF1A6",
+          "name": "Answer cover",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 33,
+          "w": 213,
+          "x": 715,
+          "y": 335,
+          "id": "d-s10-Answer-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A milecastle",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 23.333333333333332,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 64,
+          "y": 435,
+          "id": "d-s10-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17.3,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 62,
+          "w": 521,
+          "x": 119,
+          "y": 422,
+          "id": "d-s10-Question-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Where could travellers cross under a guard’s watch?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Question",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 22,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 715,
+          "y": 435,
+          "id": "d-s10-Answer_to_come-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#F9E6E3",
+          "name": "Answer to come",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#A31F2E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 40,
+          "w": 40,
+          "x": 713,
+          "y": 433,
+          "id": "d-s10-Answer_cover-2",
+          "fill": "#FFF1A6",
+          "name": "Answer cover",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 6,
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 33,
+          "w": 213,
+          "x": 715,
+          "y": 437,
+          "id": "d-s10-Answer-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A gate",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 23.333333333333332,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "reveal": "rise",
+          "authoredBy": "ai",
+          "revealStep": 3
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. A fort\n2. A milecastle\n3. A gate"
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s11",
+      "kind": "open-response",
+      "notes": "Running\nAbout 8 minutes. Pupils write both answers independently. Invite them to compare with a partner and improve any answer that is missing a key fact or explanation.\n\nAnswers\n1. Hadrian ordered the wall in AD 122. It crossed northern England from the west coast to the east coast.\n2. The wall made crossings harder and helped soldiers watch for attacks.\n\nMisconceptions\nPupils may give the date without the location, or describe the wall as stopping every attack. A complete answer gives AD 122 and northern England; explain that the wall helped soldiers watch for danger but did not make attack impossible.\n\nBackground\nThis practice joins the date and location with the wall’s defensive purpose. Encourage pupils to use the lesson’s precise words: “frontier”, “crossings” and “watch for attacks”.",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s11-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Practise your explanations",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 143,
+          "id": "d-s11-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 64,
+          "y": 165,
+          "id": "d-s11-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 115,
+          "w": 392,
+          "x": 64,
+          "y": 217,
+          "id": "d-s11-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "When did Hadrian order the wall, and which part of England did it cross?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 143,
+          "id": "d-s11-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 504,
+          "y": 165,
+          "id": "d-s11-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 153,
+          "w": 392,
+          "x": 504,
+          "y": 217,
+          "id": "d-s11-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Explain one way the wall helped soldiers defend Roman Britain against an attack.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. AD 122; northern England\n2. It made crossing harder, giving soldiers a better chance to watch for attacks."
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s12",
+      "kind": "open-response",
+      "notes": "Running\nAbout 8 minutes. Pupils write both explanations independently, then share with a partner and check that each answer explains how the soldiers controlled or guarded the frontier.\n\nAnswers\n1. Soldiers could check the group and its goods at a guarded gate before allowing them to cross.\n2. A fort could house soldiers, while a milecastle gave soldiers a small guarded post along the wall. Both helped soldiers guard the frontier.\n\nMisconceptions\nPupils may say the group could cross anywhere, or that soldiers would never let traders through. Clarify that guards could check people and goods at a gate, then allow a crossing. They may also treat a fort and milecastle as the same structure; state their different roles.\n\nBackground\nThis task links control of movement with the structures used to guard the wall. A strong explanation connects each structure to what soldiers could do there.",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s12-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Bring the ideas together",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 64,
+          "y": 143,
+          "id": "d-s12-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 64,
+          "y": 165,
+          "id": "d-s12-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 153,
+          "w": 392,
+          "x": 64,
+          "y": 217,
+          "id": "d-s12-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A group approaches the wall with goods. Explain how soldiers could control their crossing.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 392,
+          "x": 504,
+          "y": 143,
+          "id": "d-s12-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 504,
+          "y": 165,
+          "id": "d-s12-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 115,
+          "w": 392,
+          "x": 504,
+          "y": 217,
+          "id": "d-s12-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Explain how a fort and a milecastle could both help soldiers guard the frontier.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Soldiers could direct them to a guarded gate and check the people and goods.\n2. A fort housed soldiers, while a milecastle provided a small guarded post along the wall."
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s13",
+      "kind": "exit-ticket",
+      "notes": "Running\nAbout 8 minutes. Pupils complete all three answers independently and hand them in as the exit ticket. Use the responses to check which objective needs revisiting.\n\nAnswers\n1. Hadrian ordered the wall in AD 122. It crossed northern England from the west coast to the east coast.\n2. Guarded gates gave soldiers places to check people and goods before allowing them to cross.\n3. Forts housed soldiers, and milecastles gave them small guarded posts along the wall.\n\nMisconceptions\nPupils may give only the date or only the location in the first answer; ask for both. They may say gates stopped everyone crossing; remind them that guards checked crossings. They may swap forts and milecastles; reinforce that forts housed soldiers and milecastles were small posts.\n\nBackground\nThe exit ticket checks the lesson’s three main ideas: when and where the wall was built, how gates controlled crossings, and how forts and milecastles supported the guard.",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s13-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 257,
+          "w": 960,
+          "x": 0,
+          "y": 283,
+          "id": "d-s13-surface_field-b-0",
+          "fill": "#FFF1A6",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 342,
+          "w": 746,
+          "x": 107,
+          "y": 146,
+          "id": "d-s13-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 6,
+          "stroke": "#F5C9CF",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 150,
+          "y": 171,
+          "id": "d-s13-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 78,
+          "w": 608,
+          "x": 202,
+          "y": 170,
+          "id": "d-s13-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "When and where did Hadrian order the wall built?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 261,
+          "id": "d-s13-surface_rule-0",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 150,
+          "y": 278,
+          "id": "d-s13-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 78,
+          "w": 608,
+          "x": 202,
+          "y": 278,
+          "id": "d-s13-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How did guarded gates help control movement across the frontier?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 369,
+          "id": "d-s13-surface_rule-1",
+          "fill": "#F5C9CF",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 150,
+          "y": 386,
+          "id": "d-s13-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 25,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 78,
+          "w": 608,
+          "x": 202,
+          "y": 385,
+          "id": "d-s13-Task-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How did forts and milecastles help soldiers guard the wall?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. AD 122; northern England\n2. Soldiers could check people and goods at the gates.\n3. Forts housed soldiers, and milecastles provided small guarded posts along the wall."
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "DuBid1WhRn",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "ThZxWXs_vj",
+          "fill": "#FFF1A6",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "Ftz2lWWSA-",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#2E7D32",
+          "strokeWidth": 6
+        },
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "Et9rLh6s2k",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 34,
+          "w": 832,
+          "x": 64,
+          "y": 371,
+          "id": "D27_dkMS5-",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard",
+      "teacherEdited": true
+    },
+    {
+      "id": "vwZ8iZiUCl",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "tTg2tjvLhw",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 3)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 46,
+          "w": 271,
+          "x": 625,
+          "y": 50,
+          "id": "vHHp7LPCNZ",
+          "fill": "#FFF1A6",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 28,
+          "w": 28,
+          "x": 648,
+          "y": 59,
+          "id": "4WCuhQatFP",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 33,
+          "w": 271,
+          "x": 684,
+          "y": 58,
+          "id": "tRc1jUjvqe",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "oPOpAsV8uH",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 18,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 63,
+          "w": 190,
+          "x": 64,
+          "y": 174,
+          "id": "b-ezqf2v0I",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Which structure?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 147,
+          "id": "1b-nQPDfSz",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 147,
+          "id": "5OPU_tYo1N",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 146,
+          "id": "vFmBnXfOVN",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 34,
+          "w": 548,
+          "x": 348,
+          "y": 146,
+          "id": "m6qO3I4aAG",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A fort",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 196,
+          "id": "_B3OYkXFyI",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 196,
+          "id": "6tUh9lOFPW",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 195,
+          "id": "fqFt5X_yvi",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 34,
+          "w": 548,
+          "x": 348,
+          "y": 195,
+          "id": "ZD2sn7zi53",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A milecastle",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 245,
+          "id": "GHTMVxMJ80",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 245,
+          "id": "uP96Vcqdp5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 244,
+          "id": "YFD-YM2i8O",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 34,
+          "w": 548,
+          "x": 348,
+          "y": 244,
+          "id": "N1C9w7Glod",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A gate",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 1,
+          "w": 832,
+          "x": 64,
+          "y": 298,
+          "id": "mYWTHcYZ05",
+          "fill": "#F5C9CF",
+          "name": "Rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 321,
+          "id": "gboDD1EQCl",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 18,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 63,
+          "w": 190,
+          "x": 64,
+          "y": 349,
+          "id": "vGCqR3DcVC",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Practise your explanations",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 322,
+          "id": "nhx9JbtDnB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 322,
+          "id": "SeJf6Esqx4",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 321,
+          "id": "J4wzolpKzK",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 34,
+          "w": 548,
+          "x": 348,
+          "y": 321,
+          "id": "cQU-XZXezQ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "AD 122; northern England",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 371,
+          "id": "tSg1ss4Nz8",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 371,
+          "id": "aqEblgpCPY",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 370,
+          "id": "4QTZiz3ha4",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 67,
+          "w": 548,
+          "x": 348,
+          "y": 370,
+          "id": "QL4_xhwdhP",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "It made crossing harder, giving soldiers a better chance to watch for attacks.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    },
+    {
+      "id": "r9Nh8_0-jc",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "GSFAerE1KT",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 3)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 46,
+          "w": 271,
+          "x": 625,
+          "y": 50,
+          "id": "ilTU3VtRb6",
+          "fill": "#FFF1A6",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 28,
+          "w": 28,
+          "x": 648,
+          "y": 59,
+          "id": "jJHlERHKfN",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 33,
+          "w": 271,
+          "x": 684,
+          "y": 58,
+          "id": "wnMZQMCT-L",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 24,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "TM7EBQyw4_",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#A31F2E",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 18,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 63,
+          "w": 190,
+          "x": 64,
+          "y": 174,
+          "id": "z4TqlmYp62",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Bring the ideas together",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 147,
+          "id": "jEAZxQ78HZ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 147,
+          "id": "hf8Z4PM2hB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 146,
+          "id": "eh--z0q9W4",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 115,
+          "w": 543,
+          "x": 353,
+          "y": 146,
+          "id": "XCXrhjadUT",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Soldiers could direct them to a guarded gate and check the people and goods.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 304,
+          "id": "AuYads13Xk",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 304,
+          "id": "BZsmvuOVRZ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 303,
+          "id": "baw85myqS7",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 115,
+          "w": 543,
+          "x": 353,
+          "y": 303,
+          "id": "KttP6nWICq",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A fort housed soldiers, while a milecastle provided a small guarded post along the wall.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    },
+    {
+      "id": "B-ZPQREpE8",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 62,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "JCbXTRgllp",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (3 of 3)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 48,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 46,
+          "w": 271,
+          "x": 625,
+          "y": 50,
+          "id": "siKmfaqami",
+          "fill": "#FFF1A6",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 28,
+          "w": 28,
+          "x": 648,
+          "y": 59,
+          "id": "yS9WAdKVbc",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#5C5752",
+          "strokeWidth": 2
+        },
+        {
+          "h": 33,
+          "w": 271,
+          "x": 684,
+          "y": 58,
+          "id": "Fi7-MkBWmx",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#5C5752",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 33,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "H2HS1bgwZk",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 147,
+          "id": "HtfGhTYAbH",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 147,
+          "id": "whrRSeP_88",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 146,
+          "id": "1fKSxqYaZ7",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 40,
+          "w": 543,
+          "x": 353,
+          "y": 146,
+          "id": "x-j1jcHin7",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "AD 122; northern England",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 206,
+          "id": "tHDd9EXEeq",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 206,
+          "id": "zdGNxlfser",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 205,
+          "id": "ImHgbGkouy",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 78,
+          "w": 543,
+          "x": 353,
+          "y": 205,
+          "id": "dBTkMxogsg",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Soldiers could check people and goods at the gates.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 301,
+          "y": 304,
+          "id": "o6ULi0am5s",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#1A52A8",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 16,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 36,
+          "w": 36,
+          "x": 353,
+          "y": 304,
+          "id": "ihFYkd9jg7",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#FFF1A6",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#5C5752",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 38,
+          "w": 38,
+          "x": 352,
+          "y": 303,
+          "id": "bv0nhiwb8I",
+          "fill": "#FFFDF7",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 115,
+          "w": 543,
+          "x": 353,
+          "y": 303,
+          "id": "PUY2BDffsK",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Forts housed soldiers, and milecastles provided small guarded posts along the wall.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#232120",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 29,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    }
+  ]
+}

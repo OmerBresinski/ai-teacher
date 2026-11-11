@@ -1,0 +1,4544 @@
+{
+  "recording": "20261109-133900-record-y9-rivers-s3base",
+  "title": "Rivers: erosion and meanders",
+  "subject": "Geography",
+  "yearGroup": "Year 9",
+  "topic": "Rivers: erosion and meanders",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "Stunning aerial shot of a river bend in Chukai, Terengganu, Malaysia.",
+          "fit": "cover",
+          "src": "/files/01a1c088-a4e4-73c0-b842-d1fe54841ac9/images/01a1c089-4bd2-70da-aa7c-0cd6a5c27b51.jpg",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "19390818",
+            "pageUrl": "https://www.pexels.com/photo/drone-shot-of-river-19390818/",
+            "evidence": {
+              "alt": "Stunning aerial shot of a river bend in Chukai, Terengganu, Malaysia.",
+              "count": "one",
+              "visible": ["curving river channel", "inner-bank sediment bar", "steep outer bank"],
+              "thumbnail": "https://images.pexels.com/photos/19390818/pexels-photo-19390818.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280",
+              "promptVersion": "pick-or-requery-photo.v20"
+            },
+            "provider": "pexels",
+            "photographer": "Pok Rie",
+            "photographerUrl": "https://www.pexels.com/@pok-rie-33563"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 193,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#0B6E86",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 118,
+          "w": 402.67,
+          "x": 58,
+          "y": 229,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Rivers: erosion and meanders",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 54.666666666666664,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 600,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 465,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 465,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Describe how hydraulic action, abrasion, attrition and solution erode river channels.",
+                "Explain how water speed causes erosion on outer banks and deposition on inner banks of meanders.",
+                "Explain how meander migration and neck cut-off form oxbow lakes."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 53,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 45.3,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 102,
+              "w": 832,
+              "x": 8,
+              "y": 125,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#0B6E86",
+              "strokeWidth": 2
+            },
+            {
+              "h": 38,
+              "w": 38,
+              "x": 22,
+              "y": 157,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#0B6E86",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 21,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 70,
+              "w": 751,
+              "x": 75,
+              "y": 141,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Describe how hydraulic action, abrasion, attrition and solution erode river channels.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 102,
+              "w": 832,
+              "x": 8,
+              "y": 240,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#0B6E86",
+              "strokeWidth": 2
+            },
+            {
+              "h": 38,
+              "w": 38,
+              "x": 22,
+              "y": 272,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#0B6E86",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 21,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 70,
+              "w": 751,
+              "x": 75,
+              "y": 256,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Explain how water speed causes erosion on outer banks and deposition on inner banks of meanders.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 102,
+              "w": 832,
+              "x": 8,
+              "y": 355,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#0B6E86",
+              "strokeWidth": 2
+            },
+            {
+              "h": 38,
+              "w": 38,
+              "x": 22,
+              "y": 387,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#0B6E86",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 21,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 35,
+              "w": 751,
+              "x": 75,
+              "y": 371,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Explain how meander migration and neck cut-off form oxbow lakes.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s3",
+      "kind": "content",
+      "notes": "Running\nSpend about 5 minutes. Ask pupils to study each picture and identify what the water is doing to the rock. Take answers as a class, then have pupils name the four erosion processes and give a short explanation for each.\n\nBackground\nHydraulic action is the force of water entering cracks; trapped air can be compressed and help prise the rock apart. Abrasion is rock fragments carried by the river scraping the bed or banks. Attrition is fragments colliding with one another and becoming smaller and rounder. Solution is the dissolving of soluble rock, such as limestone, by river water.",
+      "elements": [
+        {
+          "h": 521,
+          "w": 960,
+          "x": 0,
+          "y": 0,
+          "id": "d-s3-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 960,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "rows": [
+                {
+                  "icon": null,
+                  "name": "Hydraulic action",
+                  "text": "Water forces air into cracks, weakening the channel.",
+                  "picture": {
+                    "alt": "River water pushes into cracks in a rock channel, visibly breaking and loosening the rock.",
+                    "photo": "/files/01a1c088-a4e4-73c0-b842-d1fe54841ac9/images/01a1c08a-5ca6-7168-bd4a-30993c82ea4d.png",
+                    "aspect": 1.5,
+                    "source": {
+                      "id": "01a1c08a-5ca6-7168-bd4a-30993c82ea4d",
+                      "licence": "generated (openai-2026-10)",
+                      "pageUrl": "https://openai.com/policies/",
+                      "provider": "generated",
+                      "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+                      "photographerUrl": "https://openai.com/policies/"
+                    },
+                    "request": "Hydraulic action: Water forces air into cracks, weakening the channel. Hydraulic action"
+                  }
+                },
+                {
+                  "icon": null,
+                  "name": "Abrasion",
+                  "text": "Rock fragments carried by water scrape the channel.",
+                  "picture": {
+                    "alt": "A close-up of a rock fragment carried by flowing water scraping against the river channel bed.",
+                    "photo": "/files/01a1c088-a4e4-73c0-b842-d1fe54841ac9/images/01a1c089-9c55-71f4-9682-d026add6bb7a.png",
+                    "aspect": 1.5,
+                    "source": {
+                      "id": "01a1c089-9c55-71f4-9682-d026add6bb7a",
+                      "licence": "generated (openai-2026-10)",
+                      "pageUrl": "https://openai.com/policies/",
+                      "provider": "generated",
+                      "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+                      "photographerUrl": "https://openai.com/policies/"
+                    },
+                    "request": "Abrasion: Rock fragments carried by water scrape the channel. Abrasion"
+                  }
+                },
+                {
+                  "icon": null,
+                  "name": "Attrition",
+                  "text": "Carried rock fragments collide, becoming smaller and rounder.",
+                  "picture": null
+                },
+                {
+                  "icon": null,
+                  "name": "Solution",
+                  "text": "Acidic river water dissolves soluble rock, such as limestone.",
+                  "picture": {
+                    "alt": "A close-up of acidic river water dissolving a visibly pitted limestone surface.",
+                    "photo": "/files/01a1c088-a4e4-73c0-b842-d1fe54841ac9/images/01a1c089-9994-752a-9c40-a5f3fa7b9652.png",
+                    "aspect": 1.5,
+                    "source": {
+                      "id": "01a1c089-9994-752a-9c40-a5f3fa7b9652",
+                      "licence": "generated (openai-2026-10)",
+                      "pageUrl": "https://openai.com/policies/",
+                      "provider": "generated",
+                      "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+                      "photographerUrl": "https://openai.com/policies/"
+                    },
+                    "request": "Solution: Acidic river water dissolves soluble rock, such as limestone. Solution"
+                  }
+                }
+              ],
+              "panel": null,
+              "heading": "River erosion processes",
+              "template": "panel-list"
+            },
+            "template": "panel-list"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 960,
+              "x": 0,
+              "y": 0,
+              "id": "d-s3-layout:~Background-0",
+              "fill": "#F7F9FB",
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 540,
+              "w": 313,
+              "x": 0,
+              "y": 0,
+              "id": "d-s3-layout:~Title_panel-0",
+              "fill": "#0F172A",
+              "name": "Title panel",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 136,
+              "w": 233,
+              "x": 40,
+              "y": 64,
+              "id": "d-s3-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "River erosion processes",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#F7F9FB",
+                "preset": "title",
+                "padding": 0,
+                "fontSize": 45.3,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1
+              }
+            },
+            {
+              "h": 235,
+              "w": 313,
+              "x": 0,
+              "y": 305,
+              "id": "d-s3-layout:~Panel_picture-0",
+              "alt": "River water pushes into cracks in a rock channel, visibly breaking and loosening the rock.",
+              "fit": "cover",
+              "src": "/files/01a1c088-a4e4-73c0-b842-d1fe54841ac9/images/01a1c08a-5ca6-7168-bd4a-30993c82ea4d.png",
+              "crop": {
+                "h": 1,
+                "w": 0.8879432624113476,
+                "x": 0.056028368794326225,
+                "y": 0
+              },
+              "name": "Panel picture",
+              "type": "image",
+              "source": {
+                "id": "01a1c08a-5ca6-7168-bd4a-30993c82ea4d",
+                "licence": "generated (openai-2026-10)",
+                "pageUrl": "https://openai.com/policies/",
+                "provider": "generated",
+                "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+                "photographerUrl": "https://openai.com/policies/"
+              }
+            },
+            {
+              "h": 67,
+              "w": 67,
+              "x": 360,
+              "y": 52,
+              "id": "d-s3-layout:~Row_circle-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#DBE8ED",
+              "name": "Row circle",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 446,
+              "x": 450,
+              "y": 43,
+              "id": "d-s3-layout:rows.0.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Hydraulic action",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 55,
+              "w": 446,
+              "x": 450,
+              "y": 73,
+              "id": "d-s3-layout:rows.0.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Water forces air into cracks, weakening the channel.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 67,
+              "w": 67,
+              "x": 360,
+              "y": 175,
+              "id": "d-s3-layout:~Row_circle-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#DBE8ED",
+              "name": "Row circle",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 446,
+              "x": 450,
+              "y": 166,
+              "id": "d-s3-layout:rows.1.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Abrasion",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 55,
+              "w": 446,
+              "x": 450,
+              "y": 196,
+              "id": "d-s3-layout:rows.1.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Rock fragments carried by water scrape the channel.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 446,
+              "x": 450,
+              "y": 147,
+              "id": "d-s3-layout:~Divider-0",
+              "fill": "#D9E1EA",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            },
+            {
+              "h": 67,
+              "w": 67,
+              "x": 360,
+              "y": 298,
+              "id": "d-s3-layout:~Row_circle-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#DBE8ED",
+              "name": "Row circle",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 446,
+              "x": 450,
+              "y": 289,
+              "id": "d-s3-layout:rows.2.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Attrition",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 55,
+              "w": 446,
+              "x": 450,
+              "y": 319,
+              "id": "d-s3-layout:rows.2.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Carried rock fragments collide, becoming smaller and rounder.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 446,
+              "x": 450,
+              "y": 270,
+              "id": "d-s3-layout:~Divider-1",
+              "fill": "#D9E1EA",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            },
+            {
+              "h": 67,
+              "w": 67,
+              "x": 360,
+              "y": 421,
+              "id": "d-s3-layout:~Row_circle-3",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "4",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#DBE8ED",
+              "name": "Row circle",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 25,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 446,
+              "x": 450,
+              "y": 412,
+              "id": "d-s3-layout:rows.3.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Solution",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row name",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 55,
+              "w": 446,
+              "x": 450,
+              "y": 442,
+              "id": "d-s3-layout:rows.3.text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Acidic river water dissolves soluble rock, such as limestone.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Row line",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 1.5,
+              "w": 446,
+              "x": 450,
+              "y": 393,
+              "id": "d-s3-layout:~Divider-2",
+              "fill": "#D9E1EA",
+              "name": "Divider",
+              "type": "shape",
+              "shape": "rect"
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "notes": "Running\nSpend about 7 minutes tracing the flow on the diagram. Pupils explain the changes at each bank to a partner, then describe the process using the terms river cliff and slip-off slope.\n\nMisconceptions\nPupils may think the inner bank erodes because water travels around the whole bend. The fastest flow is near the outer bank, so erosion is strongest there; slower water on the inner bank deposits sediment. A river cliff forms on the outer bank and a slip-off slope on the inner bank.\n\nBackground\nThe fastest flow is often called the thalweg. It tends to swing towards the outer bank of a bend, helping explain the pattern of erosion and deposition.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s4-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Water speed across a meander",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 68,
+          "w": 392,
+          "x": 64,
+          "y": 166,
+          "id": "d-s4-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Water flows faster near the outer bank of a bend.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 9,
+          "w": 9,
+          "x": 66,
+          "y": 267,
+          "id": "d-s4-Bullet-0",
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "type": "shape",
+          "shape": "ellipse",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 70,
+          "w": 367,
+          "x": 89,
+          "y": 254,
+          "id": "d-s4-Point-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Faster water erodes the outer bank, creating a steep river cliff.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 9,
+          "w": 9,
+          "x": 66,
+          "y": 351,
+          "id": "d-s4-Bullet-1",
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "type": "shape",
+          "shape": "ellipse",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 105,
+          "w": 367,
+          "x": 89,
+          "y": 338,
+          "id": "d-s4-Point-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Slower water deposits sediment on the inner bank, forming a slip-off slope.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 328,
+          "w": 392,
+          "x": 504,
+          "y": 160,
+          "id": "d-s4-Panel-0",
+          "fill": "#dfebef",
+          "name": "Panel",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 284,
+          "w": 348,
+          "x": 526,
+          "y": 182,
+          "id": "d-s4-Diagram-0",
+          "alt": "A meander cross-section shows a steep outer bank, a gentle inner slope and fastest flow near the outer bank.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "diagram": {
+            "fs": 21,
+            "kind": "drawer",
+            "spec": {
+              "alt": "A meander cross-section shows a steep outer bank, a gentle inner slope and fastest flow near the outer bank.",
+              "kind": "river",
+              "view": "meander-section",
+              "labels": [
+                {
+                  "part": "outer-bank",
+                  "text": "Outer bank"
+                },
+                {
+                  "part": "inner-bank",
+                  "text": "Inner bank"
+                },
+                {
+                  "part": "fastest-flow",
+                  "text": "Fast flow"
+                }
+              ]
+            }
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s5",
+      "kind": "content",
+      "notes": "",
+      "elements": [
+        {
+          "h": 450,
+          "w": 960,
+          "x": 0,
+          "y": 38,
+          "id": "d-s5-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 450,
+              "w": 960,
+              "x": 0,
+              "y": 38
+            },
+            "input": {
+              "stages": [
+                {
+                  "line": "Outer-bank erosion makes bends move across the floodplain.",
+                  "name": "Migration"
+                },
+                {
+                  "line": "Erosion narrows the land between neighbouring bend ends.",
+                  "name": "Neck"
+                },
+                {
+                  "line": "During high flow, water cuts through the neck.",
+                  "name": "Cut-off"
+                },
+                {
+                  "line": "Deposition seals the old bend, leaving an oxbow lake.",
+                  "name": "Isolation"
+                }
+              ],
+              "heading": "From meander to oxbow lake",
+              "template": "stages"
+            },
+            "template": "stages"
+          },
+          "children": [
+            {
+              "h": 51,
+              "w": 832,
+              "x": 64,
+              "y": 8,
+              "id": "d-s5-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "From meander to oxbow lake",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 45.3,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 101,
+              "w": 960,
+              "x": 0,
+              "y": 129,
+              "id": "d-s5-layout:~Connecting_line-0",
+              "name": "Connecting line",
+              "type": "path",
+              "points": [
+                {
+                  "x": 0,
+                  "y": 0.1992
+                },
+                {
+                  "x": 0.1563,
+                  "y": 0.4933
+                },
+                {
+                  "x": 0.2823,
+                  "y": 0.3639
+                },
+                {
+                  "x": 0.3854,
+                  "y": 0.4933
+                },
+                {
+                  "x": 0.5115,
+                  "y": 0.6227
+                },
+                {
+                  "x": 0.6146,
+                  "y": 0.4933
+                },
+                {
+                  "x": 0.7406,
+                  "y": 0.3639
+                },
+                {
+                  "x": 0.8438,
+                  "y": 0.4933
+                },
+                {
+                  "x": 1,
+                  "y": 0.6609
+                }
+              ],
+              "smooth": true,
+              "stroke": "#B0CFD8",
+              "strokeWidth": 15.8
+            },
+            {
+              "h": 118,
+              "w": 118,
+              "x": 91,
+              "y": 120,
+              "id": "d-s5-layout:~Circle_edge-0",
+              "fill": "#e6eff3",
+              "name": "Circle edge",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 101,
+              "y": 129,
+              "id": "d-s5-layout:~Circle-0",
+              "fill": "#FFFFFF",
+              "name": "Circle",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 101,
+              "y": 129,
+              "id": "d-s5-layout:~Number-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Number",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0B6E86",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 46,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 191,
+              "x": 55,
+              "y": 245,
+              "id": "d-s5-layout:stages.0.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Migration",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 163,
+              "w": 191,
+              "x": 55,
+              "y": 279,
+              "id": "d-s5-layout:stages.0.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Outer-bank erosion makes bends move across the floodplain.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 118,
+              "w": 118,
+              "x": 311,
+              "y": 120,
+              "id": "d-s5-layout:~Circle_edge-1",
+              "fill": "#e6eff3",
+              "name": "Circle edge",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 321,
+              "y": 129,
+              "id": "d-s5-layout:~Circle-1",
+              "fill": "#FFFFFF",
+              "name": "Circle",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 321,
+              "y": 129,
+              "id": "d-s5-layout:~Number-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Number",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0B6E86",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 46,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 191,
+              "x": 275,
+              "y": 245,
+              "id": "d-s5-layout:stages.1.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Neck",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 163,
+              "w": 191,
+              "x": 275,
+              "y": 279,
+              "id": "d-s5-layout:stages.1.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Erosion narrows the land between neighbouring bend ends.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 118,
+              "w": 118,
+              "x": 531,
+              "y": 120,
+              "id": "d-s5-layout:~Circle_edge-2",
+              "fill": "#e6eff3",
+              "name": "Circle edge",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 541,
+              "y": 129,
+              "id": "d-s5-layout:~Circle-2",
+              "fill": "#FFFFFF",
+              "name": "Circle",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 541,
+              "y": 129,
+              "id": "d-s5-layout:~Number-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Number",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0B6E86",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 46,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 191,
+              "x": 495,
+              "y": 245,
+              "id": "d-s5-layout:stages.2.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Cut-off",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 130,
+              "w": 191,
+              "x": 495,
+              "y": 279,
+              "id": "d-s5-layout:stages.2.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "During high flow, water cuts through the neck.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            },
+            {
+              "h": 118,
+              "w": 118,
+              "x": 751,
+              "y": 120,
+              "id": "d-s5-layout:~Circle_edge-3",
+              "fill": "#e6eff3",
+              "name": "Circle edge",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 761,
+              "y": 129,
+              "id": "d-s5-layout:~Circle-3",
+              "fill": "#FFFFFF",
+              "name": "Circle",
+              "type": "shape",
+              "shape": "ellipse"
+            },
+            {
+              "h": 99,
+              "w": 99,
+              "x": 761,
+              "y": 129,
+              "id": "d-s5-layout:~Number-3",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "4",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Number",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#0B6E86",
+                "preset": "heading",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 46,
+                "fontWeight": 600
+              }
+            },
+            {
+              "h": 27,
+              "w": 191,
+              "x": 715,
+              "y": 245,
+              "id": "d-s5-layout:stages.3.name",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Isolation",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item name",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#0F172A",
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              }
+            },
+            {
+              "h": 130,
+              "w": 191,
+              "x": 715,
+              "y": 279,
+              "id": "d-s5-layout:stages.3.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Deposition seals the old bend, leaving an oxbow lake.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item line",
+              "type": "text",
+              "style": {
+                "align": "center",
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 25,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "kind": "multiple-choice",
+      "notes": "Running\nAllow about 3 minutes. Pupils choose an answer independently, then compare with a partner. Take a class vote and ask pupils to explain why both the bank and the water speed matter.\n\nAnswers\nC: On the inner bank, where slower water deposits sediment.\n\nMisconceptions\nChoosing the first option confuses erosion by fast flow with deposition. Choosing the second recognises that slower water deposits sediment but places it on the wrong bank. Remind pupils that flow is slower on the inner bank, so sediment is deposited there.\n\nBackground\nAs water slows, it has less energy to carry sediment, so some material is deposited. This builds the slip-off slope on the inner bank.",
+      "elements": [
+        {
+          "h": 371,
+          "w": 960,
+          "x": 0,
+          "y": 169,
+          "id": "d-s6-surface_field-b-0",
+          "fill": "#EBF0F5",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 104,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "At a bend, where will sediment deposit as water slows?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 86,
+          "w": 507,
+          "x": 64,
+          "y": 205,
+          "id": "d-s6-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 39,
+          "w": 39,
+          "x": 83,
+          "y": 229,
+          "id": "d-s6-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20.28,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 60,
+          "w": 368,
+          "x": 141,
+          "y": 218,
+          "id": "d-s6-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "On the outer bank, where faster water deposits sediment.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 24,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 86,
+          "w": 507,
+          "x": 64,
+          "y": 304,
+          "id": "d-s6-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 39,
+          "w": 39,
+          "x": 83,
+          "y": 328,
+          "id": "d-s6-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#7A580A",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20.28,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 60,
+          "w": 368,
+          "x": 141,
+          "y": 317,
+          "id": "d-s6-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "On the outer bank, where slower water deposits sediment.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 24,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 86,
+          "w": 507,
+          "x": 64,
+          "y": 403,
+          "id": "d-s6-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 39,
+          "w": 39,
+          "x": 83,
+          "y": 427,
+          "id": "d-s6-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#6D35D6",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20.28,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 60,
+          "w": 368,
+          "x": 141,
+          "y": 416,
+          "id": "d-s6-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "On the inner bank, where slower water deposits sediment.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 24,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 284,
+          "w": 293,
+          "x": 603,
+          "y": 205,
+          "id": "d-s6-Panel-0",
+          "fill": "#dfebef",
+          "name": "Panel",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 240,
+          "w": 249,
+          "x": 625,
+          "y": 227,
+          "id": "d-s6-Diagram-0",
+          "alt": "A diagram with lettered parts.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "diagram": {
+            "fs": 21,
+            "kind": "drawer",
+            "spec": {
+              "alt": "A diagram with lettered parts.",
+              "kind": "river",
+              "view": "meander-section",
+              "labels": [
+                {
+                  "part": "outer-bank",
+                  "text": "A"
+                },
+                {
+                  "part": "inner-bank",
+                  "text": "B"
+                },
+                {
+                  "part": "fastest-flow",
+                  "text": "C"
+                }
+              ]
+            }
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s6-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s6-Option-1",
+            "correct": false
+          },
+          {
+            "id": "d-s6-Option-2",
+            "correct": true
+          }
+        ]
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s7",
+      "kind": "diagram",
+      "notes": "Running\nSpend about 6 minutes talking through how a bend can become isolated. Pupils describe the sequence to a partner, then share the key steps as a class.\n\nMisconceptions\nPupils may think the old bend disappears as soon as the neck narrows. The river first cuts through the narrow neck during high flow; deposition then seals the ends of the abandoned bend, leaving an oxbow lake.\n\nBackground\nA meander can migrate as erosion wears away its outer banks and deposition builds up its inner banks. This can bring neighbouring bends closer together and narrow the neck between them.",
+      "elements": [
+        {
+          "h": 51,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s7-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Meander migration and cut-off",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 334,
+          "w": 814,
+          "x": 73,
+          "y": 124,
+          "id": "d-s7-Diagram-0",
+          "alt": "Successive river plans show a bend growing, its neck being cut through and an oxbow lake isolated by deposits.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 6,
+          "diagram": {
+            "kind": "library",
+            "model": "rivers_coasts",
+            "params": {
+              "real": true,
+              "text": {},
+              "view": "meander",
+              "coast": [
+                {
+                  "label": "",
+                  "feature": "crack"
+                },
+                {
+                  "label": "",
+                  "feature": "cave"
+                },
+                {
+                  "label": "",
+                  "feature": "arch"
+                },
+                {
+                  "label": "",
+                  "feature": "stack"
+                },
+                {
+                  "label": "",
+                  "feature": "stump"
+                }
+              ],
+              "river": {
+                "sea": "The sea",
+                "name": "The river",
+                "mouth": "estuary",
+                "source": "A spring in the hills",
+                "sourceHeight": 400
+              },
+              "title": "The journey of a river",
+              "example": "none",
+              "meander": {
+                "stage": "oxbow",
+                "section": false
+              },
+              "showMeander": true,
+              "tributaries": []
+            },
+            "typeScale": 1.088
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 29,
+          "w": 832,
+          "x": 64,
+          "y": 474,
+          "id": "d-s7-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The bend grows, then becomes isolated from the channel.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "kind": "open-response",
+      "notes": "Running\nGive pupils about 5 minutes to answer independently. Check each answer together and ask pupils to name the clue that identifies the process.\n\nAnswers\n1. Abrasion.\n2. Attrition.\n3. Solution.\n\nMisconceptions\nAbrasion is pebbles scraping the channel, not colliding with one another. Attrition is stones colliding and becoming smaller and rounder, not scraping the channel. Solution is acidic water dissolving limestone, not sediment being carried away.\n\nBackground\nThese processes can act at the same time in a river, but each describes a different way material is broken down or dissolved.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s8-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Identify erosion processes",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 245,
+          "x": 64,
+          "y": 140,
+          "id": "d-s8-surface_rule-0",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 160,
+          "id": "d-s8-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 195,
+          "w": 245,
+          "x": 64,
+          "y": 208,
+          "id": "d-s8-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "In an invented example, river-borne pebbles scrape a channel. Which erosion process is this?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 245,
+          "x": 357,
+          "y": 140,
+          "id": "d-s8-surface_rule-1",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 357,
+          "y": 160,
+          "id": "d-s8-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 195,
+          "w": 245,
+          "x": 357,
+          "y": 208,
+          "id": "d-s8-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "In an invented example, river-borne stones collide and become rounder. Which erosion process is this?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 245,
+          "x": 651,
+          "y": 140,
+          "id": "d-s8-surface_rule-2",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 651,
+          "y": 160,
+          "id": "d-s8-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 195,
+          "w": 245,
+          "x": 651,
+          "y": 208,
+          "id": "d-s8-Task-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "In an invented example, acidic river water dissolves limestone. Which erosion process is this?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Abrasion\n2. Attrition\n3. Solution"
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "s9",
+      "kind": "open-response",
+      "notes": "Running\nAllow about 7 minutes. Pupils answer both questions individually in full sentences, using cause-and-effect language. Then ask pairs to compare answers and improve any missing links. Take a few responses and check that they explain both bank changes and how the old bend becomes isolated.\n\nAnswers\n1. Faster flow erodes the outer bank, making it steeper and causing the bend to migrate. Slower flow deposits sediment on the inner bank, building a slip-off slope.\n2. During high flow, the river may cut through the narrow neck and take a shorter route. Deposition then blocks the ends of the old bend, leaving it isolated as an oxbow lake.\n\nMisconceptions\nPupils may think faster water deposits sediment on the outer bank, or that slower water erodes the inner bank. Link faster flow with erosion and slower flow with deposition. They may think a neck cut-off alone makes an oxbow lake; explain that deposition must also seal the old channel from the river.\n\nBackground\nMeander migration gradually shifts the bend as erosion wears away the outer bank and deposition builds the inner bank. A cut-off can happen during high flow, when water breaks through the narrow neck; deposition later isolates the former bend.",
+      "elements": [
+        {
+          "h": 51,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s9-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Explain a changing bend",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 287,
+          "w": 373,
+          "x": 64,
+          "y": 140,
+          "id": "d-s9-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 257,
+          "w": 343,
+          "x": 79,
+          "y": 155,
+          "id": "d-s9-Diagram-0",
+          "alt": "A diagram with lettered parts.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "diagram": {
+            "fs": 21,
+            "kind": "drawer",
+            "spec": {
+              "alt": "A diagram with lettered parts.",
+              "kind": "river",
+              "view": "meander-section",
+              "labels": [
+                {
+                  "part": "outer-bank",
+                  "text": "A"
+                },
+                {
+                  "part": "inner-bank",
+                  "text": "B"
+                },
+                {
+                  "part": "fastest-flow",
+                  "text": "C"
+                }
+              ]
+            }
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 480,
+          "y": 140,
+          "id": "d-s9-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 98,
+          "w": 368,
+          "x": 528,
+          "y": 140,
+          "id": "d-s9-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A river flows faster at a bend's outer bank. Explain how the two banks change.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 416,
+          "x": 480,
+          "y": 258,
+          "id": "d-s9-surface_rule-0",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 480,
+          "y": 280,
+          "id": "d-s9-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 130,
+          "w": 368,
+          "x": 528,
+          "y": 280,
+          "id": "d-s9-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A bend's neck has narrowed. Explain how high flow and deposition can turn the bend into an oxbow lake.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. The outer bank erodes, while sediment deposits on the slower-flowing inner bank.\n2. High flow cuts through the neck, and deposition seals the old bend off from the channel."
+      }
+    },
+    {
+      "id": "s10",
+      "kind": "exit-ticket",
+      "notes": "Running\nAllow about 8 minutes for pupils to answer independently and silently. Collect or check their responses to identify which objective needs further teaching.\n\nAnswers\n1. Water forces air into cracks in the channel. The pressure weakens the rock and can widen the cracks.\n2. Water moves more slowly on the inner bank, loses energy and deposits sediment there.\n3. Erosion can narrow the neck between neighbouring bends. During high flow, the river may cut through the neck. Deposition then seals the old bend off from the main channel, leaving an oxbow lake.\n\nMisconceptions\nFor question 1, pupils may say the water simply scrapes the crack; hydraulic action forces air into it and weakens the rock. For question 2, pupils may say sediment collects where water is fastest; slower flow on the inner bank loses energy and deposits sediment. For question 3, pupils may leave out either the neck cut-through or the deposition that isolates the old bend; both are needed to explain oxbow-lake formation.\n\nBackground\nUse the exit ticket to check each objective: the erosion process, the link between flow speed and deposition, and the stages of oxbow-lake formation.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s10-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 255,
+          "w": 960,
+          "x": 0,
+          "y": 285,
+          "id": "d-s10-surface_field-b-0",
+          "fill": "#EBF0F5",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 301,
+          "w": 746,
+          "x": 107,
+          "y": 165,
+          "id": "d-s10-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 150,
+          "y": 189,
+          "id": "d-s10-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 612,
+          "x": 198,
+          "y": 189,
+          "id": "d-s10-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How does hydraulic action weaken cracks in a river channel?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 267,
+          "id": "d-s10-surface_rule-0",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 150,
+          "y": 282,
+          "id": "d-s10-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 612,
+          "x": 198,
+          "y": 282,
+          "id": "d-s10-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why does sediment collect on the inner bank of a meander?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 360,
+          "id": "d-s10-surface_rule-1",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 150,
+          "y": 374,
+          "id": "d-s10-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 612,
+          "x": 198,
+          "y": 374,
+          "id": "d-s10-Task-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How can erosion of neighbouring bends lead to an oxbow lake?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Water forces air into cracks, weakening the channel.\n2. Water flows more slowly there, so sediment is deposited.\n3. Erosion narrows the neck; water cuts through it and deposition seals the old bend."
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "XiOMEOit_2",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "vkDc0azdX4",
+          "fill": "#EBF0F5",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "0W5hGBYzsx",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#15803D",
+          "strokeWidth": 6
+        },
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "C5LP7Pb8Ck",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 27,
+          "w": 832,
+          "x": 64,
+          "y": 368,
+          "id": "GDRZgPvUgw",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard",
+      "teacherEdited": true
+    },
+    {
+      "id": "-lAM6A6VVP",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "aDDk8A6wdV",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 39,
+          "w": 214,
+          "x": 682,
+          "y": 52,
+          "id": "poECyccMPB",
+          "fill": "#E4E7EB",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 23,
+          "w": 23,
+          "x": 701,
+          "y": 60,
+          "id": "91Iqgj_K-b",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#4F5D6E",
+          "strokeWidth": 2
+        },
+        {
+          "h": 25,
+          "w": 214,
+          "x": 732,
+          "y": 59,
+          "id": "ehEA6uGlFy",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 20,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "b3Gq6LzHZH",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#0B6E86",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 17,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 50,
+          "w": 190,
+          "x": 64,
+          "y": 173,
+          "id": "MbKytmVUcB",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Identify erosion processes",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 147,
+          "id": "I6XFkOKRT5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 147,
+          "id": "mhF-8Mgfip",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 146,
+          "id": "VZDYzBJbd2",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 127,
+          "x": 348,
+          "y": 146,
+          "id": "g7ZGtuumMD",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Abrasion",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 511,
+          "y": 147,
+          "id": "87mMduzaLS",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 558,
+          "y": 147,
+          "id": "6OXsTn6YKn",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 557,
+          "y": 146,
+          "id": "FOIk7TWGT6",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 127,
+          "x": 558,
+          "y": 146,
+          "id": "x_THSL2M4y",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Attrition",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 721,
+          "y": 147,
+          "id": "t_ywhXTxMO",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 768,
+          "y": 147,
+          "id": "U-hxj8mpE-",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 767,
+          "y": 146,
+          "id": "tqluRDawVI",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 127,
+          "x": 768,
+          "y": 146,
+          "id": "QqJnTTubnW",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Solution",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 1,
+          "w": 832,
+          "x": 64,
+          "y": 245,
+          "id": "jQHPNv96yh",
+          "fill": "#D9E1EA",
+          "name": "Rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true
+        },
+        {
+          "h": 20,
+          "w": 190,
+          "x": 64,
+          "y": 268,
+          "id": "lBUGcT1ilN",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#0B6E86",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 17,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 50,
+          "w": 190,
+          "x": 64,
+          "y": 295,
+          "id": "TdaWrIG3_t",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Explain a changing bend",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 269,
+          "id": "AC6xU5VSHG",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 269,
+          "id": "v7916XV2O2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 268,
+          "id": "pXFqQsNgi0",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 65,
+          "w": 548,
+          "x": 348,
+          "y": 268,
+          "id": "ccJXBTzu6O",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "The outer bank erodes, while sediment deposits on the slower-flowing inner bank.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 350,
+          "id": "XIPMug7CYJ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 350,
+          "id": "Iu9aDpC1bH",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 349,
+          "id": "hbS-62vth8",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 2
+        },
+        {
+          "h": 65,
+          "w": 548,
+          "x": 348,
+          "y": 349,
+          "id": "VfliRD2ITU",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "High flow cuts through the neck, and deposition seals the old bend off from the channel.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 2
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    },
+    {
+      "id": "GO82BRHadf",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "DaUPvb90zu",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 39,
+          "w": 214,
+          "x": 682,
+          "y": 52,
+          "id": "n8T4r95lnI",
+          "fill": "#E4E7EB",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 23,
+          "w": 23,
+          "x": 701,
+          "y": 60,
+          "id": "Kt_WMDpJnG",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#4F5D6E",
+          "strokeWidth": 2
+        },
+        {
+          "h": 25,
+          "w": 214,
+          "x": 732,
+          "y": 59,
+          "id": "NXN3dQ3MBA",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "oKequ4YiDz",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 147,
+          "id": "-6mtLf3ngM",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 147,
+          "id": "f7ttXEUBEK",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 146,
+          "id": "V5SKiHPfuE",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 65,
+          "w": 548,
+          "x": 348,
+          "y": 146,
+          "id": "4bF-O0Nlgx",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Water forces air into cracks, weakening the channel.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 249,
+          "id": "WgNOIyioqL",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 249,
+          "id": "zEXp7bUtIz",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 248,
+          "id": "yw4QeAntcS",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 65,
+          "w": 548,
+          "x": 348,
+          "y": 248,
+          "id": "RwSaXU590t",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Water flows more slowly there, so sediment is deposited.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 352,
+          "id": "Mch2rt1mDO",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 352,
+          "id": "5i2unreY89",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 351,
+          "id": "8zW5Bod9QI",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 65,
+          "w": 548,
+          "x": 348,
+          "y": 351,
+          "id": "72n4TEp2by",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Erosion narrows the neck; water cuts through it and deposition seals the old bend.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    }
+  ]
+}
