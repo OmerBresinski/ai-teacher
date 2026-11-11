@@ -12,6 +12,7 @@ export function RichText({
   style,
   html,
   step,
+  maths,
 }: {
   doc?: RichDoc;
   /** Pre-rendered HTML (used by gap-text, which post-processes the tokens). */
@@ -20,10 +21,12 @@ export function RichText({
   style?: CSSProperties;
   /** The slide's reveal step: a myth strike for a later step is drawn hidden (TEACH-205 part c). */
   step?: number;
+  /** The box holds maths (a worked equation cell, a formula): its fractions found as maths. */
+  maths?: boolean;
 }) {
   const markup = useMemo(
-    () => strikesAt(html ?? (doc ? renderDocHTML(doc) : ""), step),
-    [html, doc, step],
+    () => strikesAt(html ?? (doc ? renderDocHTML(doc, { maths }) : ""), step),
+    [html, doc, step, maths],
   );
   return (
     <div

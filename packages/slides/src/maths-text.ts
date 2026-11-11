@@ -13,9 +13,26 @@
  * Known gap: the headless ruler (`text-measure.ts` `isSpace`) counts a no-break space as a break,
  * so it may count a glued formula one line short at a width where the browser must wrap earlier.
  */
-import { mathText } from "./templates/worked";
+import { mathText, WORKED_NAMES } from "./templates/worked";
 
 export { mathText };
+
+/** The equation slide's maths boxes (`templates/index.ts` `equationHero`). */
+export const EQUATION_NAMES = { formula: "Formula", step: "Step" } as const;
+
+/**
+ * Whether a text box, by its name, holds maths: a worked example's equation cells and the equation
+ * slide's formula and steps. Its fractions are found with `{ maths: true }` (`fractions.ts`), by the
+ * renderer and the ruler alike, so a bare `150/3` or `distance/time` there stacks.
+ */
+export function mathsElement(name: string | undefined): boolean {
+  return (
+    name === WORKED_NAMES.left ||
+    name === WORKED_NAMES.right ||
+    name === EQUATION_NAMES.formula ||
+    name === EQUATION_NAMES.step
+  );
+}
 
 const NBSP = " ";
 const OPERATOR_GAP = / ([=≈×÷+−<>≤≥≠]) /g;

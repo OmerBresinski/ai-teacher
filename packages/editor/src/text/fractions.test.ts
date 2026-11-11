@@ -56,47 +56,68 @@ describe("findFractions: anything not certainly maths stays a slash", () => {
   });
 });
 
-describe("findFractions: a word formula stacks only inside a short equation (NOTATION-PLAN ticket 1)", () => {
+/** The fractions found in a maths box (a worked equation cell, the equation slide's formula). */
+const stackedMaths = (s: string) =>
+  findFractions(s, { maths: true }).map((f) => s.slice(f.start, f.end));
+
+describe("findFractions: a word side stacks only in a maths box (NOTATION-PLAN ticket 1)", () => {
   test.each([
     ["Use and/or in your answer"],
     ["and/or"],
     ["The answer = yes/no"],
-    ["Answer = true/false"],
+    ["colour = red/blue"],
+    ["speed = distance/time"],
+    ["density = mass/volume"],
     ["Mark each one true/false"],
-    ["his/her = their"],
     ["Input/output = data"],
-    ["speed = 60 km/h"],
     ["speed = km/h"],
-    ["Units: speed in km/h = 50"],
     ["Density in g/cm³ = mass ÷ volume"],
-    ["energy = J/kg"],
-    ["On 2/9/1666 = the date"],
     ["Visit bbc.co.uk/bitesize = revision"],
     ["https://example.com/speed = fast"],
-    ["Speed is distance/time"],
     ["distance/time"],
-    ["Write speed = distance/time in your book, then use it to find each car's speed today"],
-    ["If speed = distance/time and time = 3 then"],
-    ["average speed = total distance/total time"],
-  ])("%p stays a slash", (text) => {
+    ["150/3"],
+    ["24/7"],
+  ])("%p outside a maths box stays a slash", (text) => {
     expect(stacked(text)).toEqual([]);
   });
 
   test.each([
+    ["distance/time", ["distance/time"]],
+    ["150/3", ["150/3"]],
     ["speed = distance/time", ["distance/time"]],
     ["Speed = distance/time.", ["distance/time"]],
     ["density = mass/volume", ["mass/volume"]],
     ["pressure = force/area", ["force/area"]],
     ["n = m/Mr", ["m/Mr"]],
-    ["power = energy/time", ["energy/time"]],
     ["efficiency = useful/total × 100", ["useful/total"]],
-    ["distance/time = speed", ["distance/time"]],
-    ["speed ≈ distance/time", ["distance/time"]],
+    ["speed =\u00A0distance/time", ["distance/time"]],
+    ["x/4 + 3 = 8", ["x/4"]],
     ["speed = (distance travelled)/(time taken)", ["(distance travelled)/(time taken)"]],
-    ["a = (v − u)/t", ["(v − u)/t"]],
-    ["speed = 150/3", ["150/3"]],
-  ])("%p stacks %p", (text, want) => {
-    expect(stacked(text)).toEqual(want);
+  ])("%p in a maths box stacks %p", (text, want) => {
+    expect(stackedMaths(text)).toEqual(want);
+  });
+
+  test.each([
+    ["km/h"],
+    ["50 km/h"],
+    ["speed = 50 km/h"],
+    ["g/cm³"],
+    ["J/kg"],
+    ["and/or"],
+    ["true/false"],
+    ["On 2/9/1666"],
+    ["bbc.co.uk/bitesize"],
+  ])("%p in a maths box still stays a slash (unit, prose pair, date, address)", (text) => {
+    expect(stackedMaths(text)).toEqual([]);
+  });
+});
+
+describe("renderDocHTML in a maths box", () => {
+  test("a bare 150/3 stacks only when the box is maths; the plain render is unchanged", () => {
+    const d = docFromText("150/3");
+    expect(renderDocHTML(d)).toBe("<p>150/3</p>");
+    expect(renderDocHTML(d, { maths: true })).toContain('<span class="td-frac">');
+    expect(renderDocHTML(d)).toBe("<p>150/3</p>");
   });
 });
 

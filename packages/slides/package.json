@@ -11,6 +11,7 @@
     "./geometry": "./src/geometry.ts",
     "./fonts": "./src/fonts.ts",
     "./fractions": "./src/fractions.ts",
+    "./maths-text": "./src/maths-text.ts",
     "./themes": "./src/themes.ts",
     "./factories": "./src/factories.ts",
     "./layouts": "./src/layouts.ts",

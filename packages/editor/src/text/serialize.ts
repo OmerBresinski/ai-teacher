@@ -216,12 +216,12 @@ function fraction(num: RichNode[], den: RichNode[]): string {
  * A paragraph's inline children. With `fractions` (the renderer, not the Tiptap parity path) a
  * fraction in maths is set stacked; marks close before it and reopen inside each part.
  */
-function inline(children: RichNode[], fractions: boolean): string {
+function inline(children: RichNode[], fractions: boolean, maths = false): string {
   if (!fractions) return runs(children);
   const text = children
     .map((n) => (n.type === "text" ? (n.text ?? "") : n.type === "hardBreak" ? "\n" : "\uFFFC"))
     .join("");
-  const found = findFractions(text);
+  const found = findFractions(text, { maths });
   if (!found.length) return runs(children);
   let out = "";
   let at = 0;
@@ -233,7 +233,8 @@ function inline(children: RichNode[], fractions: boolean): string {
   return out + runs(slice(children, at, text.length));
 }
 
-type Options = { fractions: boolean };
+/** `maths`: the box holds maths (`@tj/slides/maths-text` `mathsElement`), its fractions found as such. */
+type Options = { fractions: boolean; maths?: boolean };
 
 function blocks(node: RichNode | RichDoc, o: Options): string {
   return (node.content ?? []).map((n) => render(n, o)).join("");
@@ -245,7 +246,7 @@ function render(node: RichNode, o: Options): string {
       // Tiptap writes the attribute whenever it is set, `left` included.
       const align = safeTextAlign(node.attrs?.textAlign);
       const style = align ? ` style="text-align: ${align};"` : "";
-      return `<p${style}>${inline(node.content ?? [], o.fractions)}</p>`;
+      return `<p${style}>${inline(node.content ?? [], o.fractions, o.maths)}</p>`;
     }
     case "bulletList":
       return `<ul>${blocks(node, o)}</ul>`;
@@ -270,5 +271,5 @@ function render(node: RichNode, o: Options): string {
  * renderer asks for it, the parity tests do not.
  */
 export function serializeDoc(doc: RichDoc, options: Partial<Options> = {}): string {
-  return blocks(doc, { fractions: options.fractions ?? false });
+  return blocks(doc, { fractions: options.fractions ?? false, maths: options.maths ?? false });
 }

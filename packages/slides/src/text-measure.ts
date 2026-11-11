@@ -131,6 +131,8 @@ export type LineType = Pick<
   quoteItalic?: boolean;
   /** Stacked fractions are set tall (running text, `fractionTall`) rather than inside the line. */
   tallFractions?: boolean;
+  /** The box holds maths (`maths-text.ts` `mathsElement`): fractions found as the renderer does. */
+  maths?: boolean;
 };
 
 /** `/\s/` without the regex for ASCII, the hot case: space, tab and the other ASCII breaks. */
@@ -164,7 +166,7 @@ function breakLines(
   const t = tablesFor(runs, type);
   const ems = (room * (1 - WRAP_SLACK)) / type.fontSize;
   const flat = runs.map((r) => r.text).join("");
-  const fractions = findFractions(flat);
+  const fractions = findFractions(flat, { maths: type.maths });
   /** Each UTF-16 index's advance in em, tracking included (only needed where fractions are). */
   const advanceAt: number[] = [];
   if (fractions.length) {
@@ -284,11 +286,13 @@ export function countLines(
   width: number,
   weight?: number,
   fontSize?: number,
+  maths?: boolean,
 ): number {
   const r = resolveTextStyle({ preset }, theme);
   const type = {
     ...r,
     tallFractions: fractionTall(preset),
+    ...(maths ? { maths } : {}),
     ...(weight === undefined ? {} : { fontWeight: weight }),
     ...(fontSize === undefined ? {} : { fontSize }),
   };
@@ -416,6 +420,7 @@ export const measureHeadless =
       quoteFamily: quoteFamilyOf(theme),
       quoteItalic: quoteFaceOf(theme).italic,
       tallFractions: fractionTall(r.preset),
+      maths: input.maths,
     };
     const upper = r.textTransform === "uppercase";
     const doc = upper ? upperDoc(input.doc) : input.doc;

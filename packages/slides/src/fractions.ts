@@ -6,7 +6,8 @@
  * them, and the editor (Tiptap) still shows and edits `x/4`.
  *
  * A side of the fraction is one atom: a number (`4`, `0.5`, `3x`), one letter (`x`, with `²`/`³`),
- * a bracket of maths (`(x + 2)`, `(distance travelled)`) or one word (`distance`, `Mr`). A slash with a slash, a dot-letter or a colon beside it is a date or an
+ * a bracket of maths (`(x + 2)`, `(distance travelled)`) or one word (`distance`, `Mr`, maths text
+ * only, below). A slash with a slash, a dot-letter or a colon beside it is a date or an
  * address (`2/9/1666`, `example.com/3`, `https://…`) and never matches.
  *
  * A match is stacked only when its text is certainly maths, one of:
@@ -15,12 +16,14 @@
  * - the whole paragraph is maths tokens and the fraction has a letter: a worked row's `x/4` cell.
  * Otherwise it stays a slash: `24/7`, `50/50`, `A/B testing`, `9/11`, `speed in m/s`.
  *
- * A word side (two letters or more) is a word formula, `speed = distance/time`, and stacks only
- * when the paragraph is one short equation: exactly one `=` or `≈`, at most 10 words, every one a
- * word, number, operator, bracket or fraction, and an operator beside the fraction. Never a pair
- * of units (`km/h`, `g/cm³`, `J/kg`) or a prose pair (`and/or`, `yes/no`, `true/false`), so
- * `and/or`, `Use and/or`, `the answer = yes/no` stay as they are. A longer word side takes
- * brackets, which already stack: `(distance travelled)/(time taken)` (NOTATION-PLAN ticket 1).
+ * Maths text (`{ maths: true }`: a text box whose job is maths, `maths-text.ts` `mathsElement`: a
+ * worked example's equation cells, the equation slide's formula and steps) also stacks what the
+ * rules above cannot vouch for: a bare `150/3` or `distance/time` in a worked row's right cell and
+ * a word formula, `speed = distance/time`, `n = m/Mr`. Never a pair of units (`km/h`, `g/cm³`,
+ * `J/kg`), a letter fraction after a number (`50 km/h`) or a prose pair (`and/or`, `true/false`).
+ * Anywhere else a word side never stacks, so `colour = red/blue` and `and/or` stay as they are. A
+ * longer word side takes brackets, which stack everywhere: `(distance travelled)/(time taken)`
+ * (NOTATION-PLAN ticket 1).
  *
  * Units stay inline (`5 m/s`, `60 km/h`, `g/cm³`): a textbook prints a compound unit with a slash
  * or a negative index, never stacked. A letter fraction straight after a number is a unit.
@@ -73,7 +76,7 @@ export type FractionRange = {
 
 const NUMBER = String.raw`\d+(?:\.\d+)?[a-zA-Z]?[²³]?`;
 const LETTER = "[a-zA-Z][²³]?";
-/** A word side of a word formula (`distance`, `Mr`): kept only inside a short equation. */
+/** A word side of a word formula (`distance`, `Mr`): stacked only in maths text. */
 const WORD = "[a-zA-Z]{2,}[²³]?";
 /** A bracket of maths only: digits, single letters, operators, spaces, no nested bracket or slash. */
 const GROUP = String.raw`\((?:[\d.a-zA-Z²³+\-−×÷*^ ]){1,40}\)`;
@@ -109,16 +112,6 @@ const PROSE_PAIR = new Set(
     " ",
   ),
 );
-/** One word of a short equation: a word, number, operator, bracket or fraction, then a stop. */
-const EQUATION_TOKEN = /^[\p{L}\p{N}+\-−–×÷*/=<>≤≥≠≈().^²³√%]+[.,;:!?]?$/u;
-
-/** One short equation: exactly one `=` or `≈`, at most 10 words, each an equation token. */
-const isEquation = (text: string): boolean => {
-  if ((text.match(/[=≈]/g) ?? []).length !== 1) return false;
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  return words.length <= 10 && words.every((w) => EQUATION_TOKEN.test(w));
-};
-
 /** The operator beside `text[i]` going `dir` (-1 left, +1 right), skipping spaces. */
 function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
   let i = from;
@@ -136,12 +129,14 @@ function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
   return false;
 }
 
+/** Where the text sits: `maths` when its box is maths (a worked equation cell, a formula). */
+export type FractionContext = { maths?: boolean };
+
 /** The fractions in `text` that are certainly maths, in order and not overlapping. */
-export function findFractions(text: string): FractionRange[] {
+export function findFractions(text: string, context: FractionContext = {}): FractionRange[] {
   if (!text.includes("/")) return [];
   const out: FractionRange[] = [];
   let whole: boolean | undefined;
-  let equation: boolean | undefined;
   const wholeMaths = () => {
     if (whole === undefined) whole = isMathsParagraph(text);
     return whole;
@@ -153,17 +148,6 @@ export function findFractions(text: string): FractionRange[] {
     const slash = start + num.length;
     const end = slash + 1 + den.length;
     const letters = /[a-zA-Z]/.test(num + den);
-    // A word side (`distance/time`, `m/Mr`): a word formula only inside one short equation.
-    if (isWord(num) || isWord(den)) {
-      if (equation === undefined) equation = isEquation(text);
-      if (!equation) continue;
-      if (UNIT.has(num) && UNIT.has(den)) continue;
-      if (PROSE_PAIR.has(`${num}/${den}`.toLowerCase())) continue;
-      if (!(operatorBeside(text, start - 1, -1) || operatorBeside(text, end, 1))) continue;
-      if (/^[a-zA-Z]/.test(num) && /\d\s?$/.test(text.slice(0, start))) continue;
-      out.push({ start, slash, end });
-      continue;
-    }
     // A letter after a number is a unit ("5 m/s", "3 g/cm³"), never a fraction.
     if (/^[a-zA-Z]/.test(num) && /\d\s?$/.test(text.slice(0, start))) continue;
     const maths =
@@ -171,7 +155,10 @@ export function findFractions(text: string): FractionRange[] {
       operatorBeside(text, end, 1) ||
       /^\s+of\s+[\p{N}a-zA-Z(]/u.test(text.slice(end)) ||
       (letters && wholeMaths());
-    if (maths) out.push({ start, slash, end });
+    if (maths && !isWord(num) && !isWord(den)) out.push({ start, slash, end });
+    else if (context.maths && !(UNIT.has(num) && UNIT.has(den))) {
+      if (!PROSE_PAIR.has(`${num}/${den}`.toLowerCase())) out.push({ start, slash, end });
+    }
   }
   return out;
 }
