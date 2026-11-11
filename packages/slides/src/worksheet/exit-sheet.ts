@@ -127,9 +127,17 @@ export function letteredParts(
 
 const LETTERS = "abcdefgh";
 
-/** One exit task as blocks: the numbered question, then its answer space (lettered when split). */
-function taskBlocks(item: DigestAsked, yearGroup: string, ids: () => string): WorksheetBlock[] {
-  const parts = letteredParts(item);
+/**
+ * One task as blocks: the numbered question, then its answer space by task type (lettered parts
+ * when `split` and the slide packed several tasks into one). Shared with the Practice sheet (T7).
+ */
+export function answeredTaskBlocks(
+  item: Pick<DigestAsked, "question" | "answer" | "working">,
+  yearGroup: string,
+  ids: () => string,
+  { split = true }: { split?: boolean } = {},
+): WorksheetBlock[] {
+  const parts = split ? letteredParts(item) : undefined;
   if (!parts) {
     const space = answerSpace(item.question, item.working);
     const ruled = space === "explain" || space === "short";
@@ -187,7 +195,7 @@ export function exitTicketBlocks(digest: LessonDigest, ids: () => string = uid):
   const blocks: WorksheetBlock[] = [
     { id: ids(), type: "heading", doc: docFromText(EXIT_SHEET_HEADING), level: 1 },
     { id: ids(), type: "instructions", doc: docFromText(EXIT_SHEET_INSTRUCTION) },
-    ...items.flatMap((item) => taskBlocks(item, digest.lesson.yearGroup, ids)),
+    ...items.flatMap((item) => answeredTaskBlocks(item, digest.lesson.yearGroup, ids)),
   ];
   return { ok: true, blocks: numberQuestions(blocks) };
 }

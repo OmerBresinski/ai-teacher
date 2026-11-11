@@ -466,3 +466,6 @@ export function writerFixture(): { main: string; notes: string } {
     notes: read("notes.json"),
   };
 }
+
+// T7 stub model answers (STUB CONTENT, hand-written) for the four fixture lessons.
+export * from "./fixtures/sheet-stubs";

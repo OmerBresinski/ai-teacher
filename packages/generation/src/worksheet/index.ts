@@ -10,4 +10,6 @@ export * from "./check";
 export * from "./fill";
 export * from "./frame";
 export * from "./gate";
+export * from "./sheet-items";
 export * from "./specs";
+export * from "./write-sheet";

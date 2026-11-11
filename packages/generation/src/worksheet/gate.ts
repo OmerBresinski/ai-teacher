@@ -25,6 +25,7 @@ import { EXIT_TICKET_MIN_ITEMS, isEarlyYears, isSpokenTask } from "@tj/slides/wo
 export const SHEET_MIN_ITEMS: Record<SlideSheetRecipeId, number> = {
   "exit-ticket": EXIT_TICKET_MIN_ITEMS,
   practice: 6,
+  "exam-style": 3,
   "quick-quiz": 5,
   "key-words": 4,
 };
@@ -115,7 +116,9 @@ export function gateSheet(input: GateInput): GateResult {
   }
   const blocks = numberQuestions(kept);
   const items = blocks.filter((b) => NUMBERED.has(b.type)).length;
-  if (items < SHEET_MIN_ITEMS[input.type]) {
+  // Practice in Years 1-2 ships with 4 (schemas.md, D9).
+  const min = input.type === "practice" && early ? 4 : SHEET_MIN_ITEMS[input.type];
+  if (items < min) {
     return { ok: false, code: "too-few-checked", blocks, findings };
   }
   return { ok: true, blocks, findings };
