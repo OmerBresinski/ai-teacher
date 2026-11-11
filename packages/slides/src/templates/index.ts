@@ -38,6 +38,7 @@ import {
 import { uid } from "../factories";
 import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
+import { formulaText } from "../maths-text";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
@@ -1600,7 +1601,9 @@ function equationHero(c: Ctx, input: TemplateInput) {
     const el = text(c, input.lead, "lead", { x, y, w }, { weight: 700, name: "Lead" });
     y += el.h + 16;
   }
-  const formula = input.formula?.trim() ?? "";
+  // The formula and its steps set as maths: a true minus, a unit kept with its number, each
+  // operator kept with the term after it (NOTATION-PLAN ticket 2, `maths-text.ts`).
+  const formula = formulaText(input.formula?.trim() ?? "");
   const fh = measure(c, formula, "heading", inner);
   box(c, { x, y, w, h: fh + 2 * G.inset }, wash(c.t), { name: "Formula panel" });
   text(
@@ -1618,7 +1621,8 @@ function equationHero(c: Ctx, input: TemplateInput) {
   if (!wordsFit(c, formula, "heading", inner, c.s.heading)) c.over.push("formula word too wide");
   y += fh + 2 * G.inset + 18;
   for (const p of input.points ?? []) {
-    const el = text(c, pointText(p), "body", { x: x + G.inset, y, w: inner }, { name: "Step" });
+    const step = formulaText(pointText(p));
+    const el = text(c, step, "body", { x: x + G.inset, y, w: inner }, { name: "Step" });
     y += el.h + 10;
   }
   const used = Math.round(y - 10 - G.band.y);
