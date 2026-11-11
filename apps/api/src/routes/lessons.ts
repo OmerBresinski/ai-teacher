@@ -83,13 +83,17 @@ import {
   isUnfinishedWorksheet,
   type Lesson,
   lessonFromBrief,
+  OFFERED_RECIPE_IDS,
+  offeredRecipeFor,
   PlanLessonSchema,
   RequestWorksheetSchema,
   type SourceRef,
+  WORKSHEET_TYPE_UNAVAILABLE_MESSAGE,
   type Worksheet,
 } from "@tj/domain/documents";
 import { cancel, enqueue } from "@tj/jobs";
-import { defaultPracticeMinutes, isRecipeId, newWorksheet, resolveRecipe } from "@tj/slides";
+import { defaultPracticeMinutes, isRecipeId, newWorksheet, recipeById } from "@tj/slides";
+import { availableTypes, lessonDigest } from "@tj/slides/worksheet/digest";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -260,6 +264,34 @@ export const WORKSHEET_NOT_CONFIRMED_MESSAGE = "Confirm the plan before making a
 export const WORKSHEET_GENERATING_MESSAGE = "A worksheet for this lesson is already being written.";
 export const WORKSHEET_QUEUED_MESSAGE = "A worksheet for this lesson was requested a moment ago.";
 export const UNKNOWN_RECIPE_MESSAGE = "That worksheet recipe does not exist.";
+export const WORKSHEET_SLIDES_PENDING_MESSAGE =
+  "The slides are still being written. The worksheet can be made once they are done.";
+
+/** The lesson's slides are written (stage `generated` or later): a sheet can be read from them. */
+const slidesWritten = (lesson: Lesson): boolean =>
+  lesson.generation?.stage !== undefined && lesson.generation.stage !== "planned";
+
+/**
+ * The offered sheet types for this lesson, each greyed with its reason when the slides cannot
+ * carry it (`availableTypes` over `lessonDigest`, worksheets plan v2 T6). Before the slides are
+ * written every type is greyed with `WORKSHEET_SLIDES_PENDING_MESSAGE`.
+ */
+export function offeredSheetTypes(
+  lesson: Lesson,
+): { type: string; name: string; available: boolean; reason?: string }[] {
+  const written = slidesWritten(lesson);
+  const availability = written ? availableTypes(lessonDigest(lesson)) : [];
+  return OFFERED_RECIPE_IDS.map((type) => {
+    const name = recipeById(type)?.name ?? type;
+    if (!written) {
+      return { type, name, available: false, reason: WORKSHEET_SLIDES_PENDING_MESSAGE };
+    }
+    const found = availability.find((a) => a.type === type);
+    return found?.available === false
+      ? { type, name, available: false, reason: found.reason ?? WORKSHEET_TYPE_UNAVAILABLE_MESSAGE }
+      : { type, name, available: true };
+  });
+}
 /**
  * One `lesson.worksheet` job per lesson per this many seconds (ADR 0030 item 8): the
  * `singletonKey` slot that makes two requests racing past `findWorksheetForGeneration` one job.
@@ -837,6 +869,12 @@ export function lessonRoutes(
           if (input.recipeId !== "auto" && !isRecipeId(input.recipeId)) {
             throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
           }
+          // Plan v2 T6: `auto` (and the retired `knowledge-check`) is Exit ticket until Practice
+          // lands (T7); a known type that is not offered yet is refused before any lookup.
+          const offered = offeredRecipeFor(input.recipeId);
+          if (offered === null) {
+            throw new HTTPException(422, { message: WORKSHEET_TYPE_UNAVAILABLE_MESSAGE });
+          }
           const rt = requireRuntime(runtime);
           const lessonId = c.req.valid("param").id as LessonId;
           const ws = forWorkspace(unsafeDb, workspaceId);
@@ -861,10 +899,20 @@ export function lessonRoutes(
           if (plan.revision !== input.expectedRevision) {
             throw new ConflictError("stale", STALE_PLAN_MESSAGE, { revision: plan.revision });
           }
-          const recipe = resolveRecipe(
-            input.recipeId === "auto" ? "auto" : input.recipeId,
-            lesson.facts,
-          );
+          // The sheet is read from the slides, so they must be written first.
+          if (!slidesWritten(lesson)) {
+            throw new ConflictError("planning", WORKSHEET_SLIDES_PENDING_MESSAGE, {
+              revision: plan.revision,
+              ...(holder ? { jobId: holder } : {}),
+            });
+          }
+          // Greyed for this lesson (too little on its slides): refused with the greyed reason.
+          const greyed = offeredSheetTypes(lesson).find((t) => t.type === offered);
+          if (greyed?.available === false) {
+            throw new HTTPException(422, { message: greyed.reason });
+          }
+          const recipe = recipeById(offered);
+          if (!recipe) throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
           const practiceMinutes =
             input.practiceMinutes === "auto"
               ? defaultPracticeMinutes(recipe)
@@ -958,6 +1006,21 @@ export function lessonRoutes(
             "worksheet queued",
           );
           return c.json({ worksheetId, jobId }, 202);
+        },
+      )
+      /** The sheet types the lesson's Worksheet picker offers, each greyed with its reason (T6). */
+      .get(
+        "/lessons/:id/worksheet-types",
+        zValidator("param", lessonParam, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const row = await getDocument(ws, lessonId);
+          if (row === null || row.kind !== "lesson") {
+            throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+          }
+          return c.json({ types: offeredSheetTypes(row.body as Lesson) });
         },
       )
       .get(

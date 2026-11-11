@@ -32,13 +32,14 @@ import {
   runJob,
 } from "@tj/jobs";
 import { defaultPracticeMinutes, newWorksheet, resolveRecipe } from "@tj/slides";
+import { fixtureLesson } from "@tj/slides/worksheet/fixtures";
 import type { PgBoss } from "pg-boss";
 import { createApp } from "../app";
 import type { ErrorEnvelope } from "../errors";
 import { createEventsRuntime, type EventsRuntime } from "../events/runtime";
 import { silentLogger, TEST_ENV } from "../test-helpers";
 import { WORKSPACE_HEADER } from "../workspace";
-import { RESUME_BUDGET_MESSAGE } from "./lessons";
+import { RESUME_BUDGET_MESSAGE, WORKSHEET_SLIDES_PENDING_MESSAGE } from "./lessons";
 
 const t = await withTestDb({ max: 4 });
 const describeDb = t.ok ? describe : describe.skip;
@@ -1029,7 +1030,9 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       opts: {
         ws?: WorkspaceId;
         state?: "proposed" | "confirmed";
-        stage?: "planned" | "repaired" | null;
+        stage?: "planned" | "generated" | "repaired" | null;
+        /** The lesson's slides; the recorded Y9 rivers deck (an exit ticket of three) by default. */
+        slides?: Lesson["slides"];
         revision?: number;
         lockedBy?: JobId | null;
       } = {},
@@ -1040,12 +1043,14 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
         ...base,
         brief: { topic: "The water cycle", durationMin: 60, slideCount: 10 },
         facts: lessonFacts(),
+        // Plan v2 T6: the sheet is read from the slides, so the default lesson has them written.
+        slides: opts.slides ?? fixtureLesson("rivers").slides,
         ...(opts.stage === null
           ? { generation: undefined }
           : {
               generation: {
                 ...(base.generation as NonNullable<Lesson["generation"]>),
-                stage: opts.stage ?? "planned",
+                stage: opts.stage ?? "generated",
               },
             }),
         plan: {
@@ -1061,7 +1066,8 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       return { lessonId: row.id as LessonId, row };
     }
 
-    const suggested = resolveRecipe("auto", lessonFacts());
+    // Plan v2 T6: "auto" is Exit ticket until Practice lands (T7).
+    const suggested = resolveRecipe("exit-ticket");
 
     test("202 { worksheetId, jobId }: a locked worksheet row with lesson_id, the resolved payload, the lesson untouched; the job clears the lock", async () => {
       const { lessonId, row: lessonBefore } = await seedConfirmed();
@@ -1199,6 +1205,77 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(0);
     });
 
+    test("409 planning while the slides are still being written (stage planned)", async () => {
+      // Slides still being written (stage `planned`): the sheet has nothing to read yet.
+      const writing = await seedConfirmed({ stage: "planned" });
+      const pending = await postJson(wsA, `/lessons/${writing.lessonId}/worksheet`, {
+        expectedRevision: 1,
+      });
+      expect(pending.status).toBe(409);
+      expect(await errorOf(pending)).toMatchObject({
+        reason: "planning",
+        message: WORKSHEET_SLIDES_PENDING_MESSAGE,
+      });
+    });
+
+    test("422 for a type not offered yet (cloze, practice); nothing written", async () => {
+      const { lessonId } = await seedConfirmed();
+      // Three requests per test is the limiter's allowance here; the rest are in lessons.test.ts.
+      for (const recipeId of ["cloze", "practice"]) {
+        const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
+          expectedRevision: 1,
+          recipeId,
+        });
+        expect(res.status).toBe(422);
+        expect(await errorOf(res)).toMatchObject({
+          message: "That worksheet type is not available yet.",
+        });
+      }
+      expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(0);
+    });
+
+    test("knowledge-check (the retired default) maps to Exit ticket, as auto does", async () => {
+      const { lessonId } = await seedConfirmed();
+      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
+        expectedRevision: 1,
+        recipeId: "knowledge-check",
+      });
+      expect(res.status).toBe(202);
+      const { jobId } = (await res.json()) as Accepted;
+      expect((await jobData("lesson.worksheet", jobId))?.payload).toMatchObject({
+        recipeId: "exit-ticket",
+        practiceMinutes: 5,
+      });
+    });
+
+    test("greyed: a lesson with no exit-ticket slide is 422 with the reason; GET worksheet-types says why", async () => {
+      const noExit = fixtureLesson("rivers").slides.filter((s) => s.kind !== "exit-ticket");
+      const { lessonId } = await seedConfirmed({ slides: noExit });
+      const res = await postJson(wsA, `/lessons/${lessonId}/worksheet`, { expectedRevision: 1 });
+      expect(res.status).toBe(422);
+      expect(await errorOf(res)).toMatchObject({
+        message: "This lesson has no exit ticket to put on a sheet.",
+      });
+      expect(await sql`select id from documents where lesson_id = ${lessonId}`).toHaveLength(0);
+      const greyed = await (await getJson(wsA, `/lessons/${lessonId}/worksheet-types`)).json();
+      expect(greyed).toEqual({
+        types: [
+          {
+            type: "exit-ticket",
+            name: "Exit ticket",
+            available: false,
+            reason: "This lesson has no exit ticket to put on a sheet.",
+          },
+        ],
+      });
+      const ok = await seedConfirmed();
+      const offered = await (await getJson(wsA, `/lessons/${ok.lessonId}/worksheet-types`)).json();
+      expect(offered).toEqual({
+        types: [{ type: "exit-ticket", name: "Exit ticket", available: true }],
+      });
+      expect((await getJson(wsB, `/lessons/${ok.lessonId}/worksheet-types`)).status).toBe(404);
+    });
+
     test("404 for an unknown id, a worksheet id and another Workspace's lesson, on both routes", async () => {
       const ws = forWorkspace(unsafeDb, wsA);
       const sheet = await createDocument(ws, "worksheet", generatedWorksheet());
@@ -1227,7 +1304,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       await Bun.sleep(1_100);
       const second = await postJson(wsA, `/lessons/${lessonId}/worksheet`, {
         expectedRevision: 1,
-        recipeId: "cloze",
+        recipeId: "exit-ticket",
         practiceMinutes: 15,
       });
       expect(second.status).toBe(202);
@@ -1236,7 +1313,7 @@ describeDb("POST /lessons against Postgres + pg-boss", () => {
       await waitFor(async () => (await getDocument(ws, b.worksheetId))?.generatingJobId === null);
       const list = (await (await getJson(wsA, `/lessons/${lessonId}/worksheets`)).json()) as Listed;
       expect(list.items.map((i) => i.id)).toEqual([a.worksheetId, b.worksheetId]);
-      expect(list.items.map((i) => i.generation?.recipeId)).toEqual([suggested.id, "cloze"]);
+      expect(list.items.map((i) => i.generation?.recipeId)).toEqual([suggested.id, "exit-ticket"]);
       expect(list.items.every((i) => i.generatingJobId === null)).toBe(true);
     });
 
