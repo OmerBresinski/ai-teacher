@@ -69,6 +69,9 @@ import t50b3 from "./bundles/pilot-v5.0b/system-KS3.template.txt" with { type: "
 import t51g1 from "./bundles/pilot-v5.1-gold/system-KS1.template.txt" with { type: "text" };
 import t51g2 from "./bundles/pilot-v5.1-gold/system-KS2.template.txt" with { type: "text" };
 import t51g3 from "./bundles/pilot-v5.1-gold/system-KS3.template.txt" with { type: "text" };
+import t51b1 from "./bundles/pilot-v5.1b-gold/system-KS1.template.txt" with { type: "text" };
+import t51b2 from "./bundles/pilot-v5.1b-gold/system-KS2.template.txt" with { type: "text" };
+import t51b3 from "./bundles/pilot-v5.1b-gold/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -195,6 +198,13 @@ export type PilotPack = {
   goldMenu?: boolean;
   /** The pack owns its two model blocks (`withV51ModelLines`, stage.ts) in place of `withWaveCLibrary`'s. */
   modelLines?: "v5.1-gold";
+  /**
+   * A figure code drops from a picture-and-text slide (lost picture, failed reroute, unshown
+   * visual) keeps the gold picture-and-text's no-picture look, never the retired explain
+   * (`fixedFallback`'s `goldNoPicture`; v5.1b-gold on: the v5.1-gold proof shipped 4 explain slides
+   * this way, none written by the writer).
+   */
+  goldNoPictureFallback?: boolean;
 };
 
 /** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
@@ -746,6 +756,36 @@ export const PILOT_PACKS = {
     goldFits: true,
     goldMenu: true,
     modelLines: "v5.1-gold",
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
+  // v5.1b-gold (11 Nov 2026, lab runs only, selected by id): v5.1-gold plus the fixes its paid proof
+  // called for (scratchpad/tuning/v5.1-gold/V51B-NOTES.md): the discussion line asks for a question
+  // with more than one fair answer and a lead that is never the answer, and a figure code drops
+  // keeps the gold no-picture look (goldNoPictureFallback). The model blocks are v5.1-gold's.
+  "v5.1b-gold": {
+    id: "v5.1b-gold",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v51System(t51b1, "KS1"),
+      KS2: v51System(t51b2, "KS2"),
+      KS3: v51System(t51b3, "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    goldFits: true,
+    goldMenu: true,
+    modelLines: "v5.1-gold",
+    goldNoPictureFallback: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
 } as const satisfies Record<string, PilotPack>;
