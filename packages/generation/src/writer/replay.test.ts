@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { canonicalArrows } from "@tj/slides/arrow";
+import { PT_NAMES } from "@tj/slides/templates/picture-text";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
 import { slideRoles } from "./role";
 
@@ -35,6 +36,13 @@ import { slideRoles } from "./role";
  * length (one size a slide, one card height, full width) in one adaptive group that re-flows as the
  * teacher types, so it is checked for its cards and its
  * words, not compared element by element with the lab's 720-point numbered list.
+ *
+ * One since (gold picture-text, 032061cce): a picture-and-text slide is drawn by the signed-off
+ * gold picture-and-text design (title, lead, dotted points, the picture bleeding off the right and
+ * bottom edges), not the lab's legacy column. A labelled point (the retired key card) folds into
+ * its point as "Label: text", as the gold folds a card. So it is checked for its kind, heading,
+ * every word the lab showed (none lost, none added), the same photo, and every text box on the
+ * slide, not element by element.
  *
  * One since (TEACH-230 part b): practice and exit-ticket slides are the "work alone" layouts, a
  * grid or a ticket of badged tasks, so they keep their heading and kind and are not compared
@@ -78,6 +86,21 @@ const headingOf = (els: El[]) => {
   const h = els.find((e) => e.name === "Heading");
   return JSON.stringify(h?.doc ?? h?.text ?? null);
 };
+
+/** Every word a slide's text boxes show, sorted, a label's colon dropped ("Match:" = "Match"). */
+const wordsIn = (els: El[]) =>
+  els
+    .filter((e) => e.type === "text")
+    .flatMap((e) =>
+      [...JSON.stringify(e.doc ?? e.text ?? "").matchAll(/"text":"((?:[^"\\]|\\.)*)"/g)].map(
+        (m) => m[1] ?? "",
+      ),
+    )
+    .join(" ")
+    .replace(/:(?=\s|$)/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort();
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 /** The themes whose cover TEACH-215 part g recomposed (every round 5 theme but Geometric). */
@@ -236,6 +259,18 @@ describe.each(LESSONS)("replay %s", (b) => {
       if (got.some((e) => e.name === "surface:badge" && !("icon" in e))) {
         expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
         expect(got.some((e) => e.name === "Task")).toBe(true);
+        return;
+      }
+      if (s.kind === "image-text" && got.some((e) => e.name === PT_NAMES.dot)) {
+        expect({ i, kind: s.kind }).toEqual({ i, kind: want.kind as never });
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        expect({ i, words: wordsIn(got) }).toEqual({ i, words: wordsIn(want.elements) });
+        const photo = (els: El[]) => els.find((e) => e.name === PT_NAMES.photo)?.src ?? null;
+        expect({ i, photo: photo(got) }).toEqual({ i, photo: photo(want.elements) });
+        const off = got
+          .filter((e) => e.type === "text")
+          .filter((e) => Number(e.y) + Number(e.h) > 540 || Number(e.x) + Number(e.w) > 960);
+        expect({ i, off: off.map((e) => e.name) }).toEqual({ i, off: [] });
         return;
       }
       if (UNSHOWN[b]?.includes(i)) {
