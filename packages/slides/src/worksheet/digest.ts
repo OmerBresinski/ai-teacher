@@ -384,6 +384,31 @@ export const UNAVAILABLE_REASONS = {
   taught: "This lesson doesn't have enough teaching on its slides for a sheet.",
 } as const;
 
+/** Lead verbs of a task done aloud, not on paper: dropped from Years 1-2 sheets (plan v2 §3b). */
+export const SPOKEN_LEAD_VERBS = ["say", "tell", "point", "talk", "discuss", "show"] as const;
+
+/** True when the task's first word is a spoken-task verb ("Tell your partner…", "Show me…"). */
+export function isSpokenTask(text: string): boolean {
+  const first = /^[^A-Za-z]*([A-Za-z]+)/.exec(text)?.[1]?.toLowerCase();
+  return first !== undefined && (SPOKEN_LEAD_VERBS as readonly string[]).includes(first);
+}
+
+/** Years 1-2 (and anything younger the year group names): the spoken-task filter applies. */
+export function isEarlyYears(yearGroup: string): boolean {
+  const year = yearNumberOf(yearGroup);
+  if (year !== undefined) return year <= 2;
+  return /reception|eyfs|nursery/i.test(yearGroup);
+}
+
+/**
+ * The exit-ticket items a sheet can carry: the exit slide's tasks with answers, minus spoken
+ * tasks for Years 1-2. Drawing stays: it is written work (§2d).
+ */
+export function sheetExitItems(digest: LessonDigest): DigestAsked[] {
+  const early = isEarlyYears(digest.lesson.yearGroup);
+  return digest.asked.filter((a) => a.kind === "exit" && !(early && isSpokenTask(a.question)));
+}
+
 /**
  * Which sheet types this lesson can support, each with the reason it is greyed. Exam practice is
  * listed for Years 10-11 only; the pickers leave it out elsewhere.
@@ -391,7 +416,8 @@ export const UNAVAILABLE_REASONS = {
 export function availableTypes(digest: LessonDigest): SheetAvailability[] {
   const taught = digest.taught.some((t) => t.text || t.namedItems?.length || t.worked?.length);
   const year = yearNumberOf(digest.lesson.yearGroup);
-  const exits = digest.asked.filter((a) => a.kind === "exit").length;
+  // Counted after the Years 1-2 spoken-task filter, so a greyed reason matches what the sheet gets.
+  const exits = sheetExitItems(digest).length;
   const entry = (type: DigestSheetType, ok: boolean, reason: string): SheetAvailability =>
     ok ? { type, available: true } : { type, available: false, reason };
   const out = [
