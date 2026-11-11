@@ -19,6 +19,7 @@
     "./layout-paths": "./src/layout-paths.ts",
     "./answers-slide": "./src/answers-slide.ts",
     "./worksheet": "./src/worksheet/index.ts",
+    "./worksheet/digest": "./src/worksheet/digest.ts",
     "./diagrams": "./src/diagrams/index.ts",
     "./templates": "./src/templates/index.ts",
     "./templates/pupil-words": "./src/templates/pupil-words.ts",
