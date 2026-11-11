@@ -585,10 +585,13 @@ export function toInput(
       if (template === "diagram-text" && points.length && studyFigure(f) && teaches(raw))
         return { template: "big-diagram", heading, lead, points, figure: f };
       // Wave C (TEACH-110 part v): picture-text's key cards and the icon shown if the picture fails.
+      // Every new picture-text slide takes the gold picture-and-text design (TEACH-75 part ae), with
+      // or without cards or an icon: `pictureText` is what selects it. Saved slides keep their
+      // elements; a slide without it lays out the old way.
       const cards = Array.isArray(s.cards) ? (s.cards as S[]) : [];
       const ptIcon = typeof s.icon === "string" && s.icon.trim() ? s.icon : null;
       const pictureText =
-        template === "picture-text" && (cards.length || ptIcon)
+        template === "picture-text"
           ? {
               ...(ptIcon ? { icon: ptIcon } : {}),
               ...(cards.length
@@ -601,13 +604,15 @@ export function toInput(
             }
           : null;
       // A picture or diagram that could not be made: the words stand alone, never an empty panel.
+      // A picture-text slide keeps the gold design: its icon in a medal, or with no icon the words
+      // take the width (the gold's no-picture look).
       return {
-        template: f ? template : "explain",
+        template: f || pictureText ? template : "explain",
         heading,
         lead,
         points: pts(s.points),
         figure: f,
-        ...(f && pictureText ? { pictureText } : {}),
+        ...(pictureText ? { pictureText } : {}),
       } as TemplateInput;
     }
     case "big-picture":

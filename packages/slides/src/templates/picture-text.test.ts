@@ -127,6 +127,39 @@ describe("picture and text: hierarchy", () => {
 });
 
 describe("picture and text: caps flag, never clip", () => {
+  test("a lead alone too long for name size beside the picture takes the plain look, inside the slide", () => {
+    // GOLD1 (11 Nov): recorded Year 1-2 leads run 15-19 words over the 14-word cap. Every
+    // picture-text slide now takes this design, so such a lead must never run off the slide.
+    const crayon = getTheme("crayon", "ks1");
+    const recorded = (lead: string): TemplateInput => ({
+      template: "picture-text",
+      heading: "The fire begins",
+      lead,
+      figure: photo(1.5),
+      pictureText: {},
+    });
+    const long =
+      "In 1666, a fire began in Thomas Farriner’s bakery on Pudding Lane in London. It started on 2 September.";
+    const r = layoutTemplate(recorded(long), crayon, "ks1");
+    expect(r.over).toContain("picture-text lead words 19/14");
+    expect(r.over.some((o) => o.startsWith("picture-text column"))).toBe(false);
+    const [lead] = named(r, PT_NAMES.lead);
+    expect(JSON.stringify(lead?.doc)).toContain("It started on 2 September.");
+    expect((lead?.y ?? 0) + (lead?.h ?? 0)).toBeLessThanOrEqual(497);
+    // The plain look: the field at its width with points (427), not the lead-alone 480.
+    const [ph] = named(r, PT_NAMES.photo);
+    expect(ph?.x).toBe(960 - 427);
+    // A lead that fits keeps the lead-alone look: name size, the wider field.
+    const fits = layoutTemplate(
+      recorded("Plants need water, light and warmth to grow well."),
+      crayon,
+      "ks1",
+    );
+    expect(named(fits, PT_NAMES.photo)[0]?.x).toBe(960 - 480);
+    expect(named(fits, PT_NAMES.lead)[0]?.style?.fontSize).toBeGreaterThan(
+      lead?.style?.fontSize ?? 99,
+    );
+  });
   test("the gold's full KS3 text is reported over and every word is drawn", () => {
     const c = PT_CASES["ks3-composite-gold-text"];
     const r = lay("ks3-composite-gold-text");
