@@ -140,6 +140,7 @@ import {
   type Materialised,
   materialise,
   modelPoints,
+  NO_FIGURE,
   type Plan,
   questionsOf,
   stableIdPrefix,
@@ -180,6 +181,7 @@ import {
   pilotRequest,
   stripStringCaps,
 } from "./pilot-pack";
+import { withV51ModelLines } from "./pilot-v51-gold";
 import { pointTaskFault, stripPointTasks } from "./point-guard";
 import { continuePractice } from "./practice-split";
 import { continueQuickCheck } from "./question-set-split";
@@ -959,7 +961,12 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const libbedSystem = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
   // Wave C (TEACH-110 part v): a model may go to figure-slide or step-model, as their lines say.
   const waveC = !!(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).waveC);
-  const system0 = waveC ? withWaveCLibrary(libbedSystem, writerStageOfKey(stageKey)) : libbedSystem;
+  const modelLines = run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).modelLines;
+  const system0 = modelLines
+    ? withV51ModelLines(libbedSystem, writerStageOfKey(stageKey))
+    : waveC
+      ? withWaveCLibrary(libbedSystem, writerStageOfKey(stageKey))
+      : libbedSystem;
   const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
@@ -1363,8 +1370,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
     let raw = arrived;
+    // v5.1-gold: a visual-text slide written with a null figure (nothing would show its point) is
+    // marked so code draws the gold picture-and-text's no-picture look (materialise `normalise`).
+    // Only this pack's writer may write one; a figure code takes away later keeps its old fallback.
+    if (
+      run.pilotPack &&
+      (PILOT_PACKS[run.pilotPack] as PilotPack).goldMenu &&
+      arrived.template === "visual-text" &&
+      arrived.figure === null
+    )
+      raw = { ...arrived, [NO_FIGURE]: true };
     if (slotFill) {
-      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps, !!pilot);
+      const a = slotFillArrival(raw, stageKey, schema, pilot?.caps, !!pilot);
       raw = a.slide;
       log({
         ev: "slot-fill",

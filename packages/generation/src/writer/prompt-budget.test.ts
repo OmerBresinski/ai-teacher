@@ -28,8 +28,9 @@ const budget: PromptBudget = JSON.parse(
   readFileSync(new URL("prompt-budget.json", import.meta.url), "utf8"),
 );
 
-// The packs whose writer text is budgeted: v5.0a, whichever pack is live, and the revert pack.
-const PACKS = [...new Set<PilotPackId>(["v5.0a", PILOT_PACK_LIVE, PILOT_PACK_REVERT])];
+// The packs whose writer text is budgeted: v5.0a, whichever pack is live, the revert pack, and
+// the lab pack v5.1-gold (CHANGES.md section 3: its growth is measured before any Gate B).
+const PACKS = [...new Set<PilotPackId>(["v5.0a", PILOT_PACK_LIVE, PILOT_PACK_REVERT, "v5.1-gold"])];
 const LESSONS = [
   {
     ks: "KS1",

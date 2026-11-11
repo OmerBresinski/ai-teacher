@@ -640,6 +640,186 @@
           "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
         }
       ]
+    },
+    "writer/v5.1-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 19646,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59311,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 21589,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61030,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20869,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62282,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22812,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64156,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21755,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62827,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24218,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64134,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
     }
   }
 }

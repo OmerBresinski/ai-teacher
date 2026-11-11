@@ -205,6 +205,8 @@ export function modelPoints(s: S | undefined): string[] {
  * diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape (a `kind` is a
  * diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
  */
+/** The mark a v5.1-gold writer's null visual-text figure carries from arrival (stage.ts) to `normalise`. */
+export const NO_FIGURE = "noFigure";
 export function normalise(s: S): S {
   const t = s.template;
   if (t !== "visual-text" && t !== "big-visual") return s;
@@ -218,6 +220,13 @@ export function normalise(s: S): S {
       : dia
         ? "big-diagram"
         : "big-picture";
+  // A visual-text slide written with a null figure (v5.1-gold: nothing would show its point) takes
+  // the gold picture-and-text's no-picture look, never the retired explain. Any other missing or
+  // unreadable figure lays out as before.
+  if (t === "visual-text" && figure === null && rest[NO_FIGURE] === true) {
+    const { [NO_FIGURE]: _n, ...words } = rest;
+    return { ...words, template: "picture-text" };
+  }
   if (!isDia(figure) && !isPic(figure)) return { ...rest, template: "explain" };
   return { ...rest, template, [dia ? "diagram" : "picture"]: figure };
 }

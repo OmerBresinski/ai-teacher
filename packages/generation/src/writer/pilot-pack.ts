@@ -66,6 +66,9 @@ import t50a3 from "./bundles/pilot-v5.0a/system-KS3.template.txt" with { type: "
 import t50b1 from "./bundles/pilot-v5.0b/system-KS1.template.txt" with { type: "text" };
 import t50b2 from "./bundles/pilot-v5.0b/system-KS2.template.txt" with { type: "text" };
 import t50b3 from "./bundles/pilot-v5.0b/system-KS3.template.txt" with { type: "text" };
+import t51g1 from "./bundles/pilot-v5.1-gold/system-KS1.template.txt" with { type: "text" };
+import t51g2 from "./bundles/pilot-v5.1-gold/system-KS2.template.txt" with { type: "text" };
+import t51g3 from "./bundles/pilot-v5.1-gold/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -77,6 +80,7 @@ import {
   withMenuOpts,
 } from "./layout-menu";
 import { v50aSystem } from "./pilot-v50a";
+import { v51RetiredAt, v51Routed, v51System } from "./pilot-v51-gold";
 import type { WriterStage } from "./schema";
 import { measuredFitDefs } from "./slot-fill";
 import { WAVE_C_FLOW_SHAPES, WAVE_C_ROUTED_FITS, waveCDefs, waveCWordCaps } from "./wave-c";
@@ -177,6 +181,20 @@ export type PilotPack = {
    * the unit is decided before the shape; code can see a group planned one slide a member.
    */
   flowGroup?: boolean | "required";
+  /**
+   * The Fits and the caps code checks come from the table measured on the gold looks
+   * (`fit-table-gold.gen.json`, `fitTable({ gold: true })`), not the frozen one (v5.1-gold on).
+   */
+  goldFits?: boolean;
+  /**
+   * v5.1-gold's menu (WIRED-NOTES): explain, big-visual and picture-sequence leave the schema
+   * (equation-hero too at KS1), labelled points and equation-hero's 4-term fit are routed away,
+   * picture-sequence leaves the flow's look kinds, and visual-text and its key card take a null
+   * figure, which code draws as the gold picture-and-text's no-picture look.
+   */
+  goldMenu?: boolean;
+  /** The pack owns its two model blocks (`withV51ModelLines`, stage.ts) in place of `withWaveCLibrary`'s. */
+  modelLines?: "v5.1-gold";
 };
 
 /** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
@@ -702,6 +720,34 @@ export const PILOT_PACKS = {
     noLabelledDiagram: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v5.1-gold (11 Nov 2026, lab runs only, selected by id with TJ_PILOT_PACK): the writer told the
+  // limits of the gold designs that draw its slides (bundles/pilot-v5.1-gold/SOURCE.md). v5.0b's
+  // schema, writer and switches, plus the gold fit table, the gold menu and its own model blocks.
+  "v5.1-gold": {
+    id: "v5.1-gold",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v51System(t51g1, "KS1"),
+      KS2: v51System(t51g2, "KS2"),
+      KS3: v51System(t51g3, "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    goldFits: true,
+    goldMenu: true,
+    modelLines: "v5.1-gold",
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
@@ -779,6 +825,12 @@ export function pilotRequest(
   pack: PilotPack = PILOT_PACKS[id],
 ): { schema: J; system: string; caps?: J } {
   const ks = ksOf(stageKey);
+  const ws = writerStageOf(ks);
+  const fitO = pack.goldFits ? { gold: true } : {};
+  const retired: readonly string[] = [
+    ...pack.layouts.retired,
+    ...(pack.goldMenu ? v51RetiredAt(ws) : []),
+  ];
   // One switch, read once: the menu lines and the caps code checks follow it together.
   const menuOpts: MenuOpts = { picturedFloor: pack.picturedFloor };
   const system = withMenuOpts(pack.system[ks], writerStageOf(ks), menuOpts);
@@ -798,6 +850,12 @@ export function pilotRequest(
     schema.properties.slides.maxItems = ps.maxItems;
   }
   fp.items.properties.shape.enum = [...pack.layouts.flowShapes];
+  if (pack.goldMenu) {
+    const kind = fp.items.properties.look_at?.properties?.kind;
+    if (!Array.isArray(kind?.enum) || !kind.enum.includes("picture-sequence"))
+      throw new Error(`pilot pack ${id}: no picture-sequence look kind to take out`);
+    kind.enum = (kind.enum as string[]).filter((k) => k !== "picture-sequence");
+  }
   if (pack.flowGroup) {
     const { slide, does, ...after } = fp.items.properties;
     const group = pack.flowGroup === "required" ? FLOW_GROUP_REQUIRED : FLOW_GROUP;
@@ -836,11 +894,11 @@ export function pilotRequest(
       refs.push({ $ref: `#/$defs/${k}` });
   }
   const floored = new Set([
-    ...(pack.fitFloor ? droppedFits(writerStageOf(ks)) : []),
+    ...(pack.fitFloor ? droppedFits(writerStageOf(ks), fitO) : []),
     ...(pack.routedFits ?? []),
+    ...(pack.goldMenu ? v51Routed(ws) : []),
   ]);
-  const gone = (k: string) =>
-    floored.has(k) || pack.layouts.retired.includes(k.split("~")[0] as string);
+  const gone = (k: string) => floored.has(k) || retired.includes(k.split("~")[0] as string);
   if (schema.properties.title?.anyOf)
     schema.properties.title.anyOf = (schema.properties.title.anyOf as J[]).filter(
       (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
@@ -849,6 +907,19 @@ export function pilotRequest(
   schema.properties.slides.items.anyOf = refs.filter(
     (r) => !gone(String(r.$ref).split("/").pop() ?? ""),
   );
+  if (pack.goldMenu) {
+    // A point nothing would show, or a key card with nothing to picture: a null figure, drawn by the
+    // gold picture-and-text's no-picture look (materialise `normalise`).
+    for (const k of V51_NULL_FIGURE) {
+      const p = schema.$defs[k]?.properties;
+      if (!p?.figure) {
+        if (k === "visual-text~points-3-fig") continue; // not offered at every stage
+        throw new Error(`pilot pack ${id}: no figure on ${k} to make nullable`);
+      }
+      const branches = Array.isArray(p.figure.anyOf) ? p.figure.anyOf : [p.figure];
+      p.figure = { anyOf: [...branches.filter((b: J) => b.type !== "null"), { type: "null" }] };
+    }
+  }
   if (pack.flowLayout) {
     // The layouts a slide may take, as the flow names them; slides 1 and 2 are the title and
     // the objectives. Placed before `size`, so the idea is counted against the fit it names.
@@ -876,7 +947,7 @@ export function pilotRequest(
   }
   // Nothing a pack replaced or retired may still be reachable: the writer would use it.
   const sent = JSON.stringify(schema);
-  for (const k of [...replaced, ...pack.layouts.retired, ...floored])
+  for (const k of [...replaced, ...retired, ...floored])
     if (sent.includes(`"#/$defs/${k}"`) || sent.includes(`"#/$defs/${k}~`))
       throw new Error(`pilot pack ${id}: ${k} is still reachable`);
   if (pack.uncapped) {
@@ -890,7 +961,7 @@ export function pilotRequest(
           ...capped,
           $defs: {
             ...capped.$defs,
-            ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks)),
+            ...measuredFitDefs(capped.$defs as Record<string, J>, writerStageOf(ks), fitO),
             ...capPilotDefs(schema.$defs, writerStageOf(ks), menuOpts),
             ...(pack.waveC
               ? waveCWordCaps(schema.$defs, writerStageOf(ks), headingWords(writerStageOf(ks)))
@@ -926,6 +997,13 @@ export function layoutIconDef(): J {
 }
 
 const writerStageOf = (ks: Ks): WriterStage => (ks === "KS3" ? "KS3-5" : ks);
+/** v5.1-gold's visual-text fits whose figure may be null (`PilotPack.goldMenu`). */
+const V51_NULL_FIGURE = [
+  "visual-text~points-0-fig",
+  "visual-text~points-2-fig",
+  "visual-text~points-3-fig",
+  "visual-text~key-card-fig",
+] as const;
 
 /** Where each pilot layout keeps its strings: top-level fields, and its members' fields. */
 const PILOT_FIELDS = {
