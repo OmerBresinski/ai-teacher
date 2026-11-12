@@ -269,9 +269,35 @@ export const UNKNOWN_RECIPE_MESSAGE = "That worksheet recipe does not exist.";
 export const WORKSHEET_SLIDES_PENDING_MESSAGE =
   "The slides are still being written. The worksheet can be made once they are done.";
 
-/** The lesson's slides are written (stage `generated` or later): a sheet can be read from them. */
-const slidesWritten = (lesson: Lesson): boolean =>
-  lesson.generation?.stage !== undefined && lesson.generation.stage !== "planned";
+export const WORKSHEET_LESSON_BUSY_MESSAGE =
+  "The lesson is still being written or checked. The worksheet can be made once it is done.";
+export const WORKSHEET_NO_PLAN_MESSAGE =
+  "This lesson was not made from a confirmed plan, so a worksheet cannot be written from it.";
+
+/**
+ * Whether a sheet can be read from the lesson now, and why not. R4 review (12 Nov): stage
+ * `generated` is written before illustrate, evaluate and repair (`STAGE_CHECKPOINT`), and a
+ * regeneration keeps the old stage, so the stage alone let a sheet be built from slides that were
+ * still being repaired; while a lesson job holds the lesson's lock (`generatingJobId`) it is busy.
+ * A lesson with no recorded stage (made before stages were recorded, or by hand) is ready when its
+ * plan is confirmed with facts and it has slides; otherwise it says so, rather than "still being
+ * written" for ever.
+ */
+export function sheetReadiness(
+  lesson: Lesson,
+  generatingJobId: string | null | undefined,
+): { ready: true } | { ready: false; reason: string } {
+  if (generatingJobId) return { ready: false, reason: WORKSHEET_LESSON_BUSY_MESSAGE };
+  const stage = lesson.generation?.stage;
+  if (stage === undefined) {
+    return lesson.plan?.state === "confirmed" && lesson.facts && lesson.slides.length > 0
+      ? { ready: true }
+      : { ready: false, reason: WORKSHEET_NO_PLAN_MESSAGE };
+  }
+  return stage === "planned"
+    ? { ready: false, reason: WORKSHEET_SLIDES_PENDING_MESSAGE }
+    : { ready: true };
+}
 
 /**
  * The offered sheet types for this lesson, each greyed with its reason when the slides cannot
@@ -280,15 +306,15 @@ const slidesWritten = (lesson: Lesson): boolean =>
  */
 export function offeredSheetTypes(
   lesson: Lesson,
+  generatingJobId?: string | null,
 ): { type: string; name: string; available: boolean; reason?: string }[] {
-  const written = slidesWritten(lesson);
+  const readiness = sheetReadiness(lesson, generatingJobId);
+  const written = readiness.ready;
   const availability = written ? availableTypes(lessonDigest(lesson)) : [];
   const year = yearNumberOf(lesson.yearGroup);
   return OFFERED_RECIPE_IDS.filter((type) => offeredForYear(type, year)).map((type) => {
     const name = recipeById(type)?.name ?? type;
-    if (!written) {
-      return { type, name, available: false, reason: WORKSHEET_SLIDES_PENDING_MESSAGE };
-    }
+    if (!readiness.ready) return { type, name, available: false, reason: readiness.reason };
     const found = availability.find((a) => a.type === type);
     return found?.available === false
       ? { type, name, available: false, reason: found.reason ?? WORKSHEET_TYPE_UNAVAILABLE_MESSAGE }
@@ -889,11 +915,7 @@ export function lessonRoutes(
           const plan = lesson.plan;
           const holder = row.generatingJobId ?? undefined;
           // Confirmed and planned: the facts the sheet is built from are verified (ADR 0029 item 2).
-          if (
-            plan?.state !== "confirmed" ||
-            lesson.generation?.stage === undefined ||
-            !lesson.facts
-          ) {
+          if (plan?.state !== "confirmed" || !lesson.facts) {
             throw new ConflictError("planning", WORKSHEET_NOT_CONFIRMED_MESSAGE, {
               ...(plan ? { revision: plan.revision } : {}),
               ...(holder ? { jobId: holder } : {}),
@@ -902,16 +924,18 @@ export function lessonRoutes(
           if (plan.revision !== input.expectedRevision) {
             throw new ConflictError("stale", STALE_PLAN_MESSAGE, { revision: plan.revision });
           }
-          // The sheet is read from the slides, so they must be written first.
-          if (!slidesWritten(lesson)) {
-            throw new ConflictError("planning", WORKSHEET_SLIDES_PENDING_MESSAGE, {
+          // The sheet is read from the slides, so they must be written, checked and repaired
+          // first: never while a lesson job holds the lesson (R4 review, 12 Nov).
+          const readiness = sheetReadiness(lesson, holder);
+          if (!readiness.ready) {
+            throw new ConflictError("planning", readiness.reason, {
               revision: plan.revision,
               ...(holder ? { jobId: holder } : {}),
             });
           }
           // Greyed for this lesson (too little on its slides): refused with the greyed reason.
           // Not listed for this lesson at all (Exam practice outside Years 10-11): unavailable.
-          const greyed = offeredSheetTypes(lesson).find((t) => t.type === offered);
+          const greyed = offeredSheetTypes(lesson, holder).find((t) => t.type === offered);
           if (!greyed)
             throw new HTTPException(422, { message: WORKSHEET_TYPE_UNAVAILABLE_MESSAGE });
           if (greyed.available === false) {
@@ -924,7 +948,11 @@ export function lessonRoutes(
               ? defaultPracticeMinutes(recipe)
               : input.practiceMinutes;
           const jobId = newId<JobId>();
-          const found = await findWorksheetForGeneration(ws, lessonId);
+          const found = await findWorksheetForGeneration(ws, lessonId, {
+            ...(input.worksheetId !== undefined
+              ? { worksheetId: input.worksheetId }
+              : { recipeId: recipe.id }),
+          });
           if (found.kind === "generating") {
             throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
               worksheetId: found.row.id,
@@ -1026,7 +1054,7 @@ export function lessonRoutes(
           if (row === null || row.kind !== "lesson") {
             throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
           }
-          return c.json({ types: offeredSheetTypes(row.body as Lesson) });
+          return c.json({ types: offeredSheetTypes(row.body as Lesson, row.generatingJobId) });
         },
       )
       .get(

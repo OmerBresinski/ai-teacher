@@ -1,7 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { isUnfinishedWorksheet } from "@tj/domain/documents";
-import { UNFINISHED_PRINT_BLOCKED, UNFINISHED_TITLE, WorksheetPrint } from "@tj/editor/worksheet";
+import { answerKeyBlockedReason, isUnfinishedWorksheet } from "@tj/domain/documents";
+import {
+  KEY_PRINT_BLOCKED,
+  UNFINISHED_PRINT_BLOCKED,
+  UNFINISHED_TITLE,
+  WorksheetPrint,
+} from "@tj/editor/worksheet";
 import { Button, EmptyState } from "@tj/ui";
 import { FileText } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
@@ -18,7 +23,8 @@ import "@tj/editor/styles/print.css";
  * document (or 404ed); until the full body arrives the list placeholder is a summary, so the page
  * waits. A lesson id on a worksheet route shows `WrongKindPage`, as the lesson routes do for worksheets.
  * An unfinished sheet (`isUnfinishedWorksheet`) never reaches the printer, `?auto=1` or not: the
- * page says why and links back to the editor, where the bar offers what to do.
+ * page says why and links back to the editor, where the bar offers what to do. A question with no
+ * answer blocks only `part=key` or `both` (`answerKeyBlockedReason`); the pupil sheet prints.
  */
 export function WorksheetPrintPage() {
   const { worksheetId } = useParams({ from: worksheetPrintRoute.id });
@@ -33,13 +39,15 @@ export function WorksheetPrintPage() {
     );
   }
 
-  if (isUnfinishedWorksheet(data)) {
+  const keyBlocked =
+    (part === "key" || part === "both") && answerKeyBlockedReason(data) === "missing-answer";
+  if (isUnfinishedWorksheet(data) || keyBlocked) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-2xl items-center bg-background p-6">
         <EmptyState
           icon={<FileText strokeWidth={1.5} />}
-          title={UNFINISHED_TITLE}
-          body={UNFINISHED_PRINT_BLOCKED}
+          title={keyBlocked ? "The answer key isn’t ready." : UNFINISHED_TITLE}
+          body={keyBlocked ? KEY_PRINT_BLOCKED : UNFINISHED_PRINT_BLOCKED}
           action={
             <Button variant="primary" asChild>
               <Link to="/w/$worksheetId" params={{ worksheetId }}>

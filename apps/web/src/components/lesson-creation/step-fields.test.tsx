@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { render, screen } from "@testing-library/react";
-import { ObjectivesStep } from "./step-fields";
+import { draftsForYear, ObjectivesStep } from "./step-fields";
 
 const renderObjectives = (slideTier: "quick" | "standard" | "detailed" = "standard") =>
   render(
@@ -47,5 +47,22 @@ describe("intake year group picker", () => {
     const want = Array.from({ length: 13 }, (_, i) => `Year ${i + 1}`);
     expect(YEAR_GROUP_OPTIONS.map((o) => o.value)).toEqual(want);
     expect(YEAR_GROUP_OPTIONS.map((o) => o.label)).toEqual(want);
+  });
+});
+
+/* R4 review (12 Nov), web finding 8: Exam practice is cleared when the year drops below 10. */
+describe("draftsForYear", () => {
+  const drafts = [
+    { id: "a", recipe: "exam-style", minutes: "15" },
+    { id: "b", recipe: "exit-ticket", minutes: "10" },
+  ];
+  it("keeps Exam practice for Years 10 and 11", () => {
+    expect(draftsForYear(drafts, "Year 11")).toBe(drafts);
+  });
+  it("puts a draft the year no longer offers back to Practice", () => {
+    expect(draftsForYear(drafts, "Year 8")).toEqual([
+      { id: "a", recipe: "practice", minutes: "15" },
+      { id: "b", recipe: "exit-ticket", minutes: "10" },
+    ]);
   });
 });

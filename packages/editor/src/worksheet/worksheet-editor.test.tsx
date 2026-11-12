@@ -850,8 +850,20 @@ describe("block guides (TEACH-194)", () => {
 
 /* WS1: an unfinished sheet (`isUnfinishedWorksheet`) never looks finished in the editor. */
 describe("unfinished worksheet (WS1)", () => {
+  // Only sheets made by the new path are judged (R4 review): their record names the slide build.
+  const newPath = (stage: "checked" | "framed"): NonNullable<Worksheet["generation"]> => ({
+    jobId: "job-1",
+    stage,
+    startedAt: "2026-09-06T10:01:00.000Z",
+    ...(stage === "checked" ? { completedAt: "2026-09-06T10:02:00.000Z" } : {}),
+    promptVersions: { build: "worksheet-slides.v1" },
+    usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+    findings: [],
+    recipeId: "practice",
+    practiceMinutes: 10,
+  });
   const placeholderSheet = (): Worksheet => {
-    const sheet = starterWorksheet("Half made");
+    const sheet: Worksheet = { ...starterWorksheet("Half made"), generation: newPath("checked") };
     sheet.blocks = numberQuestions([
       ...sheet.blocks,
       {
@@ -880,23 +892,24 @@ describe("unfinished worksheet (WS1)", () => {
   });
 
   test("a job that never completed says so", () => {
-    const sheet: Worksheet = {
-      ...starterWorksheet("Stopped"),
-      generation: {
-        jobId: "job-1",
-        stage: "framed",
-        startedAt: "2026-09-06T10:01:00.000Z",
-        promptVersions: {},
-        usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
-        findings: [],
-        recipeId: "knowledge-check",
-        practiceMinutes: 10,
-      },
-    };
+    const sheet: Worksheet = { ...starterWorksheet("Stopped"), generation: newPath("framed") };
     renderWorksheetEditor(sheet);
     expect(screen.getByRole("status")).toHaveTextContent(
       "It stopped before every question was written.",
     );
+  });
+
+  test("an old framed sheet (frame and fill job) shows no bar and prints as before", async () => {
+    const sheet: Worksheet = {
+      ...starterWorksheet("Old"),
+      generation: { ...newPath("framed"), promptVersions: {}, recipeId: "knowledge-check" },
+    };
+    const { onPrint } = renderWorksheetEditor(sheet);
+    expect(document.querySelector("[data-unfinished-bar]")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Print" }));
+    });
+    await waitFor(() => expect(onPrint).toHaveBeenCalledTimes(1));
   });
 
   const failedSheet = (): Worksheet => ({

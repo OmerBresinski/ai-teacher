@@ -486,7 +486,9 @@ export function WorksheetEditor({
   const active = session.activeBlockId;
   const activeBlock = active ? worksheet.blocks.find((b) => b.id === active) : undefined;
   const oversizeSet = new Set(oversize);
-  const unfinished = unfinishedWorksheetReason(worksheet);
+  // A sheet its job still holds is never finished, whatever its saved record says (an old or
+  // blank row being written reads as finished to `unfinishedWorksheetReason`).
+  const unfinished = unfinishedWorksheetReason(worksheet) ?? (making ? "not-completed" : null);
 
   return (
     <WorksheetProvider value={worksheet}>
@@ -553,9 +555,22 @@ export function WorksheetEditor({
                       </button>
                     }
                     renderItem={(item) =>
-                      item.kind === "block" ? (
-                        <BlockShell
+                      // A lines question split over a page break (`splitLines`): the head is the
+                      // question, keyed by its block id so the split never remounts its text box
+                      // (R4 review: the caret was lost mid-typing); the tail is its remaining
+                      // lines, drawn only, with no number, stem or block id of its own.
+                      item.kind === "block" && item.split === "tail" ? (
+                        <div
+                          className={flowItemClass(item)}
                           key={item.key}
+                          data-split-tail={item.block.id}
+                          aria-hidden
+                        >
+                          <FlowItemContent item={item} worksheet={worksheet} mode="edit" />
+                        </div>
+                      ) : item.kind === "block" ? (
+                        <BlockShell
+                          key={item.block.id}
                           block={item.block}
                           selected={active === item.block.id}
                           editing={session.editingId === item.block.id}

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SHEET_RECIPE_ID,
   OFFERED_RECIPE_IDS,
   offeredForYear,
   SLIDE_TIER_RANGES,
@@ -22,7 +23,7 @@ import {
   Textarea,
 } from "@tj/ui";
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Field } from "@/components/brief/field";
 
 /**
@@ -366,6 +367,22 @@ const recipesFor = (yearGroup: string | undefined) =>
   OFFERED_RECIPE_IDS.filter((value) => offeredForYear(value, yearNumberOf(yearGroup))).map(
     (value) => ({ value, label: SHEET_TYPE_LABELS[value] }),
   );
+/**
+ * R4 review (12 Nov), web finding 8: a draft whose type the year no longer offers (Exam practice
+ * after the year is lowered below 10) goes back to Practice, so the picker never shows a blank and
+ * the request never posts a hidden type. The same array when nothing changes.
+ */
+export function draftsForYear(
+  worksheets: WorksheetDraft[],
+  yearGroup: string | undefined,
+): WorksheetDraft[] {
+  const offered = new Set<string>(recipesFor(yearGroup).map((option) => option.value));
+  if (worksheets.every((item) => offered.has(item.recipe))) return worksheets;
+  return worksheets.map((item) =>
+    offered.has(item.recipe) ? item : { ...item, recipe: DEFAULT_SHEET_RECIPE_ID },
+  );
+}
+
 export function WorksheetStep({
   worksheets,
   yearGroup,
@@ -384,6 +401,10 @@ export function WorksheetStep({
   onMake: () => void;
   onSkip: () => void;
 }) {
+  useEffect(() => {
+    const next = draftsForYear(worksheets, yearGroup);
+    if (next !== worksheets) onChange(next);
+  }, [worksheets, yearGroup, onChange]);
   return (
     <div className="creation-form creation-worksheet-form">
       <div className="creation-worksheet-list">

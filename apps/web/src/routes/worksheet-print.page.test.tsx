@@ -8,7 +8,19 @@ import { installFakeApi } from "@/test/fake-api";
 const { fakeApi, restore: restoreFetch } = installFakeApi();
 
 let worksheetId = "fraction-practice";
-let search: { auto?: "1" } = {};
+let search: { auto?: "1"; part?: "pupil" | "key" | "both" } = {};
+/** A new-path generation record: only those sheets are judged unfinished (R4 review). */
+const NEW_PATH = {
+  jobId: "job-ws",
+  stage: "checked" as const,
+  startedAt: "2026-11-12T10:01:00.000Z",
+  completedAt: "2026-11-12T10:02:00.000Z",
+  promptVersions: { build: "worksheet-slides.v1" },
+  usage: { calls: 1, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+  findings: [],
+  recipeId: "practice" as const,
+  practiceMinutes: 10,
+};
 const navigate = mock();
 const actualRouter = await import("@tanstack/react-router");
 mock.module("@tanstack/react-router", () => ({
@@ -127,6 +139,7 @@ describe("WorksheetPrintPage", () => {
       if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
       row.body = {
         ...row.body,
+        generation: NEW_PATH,
         blocks: [
           ...row.body.blocks,
           {
@@ -157,6 +170,65 @@ describe("WorksheetPrintPage", () => {
     } finally {
       window.print = original;
     }
+  });
+
+  it("an unkeyed question on a new-path sheet: the pupil sheet prints, the key says why", async () => {
+    const row = fakeApi.rows.get("fraction-practice");
+    if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
+    const unkeyed = {
+      id: "qx",
+      type: "question" as const,
+      doc: {
+        type: "doc" as const,
+        content: [{ type: "paragraph", content: [{ type: "text", text: "A teacher's question" }] }],
+      },
+      answerLines: 2,
+      number: 99,
+    };
+    row.body = {
+      ...row.body,
+      generation: NEW_PATH,
+      blocks: [...row.body.blocks, unkeyed],
+    } as never;
+    search = { part: "key" };
+    const first = renderPage();
+    expect(await screen.findByText("The answer key isn’t ready.")).toBeVisible();
+    expect(first.container.querySelectorAll(".ws-page")).toHaveLength(0);
+    first.unmount();
+    search = { part: "pupil" };
+    const { container } = renderPage();
+    await whenSheetShown();
+    expect(container.querySelectorAll(".ws-print-root .ws-page").length).toBeGreaterThan(0);
+    await settle();
+  });
+
+  it("a hand-made sheet with a placeholder prints as it did before the new path", async () => {
+    const row = fakeApi.rows.get("fraction-practice");
+    if (!row || !("blocks" in row.body)) throw new Error("fixture missing");
+    row.body = {
+      ...row.body,
+      generation: undefined,
+      blocks: [
+        ...row.body.blocks,
+        {
+          id: "ph",
+          type: "paragraph",
+          doc: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Generation writes this part: x" }],
+              },
+            ],
+          },
+        },
+      ],
+    } as never;
+    const { container } = renderPage();
+    await whenSheetShown();
+    expect(container.querySelectorAll(".ws-print-root .ws-page").length).toBeGreaterThan(0);
+    await settle();
   });
 
   it("a lesson id on the print route shows WrongKindPage rather than crashing", async () => {

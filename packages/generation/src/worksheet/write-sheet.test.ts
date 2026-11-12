@@ -88,7 +88,7 @@ describe("prompt assembly", () => {
     const y2 = practicePrompt("Year 2").system;
     const y11 = practicePrompt("Year 11").system;
     for (const clause of [
-      "share a situation and the same steps with only the numbers or names changed",
+      "make no two of them the same task on new numbers",
       "No two calculations on the sheet have the same result.",
       "draw, shade, sketch, label, circle or colour",
       "Never word a question so that its answer only repeats the question back.",
@@ -97,12 +97,12 @@ describe("prompt assembly", () => {
       expect(y2).toContain(clause);
       expect(y11).toContain(clause);
     }
-    expect(y2).toContain("at least two items on the sheet are draw tasks");
+    expect(y2).toContain("at least two items on the sheet are tasks of that kind");
     // Every draw verb the prompt names gets the builder's drawing box.
     for (const verb of ["draw", "shade", "sketch", "label", "circle", "colour"]) {
       expect(answerSpace(`${verb[0]?.toUpperCase()}${verb.slice(1)} it.`, undefined)).toBe("draw");
     }
-    expect(y11).not.toContain("at least two items on the sheet are draw tasks");
+    expect(y11).not.toContain("at least two items on the sheet are tasks of that kind");
   });
   test("practice counts follow D9", () => {
     expect(practiceCounts("Year 2", 10)).toEqual({ warmUp: 2, core: 3, total: 6 });
@@ -129,7 +129,7 @@ describe("writeModelSheet: valid stub answers", () => {
       expect(ai.calls).toHaveLength(1);
       expect(ai.calls[0]?.modelClass).toBe("small");
       expect(ai.calls[0]?.context).toMatchObject({
-        promptVersion: "worksheet-practice.v4",
+        promptVersion: "worksheet-practice.v5",
         effort: "low",
       });
       expect(sheet.findings).toEqual([]);
@@ -489,96 +489,60 @@ describe("v3: sheet rules (retry-only) and the code-built instruction", () => {
   });
 });
 
-describe("v4: prompt clauses and the forms they ask for pass today's code", () => {
-  const rates = lessonDigest(fixtureLesson("rates"));
-
-  test("v4 clauses reach every band's system text", () => {
+describe("v5: format facts match today's code checks; v4's unprinted Years 1-2 kinds are gone", () => {
+  test("v5 clauses reach every band's system text, and dropped v4 clauses do not", () => {
     for (const year of ["Year 2", "Year 5", "Year 8", "Year 11"]) {
       const system = practicePrompt(year).system;
       for (const clause of [
-        "Take the brief's facts, not its wording.",
-        "Never set a calculation on the same numbers as a worked example or an already-asked question.",
-        "Every case an exit-ticket question is set in",
-        "It never takes fewer steps than a core item.",
-        "The last line reaches the final answer",
-        'never "= £3.20"',
-        "Check every item before you write the next",
-        'Write "an" before a number said with a vowel sound',
+        "or of an already-asked question it builds on.",
+        "no check after it. Start the answer with exactly that result.",
+        'Money is in pounds with £: "£9 ÷ 5 = £1.80; £1.80 × 4 = £7.20", answer "£7.20".',
+        'A "which is greater" working ends "= " and the chosen value, not "25 > 21".',
+        'An "is the pupil right?" item that calculates starts its answer with the result',
+        "Each answer is true by the brief and follows from its question as worded",
       ]) {
         expect(system).toContain(clause);
       }
+      for (const dropped of [
+        'never "= £3.20"',
+        "3.20 pounds",
+        "Take the brief's facts, not its wording.",
+        "Every case an exit-ticket question is set in",
+        "It never takes fewer steps than a core item.",
+        'Write "an" before a number said with a vowel sound',
+        "  - Tick: ",
+        "  - Order: ",
+      ]) {
+        expect(system).not.toContain(dropped);
+      }
     }
-    const y2 = practicePrompt("Year 2").system;
-    for (const kind of [
-      "  - Tick: ",
-      "  - Order: ",
-      "  - One word or number: ",
-      "  - Draw: ",
-      "  - Finish the sentence: ",
-    ]) {
-      expect(y2).toContain(kind);
-    }
-    // v3 offered "join", which no Practice block can print (the matching block is not on this path).
-    expect(y2).not.toContain("tick or join");
-    expect(practicePrompt("Year 8").system).not.toContain("  - Tick: ");
+    // Years 1-2 offer only what the Practice printer draws: no tick boxes, circle or join yet.
+    expect(practicePrompt("Year 2").system).toContain("with a pencil: write, draw or colour.");
+    expect(practicePrompt("Year 2").system).not.toContain("tick or join");
   });
 
-  // The prompt bans "= £3.20" because the committed gate dropped it; a gate fix in progress
-  // (sheet-items.ts, another agent) may accept it, so only the forms the prompt names are pinned.
-  test("the money working forms the prompt names pass the working gate", () => {
-    expect(workingFault("q", "£8 ÷ 5 = £1.60; £1.60 × 2 = 3.20 pounds", "£3.20")).toBeNull();
-    expect(workingFault("q", "800p ÷ 5 = 160p; 160p × 2 = 320p", "320p (£3.20)")).toBeNull();
-  });
-
-  test("each Years 1-2 task kind ships through the gate with the answer space it needs", () => {
-    const digest = clone(rates);
-    digest.lesson.yearGroup = "Year 2";
-    const slide = nth(digest.taught, 0).slide;
-    const it = (question: string, answer: string, demand: "recall" | "use" | "reason") => ({
-      slides: [slide],
-      demand,
-      builds: "new-context" as const,
-      question,
-      method: [],
-      working: null,
-      answer,
-    });
-    const out = {
-      warmUp: [
-        it("What colour is the sky on a sunny day?", "Blue.", "recall"),
-        it("How many legs has a dog?", "4", "recall"),
-      ],
-      core: [
-        it(
-          "Which house burns faster? Tick one.\nA wooden house\nA stone house",
-          "A wooden house",
-          "use",
-        ),
-        it(
-          "Put these in order. Write the letters.\nA. The fire stops.\nB. A fire starts.\nC. The wind blows.",
-          "B, C, A",
-          "use",
-        ),
-        it("Draw a house and colour the roof red.", "A house with a red roof.", "use"),
-      ],
-      challenge: it(
-        "Finish the sentence.\nThe fire spread fast because",
-        "the houses were made of wood.",
-        "reason",
+  // Each form the prompt names passes the working gate (WS-Y5-FAIL-NOTES, 12 Nov).
+  test("money in pounds, a which-is-greater working and a judge-a-claim key pass the gate", () => {
+    expect(
+      workingFault(
+        "A ribbon costs £9. Find 4/5 of its cost.",
+        "£9 ÷ 5 = £1.80; £1.80 × 4 = £7.20",
+        "£7.20",
       ),
-    };
-    let n = 0;
-    const built = practiceBlocks(out, digest, () => `b${n++}`);
-    expect(built.findings).toEqual([]);
-    expect(built.kept).toBe(6);
-    const questions = built.blocks.filter((b) => b.type === "question");
-    const lines = (i: number) => (nth(questions, i) as { answerLines: number }).answerLines;
-    expect(lines(2)).toBe(1); // tick: one line, no drawing box
-    expect(lines(3)).toBe(1); // order: one line for the letters
-    expect(built.blocks.some((b) => b.type === "answer-box")).toBe(true); // the draw task's box
-    expect(answerSpace("Draw a house and colour the roof red.", undefined)).toBe("draw");
-    // The options print on their own lines (one paragraph each).
-    const tick = nth(questions, 2) as Extract<(typeof questions)[number], { type: "question" }>;
-    expect(tick.doc.content).toHaveLength(3);
+    ).toBeNull();
+    const greater = "Which is greater: 6/5 of 20 or 7/4 of 12?";
+    expect(
+      workingFault(greater, "20 ÷ 5 × 6 = 24; 12 ÷ 4 × 7 = 21; greater = 24", "24: 6/5 of 20."),
+    ).toBeNull();
+    expect(
+      workingFault(greater, "20 ÷ 5 × 6 = 24; 12 ÷ 4 × 7 = 21; 24 > 21", "24: 6/5 of 20."),
+    ).toContain("does not match");
+    expect(
+      workingFault(
+        "A pupil says, “Six fifths of 25 must be less than 25.” Is the pupil right?",
+        "25 ÷ 5 = 5; 5 × 6 = 30",
+        "30. No, six fifths of 25 is 30, which is more than 25.",
+      ),
+    ).toBeNull();
   });
 });

@@ -9,23 +9,32 @@ import {
   type WorksheetGeneration,
 } from "./worksheet";
 import {
+  answerKeyBlockedReason,
   isPlaceholder,
   isUnfinishedWorksheet,
+  madeByNewPath,
   PLACEHOLDER_PREFIX,
   PLACEHOLDER_QUESTION,
   unfinishedWorksheetReason,
 } from "./worksheet-status";
 
+/** A new-path generation record (`build: worksheet-slides.v1`, the worker's SLIDE_SHEET_VERSION). */
 const generation = (completed: boolean): WorksheetGeneration => ({
   jobId: "job-1",
   stage: completed ? "checked" : "framed",
   startedAt: "2026-09-06T10:01:00.000Z",
   ...(completed ? { completedAt: "2026-09-06T10:02:00.000Z" } : {}),
-  promptVersions: {},
+  promptVersions: { build: "worksheet-slides.v1", write: "worksheet-practice.v3" },
   usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
   findings: [],
-  recipeId: "knowledge-check",
+  recipeId: "practice",
   practiceMinutes: 10,
+});
+/** A sheet saved by the old frame and fill job (production before plan v2). */
+const oldGeneration = (completed: boolean): WorksheetGeneration => ({
+  ...generation(completed),
+  promptVersions: { frame: "recipes.v2", fill: "worksheet-fill.v4" },
+  recipeId: "exit-ticket",
 });
 
 /** A generated sheet that finished: every numbered question and choice has its answer. */
@@ -55,7 +64,7 @@ describe("isUnfinishedWorksheet", () => {
     expect(unfinishedWorksheetReason(sheet)).toBe("not-completed");
   });
 
-  test("a placeholder paragraph or placeholder question is unfinished, generated or not", () => {
+  test("a placeholder paragraph or placeholder question is unfinished on a new-path sheet", () => {
     const para: WorksheetBlock = {
       id: "p1",
       type: "paragraph",
@@ -71,23 +80,52 @@ describe("isUnfinishedWorksheet", () => {
     expect(isPlaceholder(para)).toBe(true);
     for (const block of [para, question]) {
       expect(unfinishedWorksheetReason({ ...finished(), blocks: [block] })).toBe("placeholder");
-      expect(unfinishedWorksheetReason({ ...blank(), blocks: [block] })).toBe("placeholder");
+      // A hand-made sheet printed what it held before the new path, and still does.
+      expect(unfinishedWorksheetReason({ ...blank(), blocks: [block] })).toBeNull();
     }
   });
 
-  test("a generated sheet's numbered question with no answer is unfinished", () => {
+  test("a new-path sheet's numbered question with no answer blocks the key only", () => {
     const sheet = finished();
     const noAnswer = sheet.blocks.map((b) =>
       b.type === "question" ? { ...b, answer: "  " } : b,
     ) as WorksheetBlock[];
-    expect(unfinishedWorksheetReason({ ...sheet, blocks: noAnswer })).toBe("missing-answer");
+    // A teacher-added question with no answer never stops the pupil copy.
+    expect(unfinishedWorksheetReason({ ...sheet, blocks: noAnswer })).toBeNull();
+    expect(isUnfinishedWorksheet({ ...sheet, blocks: noAnswer })).toBe(false);
+    expect(answerKeyBlockedReason({ ...sheet, blocks: noAnswer })).toBe("missing-answer");
+    expect(answerKeyBlockedReason(sheet)).toBeNull();
 
     const noCorrect = sheet.blocks.map((b) =>
       b.type === "multiple-choice"
         ? { ...b, options: b.options.map((o) => ({ ...o, correct: false })) }
         : b,
     ) as WorksheetBlock[];
-    expect(unfinishedWorksheetReason({ ...sheet, blocks: noCorrect })).toBe("missing-answer");
+    expect(answerKeyBlockedReason({ ...sheet, blocks: noCorrect })).toBe("missing-answer");
+  });
+
+  // Data review #2 (12 Nov): saved production sheets must keep printing.
+  test("old frame-and-fill sheets print as before: framed, placeholder or unkeyed", () => {
+    const para: WorksheetBlock = {
+      id: "p1",
+      type: "paragraph",
+      doc: text(`${PLACEHOLDER_PREFIX}three short questions`),
+    };
+    const unkeyed: WorksheetBlock = {
+      id: "q1",
+      type: "question",
+      doc: text("Name the three states of water."),
+      answerLines: 2,
+      number: 1,
+    };
+    for (const g of [oldGeneration(false), oldGeneration(true)]) {
+      const sheet = { ...finished(), generation: g, blocks: [para, unkeyed] };
+      expect(madeByNewPath(sheet)).toBe(false);
+      expect(unfinishedWorksheetReason(sheet)).toBeNull();
+      expect(answerKeyBlockedReason(sheet)).toBeNull();
+    }
+    expect(madeByNewPath(finished())).toBe(true);
+    expect(madeByNewPath(blank())).toBe(false);
   });
 
   test("a missing answer on a hand-made sheet, or on an unnumbered block, is the teacher's call", () => {
@@ -99,6 +137,7 @@ describe("isUnfinishedWorksheet", () => {
       number: 1,
     };
     expect(isUnfinishedWorksheet({ ...blank(), blocks: [question] })).toBe(false);
+    expect(answerKeyBlockedReason({ ...blank(), blocks: [question] })).toBeNull();
     const { number: _, ...unnumbered } = question as Extract<WorksheetBlock, { type: "question" }>;
     expect(isUnfinishedWorksheet({ ...finished(), blocks: [unnumbered] })).toBe(false);
   });

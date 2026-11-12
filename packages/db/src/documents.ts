@@ -347,16 +347,35 @@ export async function listWorksheetsOfLesson(
  * job (`reusable`), so Try again fills the same sheet; otherwise `none` and the caller creates a
  * row. A finished (`filled`/`checked`) sheet is never reused.
  */
+export function pickWorksheetForGeneration(
+  rows: readonly DocumentRow[],
+  want: { worksheetId?: string; recipeId?: string } = {},
+): WorksheetForGeneration {
+  const generating = rows.find((row) => row.generatingJobId !== null);
+  if (generating !== undefined) return { kind: "generating", row: generating };
+  const generation = (row: DocumentRow) => (row.body as Worksheet).generation;
+  const reusable = rows.filter((row) => {
+    const stage = generation(row)?.stage;
+    return stage === "framed" || stage === "failed";
+  });
+  // R4 review (12 Nov): with `worksheetId` (the row the teacher clicked Try again on) only that
+  // row is reused; with `recipeId` only a row of that type, so making a Practice sheet never
+  // overwrites a failed Exit ticket. With neither, the oldest reusable row, as before.
+  const found =
+    want.worksheetId !== undefined
+      ? reusable.find((row) => row.id === want.worksheetId)
+      : want.recipeId !== undefined
+        ? reusable.find((row) => generation(row)?.recipeId === want.recipeId)
+        : reusable[0];
+  return found !== undefined ? { kind: "reusable", row: found } : { kind: "none" };
+}
+
 export async function findWorksheetForGeneration(
   ws: WorkspaceDb,
   lessonId: string,
+  want: { worksheetId?: string; recipeId?: string } = {},
 ): Promise<WorksheetForGeneration> {
-  const rows = await listWorksheetsOfLesson(ws, lessonId);
-  const generating = rows.find((row) => row.generatingJobId !== null);
-  if (generating !== undefined) return { kind: "generating", row: generating };
-  const stage = (row: DocumentRow) => (row.body as Worksheet).generation?.stage;
-  const reusable = rows.find((row) => stage(row) === "framed" || stage(row) === "failed");
-  return reusable !== undefined ? { kind: "reusable", row: reusable } : { kind: "none" };
+  return pickWorksheetForGeneration(await listWorksheetsOfLesson(ws, lessonId), want);
 }
 
 /** The lesson `POST /lessons` created for `requestId` (ADR 0029 idempotency), or `null`. */

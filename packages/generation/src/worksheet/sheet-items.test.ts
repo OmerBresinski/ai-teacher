@@ -1,5 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { explainsAMethod, workingFault, workingResult } from "./sheet-items";
+import { lessonDigest } from "@tj/slides/worksheet/digest";
+import { fixtureLesson } from "@tj/slides/worksheet/fixtures";
+import { numericMismatches } from "../numeric-check";
+import {
+  askedSumFault,
+  explainsAMethod,
+  isCalculation,
+  keyFault,
+  type PracticeItem,
+  practiceFaults,
+  workingFault,
+  workingResult,
+} from "./sheet-items";
 
 /*
  * R4 (round 3, y5 practice sheet): "the working ends in = and its result" needed a digit straight
@@ -149,5 +161,135 @@ describe("y5 fractions: correct items the checks dropped", () => {
     // A calculate command, or a new number in the key: still a calculation that needs working.
     expect(explainsAMethod("Find 3/4 of 12 metres.", "Divide by 4, multiply by 3.")).toBe(false);
     expect(explainsAMethod("What is 3/4 of 12 metres?", "9 metres")).toBe(false);
+  });
+});
+
+/* R4 review (12 Nov), finding A: wrong keys that passed as "rounded". */
+describe("A: a key equals the working's result exactly unless rounding is asked", () => {
+  test("a bare whole-number result is exact, not rounded", () => {
+    expect(numericMismatches("20 ÷ 3 = 7", { exact: true })).toHaveLength(1);
+    expect(numericMismatches("9 ÷ 2 = 4", { exact: true })).toHaveLength(1);
+    expect(numericMismatches("5 × 1.5 = 8", { exact: true })).toHaveLength(1);
+    expect(numericMismatches("9 ÷ 2 = 4.5", { exact: true })).toEqual([]);
+    expect(numericMismatches("20 ÷ 3 = 6.67", { exact: true })).toEqual([]);
+    // Slides and facts keep the old reading.
+    expect(numericMismatches("20 ÷ 3 = 7")).toEqual([]);
+  });
+  test("a wrong rounded working fails; asked-for rounding passes", () => {
+    expect(workingFault("Share 20 sweets between 3.", "20 ÷ 3 = 7", "7")).not.toBeNull();
+    expect(workingFault("Halve 9.", "9 ÷ 2 = 4", "4")).not.toBeNull();
+    expect(
+      workingFault("Share 20 m between 3. Round to the nearest metre.", "20 ÷ 3 = 7 m", "7 m"),
+    ).toBeNull();
+  });
+  test("the key is compared at the more decimal places of the two", () => {
+    expect(workingFault("q", "18 ÷ 5 = 4", "3.6")).toContain("does not match");
+    expect(workingFault("q", "33 ÷ 5 = 7", "6.6")).toContain("does not match");
+    expect(workingFault("q", "16 ÷ 5 = 3.2", "3.20")).toBeNull();
+    expect(workingFault("Give it to 1 decimal place.", "25 ÷ 7 = 3.57", "3.6")).toBeNull();
+  });
+  test("digit groups read as one number", () => {
+    expect(workingFault("q", "4 × 2,500 = 10,000", "10,500")).toContain("does not match");
+    expect(workingFault("q", "4 × 2,500 = 10,000", "10,000")).toBeNull();
+    expect(
+      workingFault(
+        "A shop sells 12 boxes of 1,000 pins. How many pins?",
+        "12 × 1,000 = 12,000",
+        "12,000 pins",
+      ),
+    ).toBeNull();
+    expect(workingResult("12 × 1,000 = 12,000")).toBe(12000);
+  });
+});
+
+const digest = lessonDigest(fixtureLesson("rates"));
+const year = (yearGroup: string) => ({
+  digest: { ...digest, lesson: { ...digest.lesson, yearGroup } },
+});
+const slide = digest.taught[0]?.slide ?? 1;
+const item = (question: string, answer: string, working: string | null = null): PracticeItem => ({
+  slides: [slide],
+  demand: "use",
+  builds: "same-skill-new-numbers",
+  question,
+  method: [],
+  working,
+  answer,
+});
+
+/* Finding B: items with no working were never checked. */
+describe("B: every calculation's key is checked, working or not", () => {
+  test("a one-sum question is worked out, in symbols or words", () => {
+    expect(askedSumFault("What is 3 + 4?", "8")).not.toBeNull();
+    expect(askedSumFault("What is 3 + 4?", "7")).toBeNull();
+    expect(askedSumFault("What is 7 times 8?", "54")).not.toBeNull();
+    expect(askedSumFault("What is 7 times 8?", "56")).toBeNull();
+    expect(askedSumFault("Work out 45 - 18.", "27")).toBeNull();
+    expect(askedSumFault("What is 12 divided by 3?", "5")).not.toBeNull();
+    expect(askedSumFault("What is 9 ÷ 2?", "4")).not.toBeNull();
+    expect(askedSumFault("What is 9 ÷ 2?", "4.5")).toBeNull();
+    // Not one sum: not judged here.
+    expect(askedSumFault("What is 3/4 of 12 metres?", "10")).toBeNull();
+  });
+  test("Years 1-2: no working is asked, the key is still checked", () => {
+    const y1 = year("Year 1");
+    expect(practiceFaults(item("What is 3 + 4?", "8"), y1).join()).toContain("is not");
+    expect(practiceFaults(item("What is 7 times 8?", "54"), y1).join()).toContain("is not");
+    expect(practiceFaults(item("What is 3 + 4?", "7"), y1)).toEqual([]);
+    expect(practiceFaults(item("What is 7 times 8?", "56"), y1)).toEqual([]);
+    expect(practiceFaults(item("What is 7 times 8?", "7 × 8 = 54"), y1).length).toBeGreaterThan(0);
+  });
+  test("Years 3+: a worked item whose working computes the wrong sum is caught", () => {
+    expect(
+      practiceFaults(item("What is 7 × 8?", "63", "7 × 9 = 63"), year("Year 4")).join(),
+    ).toContain("is not");
+  });
+  test("non-calculation items are not newly rejected", () => {
+    const y1 = year("Year 1");
+    expect(practiceFaults(item("Name an animal that lives in water.", "A fish"), y1)).toEqual([]);
+    expect(keyFault("Which is bigger, 7 or 9?", "9")).toBeNull();
+  });
+});
+
+/* Finding C: year ranges and scores read as sums. */
+describe("C: year ranges and scores are not calculations", () => {
+  test("history and sport text is not a sum", () => {
+    expect(isCalculation("Between 1914-1918, which countries fought on the Western Front?")).toBe(
+      false,
+    );
+    expect(isCalculation("What happened in Britain 1939 – 1945?")).toBe(false);
+    expect(isCalculation("The team won 3-1. Who scored?")).toBe(false);
+    expect(isCalculation("Which topics are in KS3-4 geography?")).toBe(false);
+    expect(isCalculation("Find the capital of France on the map.")).toBe(false);
+  });
+  test("real sums still are", () => {
+    expect(isCalculation("Work out 45 - 18.")).toBe(true);
+    expect(isCalculation("What is 45 - 18?")).toBe(true);
+    expect(isCalculation("What is 12 − 5?")).toBe(true);
+    expect(isCalculation("What is 7 × 8?")).toBe(true);
+    expect(isCalculation("What is 7 times 8?")).toBe(true);
+    expect(isCalculation("Find 3/4 of 12.")).toBe(true);
+    expect(isCalculation("What is 2000 - 1500?")).toBe(true);
+  });
+  test("a correct history item with a year and no working ships; a maths one without working does not", () => {
+    const y8 = year("Year 8");
+    expect(
+      practiceFaults(
+        item("The First World War lasted 1914-1918. In which year did it end?", "1918"),
+        y8,
+      ),
+    ).toEqual([]);
+    expect(
+      practiceFaults(
+        item(
+          "Between 1914-1918, who was the British prime minister in 1917?",
+          "David Lloyd George, from 1916",
+        ),
+        y8,
+      ),
+    ).toEqual([]);
+    expect(practiceFaults(item("Work out 45 - 18.", "27"), y8)).toContain(
+      "calculates but gives no working",
+    );
   });
 });

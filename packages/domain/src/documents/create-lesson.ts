@@ -126,6 +126,8 @@ export const RequestWorksheetSchema = z.strictObject({
   practiceMinutes: z
     .union([...PRACTICE_MINUTES_OPTIONS.map((m) => z.literal(m)), z.literal("auto")])
     .default("auto"),
+  /** Try again on this sheet (R4 review): reuse exactly this failed row, not the oldest one. */
+  worksheetId: z.string().min(1).max(64).optional(),
 });
 export type RequestWorksheet = z.infer<typeof RequestWorksheetSchema>;
 export type RequestWorksheetInput = Omit<z.input<typeof RequestWorksheetSchema>, "recipeId"> & {
