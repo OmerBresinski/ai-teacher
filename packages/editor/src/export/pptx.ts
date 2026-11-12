@@ -77,6 +77,7 @@ import {
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { markHexagonPoints, notchPoints } from "@tj/slides/marks";
+import { mathsElement } from "@tj/slides/maths-names";
 import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -101,6 +102,7 @@ import {
 import { isJobPictureSlot } from "../slide/elements/SlotPlaceholder";
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
+import { withFractionRuns } from "./fraction-runs";
 import { hingeRevealShapes, oneStepReveal } from "./hinge-reveal";
 import { imageCredentials } from "./image-credentials";
 import { dataUrlImageSize } from "./image-size";
@@ -346,6 +348,9 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
       if (run.italic) options.italic = true;
       if (run.underline) options.underline = { style: "sng" };
       if (run.strike) options.strike = true;
+      // A fraction the slide stacks: raised numerator, lowered denominator ("³/₄", fraction-runs.ts).
+      if (run.frac === "num") options.superscript = true;
+      if (run.frac === "den") options.subscript = true;
       // pptxgenjs writes a run hyperlink as `a:hlinkClick`, so the link survives as a
       // real PowerPoint link rather than as blue underlined text.
       if (run.href) options.hyperlink = { url: run.href };
@@ -867,7 +872,10 @@ function drawText(
   const marks = runMarkRects(element, theme, r.fontSize, step);
   for (const shape of marks.under) pptxSlide.addShape("roundRect", shape);
   pptxSlide.addText(
-    paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)),
+    paragraphsToTextProps(
+      withFractionRuns(docToRuns(element.doc), mathsElement(element.name)),
+      runStyleFor(r, theme),
+    ),
     textBoxOptions(element, r),
   );
   for (const shape of marks.over) pptxSlide.addShape("rect", shape);
@@ -938,7 +946,10 @@ function drawGapText(
 ): void {
   const r = resolveTextStyle(element.style, theme);
   pptxSlide.addText(
-    paragraphsToTextProps(gapTextToBlanks(element, question), runStyleFor(r, theme)),
+    paragraphsToTextProps(
+      withFractionRuns(gapTextToBlanks(element, question)),
+      runStyleFor(r, theme),
+    ),
     textBoxOptions(element, r),
   );
 }
@@ -1061,11 +1072,14 @@ function drawOption(
     element.textStyle?.preset ?? "small",
     "option",
   );
-  pptxSlide.addText(paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)), {
-    ...textBoxOptions({ ...element, x: textX, w: Math.max(textW, 24) }, r),
-    margin: 0,
-    fit: "none",
-  });
+  pptxSlide.addText(
+    paragraphsToTextProps(withFractionRuns(docToRuns(element.doc)), runStyleFor(r, theme)),
+    {
+      ...textBoxOptions({ ...element, x: textX, w: Math.max(textW, 24) }, r),
+      margin: 0,
+      fit: "none",
+    },
+  );
 
   if (revealed && correct) {
     pptxSlide.addText("✓", {
@@ -1152,12 +1166,15 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     const glyph = isBadgeBox(element.w, element.h)
       ? badgeGlyph(docToPlainText(element.doc), r.fontFamily, r.fontSize)
       : null;
-    pptxSlide.addText(paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)), {
-      ...textBoxOptions(element, r),
-      ...(glyph ? { margin: glyphInsets(glyph), lineSpacingMultiple: 1, wrap: false } : {}),
-      fill: undefined,
-      fit: "none",
-    });
+    pptxSlide.addText(
+      paragraphsToTextProps(withFractionRuns(docToRuns(element.doc)), runStyleFor(r, theme)),
+      {
+        ...textBoxOptions(element, r),
+        ...(glyph ? { margin: glyphInsets(glyph), lineSpacingMultiple: 1, wrap: false } : {}),
+        fill: undefined,
+        fit: "none",
+      },
+    );
   }
 }
 
@@ -1528,46 +1545,6 @@ async function drawImage(
   const transparency = transparencyOf(element.opacity);
   if (transparency != null) options.transparency = transparency;
   pptxSlide.addImage(options);
-  if (element.source?.caption)
-    drawPictureCaption(pptxSlide, element, element.source.caption, theme);
-}
-
-/**
- * Ruling 300 (TEACH-251 part ay): a painting made because no real picture exists says so on the
- * picture ("Artist's reconstruction"), in the export as in edit, present and print. The same
- * label as the editor's `ReconstructionCaption`: white italic on a dark rounded plate, bottom left
- * of the picture's box, its size from the box's height.
- */
-function drawPictureCaption(
-  pptxSlide: PptxGenJS.Slide,
-  element: ImageElement,
-  caption: string,
-  theme: Theme,
-): void {
-  const size = Math.max(12, Math.round(element.h * 0.045));
-  const inset = size * 0.6;
-  // The text's width at about half an em a character, plus the plate's side padding; never wider
-  // than the picture.
-  const w = Math.min(element.w - 2 * inset, caption.length * size * 0.52 + 2 * size * 0.6);
-  const h = size * 1.2 + 2 * size * 0.25;
-  pptxSlide.addText(caption, {
-    x: inches(element.x + inset),
-    y: inches(element.y + element.h - inset - h),
-    w: inches(w),
-    h: inches(h),
-    align: "center",
-    valign: "middle",
-    margin: 0,
-    fontFace: fontFaceFor(theme.fonts.body),
-    fontSize: size,
-    italic: true,
-    color: "FFFFFF",
-    fill: { color: "000000", transparency: 38 },
-    shape: "roundRect",
-    rectRadius: inches(size * 0.3),
-    wrap: false,
-    objectName: "Picture caption",
-  });
 }
 
 /**

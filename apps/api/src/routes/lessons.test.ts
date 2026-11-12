@@ -85,6 +85,80 @@ describe("POST /lessons validation", () => {
   });
 });
 
+/* Founder's ruling (12 Nov 2026): an unrecognised year group is asked, never guessed. */
+describe("POST /lessons year group", () => {
+  test.each([
+    [
+      "no year group",
+      { brief: { topic: "Fractions" } },
+      "Which year group is this for? Choose one from the list.",
+    ],
+    [
+      "a blank year group",
+      { brief: { topic: "Fractions" }, yearGroup: " " },
+      "Which year group is this for? Choose one from the list.",
+    ],
+    [
+      "P5 (Scotland)",
+      { brief: { topic: "Fractions" }, yearGroup: "P5" },
+      "“P5” isn’t on our list. Which year group is this for?",
+    ],
+    [
+      "Grade 4",
+      { brief: { topic: "Fractions" }, yearGroup: "Grade 4" },
+      "“Grade 4” isn’t on our list. Which year group is this for?",
+    ],
+    [
+      "Reception",
+      { brief: { topic: "Counting" }, yearGroup: "Reception" },
+      "“Reception” isn’t on our list. Which year group is this for?",
+    ],
+    [
+      "a topic naming another year",
+      { brief: { topic: "Fractions for my P5 class" }, yearGroup: "Year 4" },
+      "Your topic says “P5”. Which year group is this for?",
+    ],
+    [
+      "an unrecognised year even when confirmed",
+      { brief: { topic: "Fractions" }, yearGroup: "S2", yearGroupConfirmed: true },
+      "“S2” isn’t on our list. Which year group is this for?",
+    ],
+  ])("400 on yearGroup for %s, with the intake's question", async (_label, body, message) => {
+    const res = await testApp().request("/lessons", post(body));
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).error).toMatchObject({
+      code: "validation_failed",
+      fields: ["yearGroup"],
+      message,
+    });
+  });
+
+  test.each([
+    ["Year 5", { brief: { topic: "Fractions" }, yearGroup: "Year 5" }],
+    ["a spelling the list reads (Y5)", { brief: { topic: "Fractions" }, yearGroup: "Y5" }],
+    [
+      "a conflict the teacher confirmed",
+      {
+        brief: { topic: "Fractions for my P5 class" },
+        yearGroup: "Year 4",
+        yearGroupConfirmed: true,
+      },
+    ],
+  ])("%s passes the year check (503 here: no job runtime)", async (_label, body) => {
+    const res = await testApp().request("/lessons", post(body));
+    expect(res.status).toBe(503);
+  });
+
+  test("a re-plan that sends an unrecognised year group is refused the same way", async () => {
+    const res = await testApp().request(
+      `/lessons/${newId<LessonId>()}/plan`,
+      post({ expectedRevision: 1, brief: { topic: "Fractions" }, yearGroup: "Grade 4" }),
+    );
+    expect(res.status).toBe(400);
+    expect((await errorBody(res)).error).toMatchObject({ fields: ["yearGroup"] });
+  });
+});
+
 const CASCADE_PATH = `/lessons/${newId<LessonId>()}/cascade`;
 const REGENERATE_PATH = `/lessons/${newId<LessonId>()}/regenerate`;
 
@@ -332,6 +406,26 @@ describe("POST /lessons/:id/worksheet and GET /lessons/:id/worksheets guards and
       message: "That worksheet recipe does not exist.",
     });
   });
+
+  test.each(["cloze", "quick-quiz", "word-search", "key-words"])(
+    "plan v2 T7: %s is a known type not offered yet, 422 before anything is read",
+    async (recipeId) => {
+      const res = await testApp().request(WORKSHEET_PATH, post({ ...validWorksheet, recipeId }));
+      expect(res.status).toBe(422);
+      expect((await errorBody(res)).error).toMatchObject({
+        code: "unprocessable",
+        message: "That worksheet type is not available yet.",
+      });
+    },
+  );
+
+  test.each(["auto", "practice", "exam-style", "exit-ticket", "knowledge-check"])(
+    "plan v2 T7: %s passes the type check (then 503 with no job runtime)",
+    async (recipeId) => {
+      const res = await testApp().request(WORKSHEET_PATH, post({ ...validWorksheet, recipeId }));
+      expect(res.status).toBe(503);
+    },
+  );
 
   test("400 for a non-UUID lesson id on both routes", async () => {
     expect((await testApp().request("/lessons/nope/worksheet", post(validWorksheet))).status).toBe(

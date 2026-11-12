@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { RichDoc, TextPreset } from "@tj/domain/documents";
-import { FRACTION_TALL_EM, fractionTall, fractionWidthEm, shownSide } from "./fractions";
+import {
+  FRACTION_TALL_EM,
+  findFractions,
+  fractionTall,
+  fractionWidthEm,
+  shownSide,
+} from "./fractions";
 import { countLines, measureHeadless } from "./text-measure";
 import { getTheme } from "./themes";
 
@@ -79,5 +85,12 @@ describe("measureHeadless and stacked fractions", () => {
     expect(fractionWidthEm(1, 0.5, true)).toBeCloseTo(0.8 + 2 * 0.12 * 0.8 + 0.12, 5);
     expect(shownSide("(x + 2)/3", 0, 7)).toEqual([1, 6]);
     expect(shownSide("x/3", 0, 1)).toEqual([0, 1]);
+  });
+});
+
+describe("a mixed number copied from a slide (REVIEW-web #7)", () => {
+  test("stacks again whether its space is plain, no-break or thin", () => {
+    for (const gap of [" ", " ", " ", " "])
+      expect(findFractions(`It is 2${gap}1/2 m.`).length).toBe(1);
   });
 });

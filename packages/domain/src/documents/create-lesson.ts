@@ -38,6 +38,11 @@ export const CreateLessonSchema = z.strictObject({
   }),
   subject: SubjectSchema.optional(),
   yearGroup: YearGroupSchema.optional(),
+  /**
+   * The teacher answered the intake's year-group question for a topic that names another year
+   * or stage (`yearGroupProblem`); without it, such a topic is refused rather than guessed.
+   */
+  yearGroupConfirmed: z.boolean().optional(),
   ageBand: AgeBandSchema.optional(),
   readingLevel: z.string().max(40).optional(),
   language: z.string().max(16).optional(),
@@ -72,6 +77,8 @@ export const PlanLessonSchema = z.strictObject({
     level: true,
   }).extend({ durationMin: DurationMinSchema.optional() }),
   yearGroup: YearGroupSchema.optional(),
+  /** As `CreateLessonSchema.yearGroupConfirmed`. */
+  yearGroupConfirmed: z.boolean().optional(),
   subject: SubjectSchema.optional(),
   sourceIds: SourceIdsSchema.optional(),
 });
@@ -126,6 +133,8 @@ export const RequestWorksheetSchema = z.strictObject({
   practiceMinutes: z
     .union([...PRACTICE_MINUTES_OPTIONS.map((m) => z.literal(m)), z.literal("auto")])
     .default("auto"),
+  /** Try again on this sheet (R4 review): reuse exactly this failed row, not the oldest one. */
+  worksheetId: z.string().min(1).max(64).optional(),
 });
 export type RequestWorksheet = z.infer<typeof RequestWorksheetSchema>;
 export type RequestWorksheetInput = Omit<z.input<typeof RequestWorksheetSchema>, "recipeId"> & {

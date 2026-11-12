@@ -1281,21 +1281,15 @@ describe("the emitted slide XML", () => {
     expect(xml).toContain("<a:t>Evaporation</a:t>");
   }, 30_000);
 
-  // Ruling 300 (TEACH-251 part ay): a painting of a past place says "Artist's reconstruction" on
-  // the picture in the editor, present and print; the export carried the picture without it.
-  it("a picture's on-picture caption is drawn on it, bottom left", async () => {
+  // Greg, 12 Nov 2026 ("no labels pls"; supersedes ruling 300's on-picture caption): a saved
+  // lesson whose made picture still carries "Artist's reconstruction" or "AI-generated image"
+  // exports the picture with no label on it.
+  it("a made picture's saved label is never drawn in the export", async () => {
     const png =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAFElEQVR4nGM8kWLEAANMcBYDAwMAIbQBYsejYxUAAAAASUVORK5CYII=";
-    const source = {
-      provider: "generated",
-      id: "g1",
-      pageUrl: "https://dayback.app",
-      photographer: "",
-      photographerUrl: "https://dayback.app",
-    };
-    const picture = (caption?: string) =>
+    const picture = (id: string, caption: string) =>
       ({
-        id: "p",
+        id,
         type: "image",
         x: 100,
         y: 50,
@@ -1303,26 +1297,22 @@ describe("the emitted slide XML", () => {
         h: 200,
         src: png,
         fit: "cover",
-        source: caption ? { ...source, caption } : source,
+        source: {
+          provider: "generated",
+          id,
+          pageUrl: "https://dayback.app",
+          photographer: "",
+          photographerUrl: "https://dayback.app",
+          caption,
+        },
       }) as SlideElement;
-    const [withCaption = ""] = await write(deck([picture("Artist's reconstruction")]));
-    const [without = ""] = await write(deck([picture()]));
-    expect(withCaption).toContain("Artist&apos;s reconstruction");
-    expect(without).not.toContain("reconstruction");
-    // The plate sits inside the picture's box, at its bottom left (EMU, 12700 to the point).
-    const off =
-      /name="Picture caption"[\s\S]*?<a:off x="(\d+)" y="(\d+)"\/>\s*<a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(
-        withCaption,
-      );
-    const [x = 0, y = 0, cx = 0, cy = 0] = off?.slice(1).map((n) => Number(n) / 12700) ?? [];
-    expect(off).not.toBeNull();
-    expect(x).toBeGreaterThan(100);
-    expect(x).toBeLessThan(130);
-    expect(x + cx).toBeLessThan(500);
-    expect(y + cy).toBeLessThan(250);
-    expect(y + cy).toBeGreaterThan(230);
-    expect(withCaption).toContain("<a:latin");
-    expect(withCaption).toMatch(/<a:rPr[^>]*\bi="1"/);
+    const [xml = ""] = await write(
+      deck([picture("p1", "Artist's reconstruction"), picture("p2", "AI-generated image")]),
+    );
+    expect(xml).toContain("<p:pic>");
+    expect(xml).not.toContain("reconstruction");
+    expect(xml).not.toContain("AI-generated");
+    expect(xml).not.toContain("Picture caption");
   }, 30_000);
 });
 

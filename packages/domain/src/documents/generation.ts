@@ -46,6 +46,25 @@ export type Generation = {
    * work (TEACH-312 part j). Absent until then, and on lessons generated before it.
    */
   editableAt?: string;
+  /**
+   * The ship gate's record (RC1, e2e-11nov): every certain layout fault found on the deck as saved
+   * (an empty picture slot or figure plate, words past the slide's edge or on other words), what
+   * code did about it and what still ships, with the counts. Absent on lessons saved before it.
+   */
+  shipGate?: ShipGateRecord;
+};
+
+export type ShipGateRecord = {
+  detected: number;
+  acted: number;
+  shipped: number;
+  slides: {
+    slide: number;
+    id: string;
+    faults: string[];
+    action: "slot-removed" | "answers-paginated" | "words-only" | "none";
+    shipped: string[];
+  }[];
 };
 
 export const SLIDE_GENERATION_STATES = ["writing", "done"] as const;
@@ -75,4 +94,20 @@ export const GenerationSchema = z.strictObject({
   findings: z.array(FindingSchema),
   slideStates: z.record(z.string(), z.enum(SLIDE_GENERATION_STATES)).optional(),
   editableAt: z.iso.datetime().optional(),
+  shipGate: z
+    .strictObject({
+      detected: z.number().int().nonnegative(),
+      acted: z.number().int().nonnegative(),
+      shipped: z.number().int().nonnegative(),
+      slides: z.array(
+        z.strictObject({
+          slide: z.number().int().positive(),
+          id: z.string(),
+          faults: z.array(z.string()),
+          action: z.enum(["slot-removed", "answers-paginated", "words-only", "none"]),
+          shipped: z.array(z.string()),
+        }),
+      ),
+    })
+    .optional(),
 });

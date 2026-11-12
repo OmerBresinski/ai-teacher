@@ -9,7 +9,17 @@
  * prints. Only `--ws-*` variables are read here; the sheet paints from `sheetVars()` alone.
  */
 
+@import "./fractions.css";
+
 .ws-sheet {
+  /* Sizes by year band (`worksheet/sheet-sizes.ts`), set inline by `sheetVars()`: every type
+     size below is its secondary size times --ws-type, ruled lines sit --ws-line-gap apart and
+     answer boxes are their stored height times --ws-box. The footer keeps its size. */
+  --ws-type: 1;
+  --ws-box: 1;
+  /* Every fraction on a sheet is running text (a question, an answer, a key line): set tall
+     (`fractions.css`), 1.6em, so it reads from a desk as on a slide's body text. */
+  --td-frac: 1;
   --ws-pad: 51.02pt; /* 18mm */
   --ws-line-gap: 25.51pt; /* 9mm */
   --ws-rule: color-mix(in srgb, var(--ws-ink) 38%, #ffffff);
@@ -31,7 +41,7 @@
   background: #ffffff;
   color: var(--ws-ink);
   font-family: var(--ws-font-body);
-  font-size: 11pt;
+  font-size: calc(11pt * var(--ws-type, 1));
   line-height: 1.5;
   overflow: hidden;
 }
@@ -46,8 +56,8 @@
    four-sided clip would swallow them. */
 .ws-content {
   position: relative;
-  /* A definite height, not a max: the self-assessment strip is pinned to the
-     foot of this box, and `bottom: 0` needs a floor to sit on. */
+  /* A definite height, not a max, so the clip below sits at the foot of the
+     content box on every page. */
   height: calc(100% - 26pt);
   clip-path: inset(-100pt -100pt 0 -100pt);
 }
@@ -85,14 +95,14 @@
 /* ------------------------------------------------------------------ */
 
 .ws-header {
-  padding-bottom: 16pt;
+  padding-bottom: 12pt;
 }
 
 .ws-header-fields {
   display: flex;
   align-items: flex-end;
   gap: 18pt;
-  font-size: 10pt;
+  font-size: calc(10pt * var(--ws-type, 1));
   line-height: 14pt;
 }
 
@@ -125,7 +135,7 @@
 .ws-title {
   margin: 14pt 0 0;
   font-family: var(--ws-font-title);
-  font-size: 16pt;
+  font-size: calc(16pt * var(--ws-type, 1));
   line-height: 1.25;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -133,15 +143,19 @@
 
 .ws-objective {
   margin: 6pt 0 0;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.45;
   color: var(--ws-muted);
+}
+
+.ws-objective + .ws-objective {
+  margin-top: 2pt;
 }
 
 /* "12 marks · about 25 min" (TEACH-183): the sheet's weight and time, printed like an exam paper's. */
 .ws-meta {
   margin: 4pt 0 0;
-  font-size: 9.5pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
   line-height: 1.4;
   color: var(--ws-muted);
 }
@@ -157,13 +171,13 @@
 .ws-rag {
   display: flex;
   flex-direction: column;
-  gap: 8pt;
-  padding-top: 8pt;
+  gap: 5pt;
+  padding-top: 6pt;
   border-top: 0.75pt solid var(--ws-rule);
 }
 
 .ws-rag-heading {
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.4;
   font-weight: 600;
 }
@@ -171,26 +185,27 @@
 /* Success criteria: one checkbox line each, sized to be ticked with a pen. */
 
 .ws-criteria {
-  margin: 5pt 0 0;
+  margin: 3pt 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 5pt;
+  gap: 3pt;
 }
 
 .ws-criterion {
   display: flex;
   align-items: flex-start;
   gap: 7pt;
-  font-size: 10.5pt;
+  /* R3: the criteria are read, not written on, so the young bands' type stops at 1.25x here. */
+  font-size: calc(10.5pt * min(var(--ws-type, 1), 1.25));
   line-height: 1.45;
 }
 
 .ws-criterion-box {
   flex: 0 0 auto;
-  width: 10pt;
-  height: 10pt;
+  width: calc(10pt * var(--ws-type, 1));
+  height: calc(10pt * var(--ws-type, 1));
   margin-top: 2.5pt;
   border: 0.75pt solid var(--ws-rule-strong);
   border-radius: 1.5pt;
@@ -211,7 +226,7 @@
 }
 
 .ws-rag-prompt {
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.4;
 }
 
@@ -229,30 +244,40 @@
   width: 42pt;
 }
 
+/* R3 (CRITIQUE-2, 12 Nov: "Red/Amber/Green circles printed as uncoloured grey outlines, so a
+   6-year-old cannot tell which is which"): each circle prints in its own colour, a strong ring
+   over a pale fill a pupil can still colour or tick, and `print-color-adjust: exact` so a
+   browser's print keeps the fill. Without colour (a grey photocopy) the word under each circle
+   and the three ring styles (thick, dashed, thin) still tell them apart. The colours are fixed,
+   not theme roles: red, amber and green mean the same on every sheet. */
 .ws-rag-dot {
-  width: 22pt;
-  height: 22pt;
+  width: calc(22pt * var(--ws-type, 1));
+  height: calc(22pt * var(--ws-type, 1));
   border-radius: 50%;
   border: 0.75pt solid var(--ws-rule-strong);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .ws-rag-red {
-  border-width: 3pt;
+  border: 3pt solid #c62828;
+  background: #f8d7d7;
 }
 
 .ws-rag-amber {
-  border-width: 1.5pt;
-  border-style: dashed;
+  border: 2pt dashed #d98a00;
+  background: #fde9bf;
 }
 
-/* Stated rather than inherited from .ws-rag-dot: the three weights are the only
-   thing telling the circles apart, so green owns its own. */
+/* Stated rather than inherited from .ws-rag-dot: the ring style is what tells the circles
+   apart without colour, so green owns its own. */
 .ws-rag-green {
-  border-width: 0.75pt;
+  border: 1.25pt solid #2e7d32;
+  background: #d5ecd6;
 }
 
 .ws-rag-label {
-  font-size: 8.5pt;
+  font-size: calc(8.5pt * var(--ws-type, 1));
   line-height: 1.2;
   color: var(--ws-muted);
 }
@@ -264,15 +289,22 @@
   padding-bottom: 0;
 }
 
-/* Pinned to the foot of the page it lands on. Pagination reserved the height,
-   so nothing above it moves. Scoped to the page: the measuring column keeps
-   the strip in flow. */
-.ws-page .ws-block.ws-rag-slot {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* R3 rhythm (CRITIQUE-2: "three A4 pages for 6 to 8 questions"): a heading sits close to what it
+   introduces, and a question close to its own answer box, so the gaps between items do the
+   separating. Ruled lines and box heights are untouched here (sheet-sizes.ts). */
+.ws-block.ws-block-heading,
+.ws-block.ws-block-instructions {
+  padding-bottom: 4pt;
 }
+
+.ws-block.ws-block-question:has(+ .ws-block-answer-box) {
+  padding-bottom: 4pt;
+}
+
+/* The strip flows straight after the last question, at the sheet's normal
+   block gap, on whichever page it fits. It used to be pinned to the foot of
+   its page, which left a tall empty band above it whenever the questions
+   ended high on the page (WS8). */
 
 /* ------------------------------------------------------------------ */
 /* Blocks                                                              */
@@ -285,7 +317,7 @@
 .ws-h1 {
   margin: 0;
   font-family: var(--ws-font-title);
-  font-size: 14pt;
+  font-size: calc(14pt * var(--ws-type, 1));
   line-height: 1.3;
   font-weight: 600;
 }
@@ -293,13 +325,13 @@
 .ws-h2 {
   margin: 0;
   font-family: var(--ws-font-title);
-  font-size: 12pt;
+  font-size: calc(12pt * var(--ws-type, 1));
   line-height: 1.35;
   font-weight: 600;
 }
 
 .ws-instructions {
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.5;
   color: var(--ws-muted);
   font-style: italic;
@@ -336,7 +368,7 @@
 
 .ws-marks {
   flex: 0 0 auto;
-  font-size: 10pt;
+  font-size: calc(10pt * var(--ws-type, 1));
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -369,8 +401,8 @@
 
 .ws-opt-box {
   flex: 0 0 11pt;
-  width: 11pt;
-  height: 11pt;
+  width: calc(11pt * var(--ws-type, 1));
+  height: calc(11pt * var(--ws-type, 1));
   margin-top: 3pt;
   border: 0.75pt solid var(--ws-rule-strong);
 }
@@ -437,7 +469,7 @@
 .ws-wordbank-label,
 .ws-answerbox-label,
 .ws-caption {
-  font-size: 9.5pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
   line-height: 1.4;
   color: var(--ws-muted);
 }
@@ -528,14 +560,14 @@
   margin: 10pt 0 0;
   padding: 0;
   list-style: none;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .ws-search-note {
   margin: 8pt 0 0;
-  font-size: 9.5pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
   line-height: 1.4;
   color: var(--ws-muted);
 }
@@ -543,7 +575,7 @@
 .ws-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
 }
 
 .ws-table th,
@@ -564,17 +596,26 @@
 
 /* Answer key -------------------------------------------------------- */
 
+/* "Teacher copy" above the key's title, so a key that strays into a pile of pupil sheets is seen. */
+.ws-key-teacher {
+  margin: 0 0 4pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .ws-key-title {
   margin: 0;
   font-family: var(--ws-font-title);
-  font-size: 16pt;
+  font-size: calc(16pt * var(--ws-type, 1));
   line-height: 1.25;
   font-weight: 600;
 }
 
 .ws-key-sub {
   margin: 4pt 0 10pt;
-  font-size: 10pt;
+  font-size: calc(10pt * var(--ws-type, 1));
   color: var(--ws-muted);
 }
 
@@ -586,7 +627,7 @@
   display: flex;
   /* The sheet's own question head gap, so the marks never crowd the answer. */
   gap: 16pt;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
 }
 
 .ws-key-line + .ws-key-line {
@@ -682,7 +723,7 @@
   background: #ffffff;
   color: var(--ws-ink);
   font-family: var(--ws-font-body);
-  font-size: 11pt;
+  font-size: calc(11pt * var(--ws-type, 1));
   line-height: 1.5;
 }
 
@@ -690,4 +731,23 @@
   .ws-measure {
     display: none;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Fractions on a sheet                                                */
+/* ------------------------------------------------------------------ */
+
+/* A stacked fraction's digits read at close to the body size on paper (a pupil reads them at
+   arm's length, not from the back of a room): parts at 0.9em, the fraction 2.1em tall, so its
+   line grows instead of the digits shrinking. Sheet heights are measured from the DOM, so the
+   slide ruler's fixed 1.6em does not bind here. The bar sits on the text's middle. */
+.ws-sheet .td-frac {
+  height: 2.1em;
+  vertical-align: middle;
+  margin: 0 0.1em;
+}
+.ws-sheet .td-frac-num,
+.ws-sheet .td-frac-den {
+  font-size: 0.9em;
+  line-height: 1.1;
 }

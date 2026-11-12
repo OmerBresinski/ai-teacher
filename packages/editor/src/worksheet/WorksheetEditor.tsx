@@ -1,5 +1,6 @@
 import type { QueryKey } from "@tanstack/react-query";
 import type { Id, LessonFacts, RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import { unfinishedWorksheetReason } from "@tj/domain/documents";
 import { Button } from "@tj/ui";
 import { Plus } from "lucide-react";
 import {
@@ -44,6 +45,8 @@ import {
 import type { SlashItem } from "./slash-items";
 import { BlockToolbar } from "./toolbar/BlockToolbar";
 import { useTypingSessionState } from "./typing-session";
+import { UnfinishedBar } from "./UnfinishedBar";
+import { UNFINISHED_PRINT_BLOCKED } from "./unfinished-copy";
 import { useBlockDrag } from "./use-block-drag";
 import { useWorksheetHistory } from "./use-worksheet-history";
 import { useWorksheetSessionState } from "./use-worksheet-session";
@@ -82,6 +85,19 @@ export type WorksheetEditorProps = {
   onPrint: () => void;
   /** Where the export menu sits once it exists (E1 / E3). */
   exportSlot?: ReactNode;
+  /**
+   * Delete the sheet, offered on the bar an unfinished sheet shows (`isUnfinishedWorksheet`).
+   * Without it the bar has no button.
+   */
+  onDelete?: () => void;
+  /**
+   * Make the same sheet again, offered on the bar of a failed sheet (`generation.stage: "failed"`).
+   * `retrying` greys it while the request is in flight.
+   */
+  onRetry?: () => void;
+  retrying?: boolean;
+  /** The sheet's job still holds it (`generatingJobId`): the bar says it is being made. */
+  making?: boolean;
   /** Pexels search + pick for the image block's Replace popover, injected by the app. */
   images?: ImageSearchClient;
   /**
@@ -104,6 +120,10 @@ export function WorksheetEditor({
   onBack,
   onPrint,
   exportSlot,
+  onDelete,
+  onRetry,
+  retrying,
+  making,
   facts,
   images,
 }: WorksheetEditorProps) {
@@ -159,7 +179,7 @@ export function WorksheetEditor({
   // context; it is stable per app boot, so it never re-renders session consumers by itself.
   const sessionWithImages = useMemo(() => ({ ...session, images }), [session, images]);
   const theme = useMemo(() => getTheme(worksheet?.themeId), [worksheet?.themeId]);
-  const { pages, oversize, measureNode } = useSheetPagination(
+  const { pages, oversize, measureNode, space } = useSheetPagination(
     worksheet ?? null,
     theme,
     worksheet?.includeAnswerKey ?? false,
@@ -466,6 +486,9 @@ export function WorksheetEditor({
   const active = session.activeBlockId;
   const activeBlock = active ? worksheet.blocks.find((b) => b.id === active) : undefined;
   const oversizeSet = new Set(oversize);
+  // A sheet its job still holds is never finished, whatever its saved record says (an old or
+  // blank row being written reads as finished to `unfinishedWorksheetReason`).
+  const unfinished = unfinishedWorksheetReason(worksheet) ?? (making ? "not-completed" : null);
 
   return (
     <WorksheetProvider value={worksheet}>
@@ -481,9 +504,19 @@ export function WorksheetEditor({
                   onBack={onBack}
                   onPrint={onPrint}
                   exportSlot={exportSlot}
-                  printBlocked={oversize.length > 0}
+                  printBlocked={unfinished ? UNFINISHED_PRINT_BLOCKED : oversize.length > 0}
                   autosave={autosave}
                 />
+                {unfinished ? (
+                  <UnfinishedBar
+                    reason={unfinished}
+                    detail={worksheet.generation?.failure?.message}
+                    making={making}
+                    onDelete={onDelete}
+                    onRetry={onRetry}
+                    retrying={retrying}
+                  />
+                ) : null}
                 <SaveFailedBar autosave={autosave} />
                 <div
                   ref={columnRef}
@@ -503,6 +536,7 @@ export function WorksheetEditor({
                     worksheet={worksheet}
                     theme={theme}
                     pages={pages}
+                    space={space}
                     mode="edit"
                     className={session.editingId ? "ws-edit ws-typing" : "ws-edit"}
                     header={
@@ -522,9 +556,22 @@ export function WorksheetEditor({
                       </button>
                     }
                     renderItem={(item) =>
-                      item.kind === "block" ? (
-                        <BlockShell
+                      // A lines question split over a page break (`splitLines`): the head is the
+                      // question, keyed by its block id so the split never remounts its text box
+                      // (R4 review: the caret was lost mid-typing); the tail is its remaining
+                      // lines, drawn only, with no number, stem or block id of its own.
+                      item.kind === "block" && item.split === "tail" ? (
+                        <div
+                          className={flowItemClass(item)}
                           key={item.key}
+                          data-split-tail={item.block.id}
+                          aria-hidden
+                        >
+                          <FlowItemContent item={item} worksheet={worksheet} mode="edit" />
+                        </div>
+                      ) : item.kind === "block" ? (
+                        <BlockShell
+                          key={item.block.id}
                           block={item.block}
                           selected={active === item.block.id}
                           editing={session.editingId === item.block.id}

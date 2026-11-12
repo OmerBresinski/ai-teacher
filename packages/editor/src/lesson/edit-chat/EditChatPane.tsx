@@ -85,7 +85,8 @@ export async function preloadEditChat(): Promise<void> {
 const WHOLE_LESSON =
   "I can’t change the whole lesson at once yet. I can change one slide at a time.";
 const STOPPED = "Stopped. Nothing changed.";
-const FAILED = "That edit didn’t work. Try again.";
+/** The request itself failed (network, server): never the teacher's wording. */
+const FAILED = "Something went wrong on our side. Your slide is unchanged. Try again.";
 const CHANGED_SINCE = "That text has changed since, so I left it as it is.";
 const TYPED_MEANWHILE = "You changed that text while I was working, so I kept yours.";
 export const TRY_AGAIN = "Try again on your text";

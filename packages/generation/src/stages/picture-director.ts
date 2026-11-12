@@ -43,6 +43,7 @@ import {
   type PlacedPhoto,
   pickDirectedPhoto,
   plainSubject,
+  type SlideClaim,
 } from "./illustrate";
 import {
   type BankRequest,
@@ -408,7 +409,18 @@ function askDirection(ask: Ask, d: PictureDirection | undefined): PictureDirecti
         shows: text,
         mustShow: ask.mustShow ?? [],
         queries: uniq([plainSubject(text), ...anchorQueries(text)]),
-        imagePrompt: text,
+        // The ask's own words with the lesson they are for (12 Nov, y8 rows: "Cellulose: ...").
+        imagePrompt: ask.lessonTitle
+          ? [
+              text,
+              ...pictureContextLines({
+                heading: "",
+                lessonTitle: ask.lessonTitle,
+                words: text,
+                period: d?.period ?? null,
+              }),
+            ].join(" ")
+          : text,
       },
     ],
     count: null,
@@ -508,8 +520,8 @@ export function planPicture(
   // painted.
   // TEACH-251 part ay (rulings 299, 300; amends part ai): a real place or monument shown as it was
   // in its own time (a past scene there, a reconstruction, "Pudding Lane in 1666", "Hadrian's Wall
-  // as built") is painted when the search misses, named by the writer or not, and captioned
-  // "Artist's reconstruction". The place as it is today ("at Cawfields today", its remains) or a
+  // as built") is painted when the search misses, named by the writer or not (its "Artist's
+  // reconstruction" label went 12 Nov 2026, Greg: "no labels pls"). The place as it is today ("at Cawfields today", its remains) or a
   // map stays real-only. With no sign of its own time it stays real-only too (fails closed).
   const placeWords = `${first.shows} ${ask.text}`;
   const pastScene =
@@ -648,6 +660,13 @@ export async function findDirected(args: {
    * unjudged, every panel alike (TEACH-251 part ay).
    */
   unjudged?: boolean;
+  /**
+   * R4 (round 3, y2 s10 Samuel Pepys): the stage's second try at this key. A real-only thing
+   * (ruling 163, `realFallback` none: a named person) is searched only on it, never painted at the
+   * last step: the first try already had its painting, and two more refused paintings cost the
+   * slide ~45 s before it was rewritten anyway.
+   */
+  again?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -928,6 +947,7 @@ export async function findDirected(args: {
     // its whole group instead (`paintGroup`), so a slide never mixes real and painted.
     args.stockFallback &&
     !args.paintOnly &&
+    !(args.again && req.route === "real" && (req.realFallback ?? "none") === "none") &&
     !deps.signal.aborted
   ) {
     const t0 = Date.now();
@@ -1063,8 +1083,9 @@ export async function findDirected(args: {
   if (!out.photo) return undefined;
   // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
   // and the period the request belongs to.
-  // Ruling 300: a painting made because no real picture exists, of a past scene, a place in its own
-  // time or the last step's period scene, says so on the picture.
+  // A painting made because no real picture exists, of a past scene, a place in its own time or the
+  // last step's period scene. Ruling 300's "Artist's reconstruction" label on it is gone (Greg, 12 Nov
+  // 2026: "no labels pls"): no made picture carries a label; the flag only feeds the history-card gate.
   const reconstruction =
     out.photo.source.provider === "generated" &&
     style === "illustration" &&
@@ -1072,7 +1093,7 @@ export async function findDirected(args: {
     (!!req.period || lastResort === "painted" || !!args.paintOnly);
   return {
     ...out.photo,
-    ...(reconstruction ? { source: { ...out.photo.source, caption: RECONSTRUCTION_CAPTION } } : {}),
+    ...(reconstruction ? { reconstruction: true } : {}),
     look:
       out.photo.source.provider === "generated"
         ? style === "drawn"
@@ -1096,7 +1117,7 @@ export class RealSearchFailed extends Error {
  * search missed is shown by its kind, never as itself. The request is the place's kind of feature
  * (the writer's must-see words and the period, with the place's own name cut): first a real photo
  * of that kind (Commons, judged against the must-see words; its own caption names where it is),
- * else a painted reconstruction of the kind, captioned "Artist's reconstruction" (ruling 300). A
+ * else a painted reconstruction of the kind, unlabelled (ruling 300's label went 12 Nov 2026). A
  * generic reconstruction is no particular real place, so ruling 163 allows it (ruling 299). Without
  * must-see words there is no kind to show: undefined.
  */
@@ -1154,9 +1175,6 @@ export function kindQueries(req: BankRequest, mustShow: readonly string[]): stri
     .filter(Boolean)
     .map((m) => (head ? `${m} ${head}` : m));
 }
-
-/** Ruling 300's caption on a painting made because no real picture exists. */
-export const RECONSTRUCTION_CAPTION = "Artist's reconstruction";
 
 /**
  * TEACH-251 part ay: the last step's request. A subject that may be painted is painted again; a
@@ -1218,6 +1236,13 @@ export function lastResortRequest(
       ? lessonIllustrationPrompt(prompt, look)
       : undefined;
   const palette = decked ? paletteKey(look) : undefined;
+  // A real-only scene names only its period and topic (ruling 299): no lesson title, no people line.
+  const made = decked ?? painted;
+  const context = realOnly
+    ? []
+    : pictureContextLines({ heading, lessonTitle, words: req.text, period }).filter(
+        (line) => !made.includes(line),
+      );
   return {
     text: subject,
     named: null,
@@ -1226,10 +1251,56 @@ export function lastResortRequest(
     realFallback: "illustration",
     style: "illustration",
     ...(palette ? { palette } : {}),
-    imagePrompt: `${decked ?? painted}\n${LAST_RESORT_SAFE_LINE}`,
+    imagePrompt: [made, ...context, LAST_RESORT_SAFE_LINE].join("\n"),
     ...(req.period ? { period: req.period, depicts: true } : {}),
   };
 }
+
+/**
+ * 12 Nov blind review (CRITIQUE-1, y8 s8): a row's picture made from its own words alone
+ * ("Respiration: Glucose is used in respiration to release energy.") came back as a girl eating
+ * an apple, on a slide about how plants use glucose. Code owns two lines for a picture made from
+ * the slide's words: the lesson and the slide it is for, and, when no words of the slide, the ask
+ * or the lesson name people and the lesson is set in no past period, that no people are in it.
+ * The image model draws what a prompt names, so the slide is named as a topic in plain words
+ * (no quotes, which it may letter), and the people line names no example.
+ */
+export function pictureContextLines(o: {
+  heading: string;
+  lessonTitle: string;
+  /** The words the picture is made from (the ask or the request's text). */
+  words: string;
+  period?: string | null;
+}): string[] {
+  const about = o.heading
+    .replace(/[“”"?!.:;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(how|why|what|when|where|who|which|the|a|an)\b/i, (w) => w.toLowerCase());
+  const lesson = o.lessonTitle
+    .replace(/[“”"]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lines: string[] = [];
+  if (lesson || about)
+    lines.push(
+      `It is for a school lesson${lesson ? ` on ${lesson}` : ""}${about && about.toLowerCase() !== lesson.toLowerCase() ? `, for the slide about ${about}` : ""}${o.period ? `, set in ${o.period}` : ""}.`,
+    );
+  if (!o.period && !peopleWords().test(`${o.heading} ${o.words} ${o.lessonTitle}`))
+    lines.push(NO_PEOPLE_LINE);
+  return lines;
+}
+
+/** The people line: only where nothing the picture is made from names a person (see above). */
+export const NO_PEOPLE_LINE = "No people, faces or hands are in the picture.";
+
+/** Words that put a person in a picture: DEPICTS's, and people a present-day slide names. */
+let peopleRe: RegExp | undefined;
+const peopleWords = () =>
+  (peopleRe ??= new RegExp(
+    `${DEPICTS.source}|\\b(humans?|human body|bod(y|ies)|boys?|girls?|babies|baby|pupils?|students?|teachers?|doctors?|nurses?|patients?|farmers?|scientists?|athletes?|players?|runners?|cooks?|chefs?|bakers?|firefighters?|we|you|our|your|someone|everyone|face|faces|hands?)\\b`,
+    "i",
+  ));
 
 /**
  * The last step's safety line (KS1 to KS4). No age word ("children" draws young children) and no
@@ -1454,6 +1525,8 @@ export function artefactQueries(shows: string, period?: string): string[] {
 export type DirectedPhoto = PlacedPhoto & {
   look: "photo" | "illustration" | "drawn" | "house";
   period?: string;
+  /** A painting made because no real picture exists, of a past scene or place (never drawn on). */
+  reconstruction?: true;
 };
 
 export interface PictureOutcome {
@@ -1607,9 +1680,16 @@ export async function placeWriterPicture(args: {
   paintOnly?: boolean;
   /** With `paintOnly`, the topic's scene unjudged (`findDirected`'s `unjudged`). */
   unjudged?: boolean;
+  /** The stage's second try at this key (`findDirected`'s `again`). */
+  again?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
+  // The slide's own claim (heading and lead): every pick and painting is checked against it.
+  const claim: SlideClaim = {
+    words: [ask.slide.heading, ask.slide.text ?? ""].filter((w) => w.trim()).join(". "),
+    lessonTitle: lesson.title,
+  };
   const taken = args.taken ?? new Set<string>();
   const illustrated = ask.style === "illustration";
   const stock = async (
@@ -1627,6 +1707,7 @@ export async function placeWriterPicture(args: {
       // A race this search lost aborts its searches and its judge calls.
       deps: signal ? { ...deps, signal: AbortSignal.any([deps.signal, signal]) } : deps,
       taken,
+      claim,
       // A budget stop or a cancel is never a missing picture: it stops the lesson.
     }).catch(
       whenNonFatal((error: unknown) => {
@@ -1704,8 +1785,11 @@ export async function placeWriterPicture(args: {
                 brief,
                 deps,
                 dataUrl: made.dataUrl,
+                claim,
                 ...(reuse !== undefined ? { reuse } : {}),
-                ...(onWhy ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v)) } : {}),
+                ...(onWhy
+                  ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v, claim)) }
+                  : {}),
               })
             : Promise.resolve(false),
         deps,
@@ -1720,6 +1804,7 @@ export async function placeWriterPicture(args: {
         ...(soleOnSlide(ask.key) ? { stockFallback: true } : {}),
         ...(args.paintOnly ? { paintOnly: true } : {}),
         ...(args.unjudged ? { unjudged: true } : {}),
+        ...(args.again ? { again: true } : {}),
       });
     },
     (error) => {
@@ -2214,6 +2299,7 @@ export function createWriterPictures(opts: {
       ...(real ? { realOnly: true } : {}),
       ...(paint ? { paintOnly: true } : {}),
       ...(unjudged ? { unjudged: true } : {}),
+      ...(slot.again ? { again: true } : {}),
     })
       .then((photo) => {
         // TEACH-247 part cf (romans v6 s11: Chesters fort's Commons photo landed 4.5 s after its
@@ -2230,8 +2316,13 @@ export function createWriterPictures(opts: {
           if (reason === "director-code") slot.draw = diagram;
           return;
         }
-        // The last step's captioned period scene is not the card's real thing painted (ruling 299).
-        if (real && photo.source?.provider === "generated" && !photo.source.caption) {
+        // The last step's period scene (a reconstruction) is not the card's real thing painted
+        // (ruling 299).
+        if (
+          real &&
+          photo.source?.provider === "generated" &&
+          !(photo as Partial<DirectedPhoto>).reconstruction
+        ) {
           slot.state = { status: "failed" };
           slot.miss = "history-card-generated";
           opts.deps.logger.info(

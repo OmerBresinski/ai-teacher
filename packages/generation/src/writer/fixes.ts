@@ -6,10 +6,12 @@ import { gridFit } from "./cards-grid-fits";
 import { EXIT_TICKET } from "./close";
 import { coverFit } from "./cover-fits";
 import fitData from "./fit-table.gen.json" with { type: "json" };
+import goldFitData from "./fit-table-gold.gen.json" with { type: "json" };
 import hingeData from "./hinge-cards.gen.json" with { type: "json" };
 import { hookFit } from "./hook-fits";
 import { rowFit } from "./items-row-fits";
 import { compoundSubjects } from "./lost-picture";
+import { NO_FIGURE } from "./materialise";
 import objectivesRoom from "./objectives-room.gen.json" with { type: "json" };
 import { nonFatalSync } from "./services";
 import { fitNeedKey, shownFor, wordsWithin, writerStageOfKey } from "./shown-cap";
@@ -40,10 +42,48 @@ export type Brief = {
   exitTicketOnSlides: boolean;
   slides: { min: number; max: number };
   teacherTheme?: string;
+  /**
+   * The curriculum subject the topic gives (`curriculumSubjectForTopic`) when the lesson has no
+   * subject; read only by a template's "{{subject, or the curriculum subject…}}" (v5.2-gold).
+   */
+  inferredSubject?: string;
+  /** The teacher never chose the length (`brief.durationDefaulted`): "{{lessonLength: …}}" is empty. */
+  durationDefaulted?: boolean;
+  /** `facts.buildsOn`, for "{{buildsOn: …}}" (v5.2-gold). */
+  buildsOn?: string;
+  /** `facts.points` whose objective the lesson still has, for "{{points: …}}" (v5.3-gold). */
+  points?: { objective: number; text: string }[];
 };
 
 /** The prompt files' stage key. */
 export const promptStage = (k: Stage) => (k === "ks1" ? "KS1" : k === "ks2" ? "KS2" : "KS3-5");
+
+/**
+ * v5.3-gold: how many points the objectives call writes for the brief's slide range, so the
+ * lesson's content is sized by its length: Quick 2 to 3, Standard 4 to 6, Detailed 6 to 10. The
+ * low end is 0.6 of the slides after the title, objectives and close; the high end leaves three
+ * slides for checks and practice.
+ */
+export function pointCount(b: { slides: { min: number; max: number } }): {
+  lo: number;
+  hi: number;
+} {
+  const lo = Math.max(2, Math.round(0.6 * (b.slides.min - 3)));
+  return { lo, hi: Math.max(lo + 1, b.slides.max - 6) };
+}
+
+/**
+ * A point's label in the writer's user turn and its flow: the objective's number, then a letter
+ * by the point's place under that objective ("2b").
+ */
+export function pointLabels(points: readonly { objective: number }[]): string[] {
+  const seen = new Map<number, number>();
+  return points.map((p) => {
+    const k = seen.get(p.objective) ?? 0;
+    seen.set(p.objective, k + 1);
+    return `${p.objective}${String.fromCharCode(97 + k)}`;
+  });
+}
 
 /** `objectiveCount` at the middle of the brief's slide range. */
 export function objectiveCount(b: Brief): string {
@@ -300,18 +340,28 @@ type FitGroup = {
   layouts: Record<string, { fields: string[]; variants: FitVariant[] }>;
 };
 let FIT: Record<string, FitGroup> | undefined;
-/** The pinned table plus the layouts measured outside it (UX ruling 203), per group; built once. */
-const baseFit = (): Record<string, FitGroup> => {
+let GOLD_FIT: Record<string, FitGroup> | undefined;
+/**
+ * The pinned table plus the layouts measured outside it (UX ruling 203), per group; built once.
+ * `gold` reads the table measured on the gold looks (`fit-table-gold.gen.json`, 11 Nov 2026), which
+ * only a pack that asks for it reads (`PilotPack.goldFits`); the default stays the frozen table.
+ */
+const baseFit = (gold = false): Record<string, FitGroup> => {
+  if (gold) {
+    GOLD_FIT ??= withExtra((goldFitData as unknown as { groups: Record<string, FitGroup> }).groups);
+    return GOLD_FIT;
+  }
   if (FIT) return FIT;
-  const groups = (fitData as unknown as { groups: Record<string, FitGroup> }).groups;
-  FIT = Object.fromEntries(
+  FIT = withExtra((fitData as unknown as { groups: Record<string, FitGroup> }).groups);
+  return FIT;
+};
+const withExtra = (groups: Record<string, FitGroup>): Record<string, FitGroup> =>
+  Object.fromEntries(
     Object.entries(groups).map(([g, F]) => [
       g,
       { ...F, layouts: { ...F.layouts, ...extraLayouts(g) } },
     ]),
   );
-  return FIT;
-};
 /** Ruling 203 layouts' fit, from the renderer's own capacity tables. */
 function extraLayouts(group: string): FitGroup["layouts"] {
   return {
@@ -328,8 +378,17 @@ function extraLayouts(group: string): FitGroup["layouts"] {
  * the lab's caps, which let an option shrink and wrap to 4 lines in a 3-across card. Opt-in per
  * writer bundle, so a bundle that does not ask keeps the lab's numbers.
  */
-export const fitTable = (o: { hingeCards?: boolean } = {}): Record<string, FitGroup> => {
-  const groups = baseFit();
+export type FitOpts = { hingeCards?: boolean; gold?: boolean };
+/**
+ * The heading cap a slide with no heading number of its own is measured against. The gold table's
+ * top-level heading (160 characters) is not a usable cap (v5.1-gold WIRED-NOTES D2): the gold pack
+ * states its headings from the frozen table's measured heading (`headingWords`), so the gold read
+ * measures them against that same number. The default read is unchanged.
+ */
+const headingCap = (F: FitGroup, stage: string, o: FitOpts): number =>
+  o.gold ? (baseFit(false)[stage]?.heading ?? F.heading) : F.heading;
+export const fitTable = (o: FitOpts = {}): Record<string, FitGroup> => {
+  const groups = baseFit(!!o.gold);
   if (!o.hingeCards) return groups;
   const cards = (hingeData as { groups: Record<string, HingeCards> }).groups;
   return Object.fromEntries(
@@ -377,9 +436,15 @@ export function wordsOver(words: number, chars: number, room: number) {
  * pack run (`words`) as `field: N words, room about M (K over)`. The slide's way of filling its
  * layout is matched by its item count and figure.
  */
-export function charsOver(slide: unknown, stage: string, words = false): string[] {
+export function charsOver(
+  slide: unknown,
+  stage: string,
+  words = false,
+  /** The table a pack reads (`{ gold }` for a `PilotPack.goldFits` pack); default the frozen one. */
+  o: FitOpts = {},
+): string[] {
   const s = (slide ?? {}) as S;
-  const F = fitTable()[stage];
+  const F = fitTable(o)[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return [];
   const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
@@ -420,7 +485,7 @@ export function charsOver(slide: unknown, stage: string, words = false): string[
     if (cap && t.length > cap) out.push(line(field, t.length, wordCount(t), cap));
   };
   // A layout's own title cap (the cover's three lines, `cover-fits.ts`) wins over the group's.
-  over("heading", s.heading, v.heading ?? F.heading, false);
+  over("heading", s.heading, v.heading ?? headingCap(F, stage, o), false);
   if (typeof s.lead === "string") over("lead", s.lead, lim.item);
   if (typeof s.instruction === "string")
     over("instruction", s.instruction, v.noInstruction ? 1 : lim.instruction);
@@ -556,12 +621,19 @@ export function titleOneThing(s: S): { slide: S; how?: string } {
  * source: the heading at `wordsWithin`, a body field at `shownFor`, the comfortable room), so the
  * room line and the menu agree. A field whose room is under one word is left out, never "1 word".
  */
-export function roomLine(slide: unknown, stage: string, words = false): string {
+export function roomLine(
+  slide: unknown,
+  stage: string,
+  words = false,
+  /** The table a pack reads, as `charsOver` takes it. */
+  o: FitOpts = {},
+): string {
   const s = { ...((slide ?? {}) as S) };
   for (const k of ["figure", "picture", "diagram"]) s[k] = null;
-  const F = fitTable()[stage];
+  const F = fitTable(o)[stage];
   const L = F?.layouts[String(s.template)];
   if (!F || !L) return "";
+  const head = headingCap(F, stage, o);
   const listKey = ["points", "questions", "options", "columns", "sequence", "grid", "items"].find(
     (k) => Array.isArray(s[k]),
   );
@@ -575,11 +647,11 @@ export function roomLine(slide: unknown, stage: string, words = false): string {
   const lim = v?.limit;
   if (!lim) return "";
   if (!words)
-    return `room: the heading up to ${F.heading} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
+    return `room: the heading up to ${head} characters; each item up to ${lim.item} characters; all the slide's text up to ${lim.total} characters${lim.instruction ? `; an instruction up to ${lim.instruction} characters` : ""}`;
   const ws = writerStageOfKey(stage);
   const template = String(s.template);
   const parts = [
-    ["the heading", wordsWithin(F.heading, ws)],
+    ["the heading", wordsWithin(head, ws)],
     ["each item", shownFor(lim.item, ws, fitNeedKey(template, "points[]"))],
     ["all the slide's text", shownFor(lim.total, ws)],
     ...(lim.instruction ? [["an instruction", shownFor(lim.instruction, ws)] as const] : []),
@@ -659,7 +731,50 @@ const WORDS_ONLY_FROM = [
   "big-picture",
 ];
 
+/**
+ * A slide re-laid without its figure (`wordsFallback`). With `goldNoPicture` (a pack whose menu
+ * retired explain, `PilotPack.goldNoPictureFallback`), a picture-and-text slide that would become
+ * explain keeps the gold picture-and-text's no-picture look instead: a writer-form `visual-text`
+ * carries the NO_FIGURE mark `normalise` reads, a catalogue `picture-text` or `diagram-text`
+ * becomes `picture-text` with no picture. Every other slide, and every other pack, is unchanged.
+ */
 export function fixedFallback(
+  slide: S,
+  lost: { type: string; kind?: string; labels?: string[]; key?: string },
+  parts: string[],
+  maxSteps: number,
+  opts: { goldNoPicture?: boolean } = {},
+): { slide: S; how: string } {
+  const from = String(slide.template);
+  // RC2 lost-picture layout: a gold picture-and-text slide with key cards and no points of its own
+  // keeps its cards. The gold's no-picture key card look lays them side by side across the full
+  // width (picture-text.ts `colW`), where cards folded into points sit in a 667 px column.
+  const cards = Array.isArray(slide.cards) ? (slide.cards as S[]) : [];
+  const ownPoints = Array.isArray(slide.points) && slide.points.length > 0;
+  if (
+    opts.goldNoPicture &&
+    cards.length &&
+    !ownPoints &&
+    (from === "visual-text" || from === "picture-text")
+  ) {
+    const out: S = { ...slide, figure: null, picture: null, diagram: null };
+    for (const k of ["lead"])
+      if (typeof out[k] === "string") out[k] = stripPointing(out[k] as string);
+    delete out.fit;
+    return from === "visual-text"
+      ? { slide: { ...out, template: "visual-text", [NO_FIGURE]: true }, how: "figure-dropped" }
+      : { slide: { ...out, template: "picture-text" }, how: "figure-dropped" };
+  }
+  const r = wordsFallback(slide, lost, parts, maxSteps);
+  if (!opts.goldNoPicture || r.slide.template !== "explain") return r;
+  if (from === "visual-text")
+    return { slide: { ...r.slide, template: "visual-text", [NO_FIGURE]: true }, how: r.how };
+  if (from === "picture-text" || from === "diagram-text")
+    return { slide: { ...r.slide, template: "picture-text" }, how: r.how };
+  return r;
+}
+
+function wordsFallback(
   slide: S,
   lost: { type: string; kind?: string; labels?: string[]; key?: string },
   parts: string[],
@@ -735,10 +850,17 @@ export function fixedFallback(
  * room (on a pack run, `words`: how many words, as the pack's menu counts), never "about N lines". A fault no field explains keeps its slot name with the overflow
  * said as a share of the room.
  */
-export function repairTerms(fault: string, slide?: unknown, stage?: string, words = false): string {
+export function repairTerms(
+  fault: string,
+  slide?: unknown,
+  stage?: string,
+  words = false,
+  /** The table a pack reads, as `charsOver` takes it. */
+  o: FitOpts = {},
+): string {
   const m = /^(overflow|clipped): (.*?)\s*(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\s*pt\b(.*)$/.exec(fault);
   if (!m) return fault;
-  const fields = slide && stage ? charsOver(slide, stage, words) : [];
+  const fields = slide && stage ? charsOver(slide, stage, words, o) : [];
   if (fields.length) return `${m[1]}: ${fields.join("; ")}`;
   const used = Number(m[3]);
   const room = Number(m[4]);
@@ -943,6 +1065,27 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
         .map((o, k) => `${k + 1}. Teacher: ${o.teacher}${o.pupil ? ` | Pupils: ${o.pupil}` : ""}`)
         .join("\n");
     if (expr.startsWith("context block")) return x.context ?? "";
+    // v5.2-gold's described fills (bundle base4f-p127): the subject, else the one the topic gives;
+    // the length line only when the teacher set it; the earlier learning when the lesson has it;
+    // the curriculum block from the stage.
+    if (expr.startsWith("subject, or")) return b.subject.trim() || (b.inferredSubject ?? "");
+    if (expr.startsWith("lessonLength:"))
+      return b.durationDefaulted === true ? "" : `Lesson length: ${b.durationMin} minutes\n`;
+    if (expr.startsWith("buildsOn:"))
+      return b.buildsOn ? `Pupils already know: ${b.buildsOn}\n\n` : "";
+    if (expr.startsWith("curriculum:")) return String(x.curriculum ?? "");
+    // v5.3-gold's described fills (bundle base4f-p128): how many points the objectives call writes,
+    // and the stored points under their labels.
+    if (expr.startsWith("pointCount:")) {
+      const c = pointCount(b);
+      return `${c.lo} to ${c.hi}`;
+    }
+    if (expr.startsWith("points:")) {
+      const ps = b.points ?? [];
+      if (!ps.length) return "";
+      const labels = pointLabels(ps);
+      return `Points the lesson teaches, in order:\n${ps.map((p, k) => `${labels[k]}. ${p.text}`).join("\n")}\n\n`;
+    }
     if (expr.startsWith("for each final slide")) return String(x.slidesAsShown ?? "");
     if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] });
     if (expr in x) return String(x[expr]);

@@ -107,3 +107,13 @@ export function answerKey(blocks: WorksheetBlock[]): AnswerEntry[] {
   }
   return entries;
 }
+
+/**
+ * Whether the answer key would print any answer at all: a key of only "No answer recorded." lines,
+ * or none, is not offered (R4 review, 12 Nov: Answer key opened a blank page).
+ */
+export function hasAnyAnswer(blocks: WorksheetBlock[]): boolean {
+  return answerKey(blocks).some(
+    (entry) => entry.search !== undefined || entry.lines.some((line) => !line.endsWith(NO_ANSWER)),
+  );
+}

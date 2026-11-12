@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { createBudget } from "@tj/ai";
 import { createFakeAi, type FakeScriptEntry } from "@tj/ai/testing";
 import { newId, type WorkspaceId } from "@tj/domain";
-import type { Lesson, Slide } from "@tj/domain/documents";
+import type { GroupElement, Lesson, Slide } from "@tj/domain/documents";
 import { lesson as demoLesson, textElement } from "@tj/domain/documents/fixtures";
+import { EDIT_MESSAGES } from "@tj/generation";
 import { Hono } from "hono";
 import type { AppEnv } from "../context";
 import { silentLogger } from "../test-helpers";
@@ -31,7 +32,31 @@ const slide: Slide = {
     } as never),
   ],
 };
-const lesson: Lesson = { ...demoLesson(), slides: [...demoLesson().slides, slide] };
+/** A v5 objectives slide: its words sit in one Layout group (QA spree 1 row 2). */
+const grouped: Slide = {
+  id: "s-objectives",
+  kind: "objectives",
+  elements: [
+    {
+      id: "g",
+      type: "group",
+      x: 56,
+      y: 38,
+      w: 848,
+      h: 467,
+      layout: { template: "objectives", input: { heading: "Today", points: ["Say why."] } },
+      children: [
+        textElement("g:heading", "Today we are learning to", { w: 832, h: 52 } as never),
+        textElement("g:points.0", "Say why the fire spread and how people stopped it.", {
+          y: 122,
+          w: 752,
+          h: 93,
+        } as never),
+      ],
+    } as unknown as GroupElement,
+  ],
+};
+const lesson: Lesson = { ...demoLesson(), slides: [...demoLesson().slides, slide, grouped] };
 const lessonId = newId();
 const ws = newId() as WorkspaceId;
 
@@ -128,6 +153,57 @@ const finalOf = (text: string) =>
     reason?: string;
     check?: string;
   };
+
+describe("POST /lessons/:id/edit on group slides and provider failures", () => {
+  test("a slide whose words sit in a group is edited, not refused as having no text", async () => {
+    const target = "s5/elements/g:points.0/text";
+    const groupReply = JSON.stringify({
+      action: "edit",
+      reason: null,
+      offer: null,
+      changes: [{ target, text: "Say why the fire spread.", node_json: null }],
+      summary: "Made it shorter.",
+    });
+    const { app: a, ai } = app({}, [groupReply]);
+    const final = finalOf(
+      await (
+        await sse(a, JSON.stringify({ slide: grouped, instruction: "Make these shorter" }))
+      ).text(),
+    ) as { action: string; changes?: { elementId: string }[] };
+    expect(final.action).toBe("edit");
+    expect(final.changes?.map((c) => c.elementId)).toEqual(["g:points.0"]);
+    expect(ai.calls).toHaveLength(1);
+  });
+
+  test("personal data inside a group is refused before any model call", async () => {
+    const { app: a, ai } = app();
+    const [g] = grouped.elements as GroupElement[];
+    const withEmail = {
+      ...grouped,
+      elements: [
+        {
+          ...g,
+          children: [textElement("g:heading", "Mail jo.bloggs@school.org.uk"), g?.children[1]],
+        },
+      ],
+    };
+    const final = finalOf(
+      await (await sse(a, JSON.stringify({ slide: withEmail, instruction: "Shorter" }))).text(),
+    );
+    expect(final).toMatchObject({ action: "refuse", check: "identifier" });
+    expect(ai.calls).toHaveLength(0);
+  });
+
+  test("a provider failure (a 429) blames our side, not the teacher's wording", async () => {
+    const quota = () => {
+      throw Object.assign(new Error("429 insufficient_quota"), { statusCode: 429 });
+    };
+    const { app: a } = app({}, [quota, quota, quota, quota]);
+    const final = finalOf(await (await sse(a)).text());
+    expect(final).toMatchObject({ action: "failed", reason: EDIT_MESSAGES.serverFailed });
+    expect(final.reason).not.toContain("word it differently");
+  });
+});
 
 describe("POST /lessons/:id/edit, guards and budget", () => {
   test("a capped budget is refused before any model call, streamed or not", async () => {

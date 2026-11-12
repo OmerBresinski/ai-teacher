@@ -36,8 +36,10 @@ import {
   hasCoverFallback,
 } from "../cover-comps";
 import { uid } from "../factories";
+import { FRACTION_TALL_EM, findFractions } from "../fractions";
 import { coverType } from "../layout-sizes";
 import { contrastRatio, coverColours } from "../look";
+import { EQUATION_NAMES, formulaText } from "../maths-text";
 import { optionTones } from "../option-tones";
 import { countLines } from "../text-measure";
 import { atKeyStage, MIN_FONT_SIZE, ROUND5_THEME_IDS, typeScale } from "../themes";
@@ -436,6 +438,59 @@ export type TemplateResult = {
   droppedPictures?: number[];
   /** One entry per field with its length and measured limits: the live "62/80" counters. */
   fields?: FieldReport[];
+  /** Which code drew the slide (the gold-alignment guard): never drawn on the slide, never saved. */
+  drawer?: Drawer;
+};
+
+/**
+ * Which code drew a laid slide (gold alignment, 11 Nov 2026). Not drawn and not saved: it travels
+ * on the layout result only, for the guard (`gold-manifest.test.ts` in @tj/generation) and the
+ * generation logs (`ev: "drawers"`).
+ * - `gold:` an approved gold design's port.
+ * - `legacy:` an old drawer for content a gold design exists for (ported or a mock-up only). It is
+ *   kept so saved documents and old writer JSON lay out as they always did; a new lesson reaches
+ *   one only on a path the gold manifest lists as a known gap.
+ * - `nogold:` a layout no gold design exists for (title, explain, picture sequence, equation hero).
+ */
+export type Drawer = `gold:${string}` | `legacy:${string}` | `nogold:${string}`;
+
+/** The drawer of each template that has one way of drawing; branching cases set their own. */
+const DRAWER_OF: Partial<Record<string, Drawer>> = {
+  title: "nogold:title",
+  // The frame gold's objectives (ruling 233) is a pilot mock-up only: never ported.
+  objectives: "legacy:objectives",
+  explain: "nogold:explain",
+  "big-picture": "legacy:big-picture",
+  "big-diagram": "legacy:big-diagram",
+  "picture-sequence": "nogold:picture-sequence",
+  compare: "nogold:compare",
+  "equation-hero": "nogold:equation-hero",
+  hinge: "gold:hinge",
+  worked: "gold:worked",
+  figure: "gold:figure",
+  practice: "gold:practice",
+  "exit-ticket": "gold:exit-ticket",
+  // The v13 activities redesign is a pilot mock-up only: these are the pre-gold drawers.
+  pair: "legacy:activity",
+  "group-sort": "legacy:activity",
+  sequence: "legacy:activity",
+  choose: "legacy:activity",
+  "odd-one-out": "legacy:activity",
+  label: "legacy:activity",
+  "cards-grid": "nogold:cards-grid",
+  "panel-list": "gold:panel-list",
+  "items-row": "gold:items-row",
+  "banner-text": "nogold:banner-text",
+  // The ruling 203 P5 hook; its gold (hook2, ruling 233) is a pilot mock-up only.
+  hook: "legacy:hook",
+  "split-compare": "gold:split-compare",
+  "side-by-side": "gold:side-by-side",
+  stages: "gold:stages",
+  source: "gold:source",
+  reasons: "gold:reasons",
+  myth: "gold:myth",
+  // The v13 discussion gold is a pilot mock-up only.
+  discussion: "legacy:discussion",
 };
 
 /** split-compare's name for a FieldReport. */
@@ -542,6 +597,7 @@ function measure(
   w: number,
   weight?: number,
   lh?: number,
+  maths?: boolean,
 ): number {
   const size = c.s[role];
   const lines = countLines(
@@ -551,6 +607,7 @@ function measure(
     w,
     weight ?? weightOf(role, c.t),
     size,
+    maths,
   );
   return Math.ceil(lines * size * (lh ?? lhOf(c.t, role)));
 }
@@ -570,9 +627,11 @@ function text(
     lineHeight?: number;
     /** The size is the layout's gold size, drawn as given (`TextStyle.fixedSize`, ruling 21 A). */
     fixedSize?: boolean;
+    /** A maths box (`maths-text.ts` `mathsElement`): its fractions measured as drawn. */
+    maths?: boolean;
   } = {},
 ): TextElement {
-  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight);
+  const h = measure(c, value, role, rect.w, extra.weight, extra.lineHeight, extra.maths);
   const el: TextElement = {
     id: uid(),
     type: "text",
@@ -1584,6 +1643,79 @@ const KIND: Record<TemplateId, SlideKind> = {
   >),
 };
 
+/** The formula's smallest size, as a share of the display heading (never below body). */
+export const FORMULA_FLOOR = 0.7;
+/** A relation the formula may break before: equals, arrows, inequalities (spaced, as written). */
+const RELATION = /^[=→⇌⇄↔≈≠<>≤≥]$/;
+const FORMULA_STEP = 2;
+
+/**
+ * Where a display formula breaks, and at what size (11 Nov, e2e proof y8 s3: "+ oxygen" was left on
+ * a line of its own). One line at the display size; else stepped down 2 pt at a time to
+ * `FORMULA_FLOOR` of it; else broken before each relation needed, at the largest size from the
+ * display size to the floor where every line fits whole, so a side is never split. `wraps`: even
+ * at the floor a side needs more than one line (over capacity). Each line is checked as one line,
+ * so the ruler's reading of a no-break space (`maths-text.ts` known gap) cannot change the result.
+ */
+export function formulaLines(
+  c: Ctx,
+  formula: string,
+  w: number,
+): { size: number; lines: string[]; wraps: boolean } {
+  const full = c.s.heading;
+  const floor = Math.max(c.s.body, Math.round(full * FORMULA_FLOOR * 10) / 10);
+  const sizes: number[] = [];
+  for (let s = full; s > floor; s -= FORMULA_STEP) sizes.push(Math.round(s * 10) / 10);
+  sizes.push(floor);
+  const one = (line: string, size: number) =>
+    countLines(plain(line), "heading", c.t, w, weightOf("heading", c.t), size, true) === 1;
+  for (const size of sizes) if (one(formula, size)) return { size, lines: [formula], wraps: false };
+  // The sides: split before each spaced relation ("a = b", "x → y"); the relation opens its side.
+  const sides: string[] = [];
+  let from = 0;
+  const chars = [...formula];
+  let at = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i] as string;
+    if (
+      i > 0 &&
+      RELATION.test(ch) &&
+      chars[i - 1] === " " &&
+      /^[ \u00A0]$/.test(chars[i + 1] ?? "")
+    ) {
+      sides.push(formula.slice(from, at - 1));
+      from = at;
+    }
+    at += ch.length;
+  }
+  sides.push(formula.slice(from));
+  const pack = (size: number) => {
+    const lines: string[] = [];
+    for (const side of sides) {
+      const last = lines[lines.length - 1];
+      if (last !== undefined && one(`${last} ${side}`, size))
+        lines[lines.length - 1] = `${last} ${side}`;
+      else lines.push(side);
+    }
+    return lines;
+  };
+  if (sides.length > 1)
+    for (const size of sizes) {
+      const lines = pack(size);
+      if (lines.every((l) => one(l, size))) return { size, lines, wraps: false };
+    }
+  return { size: floor, lines: sides.length > 1 ? pack(floor) : [formula], wraps: true };
+}
+
+/** A broken formula's text: its lines in one paragraph, a hard break before each relation. */
+function formulaDoc(lines: string[]): RichDoc {
+  const content = lines.flatMap((l, i) => [
+    ...(i ? [{ type: "hardBreak" }] : []),
+    { type: "text", text: l },
+  ]);
+  return { type: "doc", content: [{ type: "paragraph", content }] } as RichDoc;
+}
+
 /**
  * Equation hero (round 4, GPT Pro review point c): a worked calculation. The formula is the focal
  * line, display size, in a washed band; the substitution and answer lines sit beneath it in body
@@ -1600,25 +1732,44 @@ function equationHero(c: Ctx, input: TemplateInput) {
     const el = text(c, input.lead, "lead", { x, y, w }, { weight: 700, name: "Lead" });
     y += el.h + 16;
   }
-  const formula = input.formula?.trim() ?? "";
-  const fh = measure(c, formula, "heading", inner);
+  // The formula and its steps set as maths: a true minus, a unit kept with its number, each
+  // operator kept with the term after it (NOTATION-PLAN ticket 2, `maths-text.ts`). The formula is
+  // set on one line, stepping down to a floor; past it, it breaks before its arrow or equals sign so
+  // each side stays whole (`formulaLines`).
+  const formula = formulaText(input.formula?.trim() ?? "");
+  const set = formulaLines(c, formula, inner);
+  const fc: Ctx = { ...c, s: { ...c.s, heading: set.size } };
+  const fh = measure(fc, set.lines.join("\n"), "heading", inner, undefined, undefined, true);
   box(c, { x, y, w, h: fh + 2 * G.inset }, wash(c.t), { name: "Formula panel" });
-  text(
-    c,
-    formula,
+  const fel = text(
+    fc,
+    set.lines.join("\n"),
     "heading",
     { x: x + G.inset, y: y + G.inset, w: inner },
     {
-      name: "Formula",
+      name: EQUATION_NAMES.formula,
       color: c.t.colors.ink,
+      maths: true,
     },
   );
-  const lines = Math.round(fh / (c.s.heading * LH.heading));
-  if (lines > 2) c.over.push(`formula ${lines} lines`);
-  if (!wordsFit(c, formula, "heading", inner, c.s.heading)) c.over.push("formula word too wide");
+  if (set.lines.length > 1) fel.doc = formulaDoc(set.lines);
+  if (set.wraps) c.over.push(`formula side wraps at ${set.size}pt`);
+  if (!wordsFit(c, formula, "heading", inner, set.size)) c.over.push("formula word too wide");
   y += fh + 2 * G.inset + 18;
   for (const p of input.points ?? []) {
-    const el = text(c, pointText(p), "body", { x: x + G.inset, y, w: inner }, { name: "Step" });
+    const step = formulaText(pointText(p));
+    const el = text(
+      c,
+      step,
+      "body",
+      { x: x + G.inset, y, w: inner },
+      { name: EQUATION_NAMES.step, maths: true },
+    );
+    // A step's stacked fraction is running text, set 1.6 em tall (`fractions.ts`): its line grows
+    // past the body leading, which the line count alone does not see.
+    if (findFractions(step, { maths: true }).length) {
+      el.h += Math.ceil(Math.max(0, FRACTION_TALL_EM - lhOf(c.t, "body")) * c.s.body);
+    }
     y += el.h + 10;
   }
   const used = Math.round(y - 10 - G.band.y);
@@ -2053,7 +2204,11 @@ function layoutOnce(
       return layoutOnce({ ...input, template: "diagram-text" }, theme, stage, opts, headingCap);
     // The strip sits on the slide's foot, so the body is not moved down under a taller heading.
     return {
-      result: { slide: { kind: KIND["big-diagram"], elements: c.els }, over: c.over },
+      result: {
+        slide: { kind: KIND["big-diagram"], elements: c.els },
+        over: c.over,
+        drawer: "legacy:big-diagram-cards",
+      },
       bodyFromHeading: true,
     };
   }
@@ -2064,6 +2219,7 @@ function layoutOnce(
   // Ruling 203 (P5): a hook whose picture failed is a discussion prompt, never an empty dark slide.
   if (input.template === "hook" && !hookOk(input)) input = asPrompt(input);
   const tpl = input.template;
+  let drawer: Drawer = DRAWER_OF[tpl] ?? `nogold:${tpl}`;
   let background: Slide["background"];
   const raw = input.points ?? [];
   const pts = raw.map(pointText);
@@ -2261,9 +2417,14 @@ function layoutOnce(
       // TEACH-75 part ae (C6): the tucked field and the key card look.
       const pt = pictureTextOf(input);
       if (pt) {
+        drawer = "gold:picture-text";
         layoutPictureText(c, input, pt, stage);
         break;
       }
+      // LEGACY (saved documents and old writer JSON only): the old picture or diagram beside the
+      // words. A new lesson's picture-text slide carries `pictureText` (the gold, above); a data
+      // diagram beside words has no gold design (gold manifest, known gap).
+      drawer = tpl === "picture-text" ? "legacy:picture-text" : "legacy:diagram-text";
       heading(c, input.heading);
       const mark = c.els.length;
       const overMark = c.over.length;
@@ -2292,6 +2453,9 @@ function layoutOnce(
       c.over.push(...sideOver);
       break;
     }
+    // LEGACY for a photo or a library model (saved documents and old writer JSON only): a new
+    // lesson's big visual takes the gold figure slide (materialise). A new lesson reaches this only
+    // for a data diagram or chart (no gold design) or a caption the figure cannot hold (gold manifest).
     case "big-diagram": {
       const head = heading(c, input.heading);
       // A library model drawn as the slide body: the drawing is the slide under the heading, its
@@ -2525,6 +2689,8 @@ function layoutOnce(
       c.s = s0;
       break;
     }
+    // LEGACY (saved documents and old writer JSON only): a new lesson's photo takes the gold figure
+    // slide; it reaches this only with a caption the figure cannot hold (gold manifest, known gap).
     case "big-picture": {
       // One photo across the band at its own shape, centred; an optional one-line caption under.
       heading(c, input.heading);
@@ -2635,9 +2801,12 @@ function layoutOnce(
       // TEACH-75 part af: one step with its library model (title, one line, stage).
       const step = stepModelOf(input);
       if (step) {
+        drawer = "gold:steps-model";
         layoutStepModel(c, input, step, stage);
         break;
       }
+      // The numbered list: the steps-family gold (ruling 219) is a pilot mock-up only.
+      drawer = "legacy:steps";
       heading(c, input.heading);
       if (input.figure) {
         numbered(c, pts, G.left.x, G.left.w, "steps");
@@ -2659,9 +2828,12 @@ function layoutOnce(
     case "question-set": {
       // TEACH-101 part g: a question set whose every question has its answer is the quick check.
       if (isQuickCheck(input)) {
+        drawer = "gold:question-set";
         layoutQuestionSet(c, input);
         break;
       }
+      // LEGACY: a question set without its answers, or with a figure (code never lends it one).
+      drawer = "legacy:question-set";
       heading(c, input.heading);
       const qs = input.questions ?? [];
       if (input.figure) {
@@ -2767,6 +2939,7 @@ function layoutOnce(
       ...(c.notes ? { notes: c.notes } : {}),
     },
     over: c.over,
+    drawer,
     ...(c.fails?.length ? { diagram: [...new Set(c.fails)] } : {}),
     ...(c.lost?.length ? { lost: c.lost } : {}),
     ...(c.tight !== undefined ? { tight: c.tight } : {}),

@@ -100,7 +100,13 @@ export function applyObjectiveEdits(
     editIds.every((id) => id !== undefined && byId.has(id));
   if (textOnly) {
     const edited = objectives.map((edit) => ({ ...keep(byId, edit.id), text: edit.text }));
-    return { facts: { ...structuredClone(facts), objectives: edited }, shapeChanged: false };
+    return {
+      facts: withPointsFollowing(
+        { ...structuredClone(facts), objectives: edited },
+        facts.objectives,
+      ),
+      shapeChanged: false,
+    };
   }
 
   let next = 0;
@@ -154,7 +160,30 @@ export function applyObjectiveEdits(
     outline: [],
   };
   if (facts.keyIdeas !== undefined) nextFacts.keyIdeas = survivors(facts.keyIdeas);
-  return { facts: nextFacts, shapeChanged: true };
+  return { facts: withPointsFollowing(nextFacts, facts.objectives), shapeChanged: true };
+}
+
+/**
+ * BUILDER v5.3-gold B5: a point names its objective by number, so after an edit each point follows
+ * its objective to its new place; a point whose objective was removed or reworded is dropped (the
+ * writer then teaches that objective from its sentence, as before points). An unchanged lesson
+ * keeps its points exactly.
+ */
+function withPointsFollowing(next: LessonFacts, before: readonly Objective[]): LessonFacts {
+  if (!next.points) return next;
+  const at = new Map(next.objectives.map((o, i) => [o.id, { i, text: o.text }]));
+  const points = next.points.flatMap((p) => {
+    const old = before[p.objective - 1];
+    const now = old ? at.get(old.id) : undefined;
+    return now && now.text.trim() === old?.text.trim() ? [{ ...p, objective: now.i + 1 }] : [];
+  });
+  if (
+    points.length === next.points.length &&
+    points.every((p, i) => p.objective === next.points?.[i]?.objective)
+  )
+    return next;
+  const { points: _p, ...rest } = next;
+  return points.length ? { ...rest, points } : rest;
 }
 
 /** A copy of the stored objective `id`, which the caller has checked exists. */

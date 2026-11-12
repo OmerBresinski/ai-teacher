@@ -49,7 +49,7 @@ describe("routeIconMisses", () => {
     expect(r.slide.template).toBe("panel-list");
     const pics = items(r.slide).map((i) => i.picture as S);
     expect(pics[1]).toEqual({
-      shows: "Abrasion: Rocks carried by the river scrape the bed",
+      shows: "Abrasion: Rocks carried by the river scrape the bed (Four erosion processes)",
       must_see: ["Abrasion"],
       subject: "generic",
     });
@@ -252,4 +252,39 @@ describe("review fixes", () => {
     const bare = { ...rivers, items: items(rivers).map((i) => ({ ...i, picture: { alt: "x" } })) };
     expect(drawsOwnVisual(bare)).toBe(false);
   });
+});
+
+test("y8 photosynthesis s8 (11 Nov): a row picture's ask carries the slide's heading", () => {
+  // The recorded panel list: "Respiration" has no catalogue icon, so each row asks a picture.
+  const s: S = {
+    template: "panel-list",
+    heading: "How plants use glucose",
+    panel: null,
+    items: [
+      {
+        name: "Respiration",
+        text: "Glucose is used in respiration to release energy.",
+        icon: null,
+        picture: null,
+      },
+      {
+        name: "Cellulose",
+        text: "Glucose is used to make cellulose for cell walls.",
+        icon: null,
+        picture: null,
+      },
+      {
+        name: "Starch",
+        text: "Glucose is converted into starch to store energy.",
+        icon: null,
+        picture: null,
+      },
+    ],
+  };
+  const r = routeIconMisses(s, { around: "Photosynthesis" });
+  // As recorded (`icon-routed`, to picture, misses row.0 to row.2).
+  expect(r.route?.to).toBe("picture");
+  expect((items(r.slide)[0]?.picture as S | undefined)?.shows).toBe(
+    "Respiration: Glucose is used in respiration to release energy (How plants use glucose)",
+  );
 });

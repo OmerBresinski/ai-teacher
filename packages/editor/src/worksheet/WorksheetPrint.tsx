@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { whenFontsReady } from "../layout/measure";
 import { getTheme } from "../model/themes";
 import { useSheetPagination } from "./measure";
+import { partHasHeader, type SheetPart } from "./paginate";
 import { Sheet } from "./Sheet";
 
 /**
@@ -15,16 +16,27 @@ export type WorksheetPrintProps = {
   worksheet: Worksheet;
   /** `?auto=1`: call `window.print()` once, when the sheet is ready. */
   auto?: boolean;
+  /**
+   * `?part=`: the pupil sheet (default), the answer key alone, or both. Never the worksheet's own
+   * "Show answer key" switch: a key printed by default ends up photocopied for the class.
+   */
+  part?: SheetPart;
   /** The "Go back" link in the won't-fit hint; the app supplies its router's `Link`. */
   backSlot?: ReactNode;
 };
 
-export function WorksheetPrint({ worksheet, auto = false, backSlot }: WorksheetPrintProps) {
+export function WorksheetPrint({
+  worksheet,
+  auto = false,
+  part = "pupil",
+  backSlot,
+}: WorksheetPrintProps) {
   const theme = getTheme(worksheet.themeId);
-  const { pages, ready, oversize, measureNode } = useSheetPagination(
+  const { pages, ready, oversize, measureNode, space } = useSheetPagination(
     worksheet,
     theme,
-    worksheet.includeAnswerKey,
+    part,
+    true,
   );
   const printed = useRef(false);
   const canPrint = ready && oversize.length === 0;
@@ -64,7 +76,14 @@ export function WorksheetPrint({ worksheet, auto = false, backSlot }: WorksheetP
             answer lines.
           </p>
         ) : null}
-        <Sheet worksheet={worksheet} theme={theme} pages={pages} mode="print" />
+        <Sheet
+          worksheet={worksheet}
+          theme={theme}
+          pages={pages}
+          space={space}
+          mode="print"
+          noHeader={!partHasHeader(part)}
+        />
       </main>
       {measureNode}
     </>

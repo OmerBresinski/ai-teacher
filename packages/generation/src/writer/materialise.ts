@@ -15,6 +15,7 @@ import {
   REASON_PENDING_ICON,
   type TemplateInput,
   type TemplatePoint,
+  type TemplateResult,
   workedPanelFrom,
 } from "@tj/slides/templates";
 import { answerGroupsOf, endAnswerSlides } from "@tj/slides/templates/end-answers";
@@ -121,6 +122,13 @@ export type MaterialiseCtx = {
   diagramWarnings?: boolean;
   /** The slide is still being written (the draft path, TEACH-110 part s): a picture to come holds its slot. */
   draft?: boolean;
+  /**
+   * Gold alignment (11 Nov 2026): the pack states its limits from the gold looks (`PilotPack.goldFits`),
+   * so its slides are drawn on them: every picture-text slide the gold picture and text, a near-square
+   * model beside words too, every photo or model across the slide the gold figure slide, a panel's
+   * pie drawn. Off (the live pack, saved lessons): every slide routes exactly as before.
+   */
+  goldLooks?: boolean;
 };
 export type Materialised = {
   slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
@@ -130,6 +138,8 @@ export type Materialised = {
   diagramWarnings?: string[];
   /** Tile visuals (`col.n`, `seq.n`) whose diagram the layout could not show: failed, never empty. */
   lost?: string[];
+  /** Which code drew the slide (`TemplateResult.drawer`): logged, never saved. */
+  drawer?: TemplateResult["drawer"];
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -176,6 +186,10 @@ const pts = (v: unknown): TemplatePoint[] =>
       })
     : [];
 
+/** A point as the gold's plain look draws it: a label (or a callout's) kept as "Label: text". */
+const asPlainPoint = (p: TemplatePoint): string =>
+  typeof p === "string" ? p : p.label ? `${p.label}: ${p.text}` : p.text;
+
 const isDia = (f: unknown): f is Dia => !!f && typeof f === "object" && "kind" in (f as object);
 const isPic = (f: unknown): f is Pic =>
   !!f && typeof f === "object" && "shows" in (f as object) && !("kind" in (f as object));
@@ -195,7 +209,6 @@ const isModelSlide = (s: unknown): boolean => {
 /** A drawn library model wider than the figure slide's threshold (narrower ones go beside words). */
 const wideModel = (f: Figure | undefined): boolean =>
   !!f && "drawn" in f && !!f.drawn.bare && f.drawn.aspect > FIGURE_WIDE_ASPECT;
-
 /**
  * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
  * output that still carries them, read in the notes rather than dropped. The stage logs it.
@@ -212,6 +225,8 @@ export function modelPoints(s: S | undefined): string[] {
  * diagram-text and `big-visual` big-picture or big-diagram, by the figure's shape (a `kind` is a
  * diagram); the figure moves to the catalogue slot (`picture` / `diagram`).
  */
+/** The mark a v5.1-gold writer's null visual-text figure carries from arrival (stage.ts) to `normalise`. */
+export const NO_FIGURE = "noFigure";
 export function normalise(s: S): S {
   const t = s.template;
   if (t !== "visual-text" && t !== "big-visual") return s;
@@ -225,6 +240,13 @@ export function normalise(s: S): S {
       : dia
         ? "big-diagram"
         : "big-picture";
+  // A visual-text slide written with a null figure (v5.1-gold: nothing would show its point) takes
+  // the gold picture-and-text's no-picture look, never the retired explain. Any other missing or
+  // unreadable figure lays out as before.
+  if (t === "visual-text" && figure === null && rest[NO_FIGURE] === true) {
+    const { [NO_FIGURE]: _n, ...words } = rest;
+    return { ...words, template: "picture-text" };
+  }
   if (!isDia(figure) && !isPic(figure)) return { ...rest, template: "explain" };
   return { ...rest, template, [dia ? "diagram" : "picture"]: figure };
 }
@@ -584,11 +606,34 @@ export function toInput(
       const points = pts(s.points);
       if (template === "diagram-text" && points.length && studyFigure(f) && teaches(raw))
         return { template: "big-diagram", heading, lead, points, figure: f };
+      // Gold alignment (11 Nov 2026): a drawn library model near-square enough for the side field
+      // (the gold's own rule, `fitsSideField`: aspect at most FIGURE_WIDE_ASPECT) takes the gold picture-and-text design. A wide model
+      // or a data diagram beside words has no gold design and keeps the old layout (gold manifest).
+      const gold = !!ctx.goldLooks;
+      if (
+        gold &&
+        template === "diagram-text" &&
+        f &&
+        "drawn" in f &&
+        f.drawn.bare &&
+        (f.drawn.aspect || 1) <= FIGURE_WIDE_ASPECT
+      )
+        return {
+          template: "picture-text",
+          heading,
+          lead,
+          points: points.map(asPlainPoint),
+          figure: f,
+          pictureText: {},
+        } as TemplateInput;
       // Wave C (TEACH-110 part v): picture-text's key cards and the icon shown if the picture fails.
+      // A gold-looks pack's picture-text slide takes the gold picture-and-text design (TEACH-75 part
+      // ae), with or without cards or an icon: `pictureText` is what selects it. Otherwise (the live
+      // pack) only cards or an icon select it, as before. Saved slides keep their elements.
       const cards = Array.isArray(s.cards) ? (s.cards as S[]) : [];
       const ptIcon = typeof s.icon === "string" && s.icon.trim() ? s.icon : null;
       const pictureText =
-        template === "picture-text" && (cards.length || ptIcon)
+        template === "picture-text" && (gold || cards.length || ptIcon)
           ? {
               ...(ptIcon ? { icon: ptIcon } : {}),
               ...(cards.length
@@ -601,13 +646,18 @@ export function toInput(
             }
           : null;
       // A picture or diagram that could not be made: the words stand alone, never an empty panel.
+      // A gold-looks pack's picture-text slide keeps the gold design: its icon in a medal, or with no
+      // icon the words take the width (the gold's no-picture look). The live pack's goes to explain.
+      const goldPt = gold && !!pictureText;
       return {
-        template: f ? template : "explain",
+        template: f || goldPt ? template : "explain",
         heading,
         lead,
-        points: pts(s.points),
+        // The gold's plain look draws a point's words only: a labelled point (the retired callout,
+        // `points-1-key-fig`) keeps its label as the gold folds a key card, "Label: text".
+        points: goldPt ? points.map(asPlainPoint) : points,
         figure: f,
-        ...(f && pictureText ? { pictureText } : {}),
+        ...(pictureText && (f || goldPt) ? { pictureText } : {}),
       } as TemplateInput;
     }
     case "big-picture":
@@ -618,8 +668,23 @@ export function toInput(
       // A long table's slide moved across the slide (table-pack.ts, `cardsUnder`) carries its
       // points as key cards (ruling 194); other big visuals' points are read in the notes.
       const cards = template === "big-diagram" && s.cardsUnder === true ? pts(s.points) : [];
-      // TEACH-239 part b (C7): a wide library model is the lesson's figure slide (ruling 229).
+      // Gold alignment (11 Nov 2026): a photo or a library model across the slide is the gold
+      // figure slide (v13 "Figure slide (was big visual)"), every one in the lesson, through the
+      // figure route's own caption rule. A data diagram or chart (no gold design) keeps the old one.
+      const ask = s[template === "big-picture" ? "picture" : "diagram"];
+      // A model the library refused, drawn by a data drawer instead (`{ diagram }`), is a data diagram.
       if (
+        ctx.goldLooks &&
+        !cards.length &&
+        f &&
+        ("photo" in f || "drawn" in f) &&
+        (isPic(ask) || isModel(ask))
+      )
+        return toInput({ ...s, template: "figure", caption: lead ?? "" }, ctx, mark, missing);
+      // The live pack (TEACH-239 part b, C7): a wide library model is the lesson's figure slide
+      // (ruling 229, one a lesson).
+      if (
+        !ctx.goldLooks &&
         !cards.length &&
         wideModel(f) &&
         figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide)
@@ -964,8 +1029,13 @@ export function toInput(
         ...(lead ? { lead } : {}),
         ...(s.accentWord ? { accentWord: str(s.accentWord) } : {}),
         rows,
-        // The title panel's own picture (menu v4.3 `panel: {picture}`); shares and none are none.
-        panel: panelPic ? { picture: panelPic } : null,
+        // The title panel's own picture (menu v4.3 `panel: {picture}`), or its pie (`shares`, the
+        // gold draws it); none is none.
+        panel: panelPic
+          ? { picture: panelPic }
+          : ctx.goldLooks && pn && Array.isArray(pn.shares) && pn.shares.length
+            ? { shares: (pn.shares as unknown[]).map(Number) }
+            : null,
       } as TemplateInput;
     }
     case "split-compare":
@@ -1025,6 +1095,14 @@ export function toInput(
       const caption = str(s.caption ?? s.lead).trim();
       const icon = str(s.icon).trim();
       const accent = s.accentWord ? { accentWord: str(s.accentWord) } : {};
+      // R4 (y5 "Six fifths of 20"): the figure template draws only a model (`drawn`) or a photo;
+      // anything else leaves its plate empty. A model the library refused, drawn by a data drawer
+      // instead (`{ diagram }`), is a data diagram, so it takes the big-diagram slide as the
+      // big-diagram route does; any other undrawable figure leaves the words standing alone.
+      if (f && !("drawn" in f) && !("photo" in f && !!f.photo))
+        return "diagram" in f
+          ? { template: "big-diagram", heading, ...(caption ? { lead: caption } : {}), figure: f }
+          : { template: "explain", heading, lead: caption };
       // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
       // TEACH-251 part ae (romans verify6 s4): the figure slide's caption is one line, and the
       // template cuts a longer one with "…" ("Bowness-on-Solway: 73…"). A caption over the age's
@@ -1046,7 +1124,13 @@ export function toInput(
           ctx.stage,
         ).over.includes(FIGURE_TOO_SMALL);
       const longCaption = !fits || !roomy;
-      if (longCaption || !figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
+      // LEGACY on purpose (gold manifest, known gap): a caption the figure cannot hold in two lines
+      // keeps the old big layout, whose lead wraps, rather than lose its words to the ellipsis.
+      // The live pack keeps ruling 229's one figure slide a lesson; a gold-looks pack has no limit.
+      if (
+        longCaption ||
+        (!ctx.goldLooks && !figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
+      )
         return f
           ? {
               template: "photo" in f ? "big-picture" : "big-diagram",
@@ -1055,7 +1139,8 @@ export function toInput(
               figure: f,
             }
           : { template: "explain", heading, lead: caption };
-      if (!f && !icon) return { template: "explain", heading, lead: caption };
+      // No figure and no icon the plate can draw: never an empty plate, the words stand alone.
+      if (!f && !resolveIcon(icon)) return { template: "explain", heading, lead: caption };
       return {
         template,
         heading,
@@ -1379,6 +1464,7 @@ export function materialise(s: S, ctx: MaterialiseCtx): Materialised {
     ...(r.diagram ? { diagram: r.diagram } : {}),
     ...(r.diagramWarnings ? { diagramWarnings: r.diagramWarnings } : {}),
     ...(lost.length ? { lost } : {}),
+    ...(r.drawer ? { drawer: r.drawer } : {}),
   });
 }
 
@@ -1412,7 +1498,7 @@ export function codeObjectives(ctx: Omit<MaterialiseCtx, "visual">): Materialise
     ...r.slide,
     elements: [{ ...group, authoredBy: "ai" } as unknown as Slide["elements"][number]],
   };
-  return aiAuthored({ slide, over: r.over });
+  return aiAuthored({ slide, over: r.over, ...(r.drawer ? { drawer: r.drawer } : {}) });
 }
 
 /** The title slide in code from the brief, before the writer answers. */
@@ -1422,7 +1508,7 @@ export function codeTitle(brief: Brief, ctx: { theme: Theme; stage: Stage }): Ma
     ctx.theme,
     ctx.stage,
   );
-  return aiAuthored({ slide: r.slide, over: r.over });
+  return aiAuthored({ slide: r.slide, over: r.over, ...(r.drawer ? { drawer: r.drawer } : {}) });
 }
 
 /** The questions on a slide (the answerable check and the notes' answers). */

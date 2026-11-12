@@ -640,6 +640,906 @@
           "ref": "scratchpad/tuning/LOG.md v5.0b; scratchpad/tuning/verdicts/v5.0b-B.md"
         }
       ]
+    },
+    "writer/v5.1-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 19646,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59311,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 21589,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61030,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20869,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62282,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22812,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64156,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21755,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62827,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24218,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64134,
+          "date": "2026-11-11",
+          "reason": "v5.1-gold baseline: lab pack (diagnostic arm), the writer told the gold designs' limits; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1-gold; scratchpad/tuning/v5.1-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 19643,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (3 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59311,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 21586,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (3 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61030,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20866,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (3 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62282,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22809,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (3 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64156,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21752,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (3 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62827,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24215,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (3 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.1b-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64134,
+          "date": "2026-11-11",
+          "reason": "v5.1b-gold baseline: lab pack, v5.1-gold with the discussion line tightened (6 characters shorter a stage); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 19784,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59311,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 21727,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61030,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21007,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62282,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22950,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64156,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21893,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62827,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24356,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64134,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20096,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 786,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59537,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22039,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 786,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61256,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21319,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 780,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62508,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 23262,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 780,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64382,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 22205,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 787,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 63053,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24668,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 787,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64360,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20096,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 786,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59537,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22039,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 786,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61256,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21319,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 780,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62508,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 23262,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 780,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64382,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 22205,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 787,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 63053,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24668,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 787,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3b-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64360,
+          "date": "2026-11-12",
+          "reason": "v5.3b-gold baseline: v5.3-gold's writer system, user turn and schema unchanged (same templates and switches; bundle base4f-p129 differs from base4f-p128 only in the objectives system text, which this budget does not measure); not live",
+          "ref": "scratchpad/tuning/v5.3b-gold/CHANGES.md"
+        }
+      ]
     }
   }
 }

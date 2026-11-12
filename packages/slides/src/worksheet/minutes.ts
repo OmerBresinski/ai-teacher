@@ -22,7 +22,37 @@ export const MINUTE_WEIGHTS = {
   multipleChoice: 1,
   /** A paragraph is read at eighty words a minute. */
   wordsPerMinute: 80,
+  /**
+   * A question with no marks (every Practice and Exit ticket item): a minute to read it and write
+   * a short answer, plus its answer space, which says how much writing it asks for.
+   */
+  unmarkedQuestion: 1,
+  /** Each ruled answer line under an unmarked question. */
+  perAnswerLine: 0.5,
+  /** A working-and-answer box after an unmarked question, per 48pt of box (one sum's working). */
+  perBox48pt: 1,
 } as const;
+
+/**
+ * Pupils in Reception to Year 2 read and write more slowly, so their sheet's minutes are scaled
+ * up by a quarter; every other year takes the weights as they are.
+ */
+export const EARLY_YEARS_FACTOR = 1.25;
+
+export type MinutesOptions = {
+  /** The sheet's year group ("Year 2", "Reception"): Reception to Year 2 take longer. */
+  yearGroup?: string;
+};
+
+const early = (yearGroup: string | undefined): boolean => {
+  if (!yearGroup) return false;
+  if (/reception/i.test(yearGroup)) return true;
+  const n = Number(/(\d+)/.exec(yearGroup)?.[1]);
+  return n >= 1 && n <= 2;
+};
+
+const unmarkedQuestion = (block: WorksheetBlock | undefined): boolean =>
+  block?.type === "question" && !block.marks;
 
 /** The marks a sheet is worth: the sum over its question blocks. */
 export function marksTotal(blocks: readonly WorksheetBlock[]): number {
@@ -41,18 +71,39 @@ const wordCount = (doc: RichDoc): number => {
 /**
  * How long a sheet takes a pupil, in whole minutes (TEACH-183). Marks at a minute and a half each,
  * a word search 8, a matching block 4, a paragraph a minute per 80 words, a gap a minute, a
- * multiple choice item a minute; the sum to the nearest five, and never under five. A rough guide
+ * multiple choice item a minute; a question with no marks a minute plus its answer space (half a
+ * minute a line, a minute per 48pt of working box), so a Practice sheet's seven unmarked items are
+ * not read as zero (WS8); a quarter longer for Reception to Year 2; the sum to the nearest
+ * five, and never under five. A rough guide
  * for the header and the recipe cards, not a timer.
  */
-export function estimateMinutes(blocks: readonly WorksheetBlock[]): number {
-  return roundMinutes(minutesUnrounded(blocks));
+export function estimateMinutes(
+  blocks: readonly WorksheetBlock[],
+  options: MinutesOptions = {},
+): number {
+  return roundMinutes(minutesUnrounded(blocks, options));
 }
 
 /** The same sum as `estimateMinutes`, before rounding to five: what the fill is sized against. */
-export function minutesUnrounded(blocks: readonly WorksheetBlock[]): number {
+export function minutesUnrounded(
+  blocks: readonly WorksheetBlock[],
+  options: MinutesOptions = {},
+): number {
   let minutes = minutesRaw(marksTotal(blocks));
-  for (const block of blocks) {
+  for (const [i, block] of blocks.entries()) {
+    const afterUnmarked = unmarkedQuestion(blocks[i - 1]);
     switch (block.type) {
+      case "question":
+        if (!block.marks)
+          minutes +=
+            MINUTE_WEIGHTS.unmarkedQuestion + block.answerLines * MINUTE_WEIGHTS.perAnswerLine;
+        break;
+      case "answer-box":
+        if (afterUnmarked) minutes += (block.heightPt / 48) * MINUTE_WEIGHTS.perBox48pt;
+        break;
+      case "lines":
+        if (afterUnmarked) minutes += block.count * MINUTE_WEIGHTS.perAnswerLine;
+        break;
       case "word-search":
         minutes += MINUTE_WEIGHTS.wordSearch;
         break;
@@ -72,7 +123,7 @@ export function minutesUnrounded(blocks: readonly WorksheetBlock[]): number {
         break;
     }
   }
-  return minutes;
+  return early(options.yearGroup) ? minutes * EARLY_YEARS_FACTOR : minutes;
 }
 
 /** A mark and a half per mark, before rounding. */
@@ -96,8 +147,12 @@ export function minutesForMarks(marks: number): number {
  * The header line and the recipe cards: "12 marks · about 25 min" with the marks switch on,
  * "about 25 min" alone with it off (UX ruling 60). The minutes are the same either way.
  */
-export function sheetSummary(blocks: readonly WorksheetBlock[], showMarks = false): string {
-  const minutes = `about ${estimateMinutes(blocks)} min`;
+export function sheetSummary(
+  blocks: readonly WorksheetBlock[],
+  showMarks = false,
+  options: MinutesOptions = {},
+): string {
+  const minutes = `about ${estimateMinutes(blocks, options)} min`;
   if (!showMarks) return minutes;
   const marks = marksTotal(blocks);
   return `${marks} ${marks === 1 ? "mark" : "marks"} · ${minutes}`;

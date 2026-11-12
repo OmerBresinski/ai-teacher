@@ -7,6 +7,7 @@ import type { PipelineStageName } from "../types";
 import { STAGE_CHECKPOINT } from "../types";
 import { WRITER_VERSION } from "../writer/ai-services";
 import { ACTIVE_WRITER_BUNDLE_ID, WRITER_BUNDLES, type WriterBundleId } from "../writer/bundle";
+import { PILOT_PACK_LIVE_ID } from "../writer/pilot-live";
 
 /*
  * The objectives-first planner in production (TEACH-93, ADR 0033): which planner a lesson is on,
@@ -68,7 +69,22 @@ export const OBJECTIVES_FIRST_CHECKPOINT: Record<ObjectivesFirstStageName, Gener
  */
 /** The writer planner's objectives call: the bundle's own objectives prompt (TEACH-110 part f). */
 export const WRITER_OBJECTIVES_VERSION = "writer-objectives";
-export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${WRITER_OBJECTIVES_VERSION}+bundle-${ACTIVE_WRITER_BUNDLE_ID}`;
+/**
+ * The pilot pack this process plans for (`TJ_PILOT_PACK`, else the live pack), read as
+ * `resolveWriterBundleId` reads it, so the stamp's pack and bundle are the pair the writer runs.
+ */
+const PLANNED_PACK_ID =
+  (typeof process === "undefined" ? undefined : process.env.TJ_PILOT_PACK?.trim()) ||
+  PILOT_PACK_LIVE_ID;
+export const WRITER_PLANNED_VERSION = `${WRITER_VERSION}+${WRITER_OBJECTIVES_VERSION}+bundle-${ACTIVE_WRITER_BUNDLE_ID}+pilot-${PLANNED_PACK_ID}`;
+
+/** The `pilot-<id>` part of a stamp, or undefined. */
+export function stampedPack(stamp: string | undefined): string | undefined {
+  return stamp
+    ?.split("+")
+    .find((x) => x.startsWith("pilot-"))
+    ?.slice("pilot-".length);
+}
 
 /** The writer bundle a writer lesson was planned with (its stamp's `bundle-<id>` part). */
 export function writerBundleOf(lesson: Lesson): WriterBundleId {

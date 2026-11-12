@@ -1,6 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { WorksheetPrint } from "@tj/editor/worksheet";
+import { answerKeyBlockedReason, isUnfinishedWorksheet } from "@tj/domain/documents";
+import {
+  KEY_PRINT_BLOCKED,
+  UNFINISHED_PRINT_BLOCKED,
+  UNFINISHED_TITLE,
+  WorksheetPrint,
+} from "@tj/editor/worksheet";
+import { Button, EmptyState } from "@tj/ui";
+import { FileText } from "lucide-react";
 import { RoutePendingPage } from "@/components/route-pending-page";
 import { WrongKindPage } from "@/components/wrong-kind-page";
 import { isFullDocument, kindOf, libraryQueries } from "@/lib/library";
@@ -14,10 +22,13 @@ import "@tj/editor/styles/print.css";
  * app chrome, under `authLayoutRoute` (which renders none). The loader has already resolved the
  * document (or 404ed); until the full body arrives the list placeholder is a summary, so the page
  * waits. A lesson id on a worksheet route shows `WrongKindPage`, as the lesson routes do for worksheets.
+ * An unfinished sheet (`isUnfinishedWorksheet`) never reaches the printer, `?auto=1` or not: the
+ * page says why and links back to the editor, where the bar offers what to do. A question with no
+ * answer blocks only `part=key` or `both` (`answerKeyBlockedReason`); the pupil sheet prints.
  */
 export function WorksheetPrintPage() {
   const { worksheetId } = useParams({ from: worksheetPrintRoute.id });
-  const { auto } = useSearch({ from: worksheetPrintRoute.id });
+  const { auto, part } = useSearch({ from: worksheetPrintRoute.id });
   const queryClient = useQueryClient();
   const { data } = useQuery(libraryQueries.document(worksheetId, queryClient));
 
@@ -28,10 +39,32 @@ export function WorksheetPrintPage() {
     );
   }
 
+  const keyBlocked =
+    (part === "key" || part === "both") && answerKeyBlockedReason(data) === "missing-answer";
+  if (isUnfinishedWorksheet(data) || keyBlocked) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-2xl items-center bg-background p-6">
+        <EmptyState
+          icon={<FileText strokeWidth={1.5} />}
+          title={keyBlocked ? "The answer key isn’t ready." : UNFINISHED_TITLE}
+          body={keyBlocked ? KEY_PRINT_BLOCKED : UNFINISHED_PRINT_BLOCKED}
+          action={
+            <Button variant="primary" asChild>
+              <Link to="/w/$worksheetId" params={{ worksheetId }}>
+                Open the worksheet
+              </Link>
+            </Button>
+          }
+        />
+      </main>
+    );
+  }
+
   return (
     <WorksheetPrint
       worksheet={data}
       auto={auto === "1"}
+      part={part ?? "pupil"}
       backSlot={
         <Link to="/w/$worksheetId" params={{ worksheetId }}>
           Go back

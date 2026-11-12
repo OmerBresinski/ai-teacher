@@ -295,3 +295,43 @@ describe("documentKind", () => {
     expect(DocumentKindSchema.options).toEqual(["lesson", "worksheet", "series"]);
   });
 });
+
+describe("worksheet cover: unfinished (WS1)", () => {
+  test("carries isUnfinishedWorksheet of the whole sheet, past the cover's own blocks", () => {
+    const sheet = worksheet();
+    expect(worksheetCoverOf(sheet).unfinished).toBeUndefined();
+    const filler = Array.from({ length: COVER_BLOCKS + 2 }, (_, i) => ({
+      id: `p${i}`,
+      type: "paragraph" as const,
+      doc: text("Read the passage."),
+    }));
+    const late = {
+      id: "ph",
+      type: "paragraph" as const,
+      doc: text("Generation writes this part: x"),
+    };
+    // A new-path sheet (R4 review: only those are judged unfinished).
+    const unfinished = {
+      ...sheet,
+      blocks: [...filler, late],
+      generation: {
+        jobId: "j",
+        stage: "checked" as const,
+        startedAt: "2026-11-12T10:01:00.000Z",
+        completedAt: "2026-11-12T10:02:00.000Z",
+        promptVersions: { build: "worksheet-slides.v1" },
+        usage: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+        findings: [],
+        recipeId: "practice" as const,
+        practiceMinutes: 10,
+      },
+    };
+    const cover = worksheetCoverOf(unfinished);
+    expect(cover.blocks.some((b) => b.id === "ph")).toBe(false);
+    expect(cover.unfinished).toBe(true);
+    // It survives the list response's parse.
+    const summary = summarise(unfinished);
+    const parsed = DocumentSummarySchema.parse(JSON.parse(JSON.stringify(summary)));
+    expect(isWorksheetCover(parsed.cover) && parsed.cover.unfinished).toBe(true);
+  });
+});

@@ -58,6 +58,12 @@ export const POINTING_WORDS = new Set(
     " ",
   ),
 );
+/** Words a restaged sentence may gain without saying anything new (RC2's added-words rule). */
+const FUNCTION_WORDS = new Set(
+  "the and for but not are was were has had have his her its their they them this that these those with from into onto who which what when where how why than then there here also".split(
+    " ",
+  ),
+);
 export const words = (t: string) =>
   t
     .toLowerCase()
@@ -194,6 +200,16 @@ export function judgeRepair(
     if (items(after) < items(before))
       why.push(`dropped ${items(before) - items(after)} of ${items(before)} items`);
     return why.length ? { ok: false, why } : { ok: true };
+  }
+  // RC2 (R3 y2 s10: the lost picture's "Open diary" became "He wrote in an open diary"): a
+  // restaged slide may drop, never add. A word in its text that the slide's own text did not hold
+  // (a figure's request, must_see or alt is not slide text) is rejected; the fixed fallback runs.
+  if (opts.restage) {
+    const own = new Set(textSlots(before).flatMap((s) => words(s.text)));
+    const added = [...new Set(textSlots(after).flatMap((s) => words(s.text)))].filter(
+      (w) => !own.has(w) && !FUNCTION_WORDS.has(w),
+    );
+    if (added.length) why.push(`added ${added.length} words (${added.slice(0, 5).join(", ")})`);
   }
   const kept = new Set([
     ...textSlots(after).flatMap((s) => words(s.text)),

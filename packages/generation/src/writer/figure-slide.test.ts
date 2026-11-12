@@ -197,3 +197,108 @@ describe("a step with its model keeps its words (TEACH-247 part cd, plants showc
     expect(i.figure && "drawn" in i.figure).toBe(true);
   });
 });
+
+/** A gold-looks pack's context (`MaterialiseCtx.goldLooks`, a pack with `goldFits`). */
+const gold = (slides: S[], index: number, visual: (k: string) => unknown) =>
+  ({ ...(ctx(slides, index, visual) as object), goldLooks: true }) as never;
+
+describe("writer: the figure slide on a gold-looks pack", () => {
+  test("gold alignment (11 Nov 2026): every figure slide and big-visual model keeps the gold; ruling 229's one-a-lesson re-lay is retired", () => {
+    const two = [figureSlide, { template: "explain" }, figureSlide];
+    expect(
+      toInput(
+        figureSlide,
+        gold(two, 2, () => drawn(2.27)),
+      ).template,
+    ).toBe("figure");
+    const beside = [{ template: "diagram-text", diagram: model }, figureSlide];
+    expect(
+      toInput(
+        figureSlide,
+        gold(beside, 1, () => drawn(2.27)),
+      ).template,
+    ).toBe("figure");
+    const big: S = { template: "big-visual", heading: "Rain", lead: "It falls.", figure: model };
+    const lesson = [big, { template: "explain" }, figureSlide];
+    const laid = lesson.map(
+      (s, i) =>
+        toInput(
+          s,
+          gold(lesson, i, () => drawn(2.27)),
+        ).template,
+    );
+    expect(laid).toEqual(["figure", "explain", "figure"]);
+  });
+  test("a big visual's library model of any shape comes here (the figure gold draws it as large as its shape allows)", () => {
+    const big: S = { template: "big-visual", heading: "Rain", lead: "It falls.", figure: model };
+    expect(
+      toInput(
+        big,
+        gold([big], 0, () => drawn(2.27)),
+      ).template,
+    ).toBe("figure");
+    expect(
+      toInput(
+        big,
+        gold([big], 0, () => drawn(1.2)),
+      ).template,
+    ).toBe("figure");
+  });
+});
+
+/*
+ * R4 (round 3, y5 s6 "Six fifths of 20"): the library refused a 6/5 bar model ("this bar is one
+ * whole") and a data drawer drew it, so the slot holds `{ diagram }`, not `{ drawn }`. The figure
+ * template draws only a model or a photo, so passing it on left an empty sand plate.
+ */
+describe("writer: a figure slide whose model a data drawer drew (R4)", () => {
+  const sixFifths: S = {
+    template: "figure",
+    heading: "Six fifths of 20",
+    caption: "Six fifths extend one fifth beyond the whole.",
+    icon: null,
+    figure: {
+      kind: "model",
+      model: "bar_model",
+      intent: "whole bar worth 20 split into five parts of 4, and an additional part of 4",
+    },
+  };
+  const drawer = () => ({
+    status: "diagram",
+    spec: {
+      kind: "bar-model",
+      alt: "Five parts of 4 make 20; one more part of 4 makes six fifths, 24.",
+      bars: [
+        { label: "Whole", parts: [1, 2, 3, 4, 5].map(() => ({ label: "4" })), total: "20" },
+        { label: "Extra", parts: [{ label: "4" }] },
+      ],
+      combined: "24",
+    },
+  });
+  for (const [name, at] of [
+    ["live", ctx],
+    ["gold-looks", gold],
+  ] as const)
+    test(`${name}: the drawer's diagram takes the big-diagram slide, never an empty plate`, () => {
+      const i = toInput(sixFifths, at([{ template: "title" }, sixFifths], 1, drawer));
+      expect(i.template).toBe("big-diagram");
+      expect(i.figure && "diagram" in i.figure).toBe(true);
+      expect((i as S).lead).toBe(sixFifths.caption);
+      const laid = layoutTemplate(i, getTheme("paper"), "ks2");
+      expect(laid.over.join("\n")).not.toContain("figure has no drawing");
+      expect(laid.slide.elements.some((e) => e.type === "image")).toBe(true);
+    });
+  test("a figure with nothing to draw and an icon the plate cannot resolve: the words stand alone", () => {
+    const failed = () => ({ status: "failed" });
+    const s = { ...sixFifths, icon: "zzz-not-an-icon-zzz" };
+    expect(toInput(s, ctx([s], 0, failed)).template).toBe("explain");
+    expect(toInput(sixFifths, gold([sixFifths], 0, failed)).template).toBe("explain");
+  });
+  test("no figure input ever lays an empty plate", () => {
+    for (const visual of [drawer, () => ({ status: "failed" }), () => drawn(2.27)]) {
+      const i = toInput(sixFifths, gold([sixFifths], 0, visual));
+      const laid = layoutTemplate(i, getTheme("paper"), "ks2");
+      expect(laid.over.join("\n")).not.toContain("figure has no drawing");
+    }
+  });
+});

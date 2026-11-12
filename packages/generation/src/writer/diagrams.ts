@@ -42,6 +42,7 @@ import {
 import { layoutTemplate } from "@tj/slides/templates";
 import { atKeyStage } from "@tj/slides/themes";
 import { freehandBan } from "./body-figure";
+import { fractionBarFor } from "./figure-sync";
 import { nonFatal, nonFatalSync } from "./services";
 
 type J = Record<string, unknown>;
@@ -701,6 +702,13 @@ export async function drawWriterDiagram(
           deps.log?.({ ev: "unshared-pile", key: ask.key, total: pile.total });
           return done(pile, "code");
         }
+      }
+      // v5.3-gold B1: a bar model of one "n/d of N" is built from the slide's words, fractions
+      // drawn as mixed numbers, a remainder braced when the words ask what is left.
+      const bar = ask.kind === "bar-model" ? fractionBarFor(ask.spec, ask.words) : undefined;
+      if (bar && parses(bar)) {
+        deps.log?.({ ev: "fraction-bar", key: ask.key });
+        return done(bar, "code");
       }
       if (ask.spec !== undefined) {
         const r = acceptWriterSpec(ask.spec, ask, deps.theme, deps.probe, {

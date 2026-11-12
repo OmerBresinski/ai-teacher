@@ -182,7 +182,7 @@ describe("curriculumFor", () => {
   });
 
   test("no data: another country, an unknown subject, Reception, EYFS, Year 12", () => {
-    const none = { statements: [], matchedDomains: [] };
+    const none = { statements: [], matchedDomains: [], before: [] };
     expect(curriculumFor({ country: "india", subject: "science", yearGroup: "Year 6" })).toEqual(
       none,
     );
@@ -283,7 +283,7 @@ describe("curriculumBlock and the objectives user turn", () => {
       "Animals including humans",
       ...Y6_ANIMALS.map((t) => `- ${t}`),
     ]);
-    expect(curriculumBlock({ statements: [], matchedDomains: [] }, "Year 6")).toBe("");
+    expect(curriculumBlock({ statements: [], matchedDomains: [], before: [] }, "Year 6")).toBe("");
   });
 
   test("the current template has no {{curriculum}}: the user turn is unchanged", () => {

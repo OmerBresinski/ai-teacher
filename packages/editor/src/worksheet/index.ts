@@ -24,6 +24,7 @@ export * from "./metrics";
 export * from "./paginate";
 export * as worksheetReducers from "./reducers";
 export { flowItemClass, PageView, Sheet, sheetVars } from "./Sheet";
+export * from "./unfinished-copy";
 export {
   type AnyWorksheetReducer,
   isWorksheetData,

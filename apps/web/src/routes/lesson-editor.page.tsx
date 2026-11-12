@@ -544,6 +544,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           open={worksheetsOpen}
           onOpenChange={setWorksheetsOpen}
           onOpenWorksheet={onOpenWorksheet}
+          lessonBusy={!!meta?.generatingJobId}
         />
       </Suspense>
     ) : null;
@@ -571,6 +572,7 @@ function LessonEditorSession({ lessonId }: { lessonId: string }) {
           open={worksheetsOpen}
           onOpenChange={setWorksheetsOpen}
           onOpenWorksheet={onOpenWorksheet}
+          lessonBusy={!!meta?.generatingJobId}
         />
       </Suspense>
     ) : null;

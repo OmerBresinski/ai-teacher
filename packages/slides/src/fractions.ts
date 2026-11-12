@@ -5,16 +5,31 @@
  * ranges; `@tj/editor`'s `serialize.ts` draws them, the headless ruler (`text-measure.ts`) measures
  * them, and the editor (Tiptap) still shows and edits `x/4`.
  *
- * A side of the fraction is one atom: a number (`4`, `0.5`, `3x`), one letter (`x`, with `²`/`³`)
- * or a bracket of maths (`(x + 2)`). Multi-letter words never match, so `and/or`, `km/h`, `A/Bs`
- * stay as they are. A slash with a slash, a dot-letter or a colon beside it is a date or an
+ * A side of the fraction is one atom: a number (`4`, `0.5`, `3x`), one letter (`x`, with `²`/`³`),
+ * a bracket of maths (`(x + 2)`, `(distance travelled)`) or one word (`distance`, `Mr`, maths text
+ * only, below). A slash with a slash, a dot-letter or a colon beside it is a date or an
  * address (`2/9/1666`, `example.com/3`, `https://…`) and never matches.
  *
  * A match is stacked only when its text is certainly maths, one of:
  * - an operator beside it (`+ − × ÷ = < > ≤ ≥ ≠ ≈`, a spaced hyphen): `x/4 + 3 = 8`, `y = 20/4`;
  * - "of" after it: `3/4 of 20`;
+ * - a mixed number: a whole number of one to three digits, a space, then a proper number fraction
+ *   (`10 1/2`, `6 4/5 m`, `= 7 1/2`). Not `24/7` or `50/50` (no whole number before them), not
+ *   `3 24/7` (not a proper fraction), not `2001 9/11` (a year is not a whole part), not `5 m/s`;
+ * - the whole paragraph is one proper number fraction, with at most a unit after it: a hinge
+ *   option or an answer cell that reads `3/4` or `2/5 m` (v5.3-gold B6). `24/7` and `50/50` are
+ *   not proper; a bare `9/11` would stack (accepted: an option is never only that date);
  * - the whole paragraph is maths tokens and the fraction has a letter: a worked row's `x/4` cell.
  * Otherwise it stays a slash: `24/7`, `50/50`, `A/B testing`, `9/11`, `speed in m/s`.
+ *
+ * Maths text (`{ maths: true }`: a text box whose job is maths, `maths-text.ts` `mathsElement`: a
+ * worked example's equation cells, the equation slide's formula and steps) also stacks what the
+ * rules above cannot vouch for: a bare `150/3` or `distance/time` in a worked row's right cell and
+ * a word formula, `speed = distance/time`, `n = m/Mr`. Never a pair of units (`km/h`, `g/cm³`,
+ * `J/kg`), a letter fraction after a number (`50 km/h`) or a prose pair (`and/or`, `true/false`).
+ * Anywhere else a word side never stacks, so `colour = red/blue` and `and/or` stay as they are. A
+ * longer word side takes brackets, which stack everywhere: `(distance travelled)/(time taken)`
+ * (NOTATION-PLAN ticket 1).
  *
  * Units stay inline (`5 m/s`, `60 km/h`, `g/cm³`): a textbook prints a compound unit with a slash
  * or a negative index, never stacked. A letter fraction straight after a number is a unit.
@@ -67,9 +82,11 @@ export type FractionRange = {
 
 const NUMBER = String.raw`\d+(?:\.\d+)?[a-zA-Z]?[²³]?`;
 const LETTER = "[a-zA-Z][²³]?";
+/** A word side of a word formula (`distance`, `Mr`): stacked only in maths text. */
+const WORD = "[a-zA-Z]{2,}[²³]?";
 /** A bracket of maths only: digits, single letters, operators, spaces, no nested bracket or slash. */
 const GROUP = String.raw`\((?:[\d.a-zA-Z²³+\-−×÷*^ ]){1,40}\)`;
-const ATOM = `(?:${GROUP}|${NUMBER}|${LETTER})`;
+const ATOM = `(?:${GROUP}|${NUMBER}|${WORD}|${LETTER})`;
 /**
  * Before the numerator: not a letter, digit, dot, slash, colon or the like (a word, a decimal, a
  * path). After the denominator: not a letter, digit, slash, and no dot or colon leading into more.
@@ -88,11 +105,25 @@ const isMathsParagraph = (text: string): boolean => {
   return words.length > 0 && words.every((w) => MATHS_TOKEN.test(w) && !/[a-zA-Z]{2,}/.test(w));
 };
 
+const isWord = (side: string): boolean => /^[a-zA-Z]{2,}[²³]?$/.test(side);
+/** Units: two of these either side of a slash are a compound unit (`km/h`, `g/cm³`), never stacked. */
+const UNIT = new Set(
+  "m s h g kg mg km cm mm dm m² m³ cm² cm³ dm³ mol l ml min hr N J kJ W kW kWh V A Pa kPa K C mph".split(
+    " ",
+  ),
+);
+/** Prose pairs written with a slash: never a word formula. */
+const PROSE_PAIR = new Set(
+  "and/or either/or yes/no true/false he/she his/her him/her s/he on/off in/out input/output pass/fail before/after male/female w/o n/a".split(
+    " ",
+  ),
+);
 /** The operator beside `text[i]` going `dir` (-1 left, +1 right), skipping spaces. */
 function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
   let i = from;
   let spaced = false;
-  while (i >= 0 && i < text.length && text[i] === " ") {
+  // A space or a no-break space (`maths-text.ts` glues an operator to its term with one).
+  while (i >= 0 && i < text.length && (text[i] === " " || text[i] === "\u00A0")) {
     i += dir;
     spaced = true;
   }
@@ -104,8 +135,35 @@ function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
   return false;
 }
 
+/** A mixed number's whole part straight before the fraction: `10 ` in `10 1/2`, `= 7 ` in `= 7 1/2`. */
+/** A paragraph that is only a number fraction, a unit word after it at most (`3/4`, `2/5 m`). */
+const BARE = /^\s*(\d{1,3})\/(\d{1,3})(?:\s+[a-zA-Z£]{1,3})?\s*[.?!]?\s*$/;
+
+/** `text` is one proper fraction alone (`3/4`), never `24/7` or `50/50`. */
+function bareProper(text: string): boolean {
+  const m = BARE.exec(text);
+  if (!m) return false;
+  const n = Number(m[1]);
+  const d = Number(m[2]);
+  return n >= 1 && d >= 2 && n < d;
+}
+
+/** The whole part's space: a space, a no-break space, or a thin one (text pasted from an older render). */
+const MIXED_WHOLE = /(?:^|[^\p{L}\p{N}.,/:])\d{1,3}[ \u00A0\u2009\u202F]$/u;
+
+/** `num/den` is the fraction of a mixed number: whole numbers, n ≤ d (a regrouped `7 3/3`), after a whole part. */
+function mixedNumber(before: string, num: string, den: string): boolean {
+  if (!/^\d+$/.test(num) || !/^\d+$/.test(den)) return false;
+  const n = Number(num);
+  const d = Number(den);
+  return n >= 1 && d >= 2 && n <= d && MIXED_WHOLE.test(before);
+}
+
+/** Where the text sits: `maths` when its box is maths (a worked equation cell, a formula). */
+export type FractionContext = { maths?: boolean };
+
 /** The fractions in `text` that are certainly maths, in order and not overlapping. */
-export function findFractions(text: string): FractionRange[] {
+export function findFractions(text: string, context: FractionContext = {}): FractionRange[] {
   if (!text.includes("/")) return [];
   const out: FractionRange[] = [];
   let whole: boolean | undefined;
@@ -126,8 +184,13 @@ export function findFractions(text: string): FractionRange[] {
       operatorBeside(text, start - 1, -1) ||
       operatorBeside(text, end, 1) ||
       /^\s+of\s+[\p{N}a-zA-Z(]/u.test(text.slice(end)) ||
+      mixedNumber(text.slice(0, start), num, den) ||
+      bareProper(text) ||
       (letters && wholeMaths());
-    if (maths) out.push({ start, slash, end });
+    if (maths && !isWord(num) && !isWord(den)) out.push({ start, slash, end });
+    else if (context.maths && !(UNIT.has(num) && UNIT.has(den))) {
+      if (!PROSE_PAIR.has(`${num}/${den}`.toLowerCase())) out.push({ start, slash, end });
+    }
   }
   return out;
 }

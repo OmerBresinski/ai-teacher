@@ -14,9 +14,9 @@ import {
 } from "@tj/ui";
 import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import {
+  INSERTABLE_RECIPES,
   JOBS,
   type Job,
-  WORKSHEET_RECIPES,
   type WorksheetRecipe,
 } from "../model/worksheet-recipes";
 import { BLOCK_GROUPS, BLOCK_SPECS, type BlockSpec } from "./block-types";
@@ -99,7 +99,7 @@ function AddBlockBody({
 }: Omit<AddBlockDialogProps, "open" | "onOpenChange"> & { initialTab: AddBlockTab }) {
   const [job, setJob] = useState<Job | null>(null);
   const built = useMemo(
-    () => WORKSHEET_RECIPES.map((recipe) => ({ recipe, blocks: recipe.build(facts) })),
+    () => INSERTABLE_RECIPES.map((recipe) => ({ recipe, blocks: recipe.build(facts) })),
     [facts],
   );
   const shown = job ? built.filter(({ recipe }) => recipe.jobs.includes(job)) : built;

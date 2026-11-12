@@ -1,0 +1,80 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Exit ticket sheet answer key halves: every question has its answer 1`] = `
+[
+  {
+    "id": "halves-3",
+    "lines": [
+      "a) Two equal parts, one shaded; b) 9 (18 ÷ 2 = 9)",
+    ],
+    "marks": undefined,
+    "number": 1,
+  },
+  {
+    "id": "halves-6",
+    "lines": [
+      "4 counters (16 ÷ 4 = 4)",
+    ],
+    "marks": undefined,
+    "number": 2,
+  },
+]
+`;
+
+exports[`Exit ticket sheet answer key romans: every question has its answer 1`] = `
+[
+  {
+    "id": "romans-3",
+    "lines": [
+      "AD 122; northern England",
+    ],
+    "marks": undefined,
+    "number": 1,
+  },
+  {
+    "id": "romans-4",
+    "lines": [
+      "Soldiers could check people and goods at the gates.",
+    ],
+    "marks": undefined,
+    "number": 2,
+  },
+  {
+    "id": "romans-5",
+    "lines": [
+      "Forts housed soldiers, and milecastles provided small guarded posts along the wall.",
+    ],
+    "marks": undefined,
+    "number": 3,
+  },
+]
+`;
+
+exports[`Exit ticket sheet answer key rivers: every question has its answer 1`] = `
+[
+  {
+    "id": "rivers-3",
+    "lines": [
+      "Water forces air into cracks, weakening the channel.",
+    ],
+    "marks": undefined,
+    "number": 1,
+  },
+  {
+    "id": "rivers-4",
+    "lines": [
+      "Water flows more slowly there, so sediment is deposited.",
+    ],
+    "marks": undefined,
+    "number": 2,
+  },
+  {
+    "id": "rivers-5",
+    "lines": [
+      "Erosion narrows the neck; water cuts through it and deposition seals the old bend.",
+    ],
+    "marks": undefined,
+    "number": 3,
+  },
+]
+`;

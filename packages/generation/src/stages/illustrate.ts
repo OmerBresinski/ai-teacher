@@ -581,18 +581,70 @@ export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrR
  * its judge): the subject, clearly, and the picture as a whole fits the request; a named sex, age
  * or kind the picked subject is not (a cockerel for "hen") fails.
  */
+/**
+ * The verdict fields the gate reads. `showsNeeds` (judge v21) is optional here only so callers that
+ * build a verdict by hand type-check; anything but `true` refuses.
+ */
+export type DirectedGateVerdict = Omit<
+  DirectedVerdict,
+  "kindMatches" | "boxes" | "needs" | "seen" | "showsNeeds"
+> & { kindMatches?: boolean | null; showsNeeds?: boolean };
+
 export function directedGatePasses(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
-  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+  verdict: DirectedGateVerdict,
+  claim?: SlideClaim,
 ): boolean {
   if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
+  // Judge v21 (12 Nov blind review): the judge's own reading of what this slide's words name,
+  // against what the picture shows. "Fits, though it does not show people passing buckets" ends here.
+  if (verdict.showsNeeds !== true) return false;
   if (verdict.kindMatches === false) return false;
   if (brief.mustShow.length === 0) return true;
   // Items taken from the writer's request are the things the slide's words name (the sheep AND
   // the lamb), so every one must be in view; a parts list needs one. A real thing's archive
   // photograph (1923 Germany, a staging of The Tempest) is right with one item in view.
   const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
-  return itemsSeen(brief, verdict).length >= need;
+  const seen = itemsSeen(brief, verdict);
+  if (seen.length < need) return false;
+  // 11 Nov blind review (CRITIQUE-1 item 2, y2 s9): the one item in view must be one the slide's
+  // own claim names, when any item does. "Burning building" alone passed a "Water buckets" slide
+  // whose judge wrote "it does not show people passing buckets".
+  const claimed = claimItems(brief.mustShow, claim);
+  return !claimed.length || claimed.some((item) => seen.includes(item));
+}
+
+/** The slide a picture must show the claim of: its heading and lead, and the lesson's title. */
+export type SlideClaim = { words: string; lessonTitle?: string };
+
+const CLAIM_STOP = new Set(
+  "the and with for from that this they them their are was were how what why when where who which into its has have had can".split(
+    " ",
+  ),
+);
+const claimStem = (w: string) =>
+  w
+    .toLowerCase()
+    .replace(/(?:ing|es|s)$/, "")
+    .replace(/e$/, "");
+const claimWords = (text: string) =>
+  new Set(
+    (text.toLowerCase().match(/[a-z]+/g) ?? [])
+      .filter((w) => w.length > 2 && !CLAIM_STOP.has(w))
+      .map(claimStem),
+  );
+
+/**
+ * The `mustShow` items that name what this slide says (a word of its heading or lead that is not a
+ * word of the lesson's title): the picture must show one of them. Empty when no item does, or with
+ * no claim: then the gate is as it was.
+ */
+export function claimItems(mustShow: readonly string[], claim?: SlideClaim): string[] {
+  if (!claim?.words.trim()) return [];
+  const topic = claimWords(claim.lessonTitle ?? "");
+  const says = [...claimWords(claim.words)].filter((w) => !topic.has(w));
+  if (!says.length) return [];
+  return mustShow.filter((item) => [...claimWords(item)].some((w) => says.includes(w)));
 }
 
 /**
@@ -601,7 +653,8 @@ export function directedGatePasses(
  */
 export function failedChecks(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
-  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+  verdict: DirectedGateVerdict,
+  claim?: SlideClaim,
 ): JudgeCheck[] {
   const out: JudgeCheck[] = [];
   if (verdict.pick === null) out.push("no-pick");
@@ -610,7 +663,13 @@ export function failedChecks(
   if (!verdict.clear) out.push("unclear");
   if (!verdict.fits) out.push("misfit");
   const need = brief.request && !brief.specific ? brief.mustShow.length : 1;
-  if (brief.mustShow.length > 0 && itemsSeen(brief, verdict).length < need)
+  const seen = itemsSeen(brief, verdict);
+  const claimed = claimItems(brief.mustShow, claim);
+  if (
+    (verdict.pick !== null && verdict.showsNeeds !== true) ||
+    (brief.mustShow.length > 0 &&
+      (seen.length < need || (claimed.length > 0 && !claimed.some((i) => seen.includes(i)))))
+  )
     out.push("items-missing");
   return out;
 }
@@ -801,6 +860,8 @@ export async function pickDirectedPhoto(args: {
   taken?: Set<string>;
   /** A library picture made for an earlier request, judged against this one. */
   reuse?: boolean;
+  /** The slide's heading and lead: the judge sees them and the gate checks the pick against them. */
+  claim?: SlideClaim;
 }): Promise<DirectedOutcome> {
   const brief = { ...args.brief, subject: plainSubject(args.brief.subject) };
   const { images, deps, index, lesson } = args;
@@ -890,7 +951,7 @@ export async function pickDirectedPhoto(args: {
   const placeArgs: PlaceArgs = {
     lesson,
     slide: undefined,
-    slideBrief: args.slideBrief,
+    slideBrief: args.slideBrief ?? args.claim?.words,
     brief,
     images,
     deps,
@@ -936,7 +997,7 @@ export async function pickDirectedPhoto(args: {
     const picked = verdict.pick
       ? fresh(shortlisted).find((candidate) => candidate.id === verdict.pick)
       : undefined;
-    if (picked && directedGatePasses(brief, verdict)) {
+    if (picked && directedGatePasses(brief, verdict, args.claim)) {
       const evidence: PhotoEvidence = {
         visible: verdict.visible,
         count: verdict.count ?? "one",
@@ -1138,7 +1199,7 @@ async function shortlistDirected(args: PlaceArgs, pool: PhotoResult[]): Promise<
   }
 }
 
-/** Judge v17 over `pool`: thumbnails as image parts, each candidate's source record as text. */
+/** Judge v21 over `pool`: thumbnails as image parts, each candidate's source record as text. */
 async function judgeDirected(
   args: PlaceArgs,
   pool: PhotoResult[],
@@ -1199,6 +1260,8 @@ export async function judgeMadeDirected(args: {
   dataUrl: string;
   /** The picture is a library hit made for another request. */
   reuse?: boolean;
+  /** The slide's heading and lead (`pickDirectedPhoto`'s `claim`). */
+  claim?: SlideClaim;
   onVerdict?: (verdict: DirectedVerdict) => void;
 }): Promise<boolean> {
   const made = {
@@ -1215,7 +1278,9 @@ export async function judgeMadeDirected(args: {
     {
       lesson: args.lesson,
       slide: undefined,
-      slideBrief: args.brief.request,
+      // The slide's own words, so a painting is judged against what this slide says (y8 s8: a
+      // human respiration picture passed "Respiration: glucose is used..." on a plants slide).
+      slideBrief: args.claim?.words || args.brief.request,
       brief: args.brief,
       images: args.deps.images as PhotoPlacer,
       deps: args.deps,
@@ -1233,5 +1298,5 @@ export async function judgeMadeDirected(args: {
   });
   args.onVerdict?.(verdict);
   // One candidate: any pick means this picture (the judge sometimes answers with a caption).
-  return verdict.pick !== null && directedGatePasses(args.brief, verdict);
+  return verdict.pick !== null && directedGatePasses(args.brief, verdict, args.claim);
 }

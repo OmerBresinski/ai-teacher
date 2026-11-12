@@ -27,7 +27,7 @@ import {
 } from "./activities";
 import { checkNotesAnswers, checkWriterSlide, isMaths, swapInSlide } from "./answer-key";
 import { BODY_MODELS } from "./body-figure";
-import { type WriterBundleId, writerBundle } from "./bundle";
+import { packOwnBundleId, type WriterBundleId, writerBundle } from "./bundle";
 import {
   borrowCheckVisuals,
   CHECK_TEMPLATES,
@@ -73,7 +73,7 @@ import {
   tableRows,
   tilesAsPictures,
 } from "./fallbacks";
-import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
+import { figureTextMismatch, fractionBarFor, specKey, syncFigure } from "./figure-sync";
 import {
   FIGURE_SPEC_REPAIR_DEFAULT,
   FIGURE_TEXT_FROM_SPEC_DEFAULT,
@@ -102,6 +102,7 @@ import {
   offPlanSlides,
   overflowPt,
   plainWords,
+  pointLabels,
   promptStage,
   pupilCharLimit,
   pupilLinesProblem,
@@ -131,6 +132,7 @@ import { hingeLeakFaults } from "./hinge-leak";
 import { fitsNoWorse, routeIconMisses } from "./icon-route";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
+import { layoutOffer } from "./layout-menu";
 import { localise } from "./locale";
 import { keepLanded, lostableAsk, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -140,6 +142,7 @@ import {
   type Materialised,
   materialise,
   modelPoints,
+  NO_FIGURE,
   type Plan,
   questionsOf,
   stableIdPrefix,
@@ -157,6 +160,7 @@ import {
   notesText,
   renderedLines,
   type SlideNotes,
+  slideImages,
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
@@ -180,8 +184,10 @@ import {
   pilotRequest,
   stripStringCaps,
 } from "./pilot-pack";
+import { withV51ModelLines } from "./pilot-v51-gold";
 import { pointTaskFault, stripPointTasks } from "./point-guard";
 import { continuePractice } from "./practice-split";
+import { proofChecks } from "./proof-checks";
 import { continueQuickCheck } from "./question-set-split";
 import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideHidesAnswer, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
@@ -299,6 +305,18 @@ export type WriterRun = {
    * only; UX ruling 307, 28 Oct).
    */
   checks?: "act" | "log";
+  /** The picture retry budget (default `PICTURE_RETRY_BUDGET`) and the clock it reads (tests). */
+  pictureBudget?: typeof PICTURE_RETRY_BUDGET;
+  now?: () => number;
+  /**
+   * RC2 (12 Nov 2026, e2e-11nov ROOT-CAUSES): the model-calling repairs and retry rounds that run
+   * after the writer's output, each by name; one not named is off, and its slide goes straight to
+   * the deterministic outcome (the failing element dropped, one words-only layout, no word added).
+   * Pure-code steps (the overflow split, the layout fallback) are not repairs and always run.
+   * Absent: every one runs (the old behaviour, which the unit tests pin). The write stage passes
+   * `MODEL_REPAIRS_DEFAULT`; `[]` turns every one off.
+   */
+  modelRepairs?: readonly ModelRepair[];
   /**
    * Library turn-on, step 4 (CROSSCHECK point 1; default off): the writer's model menu and the
    * schema's model enum hold only models for the lesson's year and its subject (or general
@@ -496,6 +514,13 @@ export type WriterOutput = {
    * its room but on the slide is not reported). Each is also logged as `overflow-shipped`.
    */
   overflow: { slide: number; id: string; faults: string[] }[];
+  /**
+   * RC1 ship gate: one of the writer's own deck slides (`s<n>`, not a continuation) laid as the
+   * design's words-only look (`fixedFallback` with the pack's gold no-picture look, no visual), its
+   * notes kept; undefined for the title, the objectives, a slide pupils answer on, or an unknown
+   * id. Code only, no model call, no word added.
+   */
+  wordsOnly?: (id: string) => WriterSlide | undefined;
 };
 
 /**
@@ -545,7 +570,82 @@ type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
 const setPanel = (a: PhotoAsk) => a.set === "stages";
 /** A photo ask lostPic may fill once it fails: never a fixed shape, a card or a sequence set. */
 export const lostable = (a: VisualAsk): a is PhotoAsk => a.type === "photo" && lostableAsk(a);
+/**
+ * A model-calling step after the writer (RC2): `fit` the fit repair by model (pilot, key card and
+ * act-mode rewords), `leak` the hinge answer-leak repair (ruling 307), `restage` the stand-alone or
+ * reroute rewrite of a slide whose figure is lost, `meaning` the reroute of a meaning diagram that
+ * does not draw, `picture-retry` the lost-picture rounds (search again, generation, the library
+ * drawing or split in its place).
+ */
+export type ModelRepair = "fit" | "leak" | "restage" | "meaning" | "picture-retry";
+/**
+ * The write stage's default (R4 repair notes, scratchpad/plans-10nov/build/R4-REPAIR-NOTES.md:
+ * 53 recorded runs, 6-12 Nov). leak: 4 of 4 cleared at about 5 s each. picture-retry: 22 of 33
+ * rounds landed a picture or drawing. fit (1: no change, 10 s), restage (3: two invented content,
+ * one errored) and meaning (never triggered) did not earn their place.
+ */
+export const MODEL_REPAIRS_DEFAULT: readonly ModelRepair[] = ["leak", "picture-retry"];
+
+/**
+ * The wall-clock budget for picture retry work (`retryLost`, the lost-picture library or split
+ * fallback), per slide and per lesson (R3-DIAGNOSIS fault D: one slide's retry rounds cost ~100 s).
+ * The landed retry rounds of the recorded runs took 15-51 s each, one round per slide
+ * (R4-REPAIR-NOTES), so a slide's first round always starts and a second one starts only while
+ * the slide has used under 40 s (60 s less a 20 s round). The lesson's retries start within 100 s
+ * of its first one (the slides' tails run together, so this is a window, not a sum). A round is
+ * never cut part-way (a placement has no cancel): a cut round is not started, the slide takes the
+ * no-picture path, and `picture-budget` is logged.
+ */
+export const PICTURE_RETRY_BUDGET = { slideMs: 60_000, lessonMs: 120_000, roundMs: 20_000 };
+
+export type PictureBudgetCut = { scope: "slide" | "lesson"; usedMs: number; budgetMs: number };
+
+/** The clock for one lesson's picture retries (`PICTURE_RETRY_BUDGET`). */
+export function pictureRetryBudget(
+  b: typeof PICTURE_RETRY_BUDGET = PICTURE_RETRY_BUDGET,
+  now: () => number = Date.now,
+) {
+  let first: number | undefined;
+  const used = new Map<number, number>();
+  return {
+    /** Why a new retry round for slide `i` may not start, or undefined when it may. */
+    cut(i: number): PictureBudgetCut | undefined {
+      const t = now();
+      if (first !== undefined && t - first + b.roundMs > b.lessonMs)
+        return { scope: "lesson", usedMs: t - first, budgetMs: b.lessonMs };
+      const u = used.get(i) ?? 0;
+      if (u + b.roundMs > b.slideMs) return { scope: "slide", usedMs: u, budgetMs: b.slideMs };
+      return undefined;
+    },
+    /** Runs one retry round for slide `i`, its time counted against the slide. */
+    async round<T>(i: number, f: () => Promise<T>): Promise<T> {
+      const t = now();
+      first ??= t;
+      try {
+        return await f();
+      } finally {
+        used.set(i, (used.get(i) ?? 0) + (now() - t));
+      }
+    },
+  };
+}
+/**
+ * The bundle a run writes with: the pack's own bundle when it has one (a different stamped bundle
+ * is logged and overridden), else the run's bundle, else the active one.
+ */
+export function runBundle(
+  run: Pick<WriterRun, "bundle" | "pilotPack">,
+  note: (e: Record<string, unknown>) => void = () => {},
+): WriterBundleId | undefined {
+  const own = packOwnBundleId(run.pilotPack);
+  if (own !== undefined && run.bundle !== undefined && run.bundle !== own)
+    note({ ev: "bundle-mismatch", pack: run.pilotPack, stamped: run.bundle, runs: own });
+  return own ?? run.bundle;
+}
+
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
+  /** A model-calling repair or retry round may run (RC2; absent option: every one). */
+  const repairOn = (k: ModelRepair) => !run.modelRepairs || run.modelRepairs.includes(k);
   /** The checks act on their results ("act", the default) or are only logged (part i). */
   const act = run.checks !== "log";
   /**
@@ -557,7 +657,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return act;
   };
   const { brief } = run;
-  const P = writerBundle(run.bundle);
+  // A pack with its own bundle (v5.2-gold: base4f-p127) always runs it: a stamp naming another
+  // bundle would pair this pack's schema with that bundle's user turn (a mixed deck). The write
+  // stage passes a matching pair (`writerPackOf`); this is the backstop, and it logs.
+  const P = writerBundle(runBundle(run, (e) => run.services.log(e)));
   // The pinned repair schema without the hinge's counted `correct`: code finds the key by the
   // answer's words (`keepAnswerKey`), so the model is not asked to count (ANSWER-BUG.md).
   const repairSchemaFor = (k: string) =>
@@ -641,10 +744,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const chat: WriterServices["chat"] = (r) =>
     run.services.chat({ ...r, system: localise(r.system), user: localise(r.user) });
   const themeId = brief.teacherTheme ?? brief.theme;
-  const base: { brief: Brief; theme: Theme; stage: Brief["keyStage"] } = {
+  const base: { brief: Brief; theme: Theme; stage: Brief["keyStage"]; goldLooks?: boolean } = {
     brief,
     theme: getTheme(themeId, brief.keyStage),
     stage: brief.keyStage,
+    // A pack whose limits are measured on the gold looks draws its slides on them (materialise).
+    ...(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldFits
+      ? { goldLooks: true }
+      : {}),
   };
   const plan: Plan = {
     slides: [],
@@ -959,7 +1066,22 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const libbedSystem = libSystem(pilot ? pilot.system : writerSystem(brief, P), models);
   // Wave C (TEACH-110 part v): a model may go to figure-slide or step-model, as their lines say.
   const waveC = !!(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).waveC);
-  const system0 = waveC ? withWaveCLibrary(libbedSystem, writerStageOfKey(stageKey)) : libbedSystem;
+  // v5.1b-gold: a figure code drops from a picture-and-text slide keeps the gold no-picture look.
+  const goldDrop = {
+    goldNoPicture: !!(
+      run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldNoPictureFallback
+    ),
+  };
+  const modelLines = run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).modelLines;
+  // The fit table the writer's own measure reads (`charsOver`, the repair's room): the gold one for a
+  // pack that states its limits from it (`PilotPack.goldFits`), the frozen one otherwise.
+  const fitO =
+    run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldFits ? { gold: true } : {};
+  const system0 = modelLines
+    ? withV51ModelLines(libbedSystem, writerStageOfKey(stageKey))
+    : waveC
+      ? withWaveCLibrary(libbedSystem, writerStageOfKey(stageKey))
+      : libbedSystem;
   const system = slotFill && !pilot ? slotFillSystem(system0, schema, stageKey) : system0;
   const roleAsk = run.roleAsk ?? ROLE_ASK_DEFAULT;
   /** The slide asks pupils, so its drawing keeps the answer back: by role (roleAsk) or template. */
@@ -1363,8 +1485,18 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // Slot-fill: check the slide against its variant, strip `fit`; a breach, a cut field or an
     // overflow is logged as the writer's fault and the slide is kept as written.
     let raw = arrived;
+    // v5.1-gold: a visual-text slide written with a null figure (nothing would show its point) is
+    // marked so code draws the gold picture-and-text's no-picture look (materialise `normalise`).
+    // Only this pack's writer may write one; a figure code takes away later keeps its old fallback.
+    if (
+      run.pilotPack &&
+      (PILOT_PACKS[run.pilotPack] as PilotPack).goldMenu &&
+      arrived.template === "visual-text" &&
+      arrived.figure === null
+    )
+      raw = { ...arrived, [NO_FIGURE]: true };
     if (slotFill) {
-      const a = slotFillArrival(arrived, stageKey, schema, pilot?.caps, !!pilot);
+      const a = slotFillArrival(raw, stageKey, schema, pilot?.caps, !!pilot);
       raw = a.slide;
       log({
         ev: "slot-fill",
@@ -1685,6 +1817,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ? countMiss(writtenCount, brief.slides.min)
         : undefined;
   if (miss) log({ ev: "count-miss", level: "warn", ...miss });
+  // v5.2-gold's proof counts (BUILDER B7): logged per lesson, never acted on.
+  log({
+    ev: "proof-checks",
+    ...proofChecks(
+      out,
+      brief.slides,
+      run.objectives.length,
+      pointLabels(brief.points ?? []),
+      layoutOffer(writerStageOfKey(stageKey))["panel-list"].pictures,
+    ),
+  });
   plan.design = out.design;
   plan.flow = out.flow;
   if (!designShown) run.onDesign?.(plan.design);
@@ -1987,10 +2130,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // A new or changed writer spec is drawn by code at once (no drawer call after editable).
       if (a.type === "diagram" && a.spec !== undefined && run.drawDiagrams) {
         const ask = diagramAsk(a, next);
-        const r = acceptWriterSpec(a.spec, ask, base.theme, layoutSlotProbe, {
-          fitActs: act,
-          log: (e) => log({ ...e, slide: i + 1 }),
-        });
+        const r = acceptWriterSpec(
+          fractionBarFor(a.spec, ask.words) ?? a.spec,
+          ask,
+          base.theme,
+          layoutSlotProbe,
+          {
+            fitActs: act,
+            log: (e) => log({ ...e, slide: i + 1 }),
+          },
+        );
         if (r.spec)
           drawnDiagrams.set(`${i}:${a.key}`, {
             status: "diagram",
@@ -2165,6 +2314,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       restore(i, s0, n0, oldAsks);
       return false;
     };
+  /** The lesson's picture retry clock (`PICTURE_RETRY_BUDGET`; a test passes its own). */
+  const pictureClock = pictureRetryBudget(run.pictureBudget ?? PICTURE_RETRY_BUDGET, run.now);
   /** The library drawing the director chose for a lost picture, where it was the slide's one visual. */
   const drawLost = async (i: number, lost: PhotoAsk, kind: string): Promise<boolean> => {
     const s0 = plan.slides[i] as S;
@@ -2191,6 +2342,19 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    */
   const retryLost = async (i: number, ro: { noDrawing?: boolean } = {}) => {
     if (i < 2) return;
+    if (!repairOn("picture-retry")) {
+      if (lostAsks(i).length) log({ ev: "repair-off", slide: i + 1, repair: "picture-retry" });
+      return;
+    }
+    if (!lostAsks(i).length) return;
+    const cut = pictureClock.cut(i);
+    if (cut) {
+      log({ ev: "picture-budget", slide: i + 1, step: "retry", ...cut });
+      return;
+    }
+    await pictureClock.round(i, () => retryLostRound(i, ro));
+  };
+  const retryLostRound = async (i: number, ro: { noDrawing?: boolean }) => {
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
       // A stages panel is never drawn alone: it is made again in the set's look, or not at all.
@@ -2326,12 +2490,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // afterwards, or that loses a visual, gets its note written again once it settles (below); a
   // picture that lands as asked changes nothing. Nothing waits for the notes until the very end,
   // so they no longer add their ~20 s after the last picture (gen-health audit, 26 Oct).
-  const placedLines = (i: number) =>
-    (asks.get(i) ?? []).flatMap((a) => {
+  // BUILDER v5.3-gold B2: a picture is listed only when the laid slide holds it. A picture still
+  // loading, or one the layout did not place (four item pictures laid as one panel picture), is
+  // left out, so no note can point at a picture the slide does not have.
+  const placedLines = (i: number) => {
+    const onSlide = new Set(
+      slideImages((laid.get(i)?.slide.elements ?? []) as never).map((e) => e.src),
+    );
+    return (asks.get(i) ?? []).flatMap((a) => {
       const v = visualState(i)(a.key);
-      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
-      // Still loading (the stream-end call): the picture as asked for.
-      if (v?.status === "pending" && a.type === "photo") return [`Picture: ${a.shows}`];
+      if (v?.status === "photo")
+        return onSlide.has(v.photo.src) ? [`Picture: ${v.photo.alt || a.shows}`] : [];
       // A drawing the layout could not place is not on the slide (unless it ships with warnings).
       if (
         v?.status === "diagram" &&
@@ -2341,6 +2510,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
       return [];
     });
+  };
   const asShown = (i: number) =>
     renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i));
   const notesCall = (only?: number) => {
@@ -2631,6 +2801,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     } = {},
   ): Promise<boolean> => {
     const i = c.slide - 1;
+    // RC2: a repair that is off makes no call; the caller takes its deterministic outcome.
+    const which: ModelRepair =
+      mode !== "fit" ? "restage" : ro.via === "meaning" ? "meaning" : ro.only ? "leak" : "fit";
+    if (!repairOn(which)) {
+      log({ ev: "repair-off", slide: i + 1, repair: which });
+      return false;
+    }
     const ask = asks.get(i) ?? [];
     const found = ask
       .map((a) => visualState(i)(a.key))
@@ -2649,10 +2826,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     const own = String((plan.slides[i] as S)?.template ?? "");
     // A reroute (a picture that cannot be shown) may ask for a diagram of a supported kind.
     const hasDiagram = mode === "reroute" || ask.some((a) => a.type === "diagram");
-    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot));
+    const faultLines = c.faults.map((f) => repairTerms(f, plan.slides[i], stageKey, !!pilot, fitO));
     // A restaging call is told its room: in words on a pack run, as its fault lines are.
     if (mode !== "fit") {
-      const room = roomLine(plan.slides[i], stageKey, !!pilot);
+      const room = roomLine(plan.slides[i], stageKey, !!pilot, fitO);
       if (room) faultLines.push(room);
     }
     const u = fillTemplate(tpl, brief, {
@@ -2972,14 +3149,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     );
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
-    const fb = fixedFallback(orig, lost, parts, maxSteps);
+    const fb = fixedFallback(orig, lost, parts, maxSteps, goldDrop);
     swapSlide(i, fb.slide);
     if (!over().length) {
       log({ ev: "restage-fallback", slide: i + 1, mode, how: fb.how });
       return fb.how;
     }
     restore(i, orig, n0, oldAsks);
-    swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0).slide);
+    swapSlide(i, fixedFallback(orig, { type: "photo" }, [], 0, goldDrop).slide);
     // The last resort never ships overflow: what still does not fit moves to continuation slides.
     if (over().length && continueSlide(i, () => ({ status: "failed" }))) {
       log({ ev: "restage-fallback", slide: i + 1, mode, how: "strip-continued" });
@@ -3214,7 +3391,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (!dangles(i))
         return void log({ ev: "unshown-strip", slide: i + 1, removed, how: "sentences" });
     }
-    swapSlide(i, fixedFallback(plan.slides[i] as S, { type: "photo" }, [], 0).slide);
+    swapSlide(i, fixedFallback(plan.slides[i] as S, { type: "photo" }, [], 0, goldDrop).slide);
     if (!dangles(i)) return void log({ ev: "unshown-strip", slide: i + 1, removed, how: "bare" });
     restore(i, s0, n0, oldAsks);
     log({ ev: "unshown-strip", slide: i + 1, removed, how: "left" });
@@ -3222,9 +3399,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** Slide i without its figure, as a text-only full-width slide; undone if it would overflow. */
   const textOnly = (i: number) => {
     const s0 = plan.slides[i] as S;
-    const words = fixedFallback(s0, { type: "photo" }, [], 0).slide;
-    // only a figure layout changes template (to explain); any other slide is already words
-    if (words.template === s0.template) return;
+    const words = fixedFallback(s0, { type: "photo" }, [], 0, goldDrop).slide;
+    // only a figure layout changes template (to explain, or for a goldNoPictureFallback pack to the
+    // marked no-picture look); any other slide is already words
+    if (words.template === s0.template && words[NO_FIGURE] !== true) return;
     const n0 = notes.get(i);
     const oldAsks = asks.get(i) ?? [];
     swapSlide(i, words);
@@ -3261,10 +3439,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // TEACH-247 part cy: a stages panel is never swapped for a drawing or split off (code would
     // choose the layout): the writer restages the slide (the reroute below), knowing the picture
     // could not be shown.
+    const tryable = !setPanel(lost) && heldPhotoFills(s0, others) && repairOn("picture-retry");
+    const cut = tryable ? pictureClock.cut(i) : undefined;
+    if (cut) log({ ev: "picture-budget", slide: i + 1, step: "lost-fallback", ...cut });
     const how0 =
-      setPanel(lost) || !heldPhotoFills(s0, others)
+      !tryable || cut
         ? undefined
-        : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
+        : await pictureClock.round(i, () =>
+            lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost)),
+          );
     if (how0) {
       path.set(i, `picture-${how0}`);
       return;
@@ -3895,6 +4078,9 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       id: p.id,
       open: p.open,
     });
+  // Gold alignment (11 Nov 2026): which code drew each deck slide, by index (`TemplateResult.drawer`:
+  // gold, legacy or no gold). Read by genlab's analyse for the legacy-drawn count; never saved.
+  log({ ev: "drawers", drawers: Array.from({ length: n }, (_, i) => laid.get(i)?.drawer ?? null) });
   log({
     ev: "summary",
     textOnlyTeach,
@@ -3902,8 +4088,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     coverage: unmet.length,
     placeholders: placeholders.length,
   });
+  const wordsOnly = (id: string): WriterSlide | undefined => {
+    const k = /^s(\d+)$/.exec(id);
+    const i = k ? Number(k[1]) - 1 : -1;
+    const s0 = plan.slides[i] as S | undefined;
+    const own = slideAt(i);
+    if (i < 2 || i >= n || !s0 || !own || own.question) return undefined;
+    const words = fixedFallback(s0, { type: "photo" }, [], 0, goldDrop).slide;
+    const m = materialise(words, {
+      ...base,
+      index: i,
+      plan,
+      visual: () => ({ status: "failed" }) as VisualState,
+    });
+    if (m.slide.question) return undefined;
+    return { ...m.slide, id, notes: own.notes };
+  };
   return {
     overflow,
+    wordsOnly,
     slides: finalDeck,
     plan,
     checks,

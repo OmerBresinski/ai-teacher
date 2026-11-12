@@ -103,6 +103,8 @@ const verdict = (over: Record<string, unknown>) =>
     kindMatches: null,
     clear: false,
     fits: false,
+    // Judge v21: the fake judge says the picture shows what the slide names unless told.
+    showsNeeds: true,
     why: "x",
     visible: [],
     count: null,

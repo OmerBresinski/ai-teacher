@@ -3,8 +3,19 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { whenFontsReady } from "../layout/measure";
 import { FlowItemContent, SheetHeader } from "./BlockContent";
 import { pageMetrics, pxToPt } from "./metrics";
-import { buildFlow, type FlowItem, HEADER_KEY, type Pagination, paginate } from "./paginate";
+import {
+  buildFlow,
+  type FlowItem,
+  fillPages,
+  HEADER_KEY,
+  layoutPages,
+  type Pagination,
+  partHasHeader,
+  type SheetPart,
+  type SpaceSizes,
+} from "./paginate";
 import { flowItemClass, sheetVars } from "./Sheet";
+import { SHEET_SIZES, sheetSizes } from "./sheet-sizes";
 
 /**
  * Pagination needs real heights, and the only honest source of a rendered height is the browser
@@ -87,7 +98,7 @@ function MeasureColumn({
       ref={ref}
       className="ws-sheet ws-measure"
       style={{
-        ...sheetVars(theme, worksheet.pageSize),
+        ...sheetVars(theme, worksheet.pageSize, sheetSizes(worksheet)),
         width: `${pageMetrics(worksheet.pageSize).contentW}pt`,
       }}
       aria-hidden
@@ -112,12 +123,17 @@ export type SheetPagination = Pagination & {
   ready: boolean;
   /** Mount this beside the sheet: the off-screen column the heights are read from. */
   measureNode: ReactNode;
+  /** The answer spacing the pages were laid out at (`layoutPages`); pass it to `Sheet`. */
+  space: SpaceSizes;
 };
 
 export function useSheetPagination(
   worksheet: Worksheet | null,
   theme: Theme,
-  includeAnswerKey: boolean,
+  /** What the pages carry: a `SheetPart`, or the editor's boolean (`true` = both). */
+  part: SheetPart | boolean,
+  /** Print: grow each page's answer space into its leftover room (`fillPages`). */
+  fill = false,
 ): SheetPagination {
   const [heights, setHeights] = useState<Record<string, number>>({});
   const [fontsReady, setFontsReady] = useState(false);
@@ -128,19 +144,23 @@ export function useSheetPagination(
 
   const onFontsReady = useCallback(() => setFontsReady(true), []);
 
-  const items = useMemo(
-    () => (worksheet ? buildFlow(worksheet, includeAnswerKey) : []),
-    [worksheet, includeAnswerKey],
-  );
+  const items = useMemo(() => (worksheet ? buildFlow(worksheet, part) : []), [worksheet, part]);
 
-  const headerHeight = heights[HEADER_KEY] ?? 0;
+  const headerHeight = partHasHeader(part) ? (heights[HEADER_KEY] ?? 0) : 0;
   // Switching paper changes the page box, so the split and the oversize check both re-run off the
   // worksheet's own size rather than a fixed A4 constant.
   const contentH = pageMetrics(worksheet?.pageSize).contentH;
-  const { pages, oversize } = useMemo(
-    () => paginate(items, heights, headerHeight, contentH),
-    [items, heights, headerHeight, contentH],
-  );
+  const sizes = worksheet ? sheetSizes(worksheet) : SHEET_SIZES.secondary;
+  const { pages, oversize, space } = useMemo(() => {
+    const base = { lineGapPt: sizes.lineGapPt, boxScale: sizes.boxScale };
+    const min = { lineGapPt: sizes.minLineGapPt, boxScale: sizes.minBoxScale };
+    const laid = layoutPages(items, heights, headerHeight, contentH, base, min);
+    const s = laid.space;
+    const paged = fill
+      ? fillPages(laid, laid.heights, headerHeight, contentH, s.lineGapPt, s.boxScale)
+      : laid;
+    return { pages: paged.pages, oversize: paged.oversize, space: s };
+  }, [items, heights, headerHeight, contentH, sizes, fill]);
 
   const ready =
     fontsReady &&
@@ -158,5 +178,5 @@ export function useSheetPagination(
     />
   ) : null;
 
-  return { items, pages, oversize, ready, measureNode };
+  return { items, pages, oversize, ready, measureNode, space };
 }

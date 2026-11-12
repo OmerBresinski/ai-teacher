@@ -1,0 +1,4468 @@
+{
+  "recording": "20261109-142421-record-y11-rates-s3base",
+  "title": "Rates of reaction",
+  "subject": "Chemistry",
+  "yearGroup": "Year 11",
+  "topic": "Rates of reaction",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "notes": "",
+      "elements": [
+        {
+          "h": 540,
+          "w": 480,
+          "x": 480,
+          "y": 0,
+          "id": "d-s1-Photo-0",
+          "alt": "Magnesium ribbon reacts in hydrochloric acid inside a conical flask, with bubbles visible in the liquid.",
+          "fit": "cover",
+          "src": "/files/01a1c0b2-28ba-7755-9867-3851ee2cbe8d/images/01a1c0b2-df4a-75b6-a463-4f6f77a38f16.png",
+          "name": "Photo",
+          "type": "image",
+          "radius": 0,
+          "source": {
+            "id": "01a1c0b2-df4a-75b6-a463-4f6f77a38f16",
+            "licence": "generated (openai-2026-10)",
+            "pageUrl": "https://openai.com/policies/",
+            "provider": "generated",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/"
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 4,
+          "w": 66.67,
+          "x": 58,
+          "y": 193,
+          "id": "d-s1-Accent_rule-0",
+          "fill": "#0B6E86",
+          "name": "Accent rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 118,
+          "w": 402.67,
+          "x": 58,
+          "y": 229,
+          "id": "d-s1-Title-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Rates of reaction",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "title",
+            "valign": "top",
+            "padding": 0,
+            "fontSize": 54.666666666666664,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 600,
+            "lineHeight": 1.04
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "background": {}
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "notes": "",
+      "elements": [
+        {
+          "h": 465,
+          "w": 848,
+          "x": 56,
+          "y": 38,
+          "id": "d-s2-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 465,
+              "w": 848,
+              "x": 56,
+              "y": 38
+            },
+            "input": {
+              "points": [
+                "Calculate the mean rate of reaction in cm³/s from gas volume and measured time.",
+                "Describe how to investigate the effect of hydrochloric acid concentration on its reaction with magnesium, measuring gas volume over time and controlling the mass of magnesium and temperature.",
+                "Explain why increasing hydrochloric acid concentration increases the rate of reaction with magnesium, using collision theory and the frequency of successful collisions."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "template": "objectives"
+          },
+          "children": [
+            {
+              "h": 53,
+              "w": 832,
+              "x": 8,
+              "y": 8,
+              "id": "d-s2-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Today we are learning to",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Heading",
+              "type": "text",
+              "style": {
+                "preset": "heading",
+                "padding": 0,
+                "fontSize": 45.3,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.12
+              }
+            },
+            {
+              "h": 107,
+              "w": 832,
+              "x": 8,
+              "y": 124,
+              "id": "d-s2-layout:~Objective_card-0",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#0B6E86",
+              "strokeWidth": 2
+            },
+            {
+              "h": 32,
+              "w": 32,
+              "x": 15,
+              "y": 162,
+              "id": "d-s2-layout:~Marker-0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "1",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#0B6E86",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 21,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 29,
+              "w": 773,
+              "x": 60,
+              "y": 148,
+              "id": "d-s2-layout:points.0",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Calculate the mean rate of reaction in cm³/s from gas volume and measured time.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 107,
+              "w": 832,
+              "x": 8,
+              "y": 237,
+              "id": "d-s2-layout:~Objective_card-1",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#0B6E86",
+              "strokeWidth": 2
+            },
+            {
+              "h": 32,
+              "w": 32,
+              "x": 15,
+              "y": 275,
+              "id": "d-s2-layout:~Marker-1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "2",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#0B6E86",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 21,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 88,
+              "w": 773,
+              "x": 60,
+              "y": 246,
+              "id": "d-s2-layout:points.1",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Describe how to investigate the effect of hydrochloric acid concentration on its reaction with magnesium, measuring gas volume over time and controlling the mass of magnesium and temperature.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            },
+            {
+              "h": 107,
+              "w": 832,
+              "x": 8,
+              "y": 350,
+              "id": "d-s2-layout:~Objective_card-2",
+              "fill": "#FFFFFF",
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "radius": 14,
+              "stroke": "#0B6E86",
+              "strokeWidth": 2
+            },
+            {
+              "h": 32,
+              "w": 32,
+              "x": 15,
+              "y": 388,
+              "id": "d-s2-layout:~Marker-2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "3",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "fill": "#0B6E86",
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "textStyle": {
+                "align": "center",
+                "color": "#FFFFFF",
+                "preset": "body",
+                "valign": "middle",
+                "padding": 0,
+                "fontSize": 21,
+                "fontWeight": 700
+              }
+            },
+            {
+              "h": 88,
+              "w": 773,
+              "x": 60,
+              "y": 359,
+              "id": "d-s2-layout:points.2",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Explain why increasing hydrochloric acid concentration increases the rate of reaction with magnesium, using collision theory and the frequency of successful collisions.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Item",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.4
+              }
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s3",
+      "kind": "content",
+      "notes": "Running\nSpend about 3 minutes tracing the gas path from flask to syringe. Ask pupils to identify what is measured and how the measurement could be used to calculate a rate.\n\nMisconceptions\nPupils may think the gas syringe measures the acid or the magnesium. It measures the volume of hydrogen gas collected. They may also treat the rate as the final gas volume alone; rate includes time taken.\n\nBackground\nThe reaction is magnesium + hydrochloric acid → magnesium chloride + hydrogen. The hydrogen pushes the syringe plunger outwards, so its volume can be read directly.",
+      "elements": [
+        {
+          "h": 51,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s3-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Measure gas and calculate rate",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 68,
+          "w": 680,
+          "x": 64,
+          "y": 183,
+          "id": "d-s3-Lead-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Magnesium reacts with hydrochloric acid to produce hydrogen gas and magnesium chloride.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Lead",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 9,
+          "w": 9,
+          "x": 66,
+          "y": 284,
+          "id": "d-s3-Bullet-0",
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "type": "shape",
+          "shape": "ellipse",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 70,
+          "w": 655,
+          "x": 89,
+          "y": 271,
+          "id": "d-s3-Point-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A gas syringe collects hydrogen so its volume can be measured.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 9,
+          "w": 9,
+          "x": 66,
+          "y": 368,
+          "id": "d-s3-Bullet-1",
+          "fill": "#0B6E86",
+          "name": "Bullet",
+          "type": "shape",
+          "shape": "ellipse",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 70,
+          "w": 655,
+          "x": 89,
+          "y": 355,
+          "id": "d-s3-Point-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Mean rate is the gas volume produced divided by the time taken.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Point",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "kind": "worked-example",
+      "notes": "Running\nSpend about 5 minutes modelling the calculation. Have pupils copy the three steps, then check that they can explain why the answer has units of cm³/s.\n\nAnswers\n1. Mean rate = gas volume ÷ time\n2. Mean rate = 48 cm³ ÷ 24 s\n3. Mean rate = 2 cm³/s\n\nMisconceptions\nPupils may multiply 48 by 24, or give 2 cm³ without a time unit. Rate is volume divided by time, so the unit is cm³/s.\n\nBackground\nA mean rate gives the average volume produced per second across the measured time. It does not say that gas was produced at exactly the same rate every second.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s4-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "48 cm³ of gas in 24 seconds",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 165,
+          "w": 3,
+          "x": 79,
+          "y": 175,
+          "id": "d-s4-Rail-0",
+          "fill": "#D9E1EA",
+          "name": "Rail",
+          "type": "shape",
+          "shape": "rect",
+          "authoredBy": "ai"
+        },
+        {
+          "h": 82,
+          "w": 3,
+          "x": 79,
+          "y": 175,
+          "id": "d-s4-Rail_fill-0",
+          "fill": "#0F172A",
+          "name": "Rail fill",
+          "type": "shape",
+          "shape": "rect",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 83,
+          "w": 3,
+          "x": 79,
+          "y": 257,
+          "id": "d-s4-Rail_fill-1",
+          "fill": "#0F172A",
+          "name": "Rail fill",
+          "type": "shape",
+          "shape": "rect",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 159,
+          "id": "d-s4-Badge_ghost-0",
+          "fill": "#F7F9FB",
+          "name": "Badge ghost",
+          "type": "shape",
+          "shape": "ellipse",
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 241,
+          "id": "d-s4-Badge_ghost-1",
+          "fill": "#F7F9FB",
+          "name": "Badge ghost",
+          "type": "shape",
+          "shape": "ellipse",
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 324,
+          "id": "d-s4-Badge_ghost-2",
+          "fill": "#F7F9FB",
+          "name": "Badge ghost",
+          "type": "shape",
+          "shape": "ellipse",
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 159,
+          "id": "d-s4-Badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 241,
+          "id": "d-s4-Badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 324,
+          "id": "d-s4-Badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 159,
+          "id": "d-s4-Badge_done-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "Badge done",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 241,
+          "id": "d-s4-Badge_done-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "Badge done",
+          "type": "shape",
+          "shape": "ellipse",
+          "reveal": "fade",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 44,
+          "w": 178,
+          "x": 152,
+          "y": 153,
+          "id": "d-s4-Eq_left-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Mean rate",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq left",
+          "type": "text",
+          "style": {
+            "align": "right",
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 44,
+          "w": 24,
+          "x": 337,
+          "y": 153,
+          "id": "d-s4-Eq_sign-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "=",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq sign",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 44,
+          "w": 316,
+          "x": 369,
+          "y": 153,
+          "id": "d-s4-Eq_right-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "gas volume ÷ time",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq right",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 44,
+          "w": 178,
+          "x": 152,
+          "y": 235,
+          "id": "d-s4-Eq_left-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Mean rate",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq left",
+          "type": "text",
+          "style": {
+            "align": "right",
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 44,
+          "w": 24,
+          "x": 337,
+          "y": 235,
+          "id": "d-s4-Eq_sign-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "=",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq sign",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 44,
+          "w": 318,
+          "x": 369,
+          "y": 235,
+          "id": "d-s4-Eq_right-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "48 cm³ ÷ 24 s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq right",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 55,
+          "w": 416,
+          "x": 143,
+          "y": 313,
+          "id": "d-s4-Answer_plate-0",
+          "fill": "#FFFFFF",
+          "name": "Answer plate",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "reveal": "fade",
+          "stroke": "#0B6E86",
+          "authoredBy": "ai",
+          "revealStep": 3,
+          "strokeWidth": 2
+        },
+        {
+          "h": 44,
+          "w": 178,
+          "x": 152,
+          "y": 318,
+          "id": "d-s4-Eq_left-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Mean rate",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq left",
+          "type": "text",
+          "style": {
+            "align": "right",
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 44,
+          "w": 24,
+          "x": 337,
+          "y": 318,
+          "id": "d-s4-Eq_sign-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "=",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq sign",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 44,
+          "w": 181,
+          "x": 369,
+          "y": 318,
+          "id": "d-s4-Eq_right-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2 cm³/s",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0B6E86"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Eq right",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 36.6666666666667,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontFamily": "var(--font-outfit), \"Helvetica Neue\", sans-serif",
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 74,
+          "w": 46,
+          "x": 702,
+          "y": 101,
+          "id": "d-s4-Move_arrow-0",
+          "alt": "",
+          "fit": "contain",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2246%22%20height%3D%2274%22%20viewBox%3D%220%200%2046%2074%22%20overflow%3D%22visible%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M5.33%208.84%20C31.31%2012.99%2037.05%2041.43%2022.54%2056.31%20L5.33%2064.83%22%20data-end%3D%225.33%2C64.83%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%225.33%2C64.83%22%20data-dir%3D%22-0.89612%2C0.44381%22%20d%3D%22M18.07%2066.09%20L5.33%2064.83%20L12.05%2053.93%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E",
+          "name": "Move arrow",
+          "type": "image",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 74,
+          "w": 148,
+          "x": 748,
+          "y": 101,
+          "id": "d-s4-Move-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Write ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "text": "the ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": "mean ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": "rate ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": "formula.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Move",
+          "type": "text",
+          "style": {
+            "color": "#0B6E86",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18.666666666666668,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 500,
+            "lineHeight": 1.12
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 1
+        },
+        {
+          "h": 82,
+          "w": 46,
+          "x": 702,
+          "y": 175,
+          "id": "d-s4-Move_arrow-1",
+          "alt": "",
+          "fit": "contain",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2246%22%20height%3D%2282%22%20viewBox%3D%220%200%2046%2082%22%20overflow%3D%22visible%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M5.33%209.92%20C31.47%2014.1%2037.12%2047.08%2022.26%2063.69%20L5.33%2072.75%22%20data-end%3D%225.33%2C72.75%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%225.33%2C72.75%22%20data-dir%3D%22-0.88169%2C0.47184%22%20d%3D%22M18.1%2073.61%20L5.33%2072.75%20L11.7%2061.65%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E",
+          "name": "Move arrow",
+          "type": "image",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 82,
+          "w": 148,
+          "x": 748,
+          "y": 175,
+          "id": "d-s4-Move-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Substitute ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "text": "the ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": "measured ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": "values.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Move",
+          "type": "text",
+          "style": {
+            "color": "#0B6E86",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18.666666666666668,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 500,
+            "lineHeight": 1.12
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 2
+        },
+        {
+          "h": 83,
+          "w": 46,
+          "x": 702,
+          "y": 257,
+          "id": "d-s4-Move_arrow-2",
+          "alt": "",
+          "fit": "contain",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2246%22%20height%3D%2283%22%20viewBox%3D%220%200%2046%2083%22%20overflow%3D%22visible%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M5.33%209.92%20C31.47%2014.1%2037.12%2047.08%2022.26%2063.69%20L5.33%2072.75%22%20data-end%3D%225.33%2C72.75%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%225.33%2C72.75%22%20data-dir%3D%22-0.88169%2C0.47184%22%20d%3D%22M18.1%2073.61%20L5.33%2072.75%20L11.7%2061.65%22%20fill%3D%22none%22%20stroke%3D%22%230B6E86%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E",
+          "name": "Move arrow",
+          "type": "image",
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 3
+        },
+        {
+          "h": 83,
+          "w": 148,
+          "x": 748,
+          "y": 257,
+          "id": "d-s4-Move-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Calculate ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      }
+                    ]
+                  },
+                  {
+                    "text": "the ",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "text": "rate.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0F172A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Move",
+          "type": "text",
+          "style": {
+            "color": "#0B6E86",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 18.666666666666668,
+            "fixedSize": true,
+            "autoHeight": false,
+            "fontWeight": 500,
+            "lineHeight": 1.12
+          },
+          "reveal": "fade",
+          "authoredBy": "ai",
+          "revealStep": 3
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s5",
+      "kind": "multiple-choice",
+      "notes": "Running\nAllow about 3 minutes for pupils to answer independently, then ask them to show the division they used and explain their choice.\n\nAnswers\nC: B\n\nMisconceptions\nA, 30 cm³/s, suggests pupils multiplied 60 by 30. C, 2 cm³/s, suggests they may have remembered the previous example or divided incorrectly. Calculate 60 ÷ 30 = 2 cm³/s.\n\nBackground\nThe volume and time must use compatible units; here the volume is in cm³ and the time is in seconds, so the rate is in cm³/s.",
+      "elements": [
+        {
+          "h": 371,
+          "w": 960,
+          "x": 0,
+          "y": 169,
+          "id": "d-s5-surface_field-b-0",
+          "fill": "#EBF0F5",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 102,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s5-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "What is the mean rate when 60 cm³ forms in 30 seconds?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 113,
+          "w": 269,
+          "x": 64,
+          "y": 290,
+          "id": "d-s5-Option-0",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 39,
+          "w": 39,
+          "x": 85,
+          "y": 327,
+          "id": "d-s5-Hinge_key-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20.28,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 35,
+          "w": 140,
+          "x": 145,
+          "y": 329,
+          "id": "d-s5-Option_text-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "30 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28.000000000000004,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 113,
+          "w": 269,
+          "x": 346,
+          "y": 290,
+          "id": "d-s5-Option-1",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 39,
+          "w": 39,
+          "x": 367,
+          "y": 327,
+          "id": "d-s5-Hinge_key-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "B",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#7A580A",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20.28,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 35,
+          "w": 140,
+          "x": 427,
+          "y": 329,
+          "id": "d-s5-Option_text-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "0.5 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28.000000000000004,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 113,
+          "w": 269,
+          "x": 627,
+          "y": 290,
+          "id": "d-s5-Option-2",
+          "fill": "#FFFFFF",
+          "name": "Option",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 39,
+          "w": 39,
+          "x": 648,
+          "y": 327,
+          "id": "d-s5-Hinge_key-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "C",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#6D35D6",
+          "name": "Hinge key",
+          "type": "shape",
+          "shape": "rounded",
+          "radius": 9,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "heading",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 20.28,
+            "fixedSize": true,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 35,
+          "w": 140,
+          "x": 708,
+          "y": 329,
+          "id": "d-s5-Option_text-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Option text",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 28.000000000000004,
+            "fixedSize": true,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.24
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "multiple-choice",
+        "oneStep": true,
+        "options": [
+          {
+            "id": "d-s5-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s5-Option-1",
+            "correct": false
+          },
+          {
+            "id": "d-s5-Option-2",
+            "correct": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "s6",
+      "kind": "worked-example",
+      "notes": "Running\nSpend about 7 minutes. Pupils work in pairs to identify the changed variable, the measured outcome and the controls. Ask them to put the procedure into a clear sequence and explain why readings are taken at regular intervals.\n\nMisconceptions\nPupils may change magnesium mass, acid volume or temperature as well as concentration, making it unclear what caused a rate difference. Keep those variables the same and change only acid concentration. They may also forget that the bung must be fitted promptly, allowing hydrogen to escape and making the measured volume unreliable.\n\nBackground\nA fair test changes one independent variable—in this investigation, acid concentration—and measures the dependent variable, the gas volume over time. Repeats help identify anomalous results and improve reliability.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s6-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Investigate acid concentration",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 26,
+          "w": 26,
+          "x": 64,
+          "y": 176,
+          "id": "d-s6-Marker-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 59,
+          "w": 679,
+          "x": 105,
+          "y": 174,
+          "id": "d-s6-Item-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Add a measured volume of hydrochloric acid to a flask; connect it to a gas syringe.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 26,
+          "w": 26,
+          "x": 64,
+          "y": 243,
+          "id": "d-s6-Marker-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 59,
+          "w": 679,
+          "x": 105,
+          "y": 241,
+          "id": "d-s6-Item-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Add a measured mass of magnesium, quickly fit the bung and start the timer.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 26,
+          "w": 26,
+          "x": 64,
+          "y": 310,
+          "id": "d-s6-Marker-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 59,
+          "w": 679,
+          "x": 105,
+          "y": 308,
+          "id": "d-s6-Item-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Record the gas volume at regular time intervals until it stops increasing; repeat for reliability.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 26,
+          "w": 26,
+          "x": 64,
+          "y": 377,
+          "id": "d-s6-Marker-3",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "4",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0B6E86",
+          "name": "Marker",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 59,
+          "w": 679,
+          "x": 105,
+          "y": 375,
+          "id": "d-s6-Item-3",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Repeat with different acid concentrations, keeping acid volume, magnesium mass and temperature the same; compare mean rates.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Item",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s7",
+      "kind": "content",
+      "notes": "",
+      "elements": [
+        {
+          "h": 521,
+          "w": 912,
+          "x": 0,
+          "y": 0,
+          "id": "d-s7-layout",
+          "name": "Layout",
+          "type": "group",
+          "layout": {
+            "frame": {
+              "h": 521,
+              "w": 912,
+              "x": 0,
+              "y": 0
+            },
+            "input": {
+              "chain": true,
+              "heading": "Why does concentrated acid react faster?",
+              "reasons": [
+                {
+                  "head": "More particles",
+                  "line": "Higher concentration means more acid particles in the same volume."
+                },
+                {
+                  "head": "More collisions",
+                  "line": "Acid particles collide with the magnesium surface more frequently."
+                },
+                {
+                  "head": "Faster reaction",
+                  "line": "Successful collisions happen more frequently, so hydrogen is produced more quickly."
+                }
+              ],
+              "template": "reasons"
+            },
+            "template": "reasons"
+          },
+          "children": [
+            {
+              "h": 540,
+              "w": 360,
+              "x": 0,
+              "y": 0,
+              "id": "d-s7-layout:~Question_panel-0",
+              "fill": "#E9EBEE",
+              "name": "Question panel",
+              "type": "shape",
+              "shape": "rect",
+              "radius": 0
+            },
+            {
+              "h": 159,
+              "w": 264,
+              "x": 64,
+              "y": 191,
+              "id": "d-s7-layout:heading",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Why does concentrated acid react faster?",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Question",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "title",
+                "padding": 0,
+                "fontSize": 38,
+                "autoHeight": true,
+                "fontWeight": 600,
+                "lineHeight": 1.04
+              }
+            },
+            {
+              "h": 43,
+              "w": 464,
+              "x": 440,
+              "y": 43,
+              "id": "d-s7-layout:reasons.0.head",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "More particles",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason head",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "bottom",
+                "padding": 8,
+                "fontSize": 25,
+                "autoHeight": false,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              },
+              "revealStep": 1
+            },
+            {
+              "h": 55,
+              "w": 448,
+              "x": 448,
+              "y": 83,
+              "id": "d-s7-layout:reasons.0.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Higher concentration means more acid particles in the same volume.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason text",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              },
+              "revealStep": 1
+            },
+            {
+              "h": 43,
+              "w": 432,
+              "x": 472,
+              "y": 205,
+              "id": "d-s7-layout:reasons.1.head",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "More collisions",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason head",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "bottom",
+                "padding": 8,
+                "fontSize": 25,
+                "autoHeight": false,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              },
+              "revealStep": 2
+            },
+            {
+              "h": 55,
+              "w": 416,
+              "x": 480,
+              "y": 245,
+              "id": "d-s7-layout:reasons.1.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Acid particles collide with the magnesium surface more frequently.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason text",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              },
+              "revealStep": 2
+            },
+            {
+              "h": 43,
+              "w": 400,
+              "x": 504,
+              "y": 367,
+              "id": "d-s7-layout:reasons.2.head",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Faster reaction",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason head",
+              "type": "text",
+              "style": {
+                "color": "#0F172A",
+                "preset": "heading",
+                "valign": "bottom",
+                "padding": 8,
+                "fontSize": 25,
+                "autoHeight": false,
+                "fontWeight": 600,
+                "lineHeight": 1.08
+              },
+              "revealStep": 3
+            },
+            {
+              "h": 82,
+              "w": 384,
+              "x": 512,
+              "y": 407,
+              "id": "d-s7-layout:reasons.2.line",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Successful collisions happen more frequently, so hydrogen is produced more quickly.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "name": "Reason text",
+              "type": "text",
+              "style": {
+                "color": "#4F5D6E",
+                "preset": "body",
+                "padding": 0,
+                "fontSize": 21,
+                "autoHeight": true,
+                "fontWeight": 400,
+                "lineHeight": 1.3
+              },
+              "revealStep": 3
+            },
+            {
+              "h": 33,
+              "w": 25.74,
+              "x": 497.15,
+              "y": 159.05,
+              "id": "d-s7-layout:~Chain_arrow__to_come_-0",
+              "fill": "#D3D6DA",
+              "name": "Chain arrow (to come)",
+              "type": "path",
+              "closed": true,
+              "points": [
+                {
+                  "x": 0.7051,
+                  "y": 0
+                },
+                {
+                  "x": 0.7051,
+                  "y": 0.5
+                },
+                {
+                  "x": 1,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5,
+                  "y": 1
+                },
+                {
+                  "x": 0,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0
+                }
+              ],
+              "stroke": "#D3D6DA",
+              "strokeWidth": 0.5
+            },
+            {
+              "h": 33,
+              "w": 25.74,
+              "x": 497.15,
+              "y": 159.05,
+              "id": "d-s7-layout:~Chain_arrow-0",
+              "fill": "#0B6E86",
+              "name": "Chain arrow",
+              "type": "path",
+              "closed": true,
+              "points": [
+                {
+                  "x": 0.7051,
+                  "y": 0
+                },
+                {
+                  "x": 0.7051,
+                  "y": 0.5
+                },
+                {
+                  "x": 1,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5,
+                  "y": 1
+                },
+                {
+                  "x": 0,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0
+                }
+              ],
+              "stroke": "#0B6E86",
+              "revealStep": 2,
+              "strokeWidth": 0.5
+            },
+            {
+              "h": 33,
+              "w": 25.74,
+              "x": 529.15,
+              "y": 320.65,
+              "id": "d-s7-layout:~Chain_arrow__to_come_-1",
+              "fill": "#D3D6DA",
+              "name": "Chain arrow (to come)",
+              "type": "path",
+              "closed": true,
+              "points": [
+                {
+                  "x": 0.7051,
+                  "y": 0
+                },
+                {
+                  "x": 0.7051,
+                  "y": 0.5
+                },
+                {
+                  "x": 1,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5,
+                  "y": 1
+                },
+                {
+                  "x": 0,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0
+                }
+              ],
+              "stroke": "#D3D6DA",
+              "strokeWidth": 0.5
+            },
+            {
+              "h": 33,
+              "w": 25.74,
+              "x": 529.15,
+              "y": 320.65,
+              "id": "d-s7-layout:~Chain_arrow-1",
+              "fill": "#0B6E86",
+              "name": "Chain arrow",
+              "type": "path",
+              "closed": true,
+              "points": [
+                {
+                  "x": 0.7051,
+                  "y": 0
+                },
+                {
+                  "x": 0.7051,
+                  "y": 0.5
+                },
+                {
+                  "x": 1,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.5,
+                  "y": 1
+                },
+                {
+                  "x": 0,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.2949,
+                  "y": 0
+                }
+              ],
+              "stroke": "#0B6E86",
+              "revealStep": 3,
+              "strokeWidth": 0.5
+            }
+          ],
+          "authoredBy": "ai"
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "kind": "diagram",
+      "notes": "Running\nSpend about 5 minutes discussing the particle model. Ask pupils to link the number of acid particles per volume to collision frequency, then to the rate of reaction.\n\nMisconceptions\nPupils may say that higher concentration makes each acid particle move faster, or that particles themselves become more reactive. It means there are more acid particles in each unit of volume, so collisions with magnesium happen more frequently. Only successful collisions lead to reaction.\n\nBackground\nCollision theory explains reaction rate in terms of particles colliding. For this reaction, a successful collision between acid particles and the magnesium surface results in reaction; a greater frequency of successful collisions increases the rate.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s8-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Concentration and collisions",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 334,
+          "w": 648,
+          "x": 156,
+          "y": 124,
+          "id": "d-s8-Diagram-0",
+          "alt": "A higher concentration has more acid particles in the same volume and more frequent successful collisions with magnesium.",
+          "fit": "contain",
+          "src": "data:,trimmed-for-fixture",
+          "name": "Diagram",
+          "type": "image",
+          "builds": 3,
+          "diagram": {
+            "kind": "library",
+            "model": "collision_theory",
+            "params": {
+              "text": {},
+              "title": "Why do reactions speed up?",
+              "factors": ["concentration"],
+              "particles": 4,
+              "reactantA": "acid",
+              "reactantB": "magnesium",
+              "showCounter": true,
+              "moreParticles": 8
+            },
+            "typeScale": 1.2791905444126075
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 28,
+          "w": 832,
+          "x": 64,
+          "y": 474,
+          "id": "d-s8-Caption-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "More acid particles per volume cause more frequent collisions with magnesium.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Caption",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.35
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "teacherEdited": true
+    },
+    {
+      "id": "s9",
+      "kind": "open-response",
+      "notes": "Running\nAllow about 8 minutes. Pupils answer all three tasks independently, then compare their working in pairs. Review the calculation and the controlled variables as a class.\n\nAnswers\n1. 3 cm³/s\n2. Use the same volume of hydrochloric acid, mass of magnesium and temperature each time. Change only the acid concentration. Measure hydrogen volume at regular time intervals with a gas syringe, then compare mean rates. Repeat for reliability.\n3. No. 72 ÷ 30 = 2.4 cm³/s, which exceeds 2 cm³/s.\n\nMisconceptions\nFor the first task, pupils may multiply 84 by 28; divide volume by time to get 3 cm³/s. For the fair comparison, changing magnesium mass, acid volume or temperature as well as concentration would make the result hard to interpret; keep these fixed. For the final task, pupils may compare 72 with 2 without using the time; calculate 72 ÷ 30 = 2.4 cm³/s.\n\nBackground\nThe comparison asks pupils to combine a rate calculation with the fair-test method. A higher mean rate is a larger volume of gas produced per second.",
+      "elements": [
+        {
+          "h": 51,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s9-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Apply your learning",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 245,
+          "x": 64,
+          "y": 140,
+          "id": "d-s9-surface_rule-0",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 64,
+          "y": 160,
+          "id": "d-s9-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 163,
+          "w": 245,
+          "x": 64,
+          "y": 208,
+          "id": "d-s9-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A reaction produces 84 cm³ of hydrogen in 28 seconds. Calculate its mean rate.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 245,
+          "x": 357,
+          "y": 140,
+          "id": "d-s9-surface_rule-1",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 357,
+          "y": 160,
+          "id": "d-s9-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 163,
+          "w": 245,
+          "x": 357,
+          "y": 208,
+          "id": "d-s9-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How would you compare two acid concentrations fairly when magnesium reacts with the acid?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 245,
+          "x": 651,
+          "y": 140,
+          "id": "d-s9-surface_rule-2",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 651,
+          "y": 160,
+          "id": "d-s9-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 163,
+          "w": 245,
+          "x": 651,
+          "y": 208,
+          "id": "d-s9-Task-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A reaction produces 72 cm³ in 30 seconds. Would its mean rate exceed 2 cm³/s?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "working": ["84 cm³ ÷ 28 s = 3 cm³/s", "", "72 cm³ ÷ 30 s = 2.4 cm³/s"],
+        "modelAnswer": "1. 3 cm³/s\n2. Use the same acid volume, magnesium mass and temperature; record gas volume over time for each concentration.\n3. Yes, 2.4 cm³/s"
+      }
+    },
+    {
+      "id": "s10",
+      "kind": "exit-ticket",
+      "notes": "Running\nAllow about 8 minutes for pupils to complete the exit ticket independently. Collect or review responses to identify who can calculate with units, name the controls and connect concentration to successful collision frequency.\n\nAnswers\n1. 3 cm³/s\n2. Change only the hydrochloric acid concentration. Use the same acid volume, magnesium mass and temperature for each test. Add the magnesium, fit the bung promptly and start the timer. Measure gas volume with a gas syringe at regular intervals until it stops increasing; repeat and compare mean rates.\n3. Increasing concentration means more acid particles per unit volume. They collide with the magnesium more frequently, so there are more successful collisions each second and the reaction is faster.\n\nMisconceptions\nPupils may give 45 ÷ 15 with no unit; the rate is 3 cm³/s. In the investigation answer, changing more than concentration makes it an unfair test; keep acid volume, magnesium mass and temperature constant. In the explanation, ‘more particles’ alone is incomplete unless linked to more frequent successful collisions with magnesium.\n\nBackground\nThe exit ticket brings together all three lesson objectives: calculating mean rate, planning a fair investigation and explaining the rate change using collision theory.",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "d-s10-Heading-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 257,
+          "w": 960,
+          "x": 0,
+          "y": 283,
+          "id": "d-s10-surface_field-b-0",
+          "fill": "#EBF0F5",
+          "name": "surface:field-b",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 334,
+          "w": 746,
+          "x": 107,
+          "y": 149,
+          "id": "d-s10-surface_card-0",
+          "fill": "#FFFFFF",
+          "name": "surface:card",
+          "type": "shape",
+          "shape": "rounded",
+          "locked": true,
+          "radius": 14,
+          "stroke": "#D9E1EA",
+          "authoredBy": "ai",
+          "strokeWidth": 2
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 150,
+          "y": 173,
+          "id": "d-s10-surface_badge-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 612,
+          "x": 198,
+          "y": 173,
+          "id": "d-s10-Task-0",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "A reaction produces 45 cm³ of gas in 15 seconds. Calculate its mean rate.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 251,
+          "id": "d-s10-surface_rule-0",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 150,
+          "y": 266,
+          "id": "d-s10-surface_badge-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 98,
+          "w": 612,
+          "x": 198,
+          "y": 266,
+          "id": "d-s10-Task-1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "How would you investigate acid concentration's effect on magnesium, measuring gas and controlling variables?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 1.5,
+          "w": 660,
+          "x": 150,
+          "y": 377,
+          "id": "d-s10-surface_rule-1",
+          "fill": "#D9E1EA",
+          "name": "surface:rule",
+          "type": "shape",
+          "shape": "rect",
+          "locked": true,
+          "authoredBy": "ai"
+        },
+        {
+          "h": 32,
+          "w": 32,
+          "x": 150,
+          "y": 391,
+          "id": "d-s10-surface_badge-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": false,
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 21,
+            "fontWeight": 700
+          },
+          "authoredBy": "ai"
+        },
+        {
+          "h": 65,
+          "w": 612,
+          "x": 198,
+          "y": 391,
+          "id": "d-s10-Task-2",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Why does increasing acid concentration increase the rate of its reaction with magnesium?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Task",
+          "type": "text",
+          "style": {
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "authoredBy": "ai"
+        }
+      ],
+      "question": {
+        "type": "open-response",
+        "working": ["45 cm³ ÷ 15 s = 3 cm³/s", "", ""],
+        "modelAnswer": "1. 3 cm³/s\n2. Measure gas volume over time at different concentrations, keeping magnesium mass, acid volume and temperature the same.\n3. More acid particles per volume cause more frequent successful collisions with magnesium, increasing the reaction rate."
+      },
+      "teacherEdited": true
+    },
+    {
+      "id": "isnckU7Az5",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 133,
+          "w": 133,
+          "x": 413.5,
+          "y": 142,
+          "id": "myNxHbdcEc",
+          "fill": "#EBF0F5",
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "locked": true
+        },
+        {
+          "h": 56,
+          "w": 56,
+          "x": 452,
+          "y": 181,
+          "id": "0YIKgJkayk",
+          "icon": "check",
+          "name": "Guard tick",
+          "type": "icon",
+          "color": "#15803D",
+          "strokeWidth": 6
+        },
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 309,
+          "id": "BmGtpGSml1",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers on the next slide",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 27,
+          "w": 832,
+          "x": 64,
+          "y": 368,
+          "id": "JLKMwV7IVD",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Get ready to check your work.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Guard line",
+          "type": "text",
+          "style": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 400,
+            "lineHeight": 1.3
+          }
+        }
+      ],
+      "answersRole": "guard",
+      "teacherEdited": true
+    },
+    {
+      "id": "ILuwhBcbpG",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "hHEeDzZ3Fa",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (1 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 39,
+          "w": 214,
+          "x": 682,
+          "y": 52,
+          "id": "ugTxMMtPae",
+          "fill": "#E4E7EB",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 23,
+          "w": 23,
+          "x": 701,
+          "y": 60,
+          "id": "siRBDh-euV",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#4F5D6E",
+          "strokeWidth": 2
+        },
+        {
+          "h": 25,
+          "w": 214,
+          "x": 732,
+          "y": 59,
+          "id": "CGwatiahIG",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 20,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "Xf32CklsK4",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "PRACTICE",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Kicker",
+          "type": "text",
+          "style": {
+            "color": "#0B6E86",
+            "preset": "caption",
+            "padding": 0,
+            "fontSize": 17,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 173,
+          "id": "rkLYvejnmL",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Apply your learning",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 147,
+          "id": "Gq-XN6Qt-q",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 147,
+          "id": "WarKkgnGA5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 146,
+          "id": "kkbRYq2Zrj",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 206,
+          "x": 348,
+          "y": 146,
+          "id": "jTTj_tpc07",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 26,
+          "w": 321,
+          "x": 575,
+          "y": 149,
+          "id": "NzzY-O7nwT",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "84 cm³ ÷ 28 s = 3 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 223,
+          "id": "Vfz0kjSN0n",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 223,
+          "id": "U5m7eIOXlZ",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 222,
+          "id": "joWPY0xLVL",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 98,
+          "w": 548,
+          "x": 348,
+          "y": 222,
+          "id": "TJxbVj0QFv",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Use the same acid volume, magnesium mass and temperature; record gas volume over time for each concentration.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 363,
+          "id": "D-S5Wss9oh",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 363,
+          "id": "sN0Mw4ctGs",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 362,
+          "id": "AlPadHn1GK",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 206,
+          "x": 348,
+          "y": 362,
+          "id": "pMk4uNwJRH",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Yes, 2.4 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 26,
+          "w": 321,
+          "x": 575,
+          "y": 365,
+          "id": "0LCrDvEz2h",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "72 cm³ ÷ 30 s = 2.4 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    },
+    {
+      "id": "6bf73fGcKo",
+      "kind": "plenary",
+      "elements": [
+        {
+          "h": 53,
+          "w": 832,
+          "x": 64,
+          "y": 46,
+          "id": "j0sHFuUNx5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Answers (2 of 2)",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Heading",
+          "type": "text",
+          "style": {
+            "preset": "heading",
+            "padding": 0,
+            "fontSize": 45.3,
+            "autoHeight": true,
+            "fontWeight": 600,
+            "lineHeight": 1.12
+          }
+        },
+        {
+          "h": 39,
+          "w": 214,
+          "x": 682,
+          "y": 52,
+          "id": "V8onYEbkyy",
+          "fill": "#E4E7EB",
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "locked": true
+        },
+        {
+          "h": 23,
+          "w": 23,
+          "x": 701,
+          "y": 60,
+          "id": "VkEtt63RWO",
+          "icon": "eye-off",
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "color": "#4F5D6E",
+          "strokeWidth": 2
+        },
+        {
+          "h": 25,
+          "w": 214,
+          "x": 732,
+          "y": 59,
+          "id": "F3lEsc7JR_",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Teacher only",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "answers:teacher-only",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 25,
+          "w": 190,
+          "x": 64,
+          "y": 146,
+          "id": "bef73fnyAa",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Exit ticket",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Source title",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 147,
+          "id": "fqmPexdCGK",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "1",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 147,
+          "id": "m3gLRfcsHR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 146,
+          "id": "dhCZfQuLJV",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 33,
+          "w": 121,
+          "x": 348,
+          "y": 146,
+          "id": "F_uERgAvwG",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 700,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 26,
+          "w": 406,
+          "x": 490,
+          "y": 149,
+          "id": "-83x95TiO8",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "45 cm³ ÷ 15 s = 3 cm³/s",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Working",
+          "type": "text",
+          "style": {
+            "color": "#4F5D6E",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 21,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.25
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 201,
+          "id": "uOR8I8AVxc",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "2",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 201,
+          "id": "unaPJspl-l",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 200,
+          "id": "Irlm2vNlQa",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 98,
+          "w": 548,
+          "x": 348,
+          "y": 200,
+          "id": "Iq3uTglZUs",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Measure gas volume over time at different concentrations, keeping magnesium mass, acid volume and temperature the same.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 301,
+          "y": 321,
+          "id": "tuVgatrnkR",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "3",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#0F172A",
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#FFFFFF",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 14,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 31,
+          "w": 31,
+          "x": 348,
+          "y": 321,
+          "id": "Za4jI9VNVe",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "?",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "fill": "#EBF0F5",
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "textStyle": {
+            "align": "center",
+            "color": "#4F5D6E",
+            "preset": "body",
+            "valign": "middle",
+            "padding": 0,
+            "fontSize": 17,
+            "fontWeight": 700
+          }
+        },
+        {
+          "h": 33,
+          "w": 33,
+          "x": 347,
+          "y": 320,
+          "id": "YHeqs0S4tE",
+          "fill": "#F7F9FB",
+          "name": "Revealed",
+          "type": "shape",
+          "shape": "rect",
+          "revealStep": 1
+        },
+        {
+          "h": 98,
+          "w": 548,
+          "x": 348,
+          "y": 320,
+          "id": "OKrJ3oi2pP",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "More acid particles per volume cause more frequent successful collisions with magnesium, increasing the reaction rate.",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          },
+          "name": "Model answer",
+          "type": "text",
+          "style": {
+            "color": "#0F172A",
+            "preset": "body",
+            "padding": 0,
+            "fontSize": 25,
+            "autoHeight": true,
+            "fontWeight": 500,
+            "lineHeight": 1.3
+          },
+          "revealStep": 1
+        }
+      ],
+      "answersRole": "answers",
+      "teacherEdited": true
+    }
+  ]
+}

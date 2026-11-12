@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Lesson, Worksheet } from "@tj/domain/documents";
+import type { Lesson, Worksheet, WorksheetGeneration } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
+import { docFromText } from "../model/factories";
 import { demoLibrary } from "../model/starter";
 import { ExportControl, exportLoaders, PPTX_FONT_NOTE } from "./ExportControl";
 import * as paint from "./paint";
@@ -383,7 +384,7 @@ describe("ExportControl (TEACH-111)", () => {
 
 /* E3 (TEACH-112): the Word tab, its answer-key default, and the `import()` boundary. */
 describe("ExportControl (TEACH-112)", () => {
-  it("Word: answer key defaults to the sheet's own setting; one download named <slug>.docx", async () => {
+  it("Word: the pupil sheet by default, the key on request; one download named <slug>.docx", async () => {
     const user = userEvent.setup();
     const worksheetDocxBlob = mock(async () => new Blob(["pk"], { type: "application/zip" }));
     const realDocx = exportLoaders.docx;
@@ -408,22 +409,122 @@ describe("ExportControl (TEACH-112)", () => {
       );
       await openDialog(user);
       await user.click(pickTab("Word"));
-      expect(screen.getByRole("switch", { name: "Include answer key" })).toHaveAttribute(
+      // The pupil sheet by default, whatever the sheet's own "Show answer key" switch says (WS8).
+      expect(screen.getByRole("radio", { name: "Pupil sheet" })).toHaveAttribute(
         "aria-checked",
         "true",
       );
-      await user.click(screen.getByRole("switch", { name: "Include answer key" }));
+      await user.click(screen.getByRole("radio", { name: "Answer key" }));
       await user.click(screen.getByRole("button", { name: "Export Word" }));
       await waitFor(() => expect(downloads).toEqual(["fractions-practice.docx"]));
       const [, options] = worksheetDocxBlob.mock.calls[0] as unknown as [
         unknown,
-        { includeAnswerKey: boolean; imageOrigin: string },
+        { part: string; imageOrigin: string },
       ];
-      expect(options).toEqual({ includeAnswerKey: false, imageOrigin: "https://api.test" });
+      expect(options).toEqual({ part: "key", imageOrigin: "https://api.test" });
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     } finally {
       HTMLAnchorElement.prototype.click = original;
       exportLoaders.docx = realDocx;
     }
+  });
+});
+
+const NEW_PATH: WorksheetGeneration = {
+  jobId: "job-ws",
+  stage: "checked",
+  startedAt: "2026-11-12T10:01:00.000Z",
+  completedAt: "2026-11-12T10:02:00.000Z",
+  promptVersions: { build: "worksheet-slides.v1" },
+  usage: { calls: 1, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+  findings: [],
+  recipeId: "practice",
+  practiceMinutes: 10,
+};
+
+/* WS1: PDF and Word are off for an unfinished sheet, and the dialog says why. */
+describe("ExportControl on an unfinished worksheet (WS1)", () => {
+  it("disables Export PDF and Export Word with the reason; JSON still exports", async () => {
+    const user = userEvent.setup();
+    // Made by the new path (R4 review: only those sheets are judged unfinished).
+    const sheet: Worksheet = { ...demoWorksheet(), generation: NEW_PATH };
+    sheet.blocks = [
+      ...sheet.blocks,
+      { id: "ph", type: "paragraph", doc: docFromText("Generation writes this part: questions") },
+    ];
+    const { onOpenPrint } = renderControl(sheet);
+    await openDialog(user);
+
+    const reason = "This worksheet isn’t finished, so it can’t be printed yet.";
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+    expect(screen.getByText(reason)).toBeVisible();
+    await user.click(pickTab("Word"));
+    expect(screen.getByRole("button", { name: "Export Word" })).toBeDisabled();
+    expect(screen.getByText(reason)).toBeVisible();
+    await user.click(pickTab("JSON"));
+    expect(screen.getByRole("button", { name: "Export JSON" })).toBeEnabled();
+    expect(onOpenPrint).not.toHaveBeenCalled();
+  });
+});
+
+/* R4 review (12 Nov): a question with no answer stops only the answer key. */
+describe("ExportControl on a sheet with an unkeyed question", () => {
+  const unkeyed = (generation?: WorksheetGeneration): Worksheet => {
+    const sheet = demoWorksheet();
+    return {
+      ...sheet,
+      ...(generation ? { generation } : {}),
+      blocks: [
+        ...sheet.blocks,
+        {
+          id: "qx",
+          type: "question",
+          doc: docFromText("A teacher's question"),
+          answerLines: 2,
+          number: 99,
+        },
+      ],
+    };
+  };
+  const keyNote = /so the answer key can’t be printed/;
+
+  it("a new-path sheet: the pupil sheet exports, the key and both say why and stay off", async () => {
+    const user = userEvent.setup();
+    renderControl(unkeyed(NEW_PATH));
+    await openDialog(user);
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
+    expect(screen.queryByText(keyNote)).toBeNull();
+    await user.click(screen.getByRole("radio", { name: "Answer key" }));
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+    expect(screen.getByText(keyNote)).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: "Both" }));
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+  });
+
+  it("a hand-made or old sheet exports as before", async () => {
+    const user = userEvent.setup();
+
+    /* R4 review (12 Nov), web finding 6: no answers, no answer key. */
+    describe("ExportControl on a sheet with no answers", () => {
+      it("offers only the pupil sheet and says why", async () => {
+        const user = userEvent.setup();
+        const sheet: Worksheet = {
+          ...demoWorksheet(),
+          blocks: [{ id: "p", type: "paragraph", doc: docFromText("Read the passage.") }],
+        };
+        renderControl(sheet);
+        await openDialog(user);
+        expect(screen.getByRole("radio", { name: "Answer key" })).toBeDisabled();
+        expect(screen.getByRole("radio", { name: "Both" })).toBeDisabled();
+        expect(
+          screen.getByText("This sheet has no answers yet, so there is no answer key to print."),
+        ).toBeVisible();
+        expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
+      });
+    });
+    renderControl(unkeyed());
+    await openDialog(user);
+    await user.click(screen.getByRole("radio", { name: "Answer key" }));
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
   });
 });

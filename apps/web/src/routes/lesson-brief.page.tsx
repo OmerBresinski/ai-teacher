@@ -6,9 +6,11 @@ import {
   findNamePatterns,
   GUARD_MESSAGE,
   type Lesson,
+  recogniseYearGroup,
   type SlideTier,
   type SourceRef,
   slideTierOf,
+  yearMentionKey,
 } from "@tj/domain/documents";
 import { Button, Spinner } from "@tj/ui";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
@@ -18,11 +20,13 @@ import { CreationShell } from "@/components/lesson-creation/creation-shell";
 import { leaveStage } from "@/components/lesson-creation/planning-stage";
 import {
   BriefStep,
+  briefYearProblem,
   type IntakeBrief,
   type ObjectiveDraft,
   ObjectivesStep,
   type WorksheetDraft,
   WorksheetStep,
+  yearConfirmed,
 } from "@/components/lesson-creation/step-fields";
 import { useLibraryActions } from "@/components/library/use-library-actions";
 import { SIGN_IN_SHEET_BACK_HERE } from "@/components/sign-in/sign-in-copy";
@@ -107,6 +111,22 @@ export function LessonBriefPage() {
   );
 }
 
+/**
+ * The brief a stored lesson was planned from. Its year group stays as stored (no "Year 4"
+ * stand-in): one the list does not have is asked again. The API accepted the topic with that
+ * year, so the topic's year mentions count as answered.
+ */
+function storedBrief(lesson: Lesson): IntakeBrief {
+  const topic = lesson.brief?.topic ?? lesson.title;
+  return {
+    topic,
+    yearGroup: lesson.yearGroup ?? "",
+    level: lesson.brief?.level ?? "standard",
+    files: [],
+    ...(recogniseYearGroup(lesson.yearGroup) ? { yearConfirmedFor: yearMentionKey(topic) } : {}),
+  };
+}
+
 function LessonIntake({
   onCreated,
   lessonId,
@@ -138,7 +158,8 @@ function LessonIntake({
     () =>
       retried?.brief ?? {
         topic: topic ?? "",
-        yearGroup: last?.yearGroup || "Year 4",
+        // The teacher's last class, else nothing: a fresh brief asks (founder's ruling, 12 Nov).
+        yearGroup: recogniseYearGroup(last?.yearGroup) ?? "",
         level: "standard",
         files: [],
       },
@@ -153,7 +174,7 @@ function LessonIntake({
     () => retried?.slideTier ?? DEFAULT_SLIDE_TIER,
   );
   const [worksheets, setWorksheets] = useState<WorksheetDraft[]>([
-    { id: "initial", recipe: "knowledge-check", minutes: "10" },
+    { id: "initial", recipe: "practice", minutes: "15" },
   ]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -252,12 +273,7 @@ function LessonIntake({
   }, [changedAt, lessonId, client]);
 
   function land(lesson: Lesson) {
-    setBrief({
-      topic: lesson.brief?.topic ?? lesson.title,
-      yearGroup: lesson.yearGroup ?? "Year 4",
-      level: lesson.brief?.level ?? "standard",
-      files: [],
-    });
+    setBrief(storedBrief(lesson));
     setSources(lesson.sources ?? []);
     setObjectives((lesson.facts?.objectives ?? []).map(({ id, text }) => ({ id, text })));
     setSlideTier(slideTierOf(lesson.brief));
@@ -298,6 +314,8 @@ function LessonIntake({
   }
   async function plan(skip: boolean) {
     if (busy || sourcesBusy || findNamePatterns(brief.topic).length > 0) return;
+    // `BriefStep` asks before it calls this; never send a year group the API would refuse.
+    if (briefYearProblem(brief) !== undefined) return;
     // The planning stage's character and, after it, the editor: loaded while the teacher waits.
     preloadLessonEditor();
     setBusy(true);
@@ -306,7 +324,8 @@ function LessonIntake({
     try {
       const input = CreateLessonSchema.parse({
         brief: { topic: brief.topic.trim(), level: brief.level, slideTier },
-        yearGroup: brief.yearGroup,
+        yearGroup: recogniseYearGroup(brief.yearGroup),
+        ...(yearConfirmed(brief) ? { yearGroupConfirmed: true } : {}),
         // Rulings 116, 202: no theme question; the teacher's last theme, else the planner picks.
         themeId: startingTheme(last?.themeId),
         sourceIds: sources.map(({ id }) => id),
@@ -328,6 +347,7 @@ function LessonIntake({
           expectedRevision: lesson.plan?.revision ?? 0,
           brief: input.brief,
           yearGroup: input.yearGroup,
+          ...(input.yearGroupConfirmed ? { yearGroupConfirmed: true } : {}),
           subject: lesson.brief?.topic === input.brief.topic ? lesson.subject : undefined,
           sourceIds: input.sourceIds,
         });
@@ -350,7 +370,7 @@ function LessonIntake({
         writeLastClass({
           subject: last?.subject ?? "",
           subjectOther: last?.subjectOther ?? "",
-          yearGroup: brief.yearGroup,
+          yearGroup: input.yearGroup ?? "",
           themeId: last?.themeId ?? "",
         });
         // Both go to the planning stage; a skipped plan moves on to the editor by itself.
@@ -470,24 +490,14 @@ function LessonIntake({
                 if (lesson?.plan?.state === "confirmed") {
                   // A confirmed plan cannot be planned again: a fresh intake with the whole brief.
                   retryBrief = {
-                    brief: {
-                      topic: lesson.brief?.topic ?? lesson.title,
-                      yearGroup: lesson.yearGroup ?? "Year 4",
-                      level: lesson.brief?.level ?? "standard",
-                      files: [],
-                    },
+                    brief: storedBrief(lesson),
                     sources: lesson.sources ?? [],
                     slideTier: slideTierOf(lesson.brief),
                   };
                   void navigate({ to: "/lessons/new", search: {}, replace: true });
                 } else if (lesson) {
                   initialized.current = true;
-                  setBrief({
-                    topic: lesson.brief?.topic ?? lesson.title,
-                    yearGroup: lesson.yearGroup ?? "Year 4",
-                    level: lesson.brief?.level ?? "standard",
-                    files: [],
-                  });
+                  setBrief(storedBrief(lesson));
                   setSources(lesson.sources ?? []);
                   setStep("brief");
                 } else void refresh();
@@ -577,6 +587,7 @@ function LessonIntake({
             ) : (
               <WorksheetStep
                 worksheets={worksheets}
+                yearGroup={brief.yearGroup}
                 onChange={setWorksheets}
                 maxWorksheets={1}
                 onBack={() => setStep("objectives")}

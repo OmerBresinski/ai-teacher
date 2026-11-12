@@ -2,8 +2,12 @@ import { describe, expect, it, mock } from "bun:test";
 import { inflateRawSync } from "node:zlib";
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { Packer } from "docx";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { docFromText } from "../model/factories";
 import { numberQuestions } from "../model/worksheet-factories";
+import { FlowItemContent, SheetHeader } from "../worksheet/BlockContent";
+import { sheetHead } from "../worksheet/sheet-head";
 import { generateWordSearch } from "../worksheet/word-search";
 import { buildWorksheetDocx, decodeImage, docxFilename, resolveImage } from "./docx";
 
@@ -176,28 +180,51 @@ async function xmlFor(
   worksheet: Worksheet,
 ): Promise<{ xml: string; buffer: Buffer; names: string[] }> {
   const buffer = await withOfflineFetch(async () =>
-    Packer.toBuffer(await buildWorksheetDocx(worksheet)),
+    // These tests say "key or not" with the sheet's flag: on is both parts, off the pupil sheet.
+    // The export's own default (the pupil sheet) has its own test below.
+    Packer.toBuffer(
+      await buildWorksheetDocx(worksheet, {
+        part: worksheet.includeAnswerKey === false ? "pupil" : "both",
+      }),
+    ),
   );
   const node = Buffer.from(buffer);
   return { xml: readZipEntry(node, "word/document.xml"), buffer: node, names: zipEntryNames(node) };
 }
 
 describe("worksheet Word export", () => {
+  it("prints the confidence circles in red, amber and green, each with its word (R3)", async () => {
+    const { xml } = await xmlFor(everyBlockSheet());
+    for (const [word, colour] of [
+      ["Red", "C62828"],
+      ["Amber", "D98A00"],
+      ["Green", "2E7D32"],
+    ]) {
+      expect(xml).toMatch(new RegExp(`<w:color w:val="${colour}"/>[\\s\\S]{0,200}●`));
+      expect(xml).toContain(`  ${word}`);
+    }
+    expect(xml).not.toContain("◯");
+  });
+
   it("writes a Word file with the parts Word needs", async () => {
     const { names } = await xmlFor(everyBlockSheet());
     expect(names).toContain("[Content_Types].xml");
     expect(names).toContain("word/document.xml");
   });
 
-  it("carries the title, the header lines and the objective", async () => {
-    const { xml } = await xmlFor(everyBlockSheet());
+  it("carries the title, the header lines and the objective (strip off; on, the strip has them)", async () => {
+    const { xml } = await xmlFor({ ...everyBlockSheet(), selfAssessment: false });
     expect(xml).toContain("The water cycle: check your understanding");
     expect(xml).toContain("Name:");
     expect(xml).toContain("Date:");
     expect(xml).toContain("Class:");
     expect(xml).toContain("I can explain how water moves around.");
-    // Criteria print as checkbox lines.
-    expect(xml).toContain("☐  I can name each stage");
+    // With the strip off the criteria are header lines, not checkbox lines.
+    expect(xml).toContain("I can name each stage");
+    expect(xml).not.toContain("☐  I can name each stage");
+    const withStrip = await xmlFor(everyBlockSheet());
+    expect(withStrip.xml).toContain("☐  I can name each stage");
+    expect(withStrip.xml).not.toContain("I can explain how water moves around.");
   });
 
   it("lays the page out at the sheet size", async () => {
@@ -272,7 +299,7 @@ describe("worksheet Word export", () => {
   it("adds the self-assessment strip and the answer key on a new page", async () => {
     const { xml } = await xmlFor(everyBlockSheet());
     expect(xml).toContain("How confident do you feel?");
-    expect(xml).toContain("◯  Red");
+    expect(xml).toContain("  Red");
     expect(xml).toContain("Answer key");
     expect(xml).toContain("Evaporation.");
     expect(xml).toContain("The answers are the letters in bold and underlined.");
@@ -469,5 +496,158 @@ describe("resolveImage (TEACH-272 §1)", () => {
     } finally {
       globalThis.fetch = original;
     }
+  });
+});
+
+/* T3: one header rule for print and Word. */
+
+const decode = (text: string) =>
+  text
+    .replace(/&nbsp;|\u00a0/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'");
+
+/** The words Word shows, one entry per paragraph, in reading order. */
+function wordLines(xml: string): string[] {
+  return [...xml.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)]
+    .map((p) => [...p[0].matchAll(/<w:t(?: [^>]*)?>([^<]*)<\/w:t>/g)].map((t) => t[1]).join(""))
+    .map((line) => decode(line).trim())
+    .filter((line) => line !== "");
+}
+
+/** The words the print route shows for the header and the self-assessment strip, in order. */
+function printLines(worksheet: Worksheet): string[] {
+  const html = renderToStaticMarkup(
+    createElement(
+      "div",
+      null,
+      createElement(SheetHeader, { worksheet }),
+      worksheet.selfAssessment
+        ? createElement(FlowItemContent, { item: { kind: "rag" }, worksheet, mode: "print" })
+        : null,
+    ),
+  );
+  return html
+    .split(/<(?:h1|p|li|div)[^>]*>/)
+    .map((chunk) => decode(chunk.replace(/<[^>]+>/g, "")).trim())
+    .filter((line) => line !== "");
+}
+
+function headSheet(overrides: Partial<Worksheet["header"]> = {}, selfAssessment = true): Worksheet {
+  return {
+    ...everyBlockSheet(),
+    blocks: [],
+    includeAnswerKey: false,
+    selfAssessment,
+    header: {
+      showName: false,
+      showDate: false,
+      showClass: false,
+      title: "Rivers: erosion and deposition",
+      subtitle: "To explain how a meander forms.",
+      criteria: [
+        "I can name the inner and outer bank",
+        "",
+        "I can explain where erosion happens",
+        "I can explain where deposition happens",
+        "I can draw a meander",
+        "I can name an ox-bow lake",
+      ],
+      ...overrides,
+    },
+  };
+}
+
+describe("header rule: print and Word match (worksheets plan T3)", () => {
+  it("with the strip on: the title alone in the header, the criteria ticked in the strip", async () => {
+    const sheet = headSheet();
+    const head = sheetHead(sheet);
+    expect(head.objective).toBeUndefined();
+    expect(head.moreObjectives).toEqual([]);
+    const expected = [
+      head.title,
+      "Tick what you can do now",
+      ...head.criteria,
+      "How confident do you feel?",
+    ];
+    const word = wordLines((await xmlFor(sheet)).xml).map((line) => line.replace(/^☐\s+/, ""));
+    const print = printLines(sheet);
+    const pick = (lines: string[]) => lines.filter((line) => expected.includes(line));
+    expect(pick(word)).toEqual(expected as string[]);
+    expect(pick(print)).toEqual(expected as string[]);
+    for (const lines of [word, print]) {
+      expect(lines).not.toContain("To explain how a meander forms.");
+      expect(lines.join("\n")).not.toContain("ox-bow");
+      expect(lines.filter((line) => line === "I can draw a meander")).toHaveLength(1);
+    }
+  });
+
+  it("prints no tick boxes in either when the self-assessment strip is off, but still the objectives", async () => {
+    const sheet = headSheet({}, false);
+    const word = wordLines((await xmlFor(sheet)).xml);
+    const print = printLines(sheet);
+    for (const lines of [word, print]) {
+      expect(lines).toContain("Rivers: erosion and deposition");
+      expect(lines).toContain("To explain how a meander forms.");
+      expect(lines.join("\n")).not.toContain("Tick what you can do now");
+      expect(lines.join("\n")).not.toContain("☐");
+      expect(lines.filter((line) => line === "I can name the inner and outer bank")).toHaveLength(
+        1,
+      );
+    }
+  });
+
+  it("falls back to the document title in both when the header has none", async () => {
+    const sheet = { ...headSheet({ title: "" }), title: "Rivers sheet" };
+    expect(wordLines((await xmlFor(sheet)).xml)[0]).toBe("Rivers sheet");
+    expect(printLines(sheet)[0]).toBe("Rivers sheet");
+  });
+});
+
+describe("what the Word file carries (WS8)", () => {
+  it("is the pupil sheet alone by default, whatever the sheet's own switch says", async () => {
+    const sheet = { ...headSheet(), includeAnswerKey: true };
+    const buffer = Buffer.from(await Packer.toBuffer(await buildWorksheetDocx(sheet)));
+    const xml = readZipEntry(buffer, "word/document.xml");
+    expect(xml).not.toContain("Answer key");
+    expect(xml).not.toContain("Teacher copy");
+  });
+
+  it("the answer key alone starts with Teacher copy, with no name line and no page break first", async () => {
+    const sheet = everyBlockSheet();
+    const buffer = Buffer.from(
+      await Packer.toBuffer(await buildWorksheetDocx(sheet, { part: "key" })),
+    );
+    const xml = readZipEntry(buffer, "word/document.xml");
+    const lines = wordLines(xml);
+    expect(lines[0]).toBe("Teacher copy");
+    expect(lines).toContain("Answer key");
+    expect(xml).not.toContain("Name:");
+    expect(xml).not.toContain('w:type="page"');
+  });
+});
+
+describe("multiple-choice options in Word (REVIEW-web 4)", () => {
+  it("stack an option's fraction as the stem's", async () => {
+    const sheet: Worksheet = {
+      ...headSheet(),
+      blocks: [
+        {
+          id: "mc",
+          type: "multiple-choice",
+          doc: docFromText("Which is the same as six eighths?"),
+          options: [
+            { id: "o1", text: "3/4", correct: true },
+            { id: "o2", text: "2/3", correct: false },
+          ],
+          number: 1,
+        } as WorksheetBlock,
+      ],
+    };
+    const { xml } = await xmlFor({ ...sheet, includeAnswerKey: false });
+    expect((xml.match(/<m:f>/g) ?? []).length).toBe(2);
   });
 });

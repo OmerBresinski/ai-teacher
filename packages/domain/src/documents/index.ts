@@ -49,3 +49,5 @@ export * from "./text-metrics";
 export * from "./theme";
 export * from "./worksheet";
 export * from "./worksheet-guides";
+export * from "./worksheet-status";
+export * from "./year-group";

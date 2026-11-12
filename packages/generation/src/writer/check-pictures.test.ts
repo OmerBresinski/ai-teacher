@@ -107,7 +107,8 @@ const fitsAt =
     fitsWithVisual(slides[i] as S, next, ctxOf(i, failed, stage), key, st);
 
 describe("borrowCheckVisuals", () => {
-  test("a practice slide takes the teaching photo that shares its words, under `picture`", () => {
+  test("a practice slide whose teaching photo shares its words keeps its no-picture form: a repeat", () => {
+    // 12 Nov (CRITIQUE-1 item 3): the source slide already shows the photo; an empty slot beats it.
     const slides = [undefined, undefined, buckets, pulling, practice];
     const states: Record<number, VisualState> = {
       2: photo("Londoners fighting a fire in 1666"),
@@ -119,17 +120,11 @@ describe("borrowCheckVisuals", () => {
       state: (i) => (k) => (k === "picture" && states[i] ? states[i] : failed()),
       fits: fitsAt(slides),
     });
-    expect(r.skips).toEqual([]);
-    expect(r.routes).toHaveLength(1);
-    const route = r.routes[0];
-    expect(route?.slide).toBe(4);
-    expect(route?.from).toBe(2);
-    expect(route?.key).toBe("picture");
-    // A lent photo's words are always neutral (it draws no caption; a reader hears the alt).
-    expect(route?.form).toBe("neutral-alt");
-    expect((route?.json.picture as S | undefined)?.shows).toBe((buckets.figure as S).shows);
-    // The writer's words are untouched.
-    expect(route?.json.items).toEqual(practice.items);
+    expect(r.routes).toEqual([]);
+    expect(r.skips).toHaveLength(1);
+    expect(r.skips[0]).toMatchObject({ slide: 4, template: "practice", reason: "repeat" });
+    // The best match is named first.
+    expect(r.skips[0]?.why).toMatch(/^slide 3 /);
   });
 
   test("a teaching slide on another objective, or whose picture failed, is no source", () => {
@@ -202,7 +197,7 @@ describe("borrowCheckVisuals", () => {
     expect(r.skips).toEqual([]);
   });
 
-  test("words that do not fit beside the visual: not placed, logged as fit", () => {
+  test("a source that would not fit is still a repeat: nothing is lent to test", () => {
     const r = borrowCheckVisuals({
       slides: [undefined, undefined, buckets, practice],
       teaches: () => [3],
@@ -210,10 +205,10 @@ describe("borrowCheckVisuals", () => {
       fits: () => false,
     });
     expect(r.routes).toEqual([]);
-    expect(r.skips[0]).toMatchObject({ slide: 3, reason: "fit" });
+    expect(r.skips[0]).toMatchObject({ slide: 3, reason: "repeat" });
   });
 
-  test("hinge and exit ticket take it under `figure`", () => {
+  test("hinge and exit ticket would take it under `figure`; the exit ticket keeps none", () => {
     expect(checkSlotKey("hinge")).toBe("figure");
     expect(checkSlotKey("exit-ticket")).toBe("figure");
     const slides = [undefined, undefined, buckets, exit];
@@ -223,15 +218,8 @@ describe("borrowCheckVisuals", () => {
       state: (i) => (k) => (i === 2 && k === "picture" ? photo("Londoners at a fire") : failed()),
       fits: fitsAt(slides),
     });
-    expect(r.routes[0]?.key).toBe("figure");
-    // Laid with the borrowed state, the exit ticket draws the photo beside its ticket.
-    const st = r.routes[0]?.state as VisualState;
-    const m = materialise(
-      r.routes[0]?.json as S,
-      ctxOf(3, (k) => (k === "figure" ? st : failed())),
-    );
-    expect(m.over).toEqual([]);
-    expect(m.slide.elements.some((e) => e.type === "image")).toBe(true);
+    expect(r.routes).toEqual([]);
+    expect(r.skips[0]).toMatchObject({ slide: 3, template: "exit-ticket", reason: "repeat" });
   });
 });
 
@@ -328,7 +316,7 @@ describe("the answer-leak guard", () => {
     expect(safeForm(where, drawnLabels)).toEqual({ leak: expect.stringContaining("letters") });
   });
 
-  test("a drawing with no labels to letter is not reused: a leak skip with its reason", () => {
+  test("a drawing with no labels to letter has no safe form; borrowed, it is a repeat", () => {
     const drawn: VisualState = {
       status: "diagram",
       spec: { drawn: { src: "data:image/svg+xml,<svg><text>flower</text></svg>", alt: "" } },
@@ -347,7 +335,7 @@ describe("the answer-leak guard", () => {
       fits: () => true,
     });
     expect(r.routes).toEqual([]);
-    expect(r.skips[0]).toMatchObject({ slide: 3, template: "hinge", reason: "leak" });
+    expect(r.skips[0]).toMatchObject({ slide: 3, template: "hinge", reason: "repeat" });
   });
 
   test("any question counts: one answer word the question does not say is a leak", () => {

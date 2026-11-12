@@ -179,6 +179,7 @@ export function findOverflow(slide: Slide, measure?: Measurer): Id[] {
       role: parts.role,
       inset: parts.inset,
       chrome: parts.chrome,
+      maths: parts.maths,
     });
     if (needed > el.h + EPS) out.push(el.id);
   }
@@ -239,6 +240,7 @@ const growable = (slide: Slide) =>
           role: parts.role,
           inset: parts.inset,
           chrome: parts.chrome,
+          maths: parts.maths,
         } satisfies MeasureInput,
       },
     ];

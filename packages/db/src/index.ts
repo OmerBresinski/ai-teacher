@@ -50,6 +50,7 @@ export {
   type PutDocumentAsJobResult,
   type PutDocumentResult,
   parseDocumentBody,
+  pickWorksheetForGeneration,
   putDocument,
   putDocumentAsJob,
   type ReleaseStaleLockOptions,

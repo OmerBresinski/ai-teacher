@@ -297,6 +297,139 @@ test("picture-text takes the key cards and icon; a step model keeps its step bes
   expect(sm.figure).toBeDefined();
 });
 
+describe("every picture-text slide takes the gold design (layout audit rec. 1, 11 Nov 2026)", () => {
+  // A Year 2 lead-only slide as the live writer writes it: no key cards, no icon.
+  const plain = {
+    template: "visual-text",
+    fit: "points-0-fig",
+    heading: "The fire begins",
+    lead: "In 1666, a fire began in a bakery on Pudding Lane in London.",
+    points: [],
+    figure: pic,
+  };
+  const crayon = getTheme("crayon", "ks1");
+  const at = (visual: (k: string) => unknown, s: Record<string, unknown> = plain) => {
+    const ctx = {
+      brief: { subject: "history", topic: "x", stage: "ks1" },
+      theme: crayon,
+      stage: "ks1",
+      index: 3,
+      plan: { slides: [] },
+      visual,
+      // A gold-looks pack (`PilotPack.goldFits`): the live pack keeps the old routing (below).
+      goldLooks: true,
+    } as unknown as Parameters<typeof materialise>[1];
+    return ctx;
+  };
+  const els = (s: Record<string, unknown>, visual: (k: string) => unknown) =>
+    materialise(s, at(visual)).slide.elements as unknown as {
+      name?: string;
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+    }[];
+  const named = (e: ReturnType<typeof els>, n: string) => e.filter((x) => x.name === n);
+
+  test("the live pack (no goldLooks): no cards and no icon keeps the old layout; a failed picture is explain", async () => {
+    const { toInput } = await import("./materialise");
+    const live = (v: (k: string) => unknown) =>
+      ({ ...(at(v) as object), goldLooks: undefined }) as unknown as Parameters<typeof toInput>[1];
+    const input = toInput(plain, live(photo)) as unknown as {
+      template: string;
+      pictureText?: unknown;
+    };
+    expect(input.template).toBe("picture-text");
+    expect(input.pictureText).toBeUndefined();
+    const failed = toInput(
+      plain,
+      live(() => ({ status: "failed" })),
+    ) as unknown as {
+      template: string;
+    };
+    expect(failed.template).toBe("explain");
+  });
+
+  test("no cards and no icon: pictureText is set and the photo is the field, bleeding off the corner", async () => {
+    const { toInput } = await import("./materialise");
+    const input = toInput(plain, at(photo)) as unknown as {
+      template: string;
+      pictureText?: unknown;
+    };
+    expect(input.template).toBe("picture-text");
+    expect(input.pictureText).toEqual({});
+    const [ph] = named(els(plain, photo), "Photo");
+    expect(ph).toBeDefined();
+    expect((ph?.x ?? 0) + (ph?.w ?? 0)).toBeGreaterThan(960);
+    expect((ph?.y ?? 0) + (ph?.h ?? 0)).toBeGreaterThan(540);
+  });
+
+  test("with points (points-1-fig): the gold design too, a dot per point", () => {
+    const s = { ...plain, fit: "points-1-fig", points: ["The baker forgot to put out his oven."] };
+    const e = els(s, photo);
+    expect(named(e, "Point")).toHaveLength(1);
+    expect(named(e, "Point dot")).toHaveLength(1);
+    const [ph] = named(e, "Photo");
+    expect((ph?.x ?? 0) + (ph?.w ?? 0)).toBeGreaterThan(960);
+  });
+
+  test("a pending picture lays out in the same field before it arrives", () => {
+    const [ph] = named(
+      els(plain, () => ({ status: "pending" })),
+      "Photo",
+    );
+    expect(ph).toBeDefined();
+    expect((ph?.x ?? 0) + (ph?.w ?? 0)).toBeGreaterThan(960);
+  });
+
+  test("a failed picture with no icon: the gold's no-picture look, words across the width, no hole", async () => {
+    const { toInput } = await import("./materialise");
+    const failed = () => ({ status: "failed" });
+    const input = toInput(plain, at(failed)) as unknown as { template: string; figure?: unknown };
+    expect(input.template).toBe("picture-text");
+    expect(input.figure).toBeUndefined();
+    const e = els(plain, failed);
+    expect(named(e, "Photo")).toHaveLength(0);
+    expect(named(e, "Picture field")).toHaveLength(0);
+    const [lead] = named(e, "Lead");
+    expect(lead?.w ?? 0).toBeGreaterThan(600);
+  });
+
+  test("a failed picture with an icon: the sand field holds the icon's medal", () => {
+    // The icon must name what the slide says (groundIcons drops an icon the words do not ground).
+    const mummy = {
+      ...plain,
+      heading: "Wrapping the mummy",
+      lead: "Embalmers wrapped the mummy in linen.",
+      icon: "mummy",
+    };
+    const e = els(mummy, () => ({ status: "failed" }));
+    expect(named(e, "Picture field")).toHaveLength(1);
+    expect(named(e, "Picture medal")).toHaveLength(1);
+  });
+
+  test("diagram-text is unchanged: no pictureText, and a lost diagram still stands as words", async () => {
+    const { toInput } = await import("./materialise");
+    const dt = {
+      template: "diagram-text",
+      heading: "Water cycle",
+      lead: "Water moves.",
+      points: [],
+    };
+    const drawn = toInput({ ...dt, diagram: libModel }, {
+      ...at(() => ({ status: "diagram", spec: { kind: "model" } })),
+    } as never) as unknown as { template: string; pictureText?: unknown };
+    expect(drawn.pictureText).toBeUndefined();
+    const lost = toInput(
+      { ...dt, diagram: libModel },
+      at(() => ({ status: "failed" })),
+    ) as unknown as {
+      template: string;
+    };
+    expect(lost.template).toBe("explain");
+  });
+});
+
 describe("wave C caps at the slide's own count (review, 19 Oct 2026)", () => {
   const r = request("KS2");
   const W = waveCWords("KS2");

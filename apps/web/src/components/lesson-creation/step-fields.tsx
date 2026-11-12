@@ -1,8 +1,18 @@
 import {
+  DEFAULT_SHEET_RECIPE_ID,
+  OFFERED_RECIPE_IDS,
+  offeredForYear,
+  recogniseYearGroup,
   SLIDE_TIER_RANGES,
   SLIDE_TIERS,
+  type SlideSheetRecipeId,
   type SlideTier,
+  YEAR_GROUP_PLACEHOLDER,
   YEAR_GROUPS,
+  type YearGroupProblem,
+  yearGroupMessage,
+  yearGroupProblem,
+  yearMentionKey,
   yearNumberOf,
 } from "@tj/domain/documents";
 import {
@@ -19,18 +29,23 @@ import {
   Textarea,
 } from "@tj/ui";
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Field } from "@/components/brief/field";
 
-/** Ruling 164: the teacher picks a length tier; the writer picks the count inside it. */
+/**
+ * Ruling 164: the teacher picks a size; the writer picks the count inside it. Sizes, not minutes
+ * (Greg, 12 Nov 2026: "dont promise minutes"): the helper says only the slides the size makes. The
+ * stored tier ids stay `quick` / `standard` / `detailed`.
+ */
 const TIER_NAMES: Record<SlideTier, string> = {
-  quick: "Quick",
+  quick: "Short",
   standard: "Standard",
-  detailed: "Detailed",
+  detailed: "Long",
 };
 export const SLIDE_TIER_OPTIONS = SLIDE_TIERS.map((tier) => ({
   value: tier,
-  label: `${TIER_NAMES[tier]}, ${SLIDE_TIER_RANGES[tier].min}–${SLIDE_TIER_RANGES[tier].max} slides`,
+  label: TIER_NAMES[tier],
+  hint: `${SLIDE_TIER_RANGES[tier].min} to ${SLIDE_TIER_RANGES[tier].max} slides`,
 }));
 
 /**
@@ -48,11 +63,20 @@ export function ChoiceField({
   options,
   onChange,
   compact = false,
+  placeholder,
+  error,
+  triggerRef,
 }: {
   compact?: boolean;
   label: string;
   value: string;
-  options: readonly { value: string; label: string }[];
+  /** Shown while nothing is chosen (`value` is ""). */
+  placeholder?: string;
+  /** The field's error line, tied to the control by `aria-describedby`. */
+  error?: string;
+  triggerRef?: React.Ref<HTMLButtonElement>;
+  /** An option's `hint` is its plain helper, shown muted after the label. */
+  options: readonly { value: string; label: string; hint?: string }[];
   onChange: (value: string) => void;
 }) {
   const id = useId();
@@ -60,25 +84,62 @@ export function ChoiceField({
     <div className={compact ? "creation-compact-choice" : undefined}>
       <Field id={id} label={label}>
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger id={id} className="w-full">
-            <SelectValue />
+          <SelectTrigger
+            id={id}
+            ref={triggerRef}
+            className="w-full"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+          >
+            <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {options.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
+                  {option.hint ? (
+                    // The space reads between the two for a screen reader; flex drops it visually.
+                    <>
+                      {" "}
+                      <span className="text-ink-3">{option.hint}</span>
+                    </>
+                  ) : null}
                 </SelectItem>
               ))}
             </SelectGroup>
           </SelectContent>
         </Select>
+        {error ? (
+          <p id={`${id}-error`} role="alert" className="text-meta text-destructive">
+            {error}
+          </p>
+        ) : null}
       </Field>
     </div>
   );
 }
 
-export type IntakeBrief = { topic: string; yearGroup: string; level: string; files: string[] };
+export type IntakeBrief = {
+  topic: string;
+  /** "" until the teacher chooses (founder's ruling, 12 Nov 2026: no preset year group). */
+  yearGroup: string;
+  level: string;
+  files: string[];
+  /**
+   * The topic's year mentions (`yearMentionKey`) when the teacher answered the year-group
+   * question for them: the answer holds while the topic names the same years.
+   */
+  yearConfirmedFor?: string;
+};
+
+/** Whether the teacher has answered the year-group question for the topic as it now reads. */
+export const yearConfirmed = (brief: IntakeBrief) =>
+  brief.yearConfirmedFor !== undefined && brief.yearConfirmedFor === yearMentionKey(brief.topic);
+
+/** What the brief's year group needs before planning can start; undefined when it can go. */
+export const briefYearProblem = (brief: IntakeBrief) =>
+  yearGroupProblem(brief.yearGroup, brief.topic, yearConfirmed(brief));
 export function BriefStep({
   brief,
   onChange,
@@ -95,12 +156,28 @@ export function BriefStep({
 }) {
   const id = useId();
   const [levelOpen, setLevelOpen] = useState(false);
+  // Founder's ruling (12 Nov 2026): a year group the list does not have is asked, never guessed.
+  // A stored one that is not on the list (an older lesson's "P5") asks at once; the rest on Next.
+  const [yearAsk, setYearAsk] = useState<YearGroupProblem | undefined>(() => {
+    const problem = briefYearProblem(brief);
+    return problem?.reason === "unrecognised" ? problem : undefined;
+  });
+  const yearTrigger = useRef<HTMLButtonElement>(null);
+  /** Runs `next` when the year group can go; else asks, keeping everything the teacher typed. */
+  const go = (next: () => void) => {
+    const problem = briefYearProblem(brief);
+    if (problem === undefined) return next();
+    setYearAsk(problem);
+    // A topic naming another year: the teacher picks again, so the choice is theirs, not ours.
+    if (problem.reason === "conflict") onChange({ ...brief, yearGroup: "" });
+    yearTrigger.current?.focus();
+  };
   return (
     <form
       className="creation-form"
       onSubmit={(event) => {
         event.preventDefault();
-        onNext();
+        go(onNext);
       }}
     >
       <div className="creation-brief-source">
@@ -118,8 +195,16 @@ export function BriefStep({
       </div>
       <ChoiceField
         label="Year group"
-        value={brief.yearGroup}
-        onChange={(yearGroup) => onChange({ ...brief, yearGroup })}
+        value={recogniseYearGroup(brief.yearGroup) ?? ""}
+        placeholder={YEAR_GROUP_PLACEHOLDER}
+        error={yearAsk ? yearGroupMessage(yearAsk) : undefined}
+        triggerRef={yearTrigger}
+        onChange={(yearGroup) => {
+          // A pick made in answer to the question settles it for the topic's year mentions.
+          const answered = yearAsk?.reason === "conflict" ? yearMentionKey(brief.topic) : undefined;
+          onChange({ ...brief, yearGroup, yearConfirmedFor: answered ?? brief.yearConfirmedFor });
+          setYearAsk(undefined);
+        }}
         options={YEAR_GROUP_OPTIONS}
       />
       <div className="creation-disclosure" data-open={levelOpen}>
@@ -176,7 +261,7 @@ export function BriefStep({
           Next <ArrowRight />
         </Button>
         {onSkip ? (
-          <Button variant="link" disabled={!brief.topic.trim()} onClick={onSkip}>
+          <Button variant="link" disabled={!brief.topic.trim()} onClick={() => go(onSkip)}>
             Skip planning
           </Button>
         ) : null}
@@ -306,7 +391,7 @@ export function ObjectivesStep({
         <div className="creation-generation-options">
           <ChoiceField
             compact
-            label="Slides"
+            label="Lesson size"
             value={slideTier}
             onChange={(value) => onSlideTier(value as SlideTier)}
             options={SLIDE_TIER_OPTIONS}
@@ -336,19 +421,39 @@ export function ObjectivesStep({
 }
 
 export type WorksheetDraft = { id: string; recipe: string; minutes: string };
-const RECIPES = [
-  { value: "knowledge-check", label: "Knowledge check" },
-  { value: "exit-ticket", label: "Exit ticket" },
-  { value: "cloze", label: "Fill the gaps" },
-  { value: "matching", label: "Matching" },
-  { value: "misconception-check", label: "Spot the misconception" },
-  { value: "worked-example", label: "Worked example" },
-  { value: "reading", label: "Reading comprehension" },
-  { value: "word-search", label: "Word search" },
-  { value: "exam-style", label: "Exam-style questions" },
-];
+/** The launch types' picker labels (worksheets plan v2 §2); only the offered ones show. */
+const SHEET_TYPE_LABELS: Record<SlideSheetRecipeId, string> = {
+  practice: "Practice",
+  "quick-quiz": "Quick quiz",
+  "key-words": "Key words",
+  "exit-ticket": "Exit ticket",
+  "exam-style": "Exam practice",
+};
+// The old seven stay parseable but are no longer offered (plan v2 T6). Exam practice shows for
+// Years 10 and 11 only (T7).
+const recipesFor = (yearGroup: string | undefined) =>
+  OFFERED_RECIPE_IDS.filter((value) => offeredForYear(value, yearNumberOf(yearGroup))).map(
+    (value) => ({ value, label: SHEET_TYPE_LABELS[value] }),
+  );
+/**
+ * R4 review (12 Nov), web finding 8: a draft whose type the year no longer offers (Exam practice
+ * after the year is lowered below 10) goes back to Practice, so the picker never shows a blank and
+ * the request never posts a hidden type. The same array when nothing changes.
+ */
+export function draftsForYear(
+  worksheets: WorksheetDraft[],
+  yearGroup: string | undefined,
+): WorksheetDraft[] {
+  const offered = new Set<string>(recipesFor(yearGroup).map((option) => option.value));
+  if (worksheets.every((item) => offered.has(item.recipe))) return worksheets;
+  return worksheets.map((item) =>
+    offered.has(item.recipe) ? item : { ...item, recipe: DEFAULT_SHEET_RECIPE_ID },
+  );
+}
+
 export function WorksheetStep({
   worksheets,
+  yearGroup,
   maxWorksheets = Infinity,
   onChange,
   onBack,
@@ -356,12 +461,18 @@ export function WorksheetStep({
   onSkip,
 }: {
   worksheets: WorksheetDraft[];
+  /** The brief's year group: Exam practice is offered to Years 10 and 11 only. */
+  yearGroup?: string;
   maxWorksheets?: number;
   onChange: (worksheets: WorksheetDraft[]) => void;
   onBack: () => void;
   onMake: () => void;
   onSkip: () => void;
 }) {
+  useEffect(() => {
+    const next = draftsForYear(worksheets, yearGroup);
+    if (next !== worksheets) onChange(next);
+  }, [worksheets, yearGroup, onChange]);
   return (
     <div className="creation-form creation-worksheet-form">
       <div className="creation-worksheet-list">
@@ -388,7 +499,7 @@ export function WorksheetStep({
               <ChoiceField
                 label="Activity type"
                 value={worksheet.recipe}
-                options={RECIPES}
+                options={recipesFor(yearGroup)}
                 onChange={(recipe) =>
                   onChange(
                     worksheets.map((item) =>
@@ -424,7 +535,7 @@ export function WorksheetStep({
             onClick={() =>
               onChange([
                 ...worksheets,
-                { id: crypto.randomUUID(), recipe: "exit-ticket", minutes: "5" },
+                { id: crypto.randomUUID(), recipe: "practice", minutes: "15" },
               ])
             }
           >

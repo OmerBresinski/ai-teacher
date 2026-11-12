@@ -80,15 +80,25 @@ import {
 import {
   CreateLessonSchema,
   GenerateLessonSchema,
+  isUnfinishedWorksheet,
   type Lesson,
   lessonFromBrief,
+  OFFERED_RECIPE_IDS,
+  offeredForYear,
+  offeredRecipeFor,
   PlanLessonSchema,
   RequestWorksheetSchema,
+  recogniseYearGroup,
   type SourceRef,
+  WORKSHEET_TYPE_UNAVAILABLE_MESSAGE,
   type Worksheet,
+  yearGroupMessage,
+  yearGroupProblem,
+  yearNumberOf,
 } from "@tj/domain/documents";
 import { cancel, enqueue } from "@tj/jobs";
-import { defaultPracticeMinutes, isRecipeId, newWorksheet, resolveRecipe } from "@tj/slides";
+import { defaultPracticeMinutes, isRecipeId, newWorksheet, recipeById } from "@tj/slides";
+import { availableTypes, lessonDigest } from "@tj/slides/worksheet/digest";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -102,7 +112,7 @@ import {
 } from "../auth/anonymous-limits";
 import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
-import { AnonymousRefusedError, ConflictError } from "../errors";
+import { AnonymousRefusedError, ConflictError, ValidationError } from "../errors";
 import type { EventsRuntime } from "../events/runtime";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
@@ -115,6 +125,21 @@ import {
 import { requireRuntime } from "./jobs";
 import { confirmLesson, replanLesson } from "./plan-patches";
 import { assertKnownTheme } from "./theme-guard";
+
+/**
+ * The year group as the list spells it, or a `400` naming `yearGroup` whose message is the
+ * intake's own question (founder's ruling, 12 Nov 2026): a blank or unrecognised year group, or a
+ * topic naming another year or stage the teacher has not confirmed, is refused, never mapped.
+ */
+function assertYearGroup(
+  yearGroup: string | undefined,
+  topic: string,
+  confirmed: boolean | undefined,
+): string {
+  const problem = yearGroupProblem(yearGroup, topic, confirmed === true);
+  if (problem !== undefined) throw new ValidationError(["yearGroup"], yearGroupMessage(problem));
+  return recogniseYearGroup(yearGroup) as string;
+}
 
 // `lessonFromBrief` lives in `@tj/domain/documents` (shared with the Studio entry); re-exported
 // because `lessons.test.ts` and the brief screen import it from here.
@@ -259,6 +284,61 @@ export const WORKSHEET_NOT_CONFIRMED_MESSAGE = "Confirm the plan before making a
 export const WORKSHEET_GENERATING_MESSAGE = "A worksheet for this lesson is already being written.";
 export const WORKSHEET_QUEUED_MESSAGE = "A worksheet for this lesson was requested a moment ago.";
 export const UNKNOWN_RECIPE_MESSAGE = "That worksheet recipe does not exist.";
+export const WORKSHEET_SLIDES_PENDING_MESSAGE =
+  "The slides are still being written. The worksheet can be made once they are done.";
+
+export const WORKSHEET_LESSON_BUSY_MESSAGE =
+  "The lesson is still being written or checked. The worksheet can be made once it is done.";
+export const WORKSHEET_NO_PLAN_MESSAGE =
+  "This lesson was not made from a confirmed plan, so a worksheet cannot be written from it.";
+
+/**
+ * Whether a sheet can be read from the lesson now, and why not. R4 review (12 Nov): stage
+ * `generated` is written before illustrate, evaluate and repair (`STAGE_CHECKPOINT`), and a
+ * regeneration keeps the old stage, so the stage alone let a sheet be built from slides that were
+ * still being repaired; while a lesson job holds the lesson's lock (`generatingJobId`) it is busy.
+ * A lesson with no recorded stage (made before stages were recorded, or by hand) is ready when its
+ * plan is confirmed with facts and it has slides; otherwise it says so, rather than "still being
+ * written" for ever.
+ */
+export function sheetReadiness(
+  lesson: Lesson,
+  generatingJobId: string | null | undefined,
+): { ready: true } | { ready: false; reason: string } {
+  if (generatingJobId) return { ready: false, reason: WORKSHEET_LESSON_BUSY_MESSAGE };
+  const stage = lesson.generation?.stage;
+  if (stage === undefined) {
+    return lesson.plan?.state === "confirmed" && lesson.facts && lesson.slides.length > 0
+      ? { ready: true }
+      : { ready: false, reason: WORKSHEET_NO_PLAN_MESSAGE };
+  }
+  return stage === "planned"
+    ? { ready: false, reason: WORKSHEET_SLIDES_PENDING_MESSAGE }
+    : { ready: true };
+}
+
+/**
+ * The offered sheet types for this lesson, each greyed with its reason when the slides cannot
+ * carry it (`availableTypes` over `lessonDigest`, worksheets plan v2 T6). Before the slides are
+ * written every type is greyed with `WORKSHEET_SLIDES_PENDING_MESSAGE`.
+ */
+export function offeredSheetTypes(
+  lesson: Lesson,
+  generatingJobId?: string | null,
+): { type: string; name: string; available: boolean; reason?: string }[] {
+  const readiness = sheetReadiness(lesson, generatingJobId);
+  const written = readiness.ready;
+  const availability = written ? availableTypes(lessonDigest(lesson)) : [];
+  const year = yearNumberOf(lesson.yearGroup);
+  return OFFERED_RECIPE_IDS.filter((type) => offeredForYear(type, year)).map((type) => {
+    const name = recipeById(type)?.name ?? type;
+    if (!readiness.ready) return { type, name, available: false, reason: readiness.reason };
+    const found = availability.find((a) => a.type === type);
+    return found?.available === false
+      ? { type, name, available: false, reason: found.reason ?? WORKSHEET_TYPE_UNAVAILABLE_MESSAGE }
+      : { type, name, available: true };
+  });
+}
 /**
  * One `lesson.worksheet` job per lesson per this many seconds (ADR 0030 item 8): the
  * `singletonKey` slot that makes two requests racing past `findWorksheetForGeneration` one job.
@@ -478,11 +558,18 @@ export function lessonRoutes(
         zValidator("json", CreateLessonSchema, validationHook),
         async (c) => {
           const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-          const rt = requireRuntime(runtime);
           const sent = c.req.valid("json");
+          // Founder's ruling (12 Nov 2026): an unrecognised year group is asked, never guessed.
+          // Checked before the runtime, so a refused brief is a 400 whatever the server's state.
+          const yearGroup = assertYearGroup(
+            sent.yearGroup,
+            sent.brief.topic,
+            sent.yearGroupConfirmed,
+          );
+          const rt = requireRuntime(runtime);
           // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
           const themeId = assertKnownTheme(sent.themeId);
-          const input = themeId === sent.themeId ? sent : { ...sent, themeId };
+          const input = { ...sent, yearGroup, ...(themeId === sent.themeId ? {} : { themeId }) };
           const ws = forWorkspace(unsafeDb, workspaceId);
           const { requestId, skipPlanning = false } = input;
           if (requestId !== undefined) {
@@ -539,9 +626,21 @@ export function lessonRoutes(
         zValidator("json", PlanLessonSchema, validationHook),
         async (c) => {
           const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-          const rt = requireRuntime(runtime);
           const lessonId = c.req.valid("param").id as LessonId;
-          const input = c.req.valid("json");
+          const sent = c.req.valid("json");
+          // A re-plan that sends a year group is held to the same rule as the create.
+          const input =
+            sent.yearGroup === undefined
+              ? sent
+              : {
+                  ...sent,
+                  yearGroup: assertYearGroup(
+                    sent.yearGroup,
+                    sent.brief.topic,
+                    sent.yearGroupConfirmed,
+                  ),
+                };
+          const rt = requireRuntime(runtime);
           const ws = forWorkspace(unsafeDb, workspaceId);
           const jobId = newId<JobId>();
           const anonymousUser = c.get("user")?.isAnonymous === true;
@@ -568,6 +667,9 @@ export function lessonRoutes(
                 if (anonymousUser && (stored.plan?.revision ?? 1) > ANONYMOUS_REPLAN_LIMIT) {
                   throw new AnonymousRefusedError("sign_in_required", REPLAN_LIMIT_MESSAGE);
                 }
+                // No year group sent: the stored one must still be one the writer can pitch to.
+                if (sent.yearGroup === undefined)
+                  assertYearGroup(stored.yearGroup, input.brief.topic, sent.yearGroupConfirmed);
                 const next = replanLesson(stored, input, { jobId, sources: sources?.sources });
                 return { lesson: next.lesson, meta: next.pinned };
               },
@@ -836,6 +938,12 @@ export function lessonRoutes(
           if (input.recipeId !== "auto" && !isRecipeId(input.recipeId)) {
             throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
           }
+          // Plan v2 T7: `auto` (and the retired `knowledge-check`) is Practice; a known type that is
+          // not offered yet is refused before any lookup.
+          const offered = offeredRecipeFor(input.recipeId);
+          if (offered === null) {
+            throw new HTTPException(422, { message: WORKSHEET_TYPE_UNAVAILABLE_MESSAGE });
+          }
           const rt = requireRuntime(runtime);
           const lessonId = c.req.valid("param").id as LessonId;
           const ws = forWorkspace(unsafeDb, workspaceId);
@@ -847,11 +955,7 @@ export function lessonRoutes(
           const plan = lesson.plan;
           const holder = row.generatingJobId ?? undefined;
           // Confirmed and planned: the facts the sheet is built from are verified (ADR 0029 item 2).
-          if (
-            plan?.state !== "confirmed" ||
-            lesson.generation?.stage === undefined ||
-            !lesson.facts
-          ) {
+          if (plan?.state !== "confirmed" || !lesson.facts) {
             throw new ConflictError("planning", WORKSHEET_NOT_CONFIRMED_MESSAGE, {
               ...(plan ? { revision: plan.revision } : {}),
               ...(holder ? { jobId: holder } : {}),
@@ -860,16 +964,35 @@ export function lessonRoutes(
           if (plan.revision !== input.expectedRevision) {
             throw new ConflictError("stale", STALE_PLAN_MESSAGE, { revision: plan.revision });
           }
-          const recipe = resolveRecipe(
-            input.recipeId === "auto" ? "auto" : input.recipeId,
-            lesson.facts,
-          );
+          // The sheet is read from the slides, so they must be written, checked and repaired
+          // first: never while a lesson job holds the lesson (R4 review, 12 Nov).
+          const readiness = sheetReadiness(lesson, holder);
+          if (!readiness.ready) {
+            throw new ConflictError("planning", readiness.reason, {
+              revision: plan.revision,
+              ...(holder ? { jobId: holder } : {}),
+            });
+          }
+          // Greyed for this lesson (too little on its slides): refused with the greyed reason.
+          // Not listed for this lesson at all (Exam practice outside Years 10-11): unavailable.
+          const greyed = offeredSheetTypes(lesson, holder).find((t) => t.type === offered);
+          if (!greyed)
+            throw new HTTPException(422, { message: WORKSHEET_TYPE_UNAVAILABLE_MESSAGE });
+          if (greyed.available === false) {
+            throw new HTTPException(422, { message: greyed.reason });
+          }
+          const recipe = recipeById(offered);
+          if (!recipe) throw new HTTPException(422, { message: UNKNOWN_RECIPE_MESSAGE });
           const practiceMinutes =
             input.practiceMinutes === "auto"
               ? defaultPracticeMinutes(recipe)
               : input.practiceMinutes;
           const jobId = newId<JobId>();
-          const found = await findWorksheetForGeneration(ws, lessonId);
+          const found = await findWorksheetForGeneration(ws, lessonId, {
+            ...(input.worksheetId !== undefined
+              ? { worksheetId: input.worksheetId }
+              : { recipeId: recipe.id }),
+          });
           if (found.kind === "generating") {
             throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
               worksheetId: found.row.id,
@@ -959,6 +1082,21 @@ export function lessonRoutes(
           return c.json({ worksheetId, jobId }, 202);
         },
       )
+      /** The sheet types the lesson's Worksheet picker offers, each greyed with its reason (T6). */
+      .get(
+        "/lessons/:id/worksheet-types",
+        zValidator("param", lessonParam, validationHook),
+        async (c) => {
+          const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
+          const lessonId = c.req.valid("param").id as LessonId;
+          const ws = forWorkspace(unsafeDb, workspaceId);
+          const row = await getDocument(ws, lessonId);
+          if (row === null || row.kind !== "lesson") {
+            throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
+          }
+          return c.json({ types: offeredSheetTypes(row.body as Lesson, row.generatingJobId) });
+        },
+      )
       .get(
         "/lessons/:id/worksheets",
         zValidator("param", lessonParam, validationHook),
@@ -971,9 +1109,12 @@ export function lessonRoutes(
             throw new HTTPException(404, { message: NOT_FOUND_MESSAGE });
           }
           const rows = await listWorksheetsOfLesson(ws, lessonId);
+          // `unfinished` is read from the whole body, so a row whose promoted cover predates the
+          // flag is still labelled right in the lesson's Worksheet dialog.
           const items = rows.map(({ body, ...summary }) => ({
             ...toSummaryJson(summary),
             generation: (body as Worksheet).generation,
+            unfinished: isUnfinishedWorksheet(body as Worksheet),
           }));
           return c.json({ items });
         },

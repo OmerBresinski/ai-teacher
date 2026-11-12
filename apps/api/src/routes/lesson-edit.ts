@@ -33,6 +33,7 @@ import {
 } from "@tj/domain/documents";
 import {
   AGENT_MESSAGES,
+  deepElements,
   EDIT_INSTRUCTION_MAX,
   EDIT_MESSAGES,
   type EditFastPartial,
@@ -70,9 +71,11 @@ export type LessonEditOptions = {
   heartbeatMs?: number | undefined;
 };
 
-/** Every text of a slide, for the identifier guard. */
+/** Every text of a slide, a group's at any depth too, for the identifier guard. */
 const slideTexts = (slide: Slide): string[] =>
-  slide.elements.flatMap((e) => (e.type === "text" ? [richDocToPlainText(e.doc)] : []));
+  deepElements(slide.elements).flatMap((e) =>
+    e.type === "text" ? [richDocToPlainText(e.doc)] : [],
+  );
 
 export const LessonEditBodySchema = z.strictObject({
   slide: SlideSchema,
@@ -123,10 +126,10 @@ export function lessonEditRoutes(
       }
       // The client's slide is used as sent (unsaved typing matters), but it must be this slide:
       // every box it names is one the saved slide has.
-      const known = new Set(stored.elements.map((e) => e.id));
+      const known = new Set(deepElements(stored.elements).map((e) => e.id));
       if (
         (body.elementId !== undefined && !known.has(body.elementId)) ||
-        slide.elements.some((e) => !known.has(e.id))
+        deepElements(slide.elements).some((e) => !known.has(e.id))
       ) {
         throw new HTTPException(400, { message: SLIDE_CHANGED });
       }
@@ -154,7 +157,7 @@ export function lessonEditRoutes(
           return { action: "refuse" as const, reason: SLIDE_IDENTIFIER, check: "identifier" };
         }
         if (ai === undefined || ai.kind === "unconfigured") {
-          return { action: "failed" as const, reason: EDIT_MESSAGES.failed };
+          return { action: "failed" as const, reason: EDIT_MESSAGES.serverFailed };
         }
         try {
           const result = await editFast(
@@ -208,7 +211,8 @@ export function lessonEditRoutes(
           }
           if (signal.aborted) logger.info({ action: "stopped" }, "lesson edit");
           else logger.warn({ error: (error as Error).name }, "lesson edit failed");
-          return { action: "failed" as const, reason: EDIT_MESSAGES.failed };
+          // A timeout, a 429 or any provider or server fault: ours, not the teacher's wording.
+          return { action: "failed" as const, reason: EDIT_MESSAGES.serverFailed };
         }
       };
 

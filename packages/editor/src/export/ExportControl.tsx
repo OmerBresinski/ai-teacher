@@ -1,5 +1,10 @@
 import type { Lesson, Worksheet } from "@tj/domain/documents";
-import { SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import {
+  answerKeyBlockedReason,
+  isUnfinishedWorksheet,
+  SLIDE_H,
+  SLIDE_W,
+} from "@tj/domain/documents";
 import {
   Button,
   cn,
@@ -27,6 +32,9 @@ import { prepareDiagramFonts } from "../images/diagram-fonts";
 import { Segmented } from "../kit/Segmented";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
+import { hasAnyAnswer } from "../worksheet/answers";
+import type { SheetPart } from "../worksheet/paginate";
+import { KEY_PRINT_BLOCKED, UNFINISHED_PRINT_BLOCKED } from "../worksheet/unfinished-copy";
 import { downloadBlob } from "./download";
 import { downloadLessonJSON, downloadWorksheetJSON } from "./json";
 import { waitForSlidePaint } from "./paint";
@@ -155,9 +163,9 @@ export function ExportControl({
   const [answers, setAnswers] = useState(false);
   const [notes, setNotes] = useState(false);
   const [pngScale, setPngScale] = useState<PngScale>(2);
-  // Word keeps the worksheet's own answer-key setting as its default (ADR 0023 §7); re-read each
-  // time the dialog opens (below), so a sheet toggled since the last export is followed.
-  const [answerKey, setAnswerKey] = useState(worksheet ? document.includeAnswerKey : false);
+  // What a worksheet's PDF and Word carry: the pupil sheet by default, never the key unasked (WS8:
+  // a key printed after the sheet ends up photocopied for the class). Reset each time it opens.
+  const [part, setPart] = useState<SheetPart>("pupil");
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   /** What is on the offscreen stage; `null` between and after runs. */
@@ -171,7 +179,22 @@ export function ExportControl({
   // PDF and PNG read the range; PowerPoint and JSON take the whole document.
   const rangeApplies = !!lesson && (format === "pdf" || format === "png");
   const empty = rangeApplies && range.ok && range.indices.length === 0;
-  const blocked = (rangeApplies && !!rangeError) || empty || !!run;
+  // An unfinished sheet (`isUnfinishedWorksheet`) prints placeholders: PDF and Word stay off and
+  // say why. A question with no answer stops only the key parts (R4 review: a teacher-added
+  // question must not stop the pupil copy). JSON is the stored document, so it stays on.
+  const sheetFormat = worksheet && (format === "pdf" || format === "docx");
+  // A sheet with no answers has no key to print (R4 review: Answer key opened a blank page and an
+  // empty Word section): only the pupil sheet is offered, and the row says why.
+  const hasKey = worksheet && hasAnyAnswer((document as Worksheet).blocks);
+  const sheetPart: SheetPart = hasKey ? part : "pupil";
+  const unfinishedBlocked = !!sheetFormat && isUnfinishedWorksheet(document as Worksheet);
+  const keyBlocked =
+    !!sheetFormat &&
+    !unfinishedBlocked &&
+    sheetPart !== "pupil" &&
+    answerKeyBlockedReason(document as Worksheet) === "missing-answer";
+  const blocked =
+    (rangeApplies && !!rangeError) || empty || !!run || unfinishedBlocked || keyBlocked;
 
   const close = () => {
     setOpen(false);
@@ -208,7 +231,7 @@ export function ExportControl({
     // `docx` packs the whole file in one call: there is nothing to stop.
     setRun({ label: "Building the Word file", cancellable: false });
     const { worksheetDocxBlob, docxFilename } = await exportLoaders.docx();
-    const blob = await worksheetDocxBlob(sheet, { includeAnswerKey: answerKey, imageOrigin });
+    const blob = await worksheetDocxBlob(sheet, { part: sheetPart, imageOrigin });
     downloadBlob(blob, docxFilename(sheet));
     finish("Worksheet exported as Word");
   };
@@ -281,7 +304,7 @@ export function ExportControl({
                   layout,
                   slides,
                 })
-              : worksheetPrintHref(document.id),
+              : worksheetPrintHref(document.id, { part: sheetPart }),
           );
           finish("Opened the print view");
           return;
@@ -324,7 +347,7 @@ export function ExportControl({
       open={open}
       onOpenChange={(next) => {
         if (next) {
-          if (worksheet) setAnswerKey(document.includeAnswerKey);
+          if (worksheet) setPart("pupil");
           setOpen(true);
         } else {
           close();
@@ -396,10 +419,12 @@ export function ExportControl({
                 )}
               </>
             ) : (
-              <Note>
-                The sheet prints at its saved page size. The answer key follows the worksheet's own
-                setting.
-              </Note>
+              <>
+                <PartRow value={sheetPart} onChange={setPart} hasKey={!!hasKey} />
+                <Note>The sheet prints at its saved page size.</Note>
+                {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
+                {keyBlocked ? <Note>{KEY_PRINT_BLOCKED}</Note> : null}
+              </>
             )}
           </TabsContent>
           {lesson ? (
@@ -449,11 +474,10 @@ export function ExportControl({
           ) : null}
           {worksheet ? (
             <TabsContent value="docx" className="flex min-h-[180px] flex-col gap-3 pt-2">
-              <SwitchRow label="Include answer key" checked={answerKey} onChange={setAnswerKey} />
-              <Note>
-                Every question, box and line as real Word text and tables, in Calibri. The answer
-                key goes on a page of its own at the end.
-              </Note>
+              <PartRow value={sheetPart} onChange={setPart} hasKey={!!hasKey} />
+              <Note>Every question, box and line as real Word text and tables, in Calibri.</Note>
+              {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
+              {keyBlocked ? <Note>{KEY_PRINT_BLOCKED}</Note> : null}
             </TabsContent>
           ) : null}
           <TabsContent value="json" className="pt-2">
@@ -639,4 +663,40 @@ function SwitchRow({
 
 function Note({ children }: { children: ReactNode }) {
   return <p className="m-0 text-meta text-ink-3">{children}</p>;
+}
+
+/** Labels for what a worksheet export carries; the key is marked "Teacher copy" on its page. */
+const PART_OPTIONS: { value: SheetPart; label: string }[] = [
+  { value: "pupil", label: "Pupil sheet" },
+  { value: "key", label: "Answer key" },
+  { value: "both", label: "Both" },
+];
+
+function PartRow({
+  value,
+  onChange,
+  hasKey,
+}: {
+  value: SheetPart;
+  onChange: (part: SheetPart) => void;
+  hasKey: boolean;
+}) {
+  return (
+    <>
+      <OptionRow label="Print">
+        <Segmented
+          aria-label="What to print"
+          value={value}
+          onChange={(v) => onChange(v as SheetPart)}
+          options={PART_OPTIONS.map((o) => ({ ...o, disabled: !hasKey && o.value !== "pupil" }))}
+        />
+      </OptionRow>
+      {hasKey ? null : (
+        <Note>This sheet has no answers yet, so there is no answer key to print.</Note>
+      )}
+      {value === "both" ? (
+        <Note>The answer key starts on its own page, marked Teacher copy.</Note>
+      ) : null}
+    </>
+  );
 }

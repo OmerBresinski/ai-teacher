@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
   MADE_PICTURE_RULES,
   type PickOrRequeryInput,
+  PickOrRequerySchema,
   pickOrRequeryPrompt,
+  pickOrRequerySchemaFor,
 } from "./pick-or-requery-photo-directed";
 
 const input: PickOrRequeryInput = {
@@ -79,5 +81,63 @@ describe("pick-or-requery v19: writing in another language (TEACH-251 part al)",
       "When a period and place are given, nothing visible may belong to another time or place.",
     );
     expect(MADE_PICTURE_RULES).toContain("distressing or violent scene");
+  });
+});
+
+describe("pick-or-requery v21: the picture shows what this slide's words name (12 Nov review)", () => {
+  test("the answer is written in order: needs, then pick and seen, then showsNeeds, before the verdicts", () => {
+    const keys = Object.keys(PickOrRequerySchema.in.shape);
+    expect(keys.slice(0, 4)).toEqual(["needs", "pick", "seen", "showsNeeds"]);
+    expect(keys.indexOf("showsNeeds")).toBeLessThan(keys.indexOf("fits"));
+    // The examples in the system text follow the same order.
+    const s = pickOrRequeryPrompt.system;
+    expect(s.indexOf('"needs"')).toBeLessThan(s.indexOf('"pick": "27147699"'));
+    expect(s.indexOf('"showsNeeds": true')).toBeLessThan(s.indexOf('"fits": true'));
+  });
+
+  test("an answer that leaves out showsNeeds reads as false", () => {
+    const recorded = {
+      pick: "commons-51034772",
+      onSubject: true,
+      clear: true,
+      fits: true,
+      why: "The painting shows buildings burning, though it does not show people passing buckets.",
+      visible: ["burning building"],
+    };
+    const parsed = pickOrRequerySchemaFor({ mustShow: ["burning building"] }).parse(recorded);
+    expect(parsed.showsNeeds).toBe(false);
+    expect(parsed.needs).toBeNull();
+  });
+
+  test("the system text defines needs from the slide's own words and ties fits to showsNeeds", () => {
+    const s = pickOrRequeryPrompt.system;
+    expect(s).toContain("- `needs`: write this first, before you look at the candidates");
+    expect(s).toContain("the living thing, time and place it belongs to");
+    expect(s).toContain("When `showsNeeds` is false, `fits` is false too.");
+    expect(s).toContain(
+      "One required item in view does not make it true when that item is only the setting.",
+    );
+    expect(s.indexOf("- `needs`:")).toBeLessThan(s.indexOf("- `pick`:"));
+  });
+
+  test("a non-exhaustive item list still asks for what needs names; the painted rules keep needs", () => {
+    const text = pickOrRequeryPrompt.user({ ...input, needAll: false });
+    expect(text).toContain(
+      "at least one must be visible, and the picture must also show what `needs` names",
+    );
+    expect(MADE_PICTURE_RULES).toContain("the list below is only for `fits`");
+    expect(MADE_PICTURE_RULES).toContain(
+      "or the wanted one in a different kind of living thing, time or place from the one this slide's words and the lesson give",
+    );
+  });
+
+  test("the slide's words reach the judge on the This slide line", () => {
+    const text = pickOrRequeryPrompt.user({
+      ...input,
+      slideBrief: "Water buckets. People passed buckets of water to throw on flames.",
+    });
+    expect(text).toContain(
+      "This slide: Water buckets. People passed buckets of water to throw on flames.",
+    );
   });
 });

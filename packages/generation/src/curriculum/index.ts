@@ -182,43 +182,41 @@ export type CurriculumLookup = {
   years?: [number, number];
   /**
    * Without a topic, every statutory statement for those years, in source order. With one, the
-   * matched domains' statements in full, best first, then at most `CURRICULUM_OTHER_CAP` others.
+   * matched domains' statements in full, best first, then at most `CURRICULUM_OTHER_CAP` others
+   * (none with `matchedOnly`).
    */
   statements: CurriculumStatement[];
   /** The domain headings the topic matched, best first (empty without a topic or a match). */
   matchedDomains: string[];
+  /**
+   * The statements taught in the nearest earlier year or band of the subject (v5.2-gold, BUILDER
+   * B2) that the topic matches, in match order, at most `CURRICULUM_BEFORE_CAP`. Empty without a
+   * topic, a match or an earlier year.
+   */
+  before: CurriculumStatement[];
 };
 
 /** With a topic, how many statements outside the matched domains still go to the prompt. */
 export const CURRICULUM_OTHER_CAP = 8;
 /** A domain matched only through a statement's text goes in whole when it has at most this many. */
 export const CURRICULUM_WHOLE_DOMAIN_MAX = 12;
+/** At most this many earlier-year statements go to the objectives call (`before`). */
+export const CURRICULUM_BEFORE_CAP = 10;
+
+const groupKey = (s: CurriculumStatement) => `${s.yearBand}\u0000${s.headings.join("\u0000")}`;
 
 /**
- * The statutory statements for one subject and year group. Without a topic, all of them in
- * source order. With a topic, the domains whose heading shares a keyword with it come first, then
- * the domains whose statements do, best first, each in full; after them at most
- * `CURRICULUM_OTHER_CAP` statements from the other domains, in source order, so the objectives
- * prompt never gets a whole key stage's list. Deterministic: a keyword match, no model call.
+ * The rows the topic matches, best first: the domains whose heading shares a topic keyword go in
+ * whole; with none, the domains holding a statement whose text shares one, best statement first,
+ * whole when the domain is short, else only the matching statements (a KS4 domain can run to
+ * dozens of rows). Empty when nothing matches.
  */
-export function curriculumFor(q: CurriculumQuery): CurriculumLookup {
-  const subject = norm(q.country) === "england" ? curriculumSubject(q.subject) : undefined;
-  const years = curriculumYears(q.yearGroup);
-  if (!subject || years === undefined) return { statements: [], matchedDomains: [] };
-  const [lo, hi] = years;
-  const rows = CURRICULUM.filter(
-    (s) => s.subject === subject && s.years[0] <= hi && lo <= s.years[1],
-  );
+function topicMatch(
+  rows: readonly CurriculumStatement[],
+  topic: Set<string>,
+): CurriculumStatement[] {
   const groups = new Map<string, CurriculumStatement[]>();
-  for (const s of rows) {
-    const key = `${s.yearBand}\u0000${s.headings.join("\u0000")}`;
-    groups.set(key, [...(groups.get(key) ?? []), s]);
-  }
-  const topic = words(q.topic ?? "");
-  if (topic.size === 0) return { subject, years, statements: rows, matchedDomains: [] };
-  // A domain whose heading shares a topic keyword goes in whole, best first. With none, the
-  // domains holding a statement whose text shares one, best statement first: whole when the
-  // domain is short, else only the matching statements (a KS4 domain can run to dozens of rows).
+  for (const s of rows) groups.set(groupKey(s), [...(groups.get(groupKey(s)) ?? []), s]);
   const scored = [...groups.values()].map((g, order) => {
     const head = overlap(topic, words((g[0] as CurriculumStatement).domain));
     const hits = g.filter((s) => overlap(topic, words(s.text)) > 0);
@@ -234,14 +232,48 @@ export function curriculumFor(q: CurriculumQuery): CurriculumLookup {
           .filter((r) => r.best > 0)
           .sort((a, b) => byOrder(a.best, b.best, a.order, b.order))
           .map((r) => (r.g.length <= CURRICULUM_WHOLE_DOMAIN_MAX ? r.g : r.hits));
-  const picked = matched.flat();
+  return matched.flat();
+}
+
+/**
+ * The statutory statements for one subject and year group. Without a topic, all of them in
+ * source order. With a topic, the domains whose heading shares a keyword with it come first, then
+ * the domains whose statements do, best first, each in full; after them at most
+ * `CURRICULUM_OTHER_CAP` statements from the other domains, in source order, so the objectives
+ * prompt never gets a whole key stage's list (`matchedOnly`: none, so nothing when nothing
+ * matches). `before` holds the topic's statements from the nearest earlier year or band.
+ * Deterministic: a keyword match, no model call.
+ */
+export function curriculumFor(
+  q: CurriculumQuery,
+  opts: { matchedOnly?: boolean } = {},
+): CurriculumLookup {
+  const subject = norm(q.country) === "england" ? curriculumSubject(q.subject) : undefined;
+  const years = curriculumYears(q.yearGroup);
+  if (!subject || years === undefined) return { statements: [], matchedDomains: [], before: [] };
+  const [lo, hi] = years;
+  const ofSubject = CURRICULUM.filter((s) => s.subject === subject);
+  const rows = ofSubject.filter((s) => s.years[0] <= hi && lo <= s.years[1]);
+  const topic = words(q.topic ?? "");
+  if (topic.size === 0) return { subject, years, statements: rows, matchedDomains: [], before: [] };
+  // The nearest earlier year or band: the rows ending last among those ending before the class.
+  const earlier = ofSubject.filter((s) => s.years[1] < lo);
+  const last = Math.max(0, ...earlier.map((s) => s.years[1]));
+  const before = topicMatch(
+    earlier.filter((s) => s.years[1] === last),
+    topic,
+  ).slice(0, CURRICULUM_BEFORE_CAP);
+  const picked = topicMatch(rows, topic);
   const ids = new Set(picked.map((s) => s.id));
-  const others = rows.filter((s) => !ids.has(s.id)).slice(0, CURRICULUM_OTHER_CAP);
+  const others = opts.matchedOnly
+    ? []
+    : rows.filter((s) => !ids.has(s.id)).slice(0, CURRICULUM_OTHER_CAP);
   return {
     subject,
     years,
     statements: [...picked, ...others],
     matchedDomains: [...new Set(picked.map((s) => s.domain))],
+    before,
   };
 }
 
@@ -259,5 +291,109 @@ export function curriculumBlock(lookup: CurriculumLookup, yearGroup: string): st
     last = key;
     lines.push(`${s.parentId ? "  " : ""}- ${s.text}`);
   }
+  return lines.join("\n");
+}
+
+/** A subject's keyword evidence for a topic: distinct topic words found, heading and statement hits. */
+export type SubjectScore = { cover: number; head: number; text: number };
+
+/** Per-subject keyword scores behind `curriculumSubjectForTopic`, for the year's rows. */
+export function curriculumSubjectScores(
+  topic: string,
+  yearGroup: string,
+): Record<string, SubjectScore> {
+  const years = curriculumYears(yearGroup);
+  const t = words(topic);
+  const out: Record<string, SubjectScore> = {};
+  if (years === undefined || t.size === 0) return out;
+  const found = new Map<string, Set<string>>();
+  for (const s of CURRICULUM) {
+    if (s.years[0] > years[1] || s.years[1] < years[0]) continue;
+    const r = out[s.subject] ?? { cover: 0, head: 0, text: 0 };
+    const d = words(s.domain);
+    const x = words(s.text);
+    r.head += overlap(t, d);
+    r.text += overlap(t, x);
+    const f = found.get(s.subject) ?? new Set<string>();
+    for (const w of t) if (d.has(w) || x.has(w)) f.add(w);
+    found.set(s.subject, f);
+    r.cover = f.size;
+    out[s.subject] = r;
+  }
+  return out;
+}
+
+/**
+ * The curriculum subject a lesson with no subject is looked up in (v5.2-gold, BUILDER B1). A
+ * topic that names a subject ("… in French", "Maths: …") takes it. Otherwise each subject with
+ * statements for the year is scored on the topic's keywords: the most distinct keywords found in
+ * its headings and statements, then the most heading hits, then statement hits. Undefined when
+ * the best finds fewer than half the topic's keywords, two subjects tie on all three, or there is
+ * no data: a wrong subject sends the wrong statements, so no answer beats a guess. Never written
+ * to the lesson: the product's subject inference is its own ticket (rulings 166-168).
+ */
+export function curriculumSubjectForTopic(
+  country: string,
+  topic: string,
+  yearGroup: string,
+): string | undefined {
+  if (norm(country) !== "england" || curriculumYears(yearGroup) === undefined) return undefined;
+  const named = [
+    ...new Set((topic.toLowerCase().match(/[a-z&.]+/g) ?? []).map(curriculumSubject)),
+  ].filter((x): x is string => x !== undefined);
+  if (named.length === 1) return named[0];
+  const t = words(topic);
+  const ranked = Object.entries(curriculumSubjectScores(topic, yearGroup)).sort(
+    ([, a], [, b]) => b.cover - a.cover || b.head - a.head || b.text - a.text,
+  );
+  const [first, second] = ranked;
+  if (!first || first[1].cover * 2 < t.size) return undefined;
+  const [, f] = first;
+  if (
+    second &&
+    second[1].cover === f.cover &&
+    second[1].head === f.head &&
+    second[1].text === f.text
+  )
+    return undefined;
+  return first[0];
+}
+
+/** "Year 4", "Years 7 to 9": the school years a set of statements is taught in. */
+function yearsLabel(rows: readonly CurriculumStatement[]): string {
+  const lo = Math.min(...rows.map((s) => s.years[0]));
+  const hi = Math.max(...rows.map((s) => s.years[1]));
+  return lo === hi ? `Year ${lo}` : `Years ${lo} to ${hi}`;
+}
+
+/** The statements of one section, a heading line each time the domain changes. */
+function sectionLines(rows: readonly CurriculumStatement[]): string[] {
+  const lines: string[] = [];
+  let last = "";
+  for (const s of rows) {
+    const key = groupKey(s);
+    if (key !== last) lines.push(s.headings.join(": "));
+    last = key;
+    const text = s.text.replace(/\[Fraction:(\d+)\/(\d+)\]/g, "$1/$2");
+    lines.push(`${s.parentId ? "  " : ""}- ${text}`);
+  }
+  return lines;
+}
+
+/**
+ * The v5.2-gold objectives call's curriculum block (BUILDER B3): what earlier years taught the
+ * topic, then what this year teaches it, each section left out when it has no rows; empty when
+ * both are. `curriculumBlock` stays for base4g.
+ */
+export function curriculumPitchBlock(lookup: CurriculumLookup, yearGroup: string): string {
+  if (lookup.before.length === 0 && lookup.statements.length === 0) return "";
+  const lines = [`Curriculum statements (statutory, England, ${lookup.subject}):`];
+  if (lookup.before.length > 0)
+    lines.push(
+      `Taught before ${yearGroup} (${yearsLabel(lookup.before)}):`,
+      ...sectionLines(lookup.before),
+    );
+  if (lookup.statements.length > 0)
+    lines.push(`Taught in ${yearsLabel(lookup.statements)}:`, ...sectionLines(lookup.statements));
   return lines.join("\n");
 }

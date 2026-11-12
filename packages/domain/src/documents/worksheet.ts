@@ -62,8 +62,42 @@ export type Worksheet = {
   generation?: WorksheetGeneration;
 };
 
-export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked"] as const;
+/**
+ * `failed` is terminal: the job stopped and saved why (`generation.failure`) before it let the
+ * row go. The next request for the lesson reuses the row, as it reuses a `framed` one.
+ */
+export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked", "failed"] as const;
 export type WorksheetGenerationStage = (typeof WORKSHEET_GENERATION_STAGES)[number];
+
+/**
+ * Why a worksheet job stopped (WORKSHEETS-PLAN v2 §3c, T2). `too-few-checked` and
+ * `not-enough-lesson` have no producer yet: the sheet gate (T7) and the greyed types (T6) add them.
+ */
+export const WORKSHEET_FAILURE_CODES = [
+  "could-not-write",
+  "too-few-checked",
+  "spend-limit",
+  "lesson-changed",
+  "not-enough-lesson",
+] as const;
+export const WorksheetFailureCodeSchema = z.enum(WORKSHEET_FAILURE_CODES);
+export type WorksheetFailureCode = z.infer<typeof WorksheetFailureCodeSchema>;
+
+/** The teacher's words for each failure, saved as `failure.message` and shown wherever it shows. */
+export const WORKSHEET_FAILURE_MESSAGES: Record<WorksheetFailureCode, string> = {
+  "could-not-write": "We couldn’t write this sheet. Try again, or choose another type.",
+  "too-few-checked":
+    "We couldn’t write enough checked questions for this lesson. Try again, or choose another type.",
+  "spend-limit": "This sheet reached its spending limit before it was finished. Try again later.",
+  "lesson-changed": "The lesson changed while the sheet was being made. Try again.",
+  "not-enough-lesson": "This lesson doesn’t have enough in it for this type of sheet.",
+};
+
+export const WorksheetFailureSchema = z.strictObject({
+  code: WorksheetFailureCodeSchema,
+  message: z.string(),
+});
+export type WorksheetFailure = z.infer<typeof WorksheetFailureSchema>;
 
 /**
  * The nine worksheet recipes by id (Worksheets and activities, rulings 46 to 55). The recipes
@@ -81,9 +115,63 @@ export const WORKSHEET_RECIPE_IDS = [
   "worked-example",
   "reading",
   "exam-style",
+  // Worksheets plan v2 (T6): the launch types written from the lesson's slides.
+  "practice",
+  "quick-quiz",
+  "key-words",
 ] as const;
 export const RecipeIdSchema = z.enum(WORKSHEET_RECIPE_IDS);
 export type RecipeId = z.infer<typeof RecipeIdSchema>;
+
+/**
+ * The launch sheet types (worksheets plan v2 §2): built from the lesson's slides as they stand
+ * (`lessonDigest`), saved once, finished or failed (D8), with no frame and no repair pass (D7).
+ * `exit-ticket` is the old id, rebuilt from the exit-ticket slide; `exam-style` is the old id,
+ * written new for Years 10-11 as Exam practice (T7).
+ */
+export const SLIDE_SHEET_RECIPE_IDS = [
+  "practice",
+  "quick-quiz",
+  "key-words",
+  "exit-ticket",
+  "exam-style",
+] as const;
+export type SlideSheetRecipeId = (typeof SLIDE_SHEET_RECIPE_IDS)[number];
+
+export function isSlideSheetRecipe(id: string): id is SlideSheetRecipeId {
+  return (SLIDE_SHEET_RECIPE_IDS as readonly string[]).includes(id);
+}
+
+/**
+ * The types a teacher can ask for today, in picker order. Only Exit ticket until Practice (T7),
+ * Quick quiz (T8) and Key words (T9) land; the old seven are hidden but still parse.
+ */
+export const OFFERED_RECIPE_IDS: readonly SlideSheetRecipeId[] = [
+  "practice",
+  "exam-style",
+  "exit-ticket",
+];
+
+/** What `"auto"` (and the retired default, `knowledge-check`) means: Practice (T7). */
+export const DEFAULT_SHEET_RECIPE_ID: SlideSheetRecipeId = "practice";
+
+/** Exam practice is offered to Years 10 and 11 only (plan v2 §2). */
+export function offeredForYear(type: SlideSheetRecipeId, year: number | undefined): boolean {
+  return type !== "exam-style" || year === 10 || year === 11;
+}
+
+/**
+ * The offered type a request names, `"auto"` and `knowledge-check` mapped to the default, or
+ * `null` when the type is not offered (the API answers 422 `WORKSHEET_TYPE_UNAVAILABLE_MESSAGE`).
+ */
+export function offeredRecipeFor(id: string): SlideSheetRecipeId | null {
+  const wanted = id === "auto" || id === "knowledge-check" ? DEFAULT_SHEET_RECIPE_ID : id;
+  return (OFFERED_RECIPE_IDS as readonly string[]).includes(wanted)
+    ? (wanted as SlideSheetRecipeId)
+    : null;
+}
+
+export const WORKSHEET_TYPE_UNAVAILABLE_MESSAGE = "That worksheet type is not available yet.";
 
 /** The practice times `POST /lessons/:id/worksheet` offers (ADR 0030 item 8). */
 export const PRACTICE_MINUTES_OPTIONS = [5, 10, 15, 20, 30, 45] as const;
@@ -103,6 +191,23 @@ export const WorksheetGenerationSchema = z.strictObject({
   findings: z.array(FindingSchema),
   recipeId: RecipeIdSchema,
   practiceMinutes: z.number().int().positive(),
+  /** Set only at `stage: "failed"`: why the job stopped. */
+  failure: WorksheetFailureSchema.optional(),
+  /**
+   * R5: every item the gate dropped from a sheet that still shipped, in full, with its reasons, so
+   * drops can be audited (generated text only, no pupil data). Absent when nothing was dropped.
+   */
+  dropped: z
+    .array(
+      z.strictObject({
+        where: z.string(),
+        question: z.string(),
+        working: z.string().nullable(),
+        answer: z.string(),
+        faults: z.array(z.string()),
+      }),
+    )
+    .optional(),
 });
 export type WorksheetGeneration = z.infer<typeof WorksheetGenerationSchema>;
 

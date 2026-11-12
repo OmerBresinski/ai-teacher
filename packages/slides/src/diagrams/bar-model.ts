@@ -2,6 +2,7 @@
 
 import type { Theme } from "@tj/domain/documents";
 import { answerPart, buildsOn, PASSING_HIDDEN, part } from "./builds";
+import { fractionLabel, partsText, withUnit } from "./quantity";
 import {
   type BarModel,
   type BarPanel,
@@ -10,7 +11,18 @@ import {
   barPanelGuard,
 } from "./schema";
 import { look, WEIGHT } from "./style";
-import { type Ctx, context, type DrawnText, hBrace, n, num, text, textWidth, vBrace } from "./svg";
+import {
+  type Ctx,
+  context,
+  type DrawnText,
+  hBrace,
+  n,
+  num,
+  type TextOpts,
+  text,
+  textWidth,
+  vBrace,
+} from "./svg";
 
 export { barPanelGuard, EQUATION_MAX_A } from "./schema";
 
@@ -109,20 +121,21 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
       // dd-diagrams: "6; ¼" is a value and its fraction: two lines, the fraction under the value,
       // never one run-on label.
       const lines = p.label ? p.label.split(/\s*;\s*/).filter(Boolean) : [];
+      const stacked = lines.length === 1 && !!fractionLabel(lines[0] ?? "");
       const fits =
         !p.label ||
         (lines.length <= 2 &&
-          lines.length * fs * 1.2 <= barH - fs * 0.3 &&
-          lines.every((l) => textWidth(l, x, fs, 600) <= pw - cut - fs * 0.5));
+          (stacked ? FRACTION_H * fs : lines.length * fs * 1.2) <= barH - fs * 0.3 &&
+          lines.every((l) => quantityWidth(l, x, fs, 600) <= pw - cut - fs * 0.5));
       // fix-bars: a part whose label does not fit is a fault, not a silent drop, so the drawing
       // takes a wider zone (or a smaller zoom) instead of losing the numbers it is there to show.
       if (!fits) x.faults?.push(`the part label "${p.label}" does not fit its part`);
       if (p.label && fits) {
+        const o = { weight: 600, fill: p.shaded ? c.onAccent : c.ink };
         out.push(
-          text(x, px + pw / 2, y + barH / 2, lines, {
-            weight: 600,
-            fill: p.shaded ? c.onAccent : c.ink,
-          }),
+          stacked
+            ? quantityText(x, px + pw / 2, y + barH / 2, lines[0] ?? "", o)
+            : text(x, px + pw / 2, y + barH / 2, lines, o),
         );
       }
       px += pw;
@@ -130,7 +143,9 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
     if (b.total) {
       const end = px;
       out.push(hBrace(x0, end, y - fs * 0.35, fs * 0.8, c.ink));
-      out.push(text(x, (x0 + end) / 2, y - fs * 1.5, [b.total], { weight: 600, v: "bottom" }));
+      out.push(
+        quantityText(x, (x0 + end) / 2, y - fs * 1.5, b.total, { weight: 600, v: "bottom" }),
+      );
     }
     lastBottom = y + barH;
     y += barH + rowGap;
@@ -153,16 +168,22 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
       acc += p.value;
       return [e0, acc] as const;
     });
-    const [from, to] = a >= 0 ? [edges[a]?.[0] ?? 0, edges[z]?.[1] ?? acc] : [0, acc];
+    // `rest`: the brace takes the unshaded parts after the shaded run (what is left).
+    const [from, to] =
+      s.rest && z >= 0 && z < edges.length - 1
+        ? [edges[z]?.[1] ?? 0, acc]
+        : a >= 0
+          ? [edges[a]?.[0] ?? 0, edges[z]?.[1] ?? acc]
+          : [0, acc];
     const bx0 = x0 + from * unitW;
     const bx1 = x0 + to * unitW;
     const by = lastBottom + fs * 0.35;
     out.push(hBrace(bx0, bx1, by, -fs * 0.8, c.ink));
     // Held clear of both edges with room to spare: display faces set bold run wider than their
     // measured advances (T y5 s9 "14 adventure" lost its first digit at the left edge).
-    const half = textWidth(s.combined, x, fs, 600) * 0.62;
+    const half = quantityWidth(s.combined, x, fs, 600) * 0.62;
     const cx = Math.max(half + 2, Math.min(w - half - 2, (bx0 + bx1) / 2));
-    out.push(text(x, cx, by + fs * 1.0, [s.combined], { weight: 600, v: "top" }));
+    out.push(quantityText(x, cx, by + fs * 1.0, s.combined, { weight: 600, v: "top" }));
   } else if (s.combined) {
     const bx = x0 + barW + fs * 0.35;
     out.push(vBrace(firstTop, lastBottom, bx, fs * 0.8, c.ink));
@@ -180,6 +201,108 @@ export function drawBarModel(s0: BarModel, x: Ctx, w: number, h: number): string
       answerPart(part(s.bars.length, out.slice(total).join(""))),
     );
   return out.join("");
+}
+
+// ─── quantities with a fraction (v5.3-gold B1/B3) ─────────────────────────────────────────────
+
+/** A stacked fraction's parts, in the label's em. */
+const FRACTION_EM = 0.72;
+/** A stacked fraction label's height, in the label's em. */
+const FRACTION_H = 1.5;
+
+/** A label's drawn width: "2 1/2" with its fraction stacked is narrower than written flat. */
+export function quantityWidth(label: string, x: Ctx, fs: number, weight: number): number {
+  const f = fractionLabel(label);
+  if (!f) return textWidth(label, x, fs, weight);
+  const ffs = fs * FRACTION_EM;
+  return (
+    (f.pre ? textWidth(f.pre, x, fs, weight) + fs * 0.14 : 0) +
+    Math.max(textWidth(f.num, x, ffs, weight), textWidth(f.den, x, ffs, weight)) +
+    ffs * 0.3 +
+    (f.post ? fs * 0.22 + textWidth(f.post, x, fs, weight) : 0)
+  );
+}
+
+/**
+ * A quantity label at (cx, cy): "2 1/2", "1/3" or "5 1/3 m" with its whole part and unit inline
+ * and the fraction numerator over a bar over denominator; any other label as plain text.
+ */
+export function quantityText(x: Ctx, cx: number, cy: number, label: string, o: TextOpts = {}) {
+  const f = fractionLabel(label);
+  if (!f) return text(x, cx, cy, [label], o);
+  const fs = o.fs ?? x.fs;
+  const weight = o.weight ?? WEIGHT.label;
+  const ffs = fs * FRACTION_EM;
+  const half = (FRACTION_H * fs) / 2;
+  const mid = o.v === "top" ? cy + half - fs * 0.2 : o.v === "bottom" ? cy - half + fs * 0.2 : cy;
+  const total = quantityWidth(label, x, fs, weight);
+  const anchor = o.anchor ?? "middle";
+  let at = anchor === "middle" ? cx - total / 2 : anchor === "end" ? cx - total : cx;
+  const inline = { ...o, anchor: "start" as const, v: "middle" as const };
+  const out: string[] = [];
+  if (f.pre) {
+    out.push(text(x, at, mid, [f.pre], inline));
+    at += textWidth(f.pre, x, fs, weight) + fs * 0.14;
+  }
+  const fw =
+    Math.max(textWidth(f.num, x, ffs, weight), textWidth(f.den, x, ffs, weight)) + ffs * 0.3;
+  const fc = at + fw / 2;
+  const part = { ...o, fs: ffs, anchor: "middle" as const, v: "middle" as const };
+  out.push(text(x, fc, mid - ffs * 0.64, [f.num], part));
+  out.push(
+    `<line x1="${n(at + ffs * 0.08)}" y1="${n(mid)}" x2="${n(at + fw - ffs * 0.08)}" y2="${n(mid)}" stroke="${o.fill ?? x.c.ink}" stroke-width="${n(Math.max(1.5, fs * 0.075))}" stroke-linecap="round"/>`,
+  );
+  out.push(text(x, fc, mid + ffs * 0.64, [f.den], part));
+  at += fw;
+  if (f.post) out.push(text(x, at + fs * 0.22, mid, [f.post], inline));
+  return out.join("");
+}
+
+/**
+ * The bar model of a fraction of an amount (BUILDER v5.3-gold B1): `whole` in `parts` equal parts,
+ * `shaded` of them shaded, each part labelled with its value as a mixed number ("2 1/2"), the
+ * whole braced above. The answer is braced under the shaded run, or with `left` under the parts
+ * that remain ("how much is left"); it is the drawing's last build, so a question slide keeps it
+ * back. `answer: false` shows "?" there instead.
+ */
+export function fractionOfAmountBar(o: {
+  whole: number;
+  parts: number;
+  shaded: number;
+  unit?: string | null;
+  left?: boolean;
+  answer?: boolean;
+  title?: string;
+}): BarModel | undefined {
+  const { whole, parts, shaded } = o;
+  if (!(whole > 0) || !Number.isInteger(parts) || parts < 2 || parts > 12) return undefined;
+  if (!Number.isInteger(shaded) || shaded < 1 || shaded > parts) return undefined;
+  if (o.left && shaded === parts) return undefined;
+  const unit = o.unit ?? null;
+  const each = withUnit(partsText(whole, parts, 1, unit), unit);
+  const count = o.left ? parts - shaded : shaded;
+  const answer = withUnit(partsText(whole, parts, count, unit), unit);
+  const wholeText = withUnit(partsText(whole, 1, 1, unit), unit);
+  const shadedWord = shaded === 1 ? "part is" : "parts are";
+  return {
+    kind: "bar-model",
+    // The alt never states the answer: on a question slide the brace is kept back until the
+    // reveal, and a screen reader (or the PDF's alt) must not hear it first.
+    alt: `A bar of ${wholeText} split into ${parts} equal parts of ${each}; ${shaded} ${shadedWord} shaded, and ${o.left ? "the parts left are" : "the shaded parts are"} braced as the answer.`,
+    ...(o.title ? { title: o.title } : {}),
+    bars: [
+      {
+        parts: Array.from({ length: parts }, (_, i) => ({
+          value: whole / parts,
+          label: each,
+          ...(i < shaded ? { shaded: true } : {}),
+        })),
+        total: wholeText,
+      },
+    ],
+    combined: o.answer === false ? "?" : o.left ? `${answer} left` : answer,
+    ...(o.left ? { rest: true } : {}),
+  } as BarModel;
 }
 
 // ─── panel models (TEACH-75 part y) ──────────────────────────────────────────────────────────

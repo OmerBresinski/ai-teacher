@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { canonicalArrows } from "@tj/slides/arrow";
+import { EQUATION_NAMES } from "@tj/slides/maths-text";
+import { PT_NAMES } from "@tj/slides/templates/picture-text";
 import { type El, replayRun, savedSlides } from "./replay-fixture";
 import { slideRoles } from "./role";
 
@@ -35,6 +37,13 @@ import { slideRoles } from "./role";
  * length (one size a slide, one card height, full width) in one adaptive group that re-flows as the
  * teacher types, so it is checked for its cards and its
  * words, not compared element by element with the lab's 720-point numbered list.
+ *
+ * One since (gold picture-text, 032061cce): a picture-and-text slide is drawn by the signed-off
+ * gold picture-and-text design (title, lead, dotted points, the picture bleeding off the right and
+ * bottom edges), not the lab's legacy column. A labelled point (the retired key card) folds into
+ * its point as "Label: text", as the gold folds a card. So it is checked for its kind, heading,
+ * every word the lab showed (none lost, none added), the same photo, and every text box on the
+ * slide, not element by element.
  *
  * One since (TEACH-230 part b): practice and exit-ticket slides are the "work alone" layouts, a
  * grid or a ticket of badged tasks, so they keep their heading and kind and are not compared
@@ -78,6 +87,21 @@ const headingOf = (els: El[]) => {
   const h = els.find((e) => e.name === "Heading");
   return JSON.stringify(h?.doc ?? h?.text ?? null);
 };
+
+/** Every word a slide's text boxes show, sorted, a label's colon dropped ("Match:" = "Match"). */
+const wordsIn = (els: El[]) =>
+  els
+    .filter((e) => e.type === "text")
+    .flatMap((e) =>
+      [...JSON.stringify(e.doc ?? e.text ?? "").matchAll(/"text":"((?:[^"\\]|\\.)*)"/g)].map(
+        (m) => m[1] ?? "",
+      ),
+    )
+    .join(" ")
+    .replace(/:(?=\s|$)/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort();
 
 const DIR = join(import.meta.dir, "fixtures/replay");
 /** The themes whose cover TEACH-215 part g recomposed (every round 5 theme but Geometric). */
@@ -127,6 +151,10 @@ const stable = (e: El) => {
     const { fontSize: _f, ...ts } = rest.textStyle as El;
     return { ...rest, textStyle: ts };
   }
+  // Notation ticket 2: the equation slide's formula and steps keep each operator with its term by a
+  // no-break space after it (`formulaText`); the lab set an ordinary space. Same words and symbols.
+  if (rest.name === EQUATION_NAMES.formula || rest.name === EQUATION_NAMES.step)
+    return JSON.parse(JSON.stringify(rest).replaceAll("\u00a0", " ")) as El;
   return rest;
 };
 
@@ -236,6 +264,18 @@ describe.each(LESSONS)("replay %s", (b) => {
       if (got.some((e) => e.name === "surface:badge" && !("icon" in e))) {
         expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
         expect(got.some((e) => e.name === "Task")).toBe(true);
+        return;
+      }
+      if (s.kind === "image-text" && got.some((e) => e.name === PT_NAMES.dot)) {
+        expect({ i, kind: s.kind }).toEqual({ i, kind: want.kind as never });
+        expect({ i, heading: headingOf(got) }).toEqual({ i, heading: headingOf(want.elements) });
+        expect({ i, words: wordsIn(got) }).toEqual({ i, words: wordsIn(want.elements) });
+        const photo = (els: El[]) => els.find((e) => e.name === PT_NAMES.photo)?.src ?? null;
+        expect({ i, photo: photo(got) }).toEqual({ i, photo: photo(want.elements) });
+        const off = got
+          .filter((e) => e.type === "text")
+          .filter((e) => Number(e.y) + Number(e.h) > 540 || Number(e.x) + Number(e.w) > 960);
+        expect({ i, off: off.map((e) => e.name) }).toEqual({ i, off: [] });
         return;
       }
       if (UNSHOWN[b]?.includes(i)) {
@@ -348,6 +388,28 @@ describe.each(LESSONS)("replay %s", (b) => {
         }
         if (ranged && w.type === "image" && w.name === "Photo") {
           expectRangedPhoto(e, w, `s${i + 1} #${k}`);
+          continue;
+        }
+        // e2e-11nov: the equation slide's formula is set on one line (stepped down) or broken
+        // before its relation, never mid-side, so its panel and the steps under it may sit higher.
+        // Same boxes, words and order; only y and h move.
+        if (
+          ["Formula panel", EQUATION_NAMES.formula, EQUATION_NAMES.step].includes(String(w.name))
+        ) {
+          // A break before the relation is a hard break between two runs: fold it to the space.
+          const fold = (x: El): El =>
+            JSON.parse(
+              JSON.stringify(x).replace(
+                /"\},\{"type":"hardBreak"\},\{"type":"text","text":"/g,
+                " ",
+              ),
+            ) as El;
+          const { y: _y, h: _h, ...rest } = fold(stable(e));
+          const { y: _wy, h: _wh, ...wantRest } = stable(w);
+          expect({ at: `s${i + 1} #${k}`, el: rest }).toEqual({
+            at: `s${i + 1} #${k}`,
+            el: wantRest,
+          });
           continue;
         }
         expect({ at: `s${i + 1} #${k}`, el: stable(e) }).toEqual({

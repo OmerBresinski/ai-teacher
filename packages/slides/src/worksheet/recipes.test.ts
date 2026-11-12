@@ -11,9 +11,11 @@ import { DEMO_LESSON_FACTS } from "./demo-facts";
 import { numberQuestions } from "./factories";
 import {
   defaultPracticeMinutes,
+  INSERTABLE_RECIPES,
   isPlaceholder,
   isRecipeId,
   JOBS,
+  OFFERED_RECIPES,
   PLACEHOLDER_QUESTION,
   recipeById,
   resolveRecipe,
@@ -68,9 +70,9 @@ describe("suggestRecipe / resolveRecipe / defaultPracticeMinutes", () => {
 });
 
 describe("worksheet recipes", () => {
-  test("nine recipes with distinct ids, a line, a minutes range and known jobs", () => {
-    expect(WORKSHEET_RECIPES.length).toBe(9);
-    expect(new Set(WORKSHEET_RECIPES.map((r) => r.id)).size).toBe(9);
+  test("twelve recipes with distinct ids, a line, a minutes range and known jobs", () => {
+    expect(WORKSHEET_RECIPES.length).toBe(12);
+    expect(new Set(WORKSHEET_RECIPES.map((r) => r.id)).size).toBe(12);
     const jobs = new Set(JOBS.map((j) => j.id));
     for (const r of WORKSHEET_RECIPES) {
       expect(r.line.length).toBeGreaterThan(0);
@@ -82,6 +84,20 @@ describe("worksheet recipes", () => {
     expect(recipeById("nope")).toBeUndefined();
   });
 
+  test("plan v2 T7: Practice, Exam practice and Exit ticket are offered; the other two are not yet", () => {
+    expect(WORKSHEET_RECIPES.filter((r) => r.slidesOnly).map((r) => r.id)).toEqual([
+      "practice",
+      "quick-quiz",
+      "key-words",
+    ]);
+    expect(INSERTABLE_RECIPES).toHaveLength(9);
+    expect(OFFERED_RECIPES.map((r) => r.id).sort()).toEqual([
+      "exam-style",
+      "exit-ticket",
+      "practice",
+    ]);
+  });
+
   test("the catalogue is the domain's id list, in order, so the request schema and the job agree", () => {
     expect(WORKSHEET_RECIPES.map((r) => r.id)).toEqual([...WORKSHEET_RECIPE_IDS]);
     expect(isRecipeId("cloze")).toBe(true);
@@ -89,7 +105,7 @@ describe("worksheet recipes", () => {
   });
 
   test("each recipe leaves at most one placeholder for the model, where the frame says it is", () => {
-    for (const recipe of WORKSHEET_RECIPES) {
+    for (const recipe of INSERTABLE_RECIPES) {
       for (const withFacts of [true, false]) {
         const built = recipe.build(withFacts ? facts : undefined);
         const placeholders = built.filter(isPlaceholder);
@@ -113,7 +129,7 @@ describe("worksheet recipes", () => {
     }
   });
 
-  test.each(WORKSHEET_RECIPES.map((r) => [r.id, r] as const))(
+  test.each(INSERTABLE_RECIPES.map((r) => [r.id, r] as const))(
     "%s: every block is valid, cites facts when built from them, and is bare without",
     (_id, recipe) => {
       const built = recipe.build(facts);
@@ -138,7 +154,7 @@ describe("worksheet recipes", () => {
   );
 
   test("acceptance 5 (TEACH-194): every task block has an instruction since its last heading; the word search has one lead", () => {
-    for (const recipe of WORKSHEET_RECIPES) {
+    for (const recipe of INSERTABLE_RECIPES) {
       for (const withFacts of [true, false]) {
         const built = recipe.build(withFacts ? facts : undefined);
         let instructed = false;

@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
+  DEFAULT_SHEET_RECIPE_ID,
   DEFAULT_THEME_ID,
   type DocumentSummary,
+  type Lesson,
   type LessonFacts,
   liveThemeId,
   type Worksheet,
@@ -14,18 +16,16 @@ import {
   createReducer,
   DEMO_LESSON_FACTS,
   EXAMPLE_FACTS_HINT,
+  exitTicketBlocks,
   getTheme,
   initialCreateState,
-  JOBS,
   type LessonSource,
+  lessonDigest,
+  OFFERED_RECIPES,
   previewWorksheet,
   RecipeCard,
-  selectedRecipe,
-  suggestRecipe,
   TIER_HINT,
   TIERS,
-  visibleRecipes,
-  WORKSHEET_RECIPES,
   worksheetFromRecipe,
 } from "@tj/editor/worksheet-editor";
 import { Button, cn, Display, SearchInput, Spinner, selectionCardVariants, toast } from "@tj/ui";
@@ -100,6 +100,15 @@ export function WorksheetCreatePage() {
     [lessonData],
   );
 
+  // The Exit ticket sheet from the lesson's slides, as the worker builds it (plan v2 T6).
+  const exitSheet = useMemo(
+    () =>
+      lessonData && isFullDocument(lessonData) && kindOf(lessonData) === "lesson"
+        ? exitTicketBlocks(lessonDigest(lessonData as Lesson))
+        : null,
+    [lessonData],
+  );
+
   async function create(body: Worksheet): Promise<void> {
     try {
       const created = await createWorksheet(body);
@@ -162,15 +171,21 @@ export function WorksheetCreatePage() {
     <KindStep
       state={state}
       lesson={lesson}
+      exitSheet={exitSheet}
       pending={isPending}
-      onJob={(job) => dispatch({ type: "job", job })}
       onRecipe={(recipeId) => dispatch({ type: "recipe", recipeId })}
       onBack={() => dispatch({ type: "back" })}
       onContinue={(recipeId) => {
         if (isPending) return;
-        const recipe = WORKSHEET_RECIPES.find((r) => r.id === recipeId);
+        const recipe = OFFERED_RECIPES.find((r) => r.id === recipeId);
         if (!recipe) return;
-        void create(worksheetFromRecipe(recipe, lesson, lesson.facts ?? DEMO_LESSON_FACTS));
+        const sheet = worksheetFromRecipe(recipe, lesson, lesson.facts ?? DEMO_LESSON_FACTS);
+        if (recipe.id === "exit-ticket") {
+          if (!exitSheet?.ok) return;
+          sheet.blocks = exitSheet.blocks;
+          sheet.includeAnswerKey = true;
+        }
+        void create(sheet);
       }}
     />
   );
@@ -183,6 +198,9 @@ function rememberedSubject(remembered: ReturnType<typeof readLastClass>): string
     remembered.subject === OTHER_SUBJECT ? remembered.subjectOther : remembered.subject;
   return subject.trim() || undefined;
 }
+
+/** The offered types the worker writes with a model call (T7); not made on this page. */
+const MODEL_WRITTEN = new Set(["practice", "exam-style"]);
 
 /* ---- Source ------------------------------------------------------------------ */
 
@@ -351,16 +369,16 @@ function SourceStep({
 function KindStep({
   state,
   lesson,
+  exitSheet,
   pending,
-  onJob,
   onRecipe,
   onBack,
   onContinue,
 }: {
   state: CreateState;
   lesson: LessonSource;
+  exitSheet: ReturnType<typeof exitTicketBlocks> | null;
   pending: boolean;
-  onJob: (job: CreateState["job"]) => void;
   onRecipe: (recipeId: string) => void;
   onBack: () => void;
   onContinue: (recipeId: string) => void;
@@ -371,15 +389,28 @@ function KindStep({
   const usingExample = lesson.facts === undefined;
   const worksheet = useMemo(() => previewWorksheet(lesson), [lesson]);
   const theme = getTheme(lesson.themeId);
-  const built = useMemo(
-    () => WORKSHEET_RECIPES.map((recipe) => ({ recipe, blocks: recipe.build(facts) })),
-    [facts],
+  // Plan v2 T6: only the offered launch types, the old seven hidden. Exit ticket is the lesson's
+  // own exit-ticket slide, so its card is greyed with the reason when the slides have none.
+  // Plan v2 T7: Practice and Exam practice are written by the worker's model call, which this
+  // page (a sheet made in the browser) cannot run, so it offers only what it can build here.
+  const shown = useMemo(
+    () =>
+      OFFERED_RECIPES.filter((recipe) => !MODEL_WRITTEN.has(recipe.id)).map((recipe) => {
+        const fromSlides = recipe.id === "exit-ticket" ? exitSheet : null;
+        return {
+          recipe,
+          blocks: fromSlides?.ok ? fromSlides.blocks : recipe.build(facts),
+          greyed: fromSlides && !fromSlides.ok ? fromSlides.reason : null,
+        };
+      }),
+    [facts, exitSheet],
   );
-  const visible = new Set(visibleRecipes(state.job).map((r) => r.id));
-  const shown = built.filter(({ recipe }) => visible.has(recipe.id));
-  const suggestedId = suggestRecipe(lesson.facts);
-  const selected = selectedRecipe(state, lesson.facts);
-  const reason = selected ? null : "Choose a kind of sheet.";
+  const suggestedId = shown.some(({ recipe }) => recipe.id === DEFAULT_SHEET_RECIPE_ID)
+    ? DEFAULT_SHEET_RECIPE_ID
+    : (shown[0]?.recipe.id ?? DEFAULT_SHEET_RECIPE_ID);
+  const chosen = shown.find(({ recipe }) => recipe.id === (state.recipeId ?? suggestedId));
+  const selected = chosen && !chosen.greyed ? chosen.recipe : null;
+  const reason = selected ? null : (chosen?.greyed ?? "Choose a kind of sheet.");
 
   // Escape returns to Source, as Back does, from anywhere on the step: after Enter on a Source
   // card the focus is on the body, so the listener sits on the window. The chips and cards are
@@ -415,23 +446,10 @@ function KindStep({
           ) : null}
         </div>
 
-        <fieldset className="ws-job-chips">
-          <legend className="sr-only">Filter kinds by job</legend>
-          {JOBS.map((job) => (
-            <button
-              key={job.id}
-              type="button"
-              aria-pressed={state.job === job.id}
-              className="ws-job-chip"
-              onClick={() => onJob(state.job === job.id ? null : job.id)}
-            >
-              {job.label}
-            </button>
-          ))}
-        </fieldset>
+        {/* No job chips while one type is offered (plan v2 T6); they return with T7's types. */}
 
         <ul aria-label="Kinds" className="ws-recipe-grid">
-          {shown.map(({ recipe, blocks }) => (
+          {shown.map(({ recipe, blocks, greyed }) => (
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
@@ -443,7 +461,7 @@ function KindStep({
               fitMiniature
               onPick={() => onRecipe(recipe.id)}
               onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
+                if (event.key !== "Enter" || greyed) return;
                 event.preventDefault();
                 onRecipe(recipe.id);
                 onContinue(recipe.id);
