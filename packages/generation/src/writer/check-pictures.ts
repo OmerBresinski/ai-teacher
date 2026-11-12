@@ -18,6 +18,11 @@
  * - Every check slide left without a visual is a logged skip with its reason: `no-source`, `leak`
  *   or `fit`. Nothing is dropped silently.
  *
+ * Amended 12 Nov 2026 (blind review of 11 Nov, CRITIQUE-1 items 2 and 3): nothing is lent any
+ * more. A visual is never shown on a second slide to fill a slot, so a source found is logged as a
+ * `repeat` skip, and one whose numbers are not the questions' (`numberClash`) as `mismatch`. The
+ * leak guard and fit test stay for `relend` and for the flow look's own check pictures.
+ *
  * A new picture searched for the thing the question names (TEXT-ONLY-DIAG.md Fix 2, route b) is
  * not done here: a slide skipped `no-source` is where it would start.
  */
@@ -495,37 +500,14 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
     }
     // Most shared words first; the nearer slide on a tie (candidates run nearest first).
     candidates.sort((x, y) => y.score - x.score || y.shared - x.shared);
-    const failed: { reason: CheckSkipReason; why: string }[] = [];
-    for (const c of candidates) {
-      const safe = safeForm(s, c.st);
-      if ("leak" in safe) {
-        failed.push({ reason: "leak", why: `slide ${c.from + 1} ${c.key}: ${safe.leak}` });
-        continue;
-      }
-      const key = checkSlotKey(template);
-      const json: S = { ...s, [key]: lentAsk(c.ask) };
-      if (!a.fits(i, json, key, safe.state)) {
-        failed.push({
-          reason: "fit",
-          why: `slide ${c.from + 1} ${c.key}: the words do not fit beside the visual`,
-        });
-        continue;
-      }
-      routes.push({
-        slide: i,
-        from: c.from,
-        fromKey: c.key,
-        key,
-        json,
-        state: safe.state,
-        form: safe.form,
-      });
-      break;
-    }
-    if (routes.at(-1)?.slide === i) continue;
-    // The first candidate's reason leads: it was the best match.
-    const first = failed[0] as { reason: CheckSkipReason; why: string };
-    skip(first.reason, failed.map((f) => f.why).join("; "));
+    // 11 Nov blind review (CRITIQUE-1 item 3): a picture or diagram is never shown on a second slide
+    // to fill a slot. The source slide already shows it, so the check slide keeps its no-picture
+    // form: an empty slot beats a repeat. A writer who wants a picture on a check slide asks for it
+    // in the flow's look (`lookAdded`), which is a new picture, never this one again.
+    skip(
+      "repeat",
+      candidates.map((c) => `slide ${c.from + 1} ${c.key} already shows it`).join("; "),
+    );
   }
   return { routes, skips };
 }

@@ -112,3 +112,69 @@ test("a year in a picture's words is no clash with a question that names no numb
     undefined,
   );
 });
+
+describe("a picture is never shown again on a check slide (y8 photosynthesis s4 and s9)", () => {
+  // genlab 20261111-232340-record-e2e-y8-photosynthesis, writer output: slide 9's practice had
+  // slide 4's generated micrograph lent with the neutral alt; none of its questions uses it.
+  const cells: S = {
+    template: "visual-text",
+    fit: "points-2-fig",
+    heading: "Capturing light energy",
+    lead: "Photosynthesis uses light energy to make glucose.",
+    points: [
+      "Chloroplasts are structures inside plant cells that contain chlorophyll.",
+      "Chlorophyll absorbs the light energy needed for photosynthesis.",
+    ],
+    figure: {
+      shows: "Microscope view of leaf cells containing green chloroplasts",
+      must_see: ["plant cell boundaries", "green chloroplasts"],
+      subject: "generic",
+    },
+  };
+  const apply: S = {
+    template: "practice",
+    heading: "Apply your learning",
+    picture: null,
+    items: [
+      {
+        question:
+          "A plant needs material for new cell walls. What substance can it make from glucose?",
+        answer: "Cellulose",
+        working: null,
+      },
+      {
+        question: "A plant converts glucose into starch. Explain why this is useful.",
+        answer: "Starch stores energy for the plant.",
+        working: null,
+      },
+      {
+        question:
+          "A leaf has no chlorophyll. Explain how this affects its ability to make glucose using light.",
+        answer:
+          "Without chlorophyll, the leaf cannot absorb light energy for photosynthesis and so cannot make glucose this way.",
+        working: null,
+      },
+    ],
+  };
+  test("slide 9 keeps its no-picture form, logged as a repeat of slide 4", () => {
+    const micrograph: VisualState = {
+      status: "photo",
+      photo: {
+        src: "/files/x/images/01a1cced-6c3b.png",
+        alt: "A microscope view of leaf cells, with clear cell boundaries and green chloroplasts visible inside them.",
+        aspect: 1,
+      } as never,
+    };
+    const slides = [undefined, undefined, undefined, cells, ...Array(4).fill(undefined), apply];
+    const r = borrowCheckVisuals({
+      slides,
+      teaches: (i) => (i === 3 ? [1] : i === 8 ? [1, 2, 3] : []),
+      state: (i) => () => (i === 3 ? micrograph : none),
+      fits: () => true,
+    });
+    expect(r.routes).toEqual([]);
+    expect(r.skips).toEqual([
+      { slide: 8, template: "practice", reason: "repeat", why: "slide 4 picture already shows it" },
+    ]);
+  });
+});
