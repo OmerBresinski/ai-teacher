@@ -186,12 +186,14 @@ const EXPLAIN = /\b(explain|why|is (?:the pupil|she|he|they|this|that) (?:right|
 /**
  * y5 fractions (12 Nov): "A pupil says, 'To find 3/4 of 12 metres, I divide by 3 ...' Is the pupil
  * right? Explain the correct steps." was dropped as a calculation with no working: its "3/4" read
- * as a sum. An explain item with no working may ship when its answer states no number the
- * question does not already hold (it explains the steps, it does not give a new result), and its
- * own sums hold. A key with a new number still needs its working.
+ * as a sum; so were "When finding 6/5 of an amount, what does the denominator tell you to do
+ * first?" warm-ups. An item with no working that explains, or does not open with a calculate
+ * command, may ship when its answer states no number the question does not already hold (it
+ * explains the steps, it gives no new result) and its own sums hold. A key with a new number, or a
+ * "Calculate / Work out / Find" item, still needs its working.
  */
 export function explainsAMethod(question: string, answer: string): boolean {
-  if (!EXPLAIN.test(question)) return false;
+  if (!EXPLAIN.test(question) && /^\W*(calculate|work out|find)\b/i.test(question)) return false;
   const given = new Set(numbersIn(question));
   if (numbersIn(answer).some((n) => !given.has(n))) return false;
   return numericMismatches(answer).length === 0 && checkKey(question, answer).length === 0;

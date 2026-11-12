@@ -122,7 +122,15 @@ describe("y5 fractions: correct items the checks dropped", () => {
     ).toBe(true);
     // A new number in the key is a result: it needs its working.
     expect(explainsAMethod(q, "No. Divide 12 by 4, then multiply by 3: 9 metres.")).toBe(false);
-    // Not an explain command: still a calculation.
-    expect(explainsAMethod("What is 3/4 of 12 metres?", "Divide by 4, multiply by 3.")).toBe(false);
+    // A method question whose fraction read as a sum (ws-diag2's first attempt, both warm-ups).
+    expect(
+      explainsAMethod(
+        "When finding 6/5 of an amount, what does the denominator tell you to do first?",
+        "Divide the amount into five equal parts.",
+      ),
+    ).toBe(true);
+    // A calculate command, or a new number in the key: still a calculation that needs working.
+    expect(explainsAMethod("Find 3/4 of 12 metres.", "Divide by 4, multiply by 3.")).toBe(false);
+    expect(explainsAMethod("What is 3/4 of 12 metres?", "9 metres")).toBe(false);
   });
 });
