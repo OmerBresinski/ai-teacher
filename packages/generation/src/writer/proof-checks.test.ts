@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   checkReadbacks,
+  itemPicturesNotOffered,
   leadingNumber,
   pointsUntaught,
   proofChecks,
@@ -52,6 +53,7 @@ describe("proofChecks", () => {
       pointsUntaught: null,
       workedCaption: [],
       checkReadback: [],
+      itemPictures: [],
     });
   });
   test("no exit ticket on the slides: null", () =>
@@ -186,5 +188,32 @@ describe("a check that brings no new case", () => {
       ],
     };
     expect(checkReadbacks([taught, practice])).toEqual([]);
+  });
+});
+
+describe("itemPicturesNotOffered (v5.3-gold B4)", () => {
+  const pic = { shows: "a leaf", must_see: [] };
+  const items = (k: number, withPic = true) =>
+    Array.from({ length: k }, (_, i) => ({
+      name: `N${i}`,
+      text: "t",
+      picture: withPic ? pic : null,
+    }));
+  test("four pictured items where pictures are offered for 2 to 3 is found", () => {
+    const slides = [{ template: "title" }, { template: "panel-list", items: items(4) }];
+    expect(itemPicturesNotOffered(slides, [2, 3])).toEqual([
+      { slide: 2, items: 4, offered: [2, 3] },
+    ]);
+  });
+  test("an offered count, items without pictures, or no offer table: nothing", () => {
+    expect(itemPicturesNotOffered([{ template: "panel-list", items: items(3) }], [2, 3])).toEqual(
+      [],
+    );
+    expect(
+      itemPicturesNotOffered([{ template: "panel-list", items: items(4, false) }], [2, 3]),
+    ).toEqual([]);
+    expect(
+      itemPicturesNotOffered([{ template: "panel-list", items: items(4) }], undefined),
+    ).toEqual([]);
   });
 });

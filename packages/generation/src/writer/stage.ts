@@ -132,6 +132,7 @@ import { hingeLeakFaults } from "./hinge-leak";
 import { fitsNoWorse, routeIconMisses } from "./icon-route";
 import { type DraftSizes, layDraft, stableIds } from "./lay-draft";
 import { GATE_SWITCH, LAYOUT_FAULT, layoutGate, MAX_GATE_PARTS } from "./layout-gate";
+import { layoutOffer } from "./layout-menu";
 import { localise } from "./locale";
 import { keepLanded, lostableAsk, lostPictureFallback, splitLanded } from "./lost-picture";
 import {
@@ -1723,7 +1724,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // v5.2-gold's proof counts (BUILDER B7): logged per lesson, never acted on.
   log({
     ev: "proof-checks",
-    ...proofChecks(out, brief.slides, run.objectives.length, pointLabels(brief.points ?? [])),
+    ...proofChecks(
+      out,
+      brief.slides,
+      run.objectives.length,
+      pointLabels(brief.points ?? []),
+      layoutOffer(writerStageOfKey(stageKey))["panel-list"].pictures,
+    ),
   });
   plan.design = out.design;
   plan.flow = out.flow;

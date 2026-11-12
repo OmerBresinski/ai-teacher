@@ -267,13 +267,41 @@ export type ProofChecks = {
   workedCaption: { slide: number; move: string; eq: string; why: string }[];
   /** v5.3-gold: checks that bring no new case (a word-count rate, see `checkReadbacks`). */
   checkReadback: { slide: number; question: string; share: number }[];
+  /** v5.3-gold B4: panel-list slides with item pictures at a count not offered with pictures. */
+  itemPictures: { slide: number; items: number; offered: number[] }[];
 };
+
+/**
+ * BUILDER v5.3-gold B4: panel-list slides written with a picture on every item at a count the menu
+ * does not offer with pictures (Y8 slide 6: four item pictures asked; the slide shipped its rows
+ * with no item tiles and one panel picture). Nothing recorded that reroute before. `offered` is
+ * `layoutOffer(stage)["panel-list"].pictures`; logged, never acted on.
+ */
+export function itemPicturesNotOffered(
+  slides: readonly S[],
+  offered: readonly number[] | undefined,
+): { slide: number; items: number; offered: number[] }[] {
+  if (!offered) return [];
+  const out: { slide: number; items: number; offered: number[] }[] = [];
+  slides.forEach((s, i) => {
+    if (s?.template !== "panel-list" || !Array.isArray(s.items)) return;
+    const items = s.items as (S | null)[];
+    const pictured = items.filter((it) => {
+      const p = it?.picture as S | null | undefined;
+      return !!p && typeof p === "object";
+    }).length;
+    if (pictured > 0 && pictured === items.length && !offered.includes(items.length))
+      out.push({ slide: i + 1, items: items.length, offered: [...offered] });
+  });
+  return out;
+}
 
 export function proofChecks(
   out: { flow?: unknown[] | undefined; slides?: S[] | undefined },
   range: { min: number; max: number },
   objectives: number,
   pointLabels: readonly string[] = [],
+  offeredItemPictures?: readonly number[],
 ): ProofChecks {
   const slides = out.slides ?? [];
   const exit = slides.find((s) => s.template === "exit-ticket");
@@ -286,5 +314,6 @@ export function proofChecks(
     pointsUntaught: pointsUntaught(out.flow, pointLabels),
     workedCaption: workedCaptions(slides),
     checkReadback: checkReadbacks(slides),
+    itemPictures: itemPicturesNotOffered(slides, offeredItemPictures),
   };
 }
