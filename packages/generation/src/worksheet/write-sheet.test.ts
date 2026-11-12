@@ -308,6 +308,16 @@ describe("writeModelSheet: invalid stub answers", () => {
 
 describe("item rules", () => {
   const digest = lessonDigest(fixtureLesson("rates"));
+  test("an item may rest on an already-asked slide, never on a slide the brief does not hold", () => {
+    const asked = nth(digest.asked, 0).slide;
+    const it = { ...nth(STUB_PRACTICE_RATES.core, 0) };
+    expect(practiceFaults({ ...it, slides: [asked] }, { digest })).not.toContain(
+      "cites a slide the brief does not teach",
+    );
+    expect(practiceFaults({ ...it, slides: [99] }, { digest })).toContain(
+      "cites a slide the brief does not teach",
+    );
+  });
   const item = (patch: object) => ({ ...nth(STUB_PRACTICE_RATES.core, 0), ...patch });
   test("the working's result must start the answer", () => {
     expect(workingFault("q", "84 ÷ 28 = 3 cm³/s", "3 cm³/s")).toBeNull();

@@ -79,11 +79,33 @@ type Pos = { tok: Tok; from: number; to: number };
 
 const SUPERSCRIPT: Record<string, number> = { "²": 2, "³": 3 };
 
+/**
+ * Vulgar fractions (y5 fractions ws-fix2, 12 Nov): "35 ÷ 4 = 8¾" was read as "35 ÷ 4 = 8" then a
+ * word, and flagged. A number may carry one ("8¾", "12½") or be one ("¾"); its value is exact.
+ */
+const VULGAR: Record<string, number> = {
+  "½": 1 / 2,
+  "⅓": 1 / 3,
+  "⅔": 2 / 3,
+  "¼": 1 / 4,
+  "¾": 3 / 4,
+  "⅕": 1 / 5,
+  "⅖": 2 / 5,
+  "⅗": 3 / 5,
+  "⅘": 4 / 5,
+  "⅙": 1 / 6,
+  "⅚": 5 / 6,
+  "⅛": 1 / 8,
+  "⅜": 3 / 8,
+  "⅝": 5 / 8,
+  "⅞": 7 / 8,
+};
+
 function tokenize(text: string): Pos[] {
   const out: Pos[] = [];
   const money = MONEY_TEXT.test(text);
   const re =
-    /(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\.\d+)|(sin|cos|tan)(⁻¹|\^-1)?|([A-Za-zµ]+)|([=≈])|([+\-−–×*·÷/^()%°²³√])|(\s+)|(.)/gu;
+    /(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?(?:\s?[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])?|\.\d+|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])|(sin|cos|tan)(⁻¹|\^-1)?|([A-Za-zµ]+)|([=≈])|([+\-−–×*·÷/^()%°²³√])|(\s+)|(.)/gu;
   for (const m of text.matchAll(re)) {
     const [whole, num, fn, inv, word, eq, sym, space] = m;
     if (space) continue;
@@ -91,7 +113,12 @@ function tokenize(text: string): Pos[] {
     if (whole === "£") tok = { t: "unit", v: "£" };
     else if (num) {
       const clean = num.replace(/,/g, "");
-      tok = { t: "num", v: Number(clean), decimals: clean.split(".")[1]?.length ?? 0 };
+      const vulgar = VULGAR[clean.slice(-1)];
+      tok =
+        vulgar === undefined
+          ? { t: "num", v: Number(clean), decimals: clean.split(".")[1]?.length ?? 0 }
+          : // Exact: as many places as a double carries, so no rounding range is read into it.
+            { t: "num", v: (Number(clean.slice(0, -1).trim()) || 0) + vulgar, decimals: 12 };
     } else if (fn) tok = { t: "fn", v: fn as "sin" | "cos" | "tan", inverse: Boolean(inv) };
     else if (word) {
       const lower = word.toLowerCase();

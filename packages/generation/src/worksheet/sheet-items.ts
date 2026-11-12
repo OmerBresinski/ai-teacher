@@ -167,8 +167,10 @@ export function workingFault(question: string, working: string | null, key: stri
   if (!v) return "the working does not end in = and its result";
   const all = amountsIn(key);
   if (all.length === 0) return "the answer does not give the working's result";
-  const given = amountsIn(question);
-  const fresh = all.filter((a) => !given.some((q) => Math.abs(q.value - a.value) < 1e-9));
+  // The question's numbers, fractions whole and in parts ("3/4" gives 3/4, 3 and 4: ws-fix2's key
+  // "First divide 18 by 4 ..." leads with the 4 of "3/4").
+  const given = [...amountsIn(question).map((q) => q.value), ...numbersIn(question).map(Number)];
+  const fresh = all.filter((a) => !given.some((q) => Math.abs(q - a.value) < 1e-9));
   const first = (fresh[0] ?? all[0]) as Amount;
   const same = fresh.length > 0 ? sameAmount(first, v) : all.some((a) => sameAmount(a, v));
   if (!same) {
@@ -201,7 +203,14 @@ export function explainsAMethod(question: string, answer: string): boolean {
 
 type Context = { digest: LessonDigest };
 const askedQuestions = (digest: LessonDigest) => digest.asked.map((a) => a.question);
-const taughtSlides = (digest: LessonDigest) => new Set(digest.taught.map((t) => t.slide));
+/**
+ * The slides an item may rest on: taught slides, and slides whose questions the brief gives with
+ * their answers (y5 fractions ws-fix1, 12 Nov: two correct items rested on practice slide 10, whose
+ * worked answers the `method` rule already counts as a shown method, and were dropped, failing the
+ * sheet). A number the brief does not hold at all is still a fault.
+ */
+const taughtSlides = (digest: LessonDigest) =>
+  new Set([...digest.taught.map((t) => t.slide), ...digest.asked.map((a) => a.slide)]);
 
 /** What every model item must hold, whatever its type. */
 function commonFaults(

@@ -115,6 +115,11 @@ describe("money (y5 fractions, 12 Nov)", () => {
     expect(numericMismatches("£9 = 800p").map((m) => m.text)).toEqual(["£9 = 800p"]);
     expect(numericMismatches("£3 × 4 = £13").map((m) => m.text)).toEqual(["£3 × 4 = £13"]);
   });
+  test("vulgar fractions are exact numbers", () => {
+    expect(numericMismatches("35 ÷ 4 = 8¾; 8¾ × 3 = 26¼")).toEqual([]);
+    expect(numericMismatches("¾ × 8 = 6")).toEqual([]);
+    expect(numericMismatches("35 ÷ 4 = 8¼").map((m) => m.text)).toEqual(["35 ÷ 4 = 8¼"]);
+  });
   test("p is a name, not pence, when the text is not about money", () => {
     expect(numericMismatches("2p = 8")).toEqual([]);
   });

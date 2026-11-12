@@ -111,6 +111,23 @@ describe("y5 fractions: correct items the checks dropped", () => {
       workingFault("Is 4/4 of 20 equal to 20?", "20 ÷ 4 = 5; 5 × 4 = 20", "No, 4/4."),
     ).toContain("does not match");
   });
+  test("ws-fix2: quarters in the working and a key that names the fraction's parts first", () => {
+    expect(
+      workingFault(
+        "A quantity is 28. Find 3/4 of 1¼ of the quantity. Give your answer.",
+        "28 ÷ 4 = 7; 28 + 7 = 35; 35 ÷ 4 = 8¾; 8¾ × 3 = 26¼",
+        "26¼",
+      ),
+    ).toBeNull();
+    expect(workingFault("q", "35 ÷ 4 = 8¼; 8¼ × 3 = 24¾", "24¾")).not.toBeNull();
+    expect(
+      workingFault(
+        "A pupil says, “To find 3/4 of 18 metres, I should multiply 18 by 3 first.” Is the pupil right? Explain the correct order and give the answer in metres.",
+        "18 ÷ 4 = 4½; 4½ × 3 = 13½ m",
+        "No. First divide 18 by 4 to find one quarter, then multiply by 3 to find three quarters. The answer is 13½ m.",
+      ),
+    ).toBeNull();
+  });
   test("an explain item with no new number needs no working", () => {
     const q =
       "A pupil says, “To find 3/4 of 12 metres, I divide by 3 and then multiply by 4.” Is the pupil right? Explain the correct steps.";
