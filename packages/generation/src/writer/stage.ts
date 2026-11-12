@@ -305,6 +305,9 @@ export type WriterRun = {
    * only; UX ruling 307, 28 Oct).
    */
   checks?: "act" | "log";
+  /** The picture retry budget (default `PICTURE_RETRY_BUDGET`) and the clock it reads (tests). */
+  pictureBudget?: typeof PICTURE_RETRY_BUDGET;
+  now?: () => number;
   /**
    * RC2 (12 Nov 2026, e2e-11nov ROOT-CAUSES): the model-calling repairs and retry rounds that run
    * after the writer's output, each by name; one not named is off, and its slide goes straight to
@@ -582,6 +585,50 @@ export type ModelRepair = "fit" | "leak" | "restage" | "meaning" | "picture-retr
  * one errored) and meaning (never triggered) did not earn their place.
  */
 export const MODEL_REPAIRS_DEFAULT: readonly ModelRepair[] = ["leak", "picture-retry"];
+
+/**
+ * The wall-clock budget for picture retry work (`retryLost`, the lost-picture library or split
+ * fallback), per slide and per lesson (R3-DIAGNOSIS fault D: one slide's retry rounds cost ~100 s).
+ * The landed retry rounds of the recorded runs took 15-51 s each, one round per slide
+ * (R4-REPAIR-NOTES), so a slide's first round always starts and a second one starts only while
+ * the slide has used under 40 s (60 s less a 20 s round). The lesson's retries start within 100 s
+ * of its first one (the slides' tails run together, so this is a window, not a sum). A round is
+ * never cut part-way (a placement has no cancel): a cut round is not started, the slide takes the
+ * no-picture path, and `picture-budget` is logged.
+ */
+export const PICTURE_RETRY_BUDGET = { slideMs: 60_000, lessonMs: 120_000, roundMs: 20_000 };
+
+export type PictureBudgetCut = { scope: "slide" | "lesson"; usedMs: number; budgetMs: number };
+
+/** The clock for one lesson's picture retries (`PICTURE_RETRY_BUDGET`). */
+export function pictureRetryBudget(
+  b: typeof PICTURE_RETRY_BUDGET = PICTURE_RETRY_BUDGET,
+  now: () => number = Date.now,
+) {
+  let first: number | undefined;
+  const used = new Map<number, number>();
+  return {
+    /** Why a new retry round for slide `i` may not start, or undefined when it may. */
+    cut(i: number): PictureBudgetCut | undefined {
+      const t = now();
+      if (first !== undefined && t - first + b.roundMs > b.lessonMs)
+        return { scope: "lesson", usedMs: t - first, budgetMs: b.lessonMs };
+      const u = used.get(i) ?? 0;
+      if (u + b.roundMs > b.slideMs) return { scope: "slide", usedMs: u, budgetMs: b.slideMs };
+      return undefined;
+    },
+    /** Runs one retry round for slide `i`, its time counted against the slide. */
+    async round<T>(i: number, f: () => Promise<T>): Promise<T> {
+      const t = now();
+      first ??= t;
+      try {
+        return await f();
+      } finally {
+        used.set(i, (used.get(i) ?? 0) + (now() - t));
+      }
+    },
+  };
+}
 /**
  * The bundle a run writes with: the pack's own bundle when it has one (a different stamped bundle
  * is logged and overridden), else the run's bundle, else the active one.
@@ -2267,6 +2314,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       restore(i, s0, n0, oldAsks);
       return false;
     };
+  /** The lesson's picture retry clock (`PICTURE_RETRY_BUDGET`; a test passes its own). */
+  const pictureClock = pictureRetryBudget(run.pictureBudget ?? PICTURE_RETRY_BUDGET, run.now);
   /** The library drawing the director chose for a lost picture, where it was the slide's one visual. */
   const drawLost = async (i: number, lost: PhotoAsk, kind: string): Promise<boolean> => {
     const s0 = plan.slides[i] as S;
@@ -2297,6 +2346,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       if (lostAsks(i).length) log({ ev: "repair-off", slide: i + 1, repair: "picture-retry" });
       return;
     }
+    if (!lostAsks(i).length) return;
+    const cut = pictureClock.cut(i);
+    if (cut) {
+      log({ ev: "picture-budget", slide: i + 1, step: "retry", ...cut });
+      return;
+    }
+    await pictureClock.round(i, () => retryLostRound(i, ro));
+  };
+  const retryLostRound = async (i: number, ro: { noDrawing?: boolean }) => {
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
       // A stages panel is never drawn alone: it is made again in the set's look, or not at all.
@@ -3381,10 +3439,15 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // TEACH-247 part cy: a stages panel is never swapped for a drawing or split off (code would
     // choose the layout): the writer restages the slide (the reroute below), knowing the picture
     // could not be shown.
+    const tryable = !setPanel(lost) && heldPhotoFills(s0, others) && repairOn("picture-retry");
+    const cut = tryable ? pictureClock.cut(i) : undefined;
+    if (cut) log({ ev: "picture-budget", slide: i + 1, step: "lost-fallback", ...cut });
     const how0 =
-      setPanel(lost) || !heldPhotoFills(s0, others) || !repairOn("picture-retry")
+      !tryable || cut
         ? undefined
-        : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
+        : await pictureClock.round(i, () =>
+            lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost)),
+          );
     if (how0) {
       path.set(i, `picture-${how0}`);
       return;
