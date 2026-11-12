@@ -34,9 +34,13 @@ export type SheetHead = {
 
 export function sheetHead(worksheet: Worksheet): SheetHead {
   const { header } = worksheet;
-  const objective = header.subtitle?.trim() ? header.subtitle : undefined;
+  // Lead, 12 Nov: with the self-check strip on, the header is the title alone; the strip's tick
+  // boxes carry the objectives, so a short sheet is not two lists of the same sentences. With the
+  // strip off, the header lists them (the objective line, then the rest, four in all).
+  const strip = !!worksheet.selfAssessment;
+  const objective = !strip && header.subtitle?.trim() ? header.subtitle : undefined;
   const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-  const others = printableCriteria(header.criteria).filter(
+  const others = (strip ? [] : printableCriteria(header.criteria)).filter(
     (text) => objective === undefined || !same(text, objective),
   );
   return {

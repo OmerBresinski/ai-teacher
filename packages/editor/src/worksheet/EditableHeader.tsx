@@ -80,8 +80,9 @@ export const EditableHeader = memo(function EditableHeader({
           onChange={commitTitle}
         />
       </h1>
-      {/* Same rule as the printed header: the objective line exists once the toolbar adds it. */}
-      {header.subtitle !== undefined ? (
+      {/* Same rule as the printed header: the objective line exists once the toolbar adds it, and
+          hides while the self-check strip carries the objectives (Lead, 12 Nov). */}
+      {header.subtitle !== undefined && !worksheet.selfAssessment ? (
         <p className="ws-objective">
           <SheetField
             label="Learning objective"

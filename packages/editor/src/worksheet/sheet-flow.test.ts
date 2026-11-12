@@ -371,12 +371,12 @@ describe("round 2: the strip never sits alone on the last page", () => {
     expect(keys(pages[1]?.items)).toEqual(["q7", "b7", "__rag__"]);
   });
 
-  test("but it never empties more than a third of a page to do so: then the strip goes alone", () => {
+  test("even when that leaves a gap: the strip never stands alone (Lead, 12 Nov)", () => {
     const ws = { ...sheet([para("filler"), q("q2", "Q", 2), box("b2")]), selfAssessment: true };
     const items = buildFlow(ws, "pupil");
     const heights = { filler: CONTENT_H / 2, q2: 30, b2: 70, __rag__: CONTENT_H / 2 };
     const { pages } = paginate(items, heights, 0);
-    expect(keys(pages[0]?.items)).toEqual(["filler", "q2", "b2"]);
-    expect(keys(pages[1]?.items)).toEqual(["__rag__"]);
+    expect(keys(pages[0]?.items)).toEqual(["filler"]);
+    expect(keys(pages[1]?.items)).toEqual(["q2", "b2", "__rag__"]);
   });
 });

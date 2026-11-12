@@ -213,11 +213,10 @@ export function paginate(
         }
         return total;
       };
-      // The strip's hold on the last question is soft: it never leaves more than a third of a
-      // page empty to avoid standing alone. A question and its space, a heading and what it
+      // Lead, 12 Nov: the strip never stands alone on a page; the last question (with its
+      // heading and space) moves over with it. A question and its space, a heading and what it
       // introduces, always move together.
-      let run = runHeight(true);
-      if (used + run > room && room - used > contentH / 3) run = runHeight(false);
+      const run = runHeight(true);
       if (run > height && used + run > room && run <= contentH) {
         flush();
         room = available();

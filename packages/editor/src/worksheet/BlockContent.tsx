@@ -382,7 +382,7 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
         </>
       ) : null}
       <h1 className="ws-title">{sheetHead(worksheet).title}</h1>
-      {header.subtitle !== undefined ? (
+      {header.subtitle !== undefined && !worksheet.selfAssessment ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
       <MoreObjectives worksheet={worksheet} />

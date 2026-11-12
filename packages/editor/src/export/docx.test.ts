@@ -199,15 +199,19 @@ describe("worksheet Word export", () => {
     expect(names).toContain("word/document.xml");
   });
 
-  it("carries the title, the header lines and the objective", async () => {
-    const { xml } = await xmlFor(everyBlockSheet());
+  it("carries the title, the header lines and the objective (strip off; on, the strip has them)", async () => {
+    const { xml } = await xmlFor({ ...everyBlockSheet(), selfAssessment: false });
     expect(xml).toContain("The water cycle: check your understanding");
     expect(xml).toContain("Name:");
     expect(xml).toContain("Date:");
     expect(xml).toContain("Class:");
     expect(xml).toContain("I can explain how water moves around.");
-    // Criteria print as checkbox lines.
-    expect(xml).toContain("☐  I can name each stage");
+    // With the strip off the criteria are header lines, not checkbox lines.
+    expect(xml).toContain("I can name each stage");
+    expect(xml).not.toContain("☐  I can name each stage");
+    const withStrip = await xmlFor(everyBlockSheet());
+    expect(withStrip.xml).toContain("☐  I can name each stage");
+    expect(withStrip.xml).not.toContain("I can explain how water moves around.");
   });
 
   it("lays the page out at the sheet size", async () => {
@@ -545,22 +549,13 @@ function headSheet(overrides: Partial<Worksheet["header"]> = {}, selfAssessment 
 }
 
 describe("header rule: print and Word match (worksheets plan T3)", () => {
-  it("prints the same title, objectives and up to four criteria, in the same order", async () => {
+  it("with the strip on: the title alone in the header, the criteria ticked in the strip", async () => {
     const sheet = headSheet();
     const head = sheetHead(sheet);
-    expect(head.criteria).toEqual([
-      "I can name the inner and outer bank",
-      "I can explain where erosion happens",
-      "I can explain where deposition happens",
-      "I can draw a meander",
-    ]);
-    // WS8: the header lists every objective, up to four in all (the objective line plus three
-    // more); the strip still ticks all four criteria.
-    expect(head.moreObjectives).toEqual(head.criteria.slice(0, 3));
+    expect(head.objective).toBeUndefined();
+    expect(head.moreObjectives).toEqual([]);
     const expected = [
       head.title,
-      head.objective,
-      ...head.moreObjectives,
       "Tick what you can do now",
       ...head.criteria,
       "How confident do you feel?",
@@ -570,10 +565,11 @@ describe("header rule: print and Word match (worksheets plan T3)", () => {
     const pick = (lines: string[]) => lines.filter((line) => expected.includes(line));
     expect(pick(word)).toEqual(expected as string[]);
     expect(pick(print)).toEqual(expected as string[]);
-    // Neither prints the fifth criterion, and Word no longer repeats the criteria under the title.
-    expect(word.join("\n")).not.toContain("ox-bow");
-    expect(print.join("\n")).not.toContain("ox-bow");
-    expect(word.filter((line) => line === "I can draw a meander")).toHaveLength(1);
+    for (const lines of [word, print]) {
+      expect(lines).not.toContain("To explain how a meander forms.");
+      expect(lines.join("\n")).not.toContain("ox-bow");
+      expect(lines.filter((line) => line === "I can draw a meander")).toHaveLength(1);
+    }
   });
 
   it("prints no tick boxes in either when the self-assessment strip is off, but still the objectives", async () => {
