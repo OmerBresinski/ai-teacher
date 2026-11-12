@@ -409,8 +409,12 @@ export const RetrievalQuestionSchema = z.strictObject({
 });
 export type RetrievalQuestion = z.infer<typeof RetrievalQuestionSchema>;
 
+// Loose, not strict (rollback tolerance, release 11 Nov): keys a newer build adds (`buildsOn`,
+// `points`) are kept as they are rather than refused, so this build still saves and reloads a
+// lesson the newer build wrote and never deletes what it added. Every key this build reads is
+// still checked exactly as before.
 export const LessonFactsSchema = z
-  .strictObject({
+  .looseObject({
     objectives: z.array(ObjectiveSchema),
     keyIdeas: z.array(KeyIdeaSchema).optional(),
     vocabulary: z.array(VocabularyItemSchema),

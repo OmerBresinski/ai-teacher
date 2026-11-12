@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "id": "e2e-y5-fractions-exit",
+  "title": "Fractions of amounts",
+  "themeId": "splash",
+  "createdAt": "2026-11-12T10:09:52.458Z",
+  "updatedAt": "2026-11-12T10:09:52.458Z",
+  "header": {
+    "showName": true,
+    "showDate": true,
+    "showClass": true,
+    "title": "Fractions of amounts",
+    "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+    "criteria": [
+      "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+      "I can calculate improper fractions and mixed numbers of amounts using bar models."
+    ]
+  },
+  "blocks": [
+    {
+      "id": "y5-fractions-b1",
+      "type": "heading",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Exit ticket"
+              }
+            ]
+          }
+        ]
+      },
+      "level": 1
+    },
+    {
+      "id": "y5-fractions-b2",
+      "type": "instructions",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Answer each question in the space below it."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "y5-fractions-b3",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What is 2/5 of £8?"
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "£3.20 (800p ÷ 5 × 2 = 320p)",
+      "number": 1
+    },
+    {
+      "id": "y5-fractions-b4",
+      "type": "answer-box",
+      "heightPt": 48,
+      "label": "Working and answer"
+    },
+    {
+      "id": "y5-fractions-b5",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Draw a bar model to find 1¼ of 32."
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "40 (32 + 8 = 40)",
+      "number": 2
+    },
+    {
+      "id": "y5-fractions-b6",
+      "type": "answer-box",
+      "heightPt": 128
+    }
+  ],
+  "includeAnswerKey": true,
+  "selfAssessment": true,
+  "pageSize": "A4",
+  "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+  "ageBand": "ks2",
+  "yearGroup": "Year 5",
+  "language": "en-GB",
+  "generation": {
+    "jobId": "019a7a00-0000-7000-8000-0000000000a2",
+    "stage": "checked",
+    "startedAt": "2026-11-12T10:21:00.000Z",
+    "completedAt": "2026-11-12T10:21:01.000Z",
+    "promptVersions": {
+      "build": "slide-sheet.v1"
+    },
+    "usage": {
+      "calls": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0
+    },
+    "findings": [],
+    "recipeId": "exit-ticket",
+    "practiceMinutes": 5
+  }
+}

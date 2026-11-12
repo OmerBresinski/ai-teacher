@@ -1,0 +1,314 @@
+{
+  "version": 1,
+  "id": "e2e-y5-fractions-practice",
+  "title": "Fractions of amounts",
+  "themeId": "splash",
+  "createdAt": "2026-11-12T10:10:17.617Z",
+  "updatedAt": "2026-11-12T10:10:17.617Z",
+  "header": {
+    "showName": true,
+    "showDate": true,
+    "showClass": true,
+    "title": "Fractions of amounts",
+    "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+    "criteria": [
+      "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+      "I can calculate improper fractions and mixed numbers of amounts using bar models."
+    ]
+  },
+  "blocks": [
+    {
+      "id": "y5-fractions-b7",
+      "type": "heading",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Warm up"
+              }
+            ]
+          }
+        ]
+      },
+      "level": 2
+    },
+    {
+      "id": "y5-fractions-b8",
+      "type": "instructions",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Answer each question."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "y5-fractions-b9",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Split 12 metres into four equal parts. How long is each part?"
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "3 m (12 ÷ 4 = 3 m)",
+      "number": 1
+    },
+    {
+      "id": "y5-fractions-b10",
+      "type": "answer-box",
+      "heightPt": 48,
+      "label": "Working and answer"
+    },
+    {
+      "id": "y5-fractions-b11",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A length is split into fifths. What does six fifths tell you about how much of the whole length is included?"
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 2,
+      "answer": "It includes five fifths for the whole length and one more fifth beyond the whole.",
+      "number": 2
+    },
+    {
+      "id": "y5-fractions-b12",
+      "type": "heading",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Practice"
+              }
+            ]
+          }
+        ]
+      },
+      "level": 2
+    },
+    {
+      "id": "y5-fractions-b13",
+      "type": "instructions",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Answer each question. Show your working where there is a calculation."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "y5-fractions-b14",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A ribbon is 18 metres long. How long is 3/4 of the ribbon?"
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "13½ m (18 ÷ 4 = 4½; 4½ × 3 = 13½ m)",
+      "number": 3
+    },
+    {
+      "id": "y5-fractions-b15",
+      "type": "answer-box",
+      "heightPt": 48,
+      "label": "Working and answer"
+    },
+    {
+      "id": "y5-fractions-b16",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Use a bar model to find 1¼ of 40."
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "50 (40 ÷ 4 = 10; 40 + 10 = 50)",
+      "number": 4
+    },
+    {
+      "id": "y5-fractions-b17",
+      "type": "answer-box",
+      "heightPt": 48,
+      "label": "Working and answer"
+    },
+    {
+      "id": "y5-fractions-b18",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A plank is 16 metres long. How long is 7/4 of the plank?"
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "28 m (16 ÷ 4 = 4; 4 × 7 = 28 m)",
+      "number": 5
+    },
+    {
+      "id": "y5-fractions-b19",
+      "type": "answer-box",
+      "heightPt": 48,
+      "label": "Working and answer"
+    },
+    {
+      "id": "y5-fractions-b20",
+      "type": "heading",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Challenge"
+              }
+            ]
+          }
+        ]
+      },
+      "level": 2
+    },
+    {
+      "id": "y5-fractions-b21",
+      "type": "instructions",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Take this one step further."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "y5-fractions-b22",
+      "type": "question",
+      "doc": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A path is 20 metres long. How long is 9/4 of the path?"
+              }
+            ]
+          }
+        ]
+      },
+      "answerLines": 0,
+      "answer": "45 m (20 ÷ 4 = 5; 5 × 9 = 45 m)",
+      "number": 6
+    },
+    {
+      "id": "y5-fractions-b23",
+      "type": "answer-box",
+      "heightPt": 48,
+      "label": "Working and answer"
+    }
+  ],
+  "includeAnswerKey": true,
+  "selfAssessment": true,
+  "pageSize": "A4",
+  "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+  "ageBand": "ks2",
+  "yearGroup": "Year 5",
+  "language": "en-GB",
+  "generation": {
+    "jobId": "019a7a00-0000-7000-8000-0000000000a3",
+    "stage": "failed",
+    "startedAt": "2026-11-12T10:22:00.000Z",
+    "promptVersions": {},
+    "usage": {
+      "calls": 1,
+      "inputTokens": 1200,
+      "outputTokens": 300,
+      "costUsd": 0.004
+    },
+    "findings": [],
+    "recipeId": "quick-quiz",
+    "practiceMinutes": 10,
+    "failure": {
+      "code": "could-not-write",
+      "message": "We couldn’t write this sheet. Try again, or choose another type."
+    }
+  }
+}

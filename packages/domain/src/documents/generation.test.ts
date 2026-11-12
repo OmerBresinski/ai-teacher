@@ -54,7 +54,8 @@ describe("GenerationSchema", () => {
     ).toBe(false);
   });
 
-  test("rejects unknown keys (strict)", () => {
-    expect(GenerationSchema.safeParse({ ...generation(), extra: true }).success).toBe(false);
+  test("keeps unknown keys a newer build wrote, as they are (rollback tolerance)", () => {
+    const input = { ...generation(), extra: { kept: true } };
+    expect(GenerationSchema.parse(input)).toEqual(input);
   });
 });

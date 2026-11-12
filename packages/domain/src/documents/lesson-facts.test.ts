@@ -366,8 +366,9 @@ describe("LessonFactsSchema", () => {
     expect(LessonFactsSchema.safeParse({ ...lessonFacts(), durationMin: 2.5 }).success).toBe(false);
   });
 
-  test("rejects unknown keys (strict) and a missing array", () => {
-    expect(LessonFactsSchema.safeParse({ ...lessonFacts(), extra: 1 }).success).toBe(false);
+  test("keeps unknown keys a newer build wrote (rollback tolerance) and rejects a missing array", () => {
+    const withExtra = { ...lessonFacts(), extra: [{ kept: 1 }] };
+    expect(LessonFactsSchema.parse(withExtra)).toEqual(withExtra);
     const { misconceptions: _m, ...rest } = lessonFacts();
     expect(LessonFactsSchema.safeParse(rest).success).toBe(false);
   });
