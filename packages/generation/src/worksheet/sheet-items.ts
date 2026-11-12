@@ -2,7 +2,7 @@ import { hasLeakedPupilPhrase, isOneOf, normaliseText } from "@tj/domain/documen
 import { editorialIssue } from "@tj/slides";
 import { isEarlyYears, isSpokenTask, type LessonDigest } from "@tj/slides/worksheet/digest";
 import { z } from "zod";
-import { numericMismatches } from "../numeric-check";
+import { asksForRounding, numericMismatches } from "../numeric-check";
 import { checkKey } from "../writer/answer-key";
 import { isNonAnswer } from "./gate";
 
@@ -65,8 +65,35 @@ const LESSON_REFERENCE =
 /** A gap to fill ("from _____ to _____"): the sheet has no gap-fill block, so it would print above ruled lines. */
 const GAP = /_{3,}/;
 
-const CALC_QUESTION = /^\W*(calculate|work out|find)\b|\d\s*[+\-−×÷/=]\s*\d/i;
-const numbersIn = (text: string): string[] => text.match(/\d+(?:\.\d+)?/g) ?? [];
+/** A calculate command; "find" only with a number to find from ("Find the capital" is not one). */
+const CALC_COMMAND = /^\W*(?:calculate|work out)\b|^\W*find\b(?=.*\d)/i;
+/**
+ * A year range ("1914-1918", "1939 – 45"): history and geography text, not a subtraction (R4
+ * review 12 Nov: a correct no-working history item was dropped as a calculation).
+ */
+const YEAR_RANGE = /\b(?:1\d{3}|20\d{2})\s*[-–—]\s*(?:1\d{3}|20\d{2}|\d{2})\b/g;
+/**
+ * An operator between two numbers. A hyphen or dash only when spaced ("45 - 18"): an unspaced one
+ * is a range, a score or a label ("3-1", "KS3-4", "pages 4–6"); the minus sign "−" always counts.
+ */
+const OPERATOR = /\d\s*[+×÷=*/]\s*\d|\d\s*−\s*\d|\d\s+[-–]\s+\d|\d\s+x\s+\d/i;
+/** A sum in words between two numbers ("7 times 8", "12 divided by 3", "9 take away 4"). */
+const WORD_OPERATOR =
+  /\d\s+(?:times|multiplied by|divided by|plus|add|minus|take away|subtract)\s+\d/i;
+/** Whether a question asks for a calculation: a command, or an operator between numbers. */
+export function isCalculation(question: string): boolean {
+  if (CALC_COMMAND.test(question)) return true;
+  // Only a rising pair is a range ("1914-1918", "1939 – 45"); "2000 - 1500" is a subtraction.
+  const text = question.replace(YEAR_RANGE, (range) => {
+    const [from = "", to = ""] = range.split(/\s*[-–—]\s*/);
+    const end = to.length === 2 ? Number(from.slice(0, 2) + to) : Number(to);
+    return end >= Number(from) ? " " : range;
+  });
+  return OPERATOR.test(text) || WORD_OPERATOR.test(text);
+}
+/** Whole and decimal numbers, digit groups read as one ("12,000" is 12000, not 12 and 0). */
+const numbersIn = (text: string): string[] =>
+  (text.match(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g) ?? []).map((n) => n.replace(/,/g, ""));
 const words = (text: string) => new Set(normaliseText(text).split(/\s+/).filter(Boolean));
 
 /** A slide question copied: the same words, or 80 % word overlap with the same numbers (D10). */
@@ -109,7 +136,7 @@ const VULGAR_CLASS = `[${Object.keys(VULGAR).join("")}]`;
  * optional vulgar fraction ("10½", "3.20"), or a vulgar fraction alone ("¾"). Mixed and plain
  * fractions come first, so "3/4" is never read as 3.
  */
-const NUMBER = `\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?(?:\\s?${VULGAR_CLASS})?|${VULGAR_CLASS}`;
+const NUMBER = `\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?(?:\\s?${VULGAR_CLASS})?|${VULGAR_CLASS}`;
 /** A signed amount: a minus before or after a currency sign ("−£3", "£-3"), then a number. */
 const AMOUNT = `(?:([−-])\\s?)?[£$€]?\\s?(?:([−-])\\s?)?(${NUMBER})`;
 /**
@@ -130,7 +157,8 @@ function amountOf(m: RegExpExecArray | null): Amount | undefined {
   const tok = m?.[3];
   if (!m || tok === undefined) return undefined;
   const sign = m[1] || m[2] ? -1 : 1;
-  const t = tok.trim();
+  // Digit groups ("12,000") are one number (R4 review: "10,500" passed against "= 10,000").
+  const t = tok.trim().replace(/(\d),(?=\d{3})/g, "$1");
   let value: number;
   let places: number | null = null;
   const mixed = /^(\d+)\s+(\d+)\/(\d+)$/.exec(t);
@@ -146,8 +174,17 @@ function amountOf(m: RegExpExecArray | null): Amount | undefined {
   return { text: `${sign < 0 ? "-" : ""}${t}`, value: sign * value, places };
 }
 
-const sameAmount = (a: Amount, v: Amount): boolean => {
-  const places = v.places ?? a.places;
+/**
+ * The key's amount `a` equals the working's result `v`. Both decimals: exactly, at the more places
+ * of the two (R4 review 12 Nov: at v's places, "= 4" accepted a key of 3.6), or at the fewer when
+ * the question asks for rounding ("= 3.57", key "3.6 to 1 d.p."). A fraction against a decimal
+ * compares at the decimal's places; two fractions exactly.
+ */
+const sameAmount = (a: Amount, v: Amount, rounding = false): boolean => {
+  const places =
+    a.places !== null && v.places !== null
+      ? (rounding ? Math.min : Math.max)(a.places, v.places)
+      : (v.places ?? a.places);
   return places === null
     ? Math.abs(a.value - v.value) < 1e-9
     : a.value.toFixed(places) === v.value.toFixed(places);
@@ -172,13 +209,67 @@ export function workingFault(question: string, working: string | null, key: stri
   const given = [...amountsIn(question).map((q) => q.value), ...numbersIn(question).map(Number)];
   const fresh = all.filter((a) => !given.some((q) => Math.abs(q - a.value) < 1e-9));
   const first = (fresh[0] ?? all[0]) as Amount;
-  const same = fresh.length > 0 ? sameAmount(first, v) : all.some((a) => sameAmount(a, v));
+  const rounding = asksForRounding(question);
+  const same =
+    fresh.length > 0 ? sameAmount(first, v, rounding) : all.some((a) => sameAmount(a, v, rounding));
   if (!same) {
     return `the answer ${first.text} does not match the working's result ${v.text}`;
   }
   if (checkKey(question, key, working).length > 0) return "the key or working has a wrong sum";
-  if (numericMismatches(`${working} ${key}`).length > 0)
+  // Each text on its own too: joined, a bare result runs into the key's first number ("= 7 7")
+  // and the side is no longer arithmetic (R4 review: "20 ÷ 3 = 7" passed).
+  const exact = { exact: !rounding };
+  if (
+    numericMismatches(`${working} ${key}`, exact).length > 0 ||
+    numericMismatches(working, exact).length > 0 ||
+    numericMismatches(key, exact).length > 0
+  )
     return "a sum in the working does not hold";
+  return null;
+}
+
+const WORDS_AS_SIGNS: [RegExp, string][] = [
+  [/\b(?:multiplied by|times)\b/gi, " × "],
+  [/\bdivided by\b/gi, " ÷ "],
+  [/\b(?:plus|add)\b/gi, " + "],
+  [/\b(?:minus|take away)\b/gi, " − "],
+];
+/** "What is 7 times 8?", "Work out 45 - 18.": the whole question is a command and one sum. */
+const ASKED_SUM =
+  /^\W*(?:what is|what's|work out|calculate|find)(?:\s+the value of)?\s+([\d\s.,+\-−–×÷*x/()]+?)\s*[?.!]?\s*$/i;
+
+/**
+ * B (R4 review 12 Nov): a question that is one sum ("What is 3 + 4?", "What is 7 times 8?") is
+ * worked out here and the key's result must equal it, working or not, any year. The key's result
+ * is its first number the question does not hold, else its last.
+ */
+export function askedSumFault(question: string, key: string): string | null {
+  let q = question;
+  for (const [re, sign] of WORDS_AS_SIGNS) q = q.replace(re, sign);
+  const expr = ASKED_SUM.exec(q)?.[1]?.trim();
+  if (!expr || !/\d\s*[+\-−–×÷*x/]\s*\(?\s*\d/i.test(expr)) return null;
+  const all = amountsIn(key);
+  if (all.length === 0) return null;
+  const given = numbersIn(expr).map(Number);
+  const fresh = all.filter((a) => !given.some((g) => Math.abs(g - a.value) < 1e-9));
+  const result = (fresh[0] ?? all[all.length - 1]) as Amount;
+  const exact = !asksForRounding(question);
+  const sum = `${expr.replace(/(\d),(?=\d{3})/g, "$1")} = ${result.value}`;
+  return numericMismatches(sum, { exact }).length > 0
+    ? `the answer ${result.text} is not ${expr}`
+    : null;
+}
+
+/**
+ * B (R4 review 12 Nov): the key of a calculation with no working was never checked. Its own sums
+ * must hold (exactly, unless the question asks for rounding) and its answer must be the asked sum's.
+ */
+export function keyFault(question: string, key: string): string | null {
+  const sum = askedSumFault(question, key);
+  if (sum) return sum;
+  if (checkKey(question, key).length > 0) return "the key has a wrong sum";
+  if (numericMismatches(key, { exact: !asksForRounding(question) }).length > 0)
+    return "a sum in the key does not hold";
   return null;
 }
 
@@ -195,10 +286,10 @@ const EXPLAIN = /\b(explain|why|is (?:the pupil|she|he|they|this|that) (?:right|
  * "Calculate / Work out / Find" item, still needs its working.
  */
 export function explainsAMethod(question: string, answer: string): boolean {
-  if (!EXPLAIN.test(question) && /^\W*(calculate|work out|find)\b/i.test(question)) return false;
+  if (!EXPLAIN.test(question) && CALC_COMMAND.test(question)) return false;
   const given = new Set(numbersIn(question));
   if (numbersIn(answer).some((n) => !given.has(n))) return false;
-  return numericMismatches(answer).length === 0 && checkKey(question, answer).length === 0;
+  return keyFault(question, answer) === null;
 }
 
 type Context = { digest: LessonDigest };
@@ -235,16 +326,21 @@ export function practiceFaults(item: PracticeItem, ctx: Context): string[] {
   if (isNonAnswer(item.answer)) out.push("has no answer");
   if (GAP.test(item.question)) out.push("leaves a gap to fill in the question");
   const early = isEarlyYears(ctx.digest.lesson.yearGroup);
-  if (
-    !early &&
-    CALC_QUESTION.test(item.question) &&
-    !item.working?.trim() &&
-    !explainsAMethod(item.question, item.answer)
-  ) {
+  const calc = isCalculation(item.question);
+  const worked = !!item.working?.trim();
+  if (!early && calc && !worked && !explainsAMethod(item.question, item.answer)) {
     out.push("calculates but gives no working");
+  } else if (calc && !worked) {
+    // Years 1-2 (no working asked) and explain items: the key is still checked.
+    const k = keyFault(item.question, item.answer);
+    if (k) out.push(k);
   }
   const w = workingFault(item.question, item.working, item.answer);
   if (w) out.push(w);
+  else if (worked) {
+    const sum = askedSumFault(item.question, item.answer);
+    if (sum) out.push(sum);
+  }
   return out;
 }
 
@@ -265,8 +361,7 @@ export function examFaults(
     out.push(`does not open with its command word ${item.command}`);
   }
   const calc =
-    ["Calculate", "Work out", "Show that"].includes(item.command) ||
-    CALC_QUESTION.test(item.question);
+    ["Calculate", "Work out", "Show that"].includes(item.command) || isCalculation(item.question);
   if (calc && !item.working?.trim()) out.push("calculates but gives no working");
   const last = item.markScheme[item.markScheme.length - 1] ?? "";
   const w = workingFault(item.question, item.working, last);

@@ -365,8 +365,17 @@ const meets = (a: [number, number], b: [number, number]) => {
   return a[0] <= b[1] + slack && b[0] <= a[1] + slack;
 };
 
-/** The equalities in `text` whose two sides are arithmetic and disagree. */
-export function numericMismatches(text: string): NumericMismatch[] {
+/**
+ * The equalities in `text` whose two sides are arithmetic and disagree. With `exact` (worksheet
+ * keys, R4 review 12 Nov: "20 ÷ 3 = 7" and "9 ÷ 2 = 4" passed as rounded), a side that is one bare
+ * whole number is the exact result, not rounded to the unit; decimal literals still read as
+ * rounded to their last place ("20 ÷ 3 = 6.67" holds). Callers pass it unless the question asks
+ * for rounding (`asksForRounding`).
+ */
+export function numericMismatches(
+  text: string,
+  options: { exact?: boolean } = {},
+): NumericMismatch[] {
   const toks = tokenize(text);
   // Segments: maximal runs without a word; a side touching a word is not trusted to be whole.
   const out: NumericMismatch[] = [];
@@ -390,7 +399,10 @@ export function numericMismatches(text: string): NumericMismatch[] {
         (last.t === "op" || last.t === "fn" || last.t === "sqrt")
       )
         return undefined;
-      const bare = s.filter((t) => t.t === "num").length === 1 && s.every((t) => t.t !== "op");
+      const bare =
+        !options.exact &&
+        s.filter((t) => t.t === "num").length === 1 &&
+        s.every((t) => t.t !== "op");
       return evaluate(s, bare);
     });
     for (let k = 0; k + 1 < vals.length; k++) {
@@ -419,6 +431,12 @@ export function numericMismatches(text: string): NumericMismatch[] {
   flush(start, toks.length);
   return out;
 }
+
+/** A question that asks for a rounded or estimated answer: its key may round. */
+export const asksForRounding = (question: string): boolean =>
+  /\b(?:round(?:ed|ing)?|nearest|decimal places?|d\.p\.|dp\b|significant figures?|s\.f\.|sf\b|estimate|approximate(?:ly)?|roughly|about how)|≈/i.test(
+    question,
+  );
 
 /** Where a fact's checked text lives. */
 export type NumericFactMismatch = NumericMismatch & {
