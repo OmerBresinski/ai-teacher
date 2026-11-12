@@ -72,6 +72,20 @@
             "north america",
             "rainforest"
           ]
+        },
+        {
+          "what": "a town, a city district or a street (its smallest view is the whole UK; ask for a picture of the place instead)",
+          "when": [
+            "\\bstreets?\\b",
+            "\\blanes?\\b",
+            "\\balley(way)?s?\\b",
+            "\\b(city|town|urban) districts?\\b",
+            "\\bdistricts? of (a |the )?(town|city|london)\\b",
+            "\\bneighbou?rhoods?\\b",
+            "\\bcity of london\\b",
+            "\\b(town|city) (centre|center|plan|layout|walls)\\b",
+            "\\b(inside|within|across|around|through) (the |a )?(town|city)\\b"
+          ]
         }
       ]
     },

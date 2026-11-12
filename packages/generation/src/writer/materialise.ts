@@ -1095,6 +1095,14 @@ export function toInput(
       const caption = str(s.caption ?? s.lead).trim();
       const icon = str(s.icon).trim();
       const accent = s.accentWord ? { accentWord: str(s.accentWord) } : {};
+      // R4 (y5 "Six fifths of 20"): the figure template draws only a model (`drawn`) or a photo;
+      // anything else leaves its plate empty. A model the library refused, drawn by a data drawer
+      // instead (`{ diagram }`), is a data diagram, so it takes the big-diagram slide as the
+      // big-diagram route does; any other undrawable figure leaves the words standing alone.
+      if (f && !("drawn" in f) && !("photo" in f && !!f.photo))
+        return "diagram" in f
+          ? { template: "big-diagram", heading, ...(caption ? { lead: caption } : {}), figure: f }
+          : { template: "explain", heading, lead: caption };
       // The same candidates as the big-visual route, so a wide model there counts as this lesson's one.
       // TEACH-251 part ae (romans verify6 s4): the figure slide's caption is one line, and the
       // template cuts a longer one with "…" ("Bowness-on-Solway: 73…"). A caption over the age's
@@ -1131,7 +1139,8 @@ export function toInput(
               figure: f,
             }
           : { template: "explain", heading, lead: caption };
-      if (!f && !icon) return { template: "explain", heading, lead: caption };
+      // No figure and no icon the plate can draw: never an empty plate, the words stand alone.
+      if (!f && !resolveIcon(icon)) return { template: "explain", heading, lead: caption };
       return {
         template,
         heading,
