@@ -40,8 +40,8 @@ export function sheetVars(
     "--ws-answer-ink": ANSWER_INK,
     "--ws-answer-rule": ANSWER_RULE,
     "--ws-answer-tint": ANSWER_TINT,
-    "--ws-font-title": theme.fonts.title,
-    "--ws-font-body": theme.fonts.body,
+    "--ws-font-title": sizes.font ?? theme.fonts.title,
+    "--ws-font-body": sizes.font ?? theme.fonts.body,
     "--ws-page-w": `${m.page.w}pt`,
     "--ws-page-h": `${m.page.h}pt`,
     "--ws-print-w": m.printW,
@@ -54,7 +54,9 @@ export function sheetVars(
  * like any block; its class only drops the block padding under it (it ends its page).
  */
 export function flowItemClass(item: FlowItem): string {
-  return item.kind === "rag" ? "ws-block ws-rag-slot" : "ws-block";
+  if (item.kind === "rag") return "ws-block ws-rag-slot";
+  // The block's type as a class, so the rhythm can tighten a heading or a question over its box.
+  return item.kind === "block" ? `ws-block ws-block-${item.block.type}` : "ws-block";
 }
 
 export function PageView({

@@ -10,6 +10,7 @@
  * that lazy chunk, so none of it reaches the initial bundle or any other route.
  */
 @import "./fonts.css";
+@import "./fonts-playful.css";
 @import "./worksheet.css";
 
 @page {
