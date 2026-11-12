@@ -1,5 +1,10 @@
 import type { Lesson, Worksheet } from "@tj/domain/documents";
-import { isUnfinishedWorksheet, SLIDE_H, SLIDE_W } from "@tj/domain/documents";
+import {
+  answerKeyBlockedReason,
+  isUnfinishedWorksheet,
+  SLIDE_H,
+  SLIDE_W,
+} from "@tj/domain/documents";
 import {
   Button,
   cn,
@@ -28,7 +33,7 @@ import { Segmented } from "../kit/Segmented";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
 import type { SheetPart } from "../worksheet/paginate";
-import { UNFINISHED_PRINT_BLOCKED } from "../worksheet/unfinished-copy";
+import { KEY_PRINT_BLOCKED, UNFINISHED_PRINT_BLOCKED } from "../worksheet/unfinished-copy";
 import { downloadBlob } from "./download";
 import { downloadLessonJSON, downloadWorksheetJSON } from "./json";
 import { waitForSlidePaint } from "./paint";
@@ -173,11 +178,18 @@ export function ExportControl({
   // PDF and PNG read the range; PowerPoint and JSON take the whole document.
   const rangeApplies = !!lesson && (format === "pdf" || format === "png");
   const empty = rangeApplies && range.ok && range.indices.length === 0;
-  // An unfinished sheet (`isUnfinishedWorksheet`) prints placeholders and "No answer recorded":
-  // PDF and Word stay off and say why. JSON is the stored document, so it stays on.
-  const unfinishedBlocked =
-    worksheet && (format === "pdf" || format === "docx") && isUnfinishedWorksheet(document);
-  const blocked = (rangeApplies && !!rangeError) || empty || !!run || unfinishedBlocked;
+  // An unfinished sheet (`isUnfinishedWorksheet`) prints placeholders: PDF and Word stay off and
+  // say why. A question with no answer stops only the key parts (R4 review: a teacher-added
+  // question must not stop the pupil copy). JSON is the stored document, so it stays on.
+  const sheetFormat = worksheet && (format === "pdf" || format === "docx");
+  const unfinishedBlocked = !!sheetFormat && isUnfinishedWorksheet(document as Worksheet);
+  const keyBlocked =
+    !!sheetFormat &&
+    !unfinishedBlocked &&
+    part !== "pupil" &&
+    answerKeyBlockedReason(document as Worksheet) === "missing-answer";
+  const blocked =
+    (rangeApplies && !!rangeError) || empty || !!run || unfinishedBlocked || keyBlocked;
 
   const close = () => {
     setOpen(false);
@@ -406,6 +418,7 @@ export function ExportControl({
                 <PartRow value={part} onChange={setPart} />
                 <Note>The sheet prints at its saved page size.</Note>
                 {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
+                {keyBlocked ? <Note>{KEY_PRINT_BLOCKED}</Note> : null}
               </>
             )}
           </TabsContent>
@@ -459,6 +472,7 @@ export function ExportControl({
               <PartRow value={part} onChange={setPart} />
               <Note>Every question, box and line as real Word text and tables, in Calibri.</Note>
               {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
+              {keyBlocked ? <Note>{KEY_PRINT_BLOCKED}</Note> : null}
             </TabsContent>
           ) : null}
           <TabsContent value="json" className="pt-2">

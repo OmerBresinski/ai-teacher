@@ -486,7 +486,9 @@ export function WorksheetEditor({
   const active = session.activeBlockId;
   const activeBlock = active ? worksheet.blocks.find((b) => b.id === active) : undefined;
   const oversizeSet = new Set(oversize);
-  const unfinished = unfinishedWorksheetReason(worksheet);
+  // A sheet its job still holds is never finished, whatever its saved record says (an old or
+  // blank row being written reads as finished to `unfinishedWorksheetReason`).
+  const unfinished = unfinishedWorksheetReason(worksheet) ?? (making ? "not-completed" : null);
 
   return (
     <WorksheetProvider value={worksheet}>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Lesson, Worksheet } from "@tj/domain/documents";
+import type { Lesson, Worksheet, WorksheetGeneration } from "@tj/domain/documents";
 import { creditedLesson } from "@tj/domain/documents/fixtures";
 import { TooltipProvider } from "@tj/ui";
 import { demoWorksheet } from "../model/demo-worksheet";
@@ -430,11 +430,24 @@ describe("ExportControl (TEACH-112)", () => {
   });
 });
 
+const NEW_PATH: WorksheetGeneration = {
+  jobId: "job-ws",
+  stage: "checked",
+  startedAt: "2026-11-12T10:01:00.000Z",
+  completedAt: "2026-11-12T10:02:00.000Z",
+  promptVersions: { build: "worksheet-slides.v1" },
+  usage: { calls: 1, inputTokens: 0, outputTokens: 0, costUsd: 0 },
+  findings: [],
+  recipeId: "practice",
+  practiceMinutes: 10,
+};
+
 /* WS1: PDF and Word are off for an unfinished sheet, and the dialog says why. */
 describe("ExportControl on an unfinished worksheet (WS1)", () => {
   it("disables Export PDF and Export Word with the reason; JSON still exports", async () => {
     const user = userEvent.setup();
-    const sheet = demoWorksheet();
+    // Made by the new path (R4 review: only those sheets are judged unfinished).
+    const sheet: Worksheet = { ...demoWorksheet(), generation: NEW_PATH };
     sheet.blocks = [
       ...sheet.blocks,
       { id: "ph", type: "paragraph", doc: docFromText("Generation writes this part: questions") },
@@ -451,5 +464,48 @@ describe("ExportControl on an unfinished worksheet (WS1)", () => {
     await user.click(pickTab("JSON"));
     expect(screen.getByRole("button", { name: "Export JSON" })).toBeEnabled();
     expect(onOpenPrint).not.toHaveBeenCalled();
+  });
+});
+
+/* R4 review (12 Nov): a question with no answer stops only the answer key. */
+describe("ExportControl on a sheet with an unkeyed question", () => {
+  const unkeyed = (generation?: WorksheetGeneration): Worksheet => {
+    const sheet = demoWorksheet();
+    return {
+      ...sheet,
+      ...(generation ? { generation } : {}),
+      blocks: [
+        ...sheet.blocks,
+        {
+          id: "qx",
+          type: "question",
+          doc: docFromText("A teacher's question"),
+          answerLines: 2,
+          number: 99,
+        },
+      ],
+    };
+  };
+  const keyNote = /so the answer key can’t be printed/;
+
+  it("a new-path sheet: the pupil sheet exports, the key and both say why and stay off", async () => {
+    const user = userEvent.setup();
+    renderControl(unkeyed(NEW_PATH));
+    await openDialog(user);
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
+    expect(screen.queryByText(keyNote)).toBeNull();
+    await user.click(screen.getByRole("radio", { name: "Answer key" }));
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+    expect(screen.getByText(keyNote)).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: "Both" }));
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeDisabled();
+  });
+
+  it("a hand-made or old sheet exports as before", async () => {
+    const user = userEvent.setup();
+    renderControl(unkeyed());
+    await openDialog(user);
+    await user.click(screen.getByRole("radio", { name: "Answer key" }));
+    expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
   });
 });
