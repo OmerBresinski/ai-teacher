@@ -1,7 +1,13 @@
-import { fallbackThemeFor, type Lesson, type LessonFacts, type Slide } from "@tj/domain/documents";
+import {
+  BUILDS_ON_MAX,
+  fallbackThemeFor,
+  type Lesson,
+  type LessonFacts,
+  type Slide,
+} from "@tj/domain/documents";
 import { isThemeId, liveThemeId } from "@tj/slides";
 import { callStructured } from "../call";
-import { curriculumBlock, curriculumFor } from "../curriculum";
+import { curriculumBlock, curriculumFor, curriculumPitchBlock } from "../curriculum";
 import { checkObjectives, describeIssues } from "../objectives-check";
 import { periodOf, withoutPeriod } from "../period";
 import {
@@ -122,49 +128,71 @@ export const WRITER_OBJECTIVES = {
  * The writer objectives call's user turn: `objectives-user.txt` filled from the writer's brief,
  * plus the statutory curriculum statements for the brief's year and subject as `{{curriculum}}`
  * (`curriculumFor`, HEART1 plan F). A template without the placeholder renders exactly as
- * before; with it and no data for the year or subject, the block is empty.
+ * before; with it and no data for the year or subject, the block is empty. With `pitchFloor`
+ * (bundle base4f-p127, v5.2-gold BUILDER B1-B3) the lookup takes the subject the topic gives when
+ * the lesson has none, sends only the matched statements, and the block leads with what the
+ * nearest earlier year taught (`curriculumPitchBlock`).
  */
 export function writerObjectivesUser(
   lesson: Lesson,
   template: string = writerBundle().objectivesUser,
+  pitchFloor: boolean = writerBundle().features?.pitchFloor === true,
 ): string {
   const brief = writerBrief(lesson);
-  const lookup = curriculumFor({
+  const query = {
     country: locale().country,
-    subject: brief.subject,
+    subject: pitchFloor ? brief.subject.trim() || (brief.inferredSubject ?? "") : brief.subject,
     yearGroup: brief.yearGroup,
     topic: brief.topic,
-  });
-  return fillTemplate(template, brief, {
-    curriculum: curriculumBlock(lookup, brief.yearGroup),
-  }).trimEnd();
+  };
+  const curriculum = pitchFloor
+    ? curriculumPitchBlock(curriculumFor(query, { matchedOnly: true }), brief.yearGroup)
+    : curriculumBlock(curriculumFor(query), brief.yearGroup);
+  return fillTemplate(template, brief, { curriculum }).trimEnd();
+}
+
+/** `builds_on` as stored: trimmed, cut at a word boundary within `BUILDS_ON_MAX`; undefined when empty. */
+export function buildsOnOf(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim().replace(/\s+/g, " ");
+  if (!t) return undefined;
+  if (t.length <= BUILDS_ON_MAX) return t;
+  const cut = t.slice(0, BUILDS_ON_MAX + 1);
+  const space = cut.lastIndexOf(" ");
+  return (space > 0 ? cut.slice(0, space) : t.slice(0, BUILDS_ON_MAX)).trimEnd();
 }
 
 /**
  * One writer objectives call: `objectives.txt` as the system text, `writerObjectivesUser` as the
  * user turn, `objectives-schema.json` strict. It loads no uploaded source and writes no retrieval
- * questions or anchors, as in the lab.
+ * questions or anchors, as in the lab. A schema with `builds_on` (base4f-p127) returns it as
+ * `buildsOn`; a missing or empty one is not an error.
  */
 export async function writerObjectivesCall(
   lesson: Lesson,
   deps: PipelineDeps,
-): Promise<{ objectives: { text: string }[]; theme?: string }> {
+): Promise<{ objectives: { text: string }[]; theme?: string; buildsOn?: string }> {
   const P = writerBundle();
   const r = await aiWriterServices(deps).chat({
     ...WRITER_OBJECTIVES,
     system: P.objectives,
-    user: writerObjectivesUser(lesson, P.objectivesUser),
+    user: writerObjectivesUser(lesson, P.objectivesUser, P.features?.pitchFloor === true),
     schema: JSON.parse(P.objectivesSchema),
     name: "objectives",
     strict: true,
   });
-  const out = r.out as { objectives?: unknown; theme?: unknown } | undefined;
+  const out = r.out as { objectives?: unknown; theme?: unknown; builds_on?: unknown } | undefined;
   const list = out?.objectives;
   if (!Array.isArray(list)) throw new Error("objectives: no objectives array");
   const objectives = list
     .filter((t): t is string => typeof t === "string")
     .map((text) => ({ text }));
-  return typeof out?.theme === "string" ? { objectives, theme: out.theme } : { objectives };
+  const buildsOn = buildsOnOf(out?.builds_on);
+  return {
+    objectives,
+    ...(typeof out?.theme === "string" ? { theme: out.theme } : {}),
+    ...(buildsOn ? { buildsOn } : {}),
+  };
 }
 
 /**
@@ -196,12 +224,15 @@ export async function runObjectivesStep(
   let calls = 0;
   /** The planner's theme for the topic and age (ruling 202), validated in `plannedThemeId`. */
   let plannerTheme: string | undefined;
+  /** What earlier years taught (v5.2-gold `builds_on`); a pinned set keeps the stored one. */
+  let buildsOn: string | undefined;
   const pinned = state.pinObjectives ? (given.facts?.objectives ?? []) : undefined;
   if (pinned) {
     if (pinned.length === 0) {
       throw new Error("objectives: pinObjectives is set but the lesson has no objectives");
     }
     objectives = pinned.map((o) => ({ text: o.text }));
+    buildsOn = given.facts?.buildsOn;
     const kept = given.facts?.retrieval;
     retrieval = kept && kept.length > 0 ? kept : undefined;
     deps.logger.info(
@@ -237,6 +268,7 @@ export async function runObjectivesStep(
         });
         if (!got) continue;
         plannerTheme = got.theme;
+        buildsOn = got.buildsOn;
         const check = checkObjectives(got.objectives, shape.verb, { hasSource: false });
         issues = describeIssues(check.issues.filter((i) => i.kind !== "too-long"));
         deps.logger.info(
@@ -331,6 +363,7 @@ export async function runObjectivesStep(
     ...(retrieval
       ? { retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
       : {}),
+    ...(buildsOn ? { buildsOn } : {}),
   };
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
   const objectivesSlide = keepId(

@@ -1000,6 +1000,186 @@
           "ref": "scratchpad/tuning/LOG.md v5.1b-gold; scratchpad/tuning/v5.1-gold/V51B-NOTES.md"
         }
       ]
+    },
+    "writer/v5.2-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 19784,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59311,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 21727,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 741,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61030,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21007,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62282,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22950,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 735,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64156,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21893,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62827,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24356,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: lab pack, v5.1b-gold's text with six drafted line edits (+141 characters a stage: questions need only steps shown earlier, no 'Is short' line, claim strength, the worked answer row, one objective an exit question); not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 742,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: writer bundle base4f-p127's user turn ('Pupils already know' only when the objectives call wrote builds_on; the length line only when the teacher set it); as measured here, equal to v5.1b-gold's; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
+    },
+    "writer/v5.2-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64134,
+          "date": "2026-11-12",
+          "reason": "v5.2-gold baseline: v5.1b-gold's schema, unchanged; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
+        }
+      ]
     }
   }
 }

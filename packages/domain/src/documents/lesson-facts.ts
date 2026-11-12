@@ -274,7 +274,16 @@ export type LessonFacts = {
   durationMin: number;
   /** Lab r2: the starter's retrieval questions (prior knowledge); not facts, no id. Verify reads them as `r1`–`rN` (l6c). */
   retrieval?: RetrievalQuestion[];
+  /**
+   * What pupils of the year group already learned about the topic in earlier years, as the
+   * objectives call wrote it (v5.2-gold `builds_on`). The writer's and the notes' user turns read
+   * it; never shown to the teacher, and kept as is when the teacher edits the objectives.
+   */
+  buildsOn?: string;
 };
+
+/** The longest `buildsOn` a lesson stores. */
+export const BUILDS_ON_MAX = 300;
 
 export const CurriculumRefSchema = z.strictObject({
   scheme: z.string(),
@@ -422,6 +431,7 @@ export const LessonFactsSchema = z
     durationMin: z.number().int().min(1),
     /** Lab r2: the starter's retrieval set, when the objectives call wrote one. */
     retrieval: z.array(RetrievalQuestionSchema).optional(),
+    buildsOn: z.string().max(BUILDS_ON_MAX).optional(),
   })
   .superRefine((facts, ctx) => {
     // Ids are the addressing scheme for `factRefs`, so they must be unique across every array

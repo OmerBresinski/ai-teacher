@@ -72,6 +72,9 @@ import t51g3 from "./bundles/pilot-v5.1-gold/system-KS3.template.txt" with { typ
 import t51b1 from "./bundles/pilot-v5.1b-gold/system-KS1.template.txt" with { type: "text" };
 import t51b2 from "./bundles/pilot-v5.1b-gold/system-KS2.template.txt" with { type: "text" };
 import t51b3 from "./bundles/pilot-v5.1b-gold/system-KS3.template.txt" with { type: "text" };
+import t52g1 from "./bundles/pilot-v5.2-gold/system-KS1.template.txt" with { type: "text" };
+import t52g2 from "./bundles/pilot-v5.2-gold/system-KS2.template.txt" with { type: "text" };
+import t52g3 from "./bundles/pilot-v5.2-gold/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -82,6 +85,7 @@ import {
   questionOffer,
   withMenuOpts,
 } from "./layout-menu";
+import { PILOT_PACK_LIVE_ID } from "./pilot-live";
 import { v50aSystem } from "./pilot-v50a";
 import { v51RetiredAt, v51Routed, v51System } from "./pilot-v51-gold";
 import type { WriterStage } from "./schema";
@@ -788,6 +792,36 @@ export const PILOT_PACKS = {
     goldNoPictureFallback: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v5.2-gold (12 Nov 2026, lab runs only, selected by id): v5.1b-gold's switches and model blocks
+  // with the templates of scratchpad/tuning/v5.2-gold (questions need only steps shown earlier, no
+  // "Is short" line, claim strength, the worked answer row, one objective an exit question). Its
+  // objectives, user turn and notes are writer bundle base4f-p127's (PACK_WRITER_BUNDLE).
+  "v5.2-gold": {
+    id: "v5.2-gold",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v51System(t52g1, "KS1"),
+      KS2: v51System(t52g2, "KS2"),
+      KS3: v51System(t52g3, "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    goldFits: true,
+    goldMenu: true,
+    modelLines: "v5.1-gold",
+    goldNoPictureFallback: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
@@ -803,8 +837,8 @@ export function packFromEnv(env: string | undefined, live: PilotPackId): PilotPa
   if (!(env in PILOT_PACKS)) throw new Error(`TJ_PILOT_PACK: no pilot pack ${env}`);
   return env as PilotPackId;
 }
-/** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. */
-export const PILOT_PACK_LIVE: PilotPackId = "v5.0b";
+/** The pack production runs (TEACH-110 part s): stages/write.ts passes it to runWriter. Set in `pilot-live.ts`. */
+export const PILOT_PACK_LIVE: PilotPackId = PILOT_PACK_LIVE_ID;
 /** The pack a revert goes back to (one line: set PILOT_PACK_LIVE to it). Kept measured by the prompt budget so a revert passes CI. */
 export const PILOT_PACK_REVERT: PilotPackId = "v4.17";
 export const PILOT_PACK_ID: PilotPackId = packFromEnv(

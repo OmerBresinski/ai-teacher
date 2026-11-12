@@ -14,6 +14,7 @@ import {
 } from "@tj/domain/documents";
 import { answersFaults, measureHeadless } from "@tj/slides";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
+import { curriculumSubjectForTopic } from "../curriculum";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
@@ -97,6 +98,7 @@ export function writerBrief(lesson: Lesson): Brief {
     id: lesson.id,
     topic: b?.topic ?? lesson.title,
     subject: lesson.subject ?? "",
+    ...inferred(lesson, b?.topic ?? lesson.title),
     ...(lesson.historicalPeriod
       ? { historicalPeriod: lesson.historicalPeriod, fictionInPeriod: lesson.fictionInPeriod }
       : {}),
@@ -112,7 +114,16 @@ export function writerBrief(lesson: Lesson): Brief {
     // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
     exitTicketOnSlides: b?.worksheet !== true,
     slides: slideRange(b),
+    ...(b?.durationDefaulted === true ? { durationDefaulted: true } : {}),
+    ...(lesson.facts?.buildsOn ? { buildsOn: lesson.facts.buildsOn } : {}),
   };
+}
+
+/** The topic's curriculum subject for a lesson with none (`Brief.inferredSubject`; v5.2-gold). */
+function inferred(lesson: Lesson, topic: string): { inferredSubject?: string } {
+  if (lesson.subject?.trim()) return {};
+  const s = curriculumSubjectForTopic(locale().country, topic, lesson.yearGroup ?? "Year 7");
+  return s ? { inferredSubject: s } : {};
 }
 
 /**

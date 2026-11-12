@@ -5,8 +5,10 @@ import * as base4fP123 from "./bundles/base4f-p123/prompts.gen";
 import * as base4fP124 from "./bundles/base4f-p124/prompts.gen";
 import * as base4fP125 from "./bundles/base4f-p125/prompts.gen";
 import * as base4fP126 from "./bundles/base4f-p126/prompts.gen";
+import * as base4fP127 from "./bundles/base4f-p127/prompts.gen";
 import ACTIVITY_MENU_G from "./bundles/base4g/activity-menu.txt" with { type: "text" };
 import * as base4g from "./bundles/base4g/prompts.gen";
+import { PACK_WRITER_BUNDLE, PILOT_PACK_LIVE_ID } from "./pilot-live";
 
 /*
  * The writer's prompt set as a named, versioned bundle (Greg, 8 Oct): every pinned file the
@@ -42,6 +44,12 @@ export type BundleFeatures = {
   slotFill?: boolean;
   /** The objectives call picks the theme (ruling 202), so the writer's `design` has no theme. */
   planTheme?: boolean;
+  /**
+   * v5.2-gold's pitch floor (BUILDER B1-B3): the objectives call gets the curriculum statements
+   * the nearest earlier year taught the topic and this year's matched ones (`curriculumPitchBlock`),
+   * looked up under the subject the topic gives when the lesson has none.
+   */
+  pitchFloor?: boolean;
 };
 
 const bundle = (
@@ -83,6 +91,11 @@ export const WRITER_BUNDLES = {
   // context gives a range ("two or three"), the larger number when the topic's core has that many
   // distinct parts for the age, never split or padded. Writer hash unchanged.
   "base4f-p126": bundle("base4f-p126", base4fP126, "8a0f9b4f6dde", base4Defs),
+  // base4f-p126 with five files from scratchpad/tuning/v5.2-gold (12 Nov 2026): the objectives
+  // call gets earlier-year and this-year curriculum statements and writes builds_on first; the
+  // writer's user turn says what pupils already know and drops a defaulted length line; the notes
+  // give no minutes. Pack v5.2-gold runs it (PACK_WRITER_BUNDLE). Writer hash unchanged.
+  "base4f-p127": bundle("base4f-p127", base4fP127, "8a0f9b4f6dde", base4Defs, { pitchFloor: true }),
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.
@@ -101,6 +114,18 @@ export type WriterBundleId = keyof typeof WRITER_BUNDLES;
 export const WRITER_BUNDLE_ID: WriterBundleId = "base4f-p126";
 
 /**
+ * The writer bundle a pilot pack needs for itself (`PACK_WRITER_BUNDLE`, e.g. v5.2-gold's
+ * base4f-p127), or undefined when the pack runs whatever bundle is active. An id that is not a
+ * bundle throws.
+ */
+export function packOwnBundleId(pack: string | undefined): WriterBundleId | undefined {
+  const own = pack ? PACK_WRITER_BUNDLE[pack] : undefined;
+  if (own === undefined) return undefined;
+  if (!(own in WRITER_BUNDLES)) throw new Error(`pack ${pack}: no writer bundle ${own}`);
+  return own as WriterBundleId;
+}
+
+/**
  * True when the process may be deployed: any Railway variable (every Railway environment, staging
  * and PR ones included) or NODE_ENV=production. Fails closed: the lab is only a local process.
  */
@@ -109,7 +134,8 @@ export function isDeployedEnv(env: Record<string, string | undefined>): boolean 
 }
 
 /**
- * The bundle this process runs. `WRITER_BUNDLE_ID` unless the parity lab declares a candidate:
+ * The bundle this process runs: the run's pilot pack's (`TJ_PILOT_PACK`, else the live pack;
+ * `packOwnBundleId`) unless the parity lab declares a candidate:
  * `LAB_WRITER_BUNDLE_ID` is honoured only with the lab marker `LAB_PARITY=1` (exactly), no
  * `RAILWAY_*` variable at all and NODE_ENV not `production`; otherwise it is ignored with a
  * warning. An unknown id in the lab throws, so a typo never runs as a silent production lesson.
@@ -120,7 +146,8 @@ export function resolveWriterBundleId(
   warn: (msg: string) => void = console.warn,
 ): WriterBundleId {
   const want = env.LAB_WRITER_BUNDLE_ID?.trim();
-  if (!want) return WRITER_BUNDLE_ID;
+  if (!want)
+    return packOwnBundleId(env.TJ_PILOT_PACK?.trim() || PILOT_PACK_LIVE_ID) ?? WRITER_BUNDLE_ID;
   if (isDeployedEnv(env)) {
     warn(
       `LAB_WRITER_BUNDLE_ID=${want} ignored outside the local lab; writer bundle ${WRITER_BUNDLE_ID}`,
