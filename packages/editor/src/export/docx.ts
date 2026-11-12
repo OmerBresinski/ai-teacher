@@ -769,14 +769,17 @@ function ragChildren(worksheet: Worksheet): Paragraph[] {
       text: "",
       spacing: { before: twip(10), after: twip(6) },
       border: { top: hairline },
+      keepNext: true,
     }),
     ...(criteria.length > 0
       ? [
-          plain(CRITERIA_HEADING, { size: 10.5, bold: true, after: 4 }),
-          ...criteria.map((criterion) => plain(`☐  ${criterion}`, { size: 10.5, after: 4 })),
+          plain(CRITERIA_HEADING, { size: 10.5, bold: true, after: 4, keepNext: true }),
+          ...criteria.map((criterion) =>
+            plain(`☐  ${criterion}`, { size: 10.5, after: 4, keepNext: true }),
+          ),
         ]
       : []),
-    plain("How confident do you feel?", { size: 10.5, after: 4 }),
+    plain("How confident do you feel?", { size: 10.5, after: 4, keepNext: true }),
     plain("◯  Red        ◯  Amber        ◯  Green", { size: 11, after: 6 }),
   ];
 }
@@ -854,7 +857,10 @@ export async function buildWorksheetDocx(
     children.push(...headerChildren(worksheet));
     const gaps = gapWidths(worksheet.blocks);
     for (const [i, block] of worksheet.blocks.entries()) {
-      const keep = blockKeepsWithNext(block, worksheet.blocks[i + 1]);
+      // The strip never stands alone on a last page: the last block keeps with it, as on paper.
+      const last = i === worksheet.blocks.length - 1;
+      const keep =
+        blockKeepsWithNext(block, worksheet.blocks[i + 1]) || (last && !!worksheet.selfAssessment);
       children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id), keep));
     }
     if (worksheet.selfAssessment) children.push(...ragChildren(worksheet));

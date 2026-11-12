@@ -360,3 +360,23 @@ describe("round 2: a lines question splits rather than leave a third of a page e
     expect(tail).toContain("ws-line");
   });
 });
+
+describe("round 2: the strip never sits alone on the last page", () => {
+  test("when the strip does not fit, the last question and its box move over with it", () => {
+    const ws = { ...sheet([para("filler"), q("q7", "Q", 7), box("b7")]), selfAssessment: true };
+    const items = buildFlow(ws, "pupil");
+    const heights = { filler: CONTENT_H - 200, q7: 30, b7: 70, __rag__: 150 };
+    const { pages } = paginate(items, heights, 0);
+    expect(keys(pages[0]?.items)).toEqual(["filler"]);
+    expect(keys(pages[1]?.items)).toEqual(["q7", "b7", "__rag__"]);
+  });
+
+  test("but it never empties more than a third of a page to do so: then the strip goes alone", () => {
+    const ws = { ...sheet([para("filler"), q("q2", "Q", 2), box("b2")]), selfAssessment: true };
+    const items = buildFlow(ws, "pupil");
+    const heights = { filler: CONTENT_H / 2, q2: 30, b2: 70, __rag__: CONTENT_H / 2 };
+    const { pages } = paginate(items, heights, 0);
+    expect(keys(pages[0]?.items)).toEqual(["filler", "q2", "b2"]);
+    expect(keys(pages[1]?.items)).toEqual(["__rag__"]);
+  });
+});

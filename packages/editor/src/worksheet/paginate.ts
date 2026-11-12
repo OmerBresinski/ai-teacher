@@ -105,11 +105,15 @@ export function blockKeepsWithNext(
   return !isAnswerSpace(block) && isAnswerSpace(next);
 }
 
-/** `blockKeepsWithNext` over the flow: the strip and the key are never kept with anything. */
+/**
+ * `blockKeepsWithNext` over the flow. The self-assessment strip also keeps with the block before
+ * it, so it never sits alone on a last page: when it does not fit, the last question (with its
+ * heading and box, which keep with it in turn) moves over with it.
+ */
 export function keepsWithNext(item: FlowItem, next: FlowItem | undefined): boolean {
-  return (
-    item.kind === "block" && next?.kind === "block" && blockKeepsWithNext(item.block, next.block)
-  );
+  if (item.kind !== "block" || !next) return false;
+  if (next.kind === "rag") return item.block.type !== "page-break";
+  return next.kind === "block" && blockKeepsWithNext(item.block, next.block);
 }
 
 /** The answer key always starts a fresh page (research/02 decision 17). */
@@ -200,9 +204,20 @@ export function paginate(
     // breaks between its items as before rather than leaving a page empty.
     const prev = items[i - 1];
     if (current.length > 0 && !(prev && keepsWithNext(prev, item))) {
-      let run = height;
-      for (let j = i; keepsWithNext(items[j] as FlowItem, items[j + 1]); j++)
-        run += heights[(items[j + 1] as FlowItem).key] ?? 0;
+      const runHeight = (withStrip: boolean) => {
+        let total = height;
+        for (let j = i; keepsWithNext(items[j] as FlowItem, items[j + 1]); j++) {
+          const next = items[j + 1] as FlowItem;
+          if (next.kind === "rag" && !withStrip) break;
+          total += heights[next.key] ?? 0;
+        }
+        return total;
+      };
+      // The strip's hold on the last question is soft: it never leaves more than a third of a
+      // page empty to avoid standing alone. A question and its space, a heading and what it
+      // introduces, always move together.
+      let run = runHeight(true);
+      if (used + run > room && room - used > contentH / 3) run = runHeight(false);
       if (run > height && used + run > room && run <= contentH) {
         flush();
         room = available();

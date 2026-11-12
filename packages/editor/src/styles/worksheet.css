@@ -141,15 +141,15 @@
   letter-spacing: -0.01em;
 }
 
-.ws-objective + .ws-objective {
-  margin-top: 2pt;
-}
-
 .ws-objective {
   margin: 6pt 0 0;
   font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.45;
   color: var(--ws-muted);
+}
+
+.ws-objective + .ws-objective {
+  margin-top: 2pt;
 }
 
 /* "12 marks · about 25 min" (TEACH-183): the sheet's weight and time, printed like an exam paper's. */
@@ -203,8 +203,8 @@
 
 .ws-criterion-box {
   flex: 0 0 auto;
-  width: 10pt;
-  height: 10pt;
+  width: calc(10pt * var(--ws-type, 1));
+  height: calc(10pt * var(--ws-type, 1));
   margin-top: 2.5pt;
   border: 0.75pt solid var(--ws-rule-strong);
   border-radius: 1.5pt;
@@ -244,8 +244,8 @@
 }
 
 .ws-rag-dot {
-  width: 22pt;
-  height: 22pt;
+  width: calc(22pt * var(--ws-type, 1));
+  height: calc(22pt * var(--ws-type, 1));
   border-radius: 50%;
   border: 0.75pt solid var(--ws-rule-strong);
 }
@@ -378,8 +378,8 @@
 
 .ws-opt-box {
   flex: 0 0 11pt;
-  width: 11pt;
-  height: 11pt;
+  width: calc(11pt * var(--ws-type, 1));
+  height: calc(11pt * var(--ws-type, 1));
   margin-top: 3pt;
   border: 0.75pt solid var(--ws-rule-strong);
 }
