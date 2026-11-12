@@ -660,6 +660,13 @@ export async function findDirected(args: {
    * unjudged, every panel alike (TEACH-251 part ay).
    */
   unjudged?: boolean;
+  /**
+   * R4 (round 3, y2 s10 Samuel Pepys): the stage's second try at this key. A real-only thing
+   * (ruling 163, `realFallback` none: a named person) is searched only on it, never painted at the
+   * last step: the first try already had its painting, and two more refused paintings cost the
+   * slide ~45 s before it was rewritten anyway.
+   */
+  again?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, brief: b, lesson, deps } = args;
   const direction = await (args.direct ?? ((i: PictureDirectorInput) => directPicture(i, deps)))({
@@ -940,6 +947,7 @@ export async function findDirected(args: {
     // its whole group instead (`paintGroup`), so a slide never mixes real and painted.
     args.stockFallback &&
     !args.paintOnly &&
+    !(args.again && req.route === "real" && (req.realFallback ?? "none") === "none") &&
     !deps.signal.aborted
   ) {
     const t0 = Date.now();
@@ -1672,6 +1680,8 @@ export async function placeWriterPicture(args: {
   paintOnly?: boolean;
   /** With `paintOnly`, the topic's scene unjudged (`findDirected`'s `unjudged`). */
   unjudged?: boolean;
+  /** The stage's second try at this key (`findDirected`'s `again`). */
+  again?: boolean;
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
@@ -1794,6 +1804,7 @@ export async function placeWriterPicture(args: {
         ...(soleOnSlide(ask.key) ? { stockFallback: true } : {}),
         ...(args.paintOnly ? { paintOnly: true } : {}),
         ...(args.unjudged ? { unjudged: true } : {}),
+        ...(args.again ? { again: true } : {}),
       });
     },
     (error) => {
@@ -2288,6 +2299,7 @@ export function createWriterPictures(opts: {
       ...(real ? { realOnly: true } : {}),
       ...(paint ? { paintOnly: true } : {}),
       ...(unjudged ? { unjudged: true } : {}),
+      ...(slot.again ? { again: true } : {}),
     })
       .then((photo) => {
         // TEACH-247 part cf (romans v6 s11: Chesters fort's Commons photo landed 4.5 s after its
