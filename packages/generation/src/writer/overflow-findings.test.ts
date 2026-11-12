@@ -71,15 +71,20 @@ const pastEdge = (s: { elements: unknown[] }) =>
     return false;
   });
 
-/** The slide's words in reading order (its text elements top to bottom). */
-const words = (s: { elements: unknown[] }) =>
+/** A doc's text runs in order, glued: a maths line is several runs (6ef63ee9b, 97d2eb0c6). */
+const runs = (d: unknown): string => {
+  const n = d as { text?: string; content?: unknown[] } | undefined;
+  return n?.text ?? (n?.content ?? []).map(runs).join("");
+};
+/** Spaces of any kind (thin, no-break) to one plain space, so a maths run reads as typed. */
+const plainSpaces = (t: string) => t.replace(/[\s\u00a0\u2009\u202f]+/g, " ").trim();
+/** The slide's words, one string per text element in reading order. */
+const textOf = (s: { elements: unknown[] }) =>
   flat(s.elements as (El & { doc?: unknown })[])
     .filter((e) => e.type === "text")
     .sort((x, y) => x.y - y.y)
-    .map((e) => JSON.stringify((e as { doc?: unknown }).doc ?? ""))
+    .map((e) => plainSpaces(runs((e as { doc?: unknown }).doc)))
     .join(" ");
-const textOf = (s: { elements: unknown[] }) =>
-  [...words(s).matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join(" ");
 
 describe("the recorded slide (y5 slide 9, equation-hero, steps at y 464 / 515 / 607)", () => {
   test("production (checks log, no repair lands): it splits onto a continuation (Greg 70 B)", async () => {

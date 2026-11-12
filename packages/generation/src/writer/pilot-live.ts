@@ -16,4 +16,5 @@ export const PILOT_PACK_LIVE_ID = "v5.0b";
 export const PACK_WRITER_BUNDLE: Readonly<Record<string, string>> = {
   "v5.2-gold": "base4f-p127",
   "v5.3-gold": "base4f-p128",
+  "v5.3b-gold": "base4f-p129",
 };

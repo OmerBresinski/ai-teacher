@@ -122,7 +122,11 @@ describe("v5.3-gold schema", () => {
 
 describe("v5.3-gold runs writer bundle base4f-p128", () => {
   test("the pack names it; v5.2-gold keeps base4f-p127", () => {
-    expect(PACK_WRITER_BUNDLE).toEqual({ "v5.2-gold": "base4f-p127", "v5.3-gold": "base4f-p128" });
+    expect(PACK_WRITER_BUNDLE).toEqual({
+      "v5.2-gold": "base4f-p127",
+      "v5.3-gold": "base4f-p128",
+      "v5.3b-gold": "base4f-p129",
+    });
     expect(packOwnBundleId("v5.3-gold")).toBe("base4f-p128");
     expect(resolveWriterBundleId({ TJ_PILOT_PACK: "v5.3-gold" }, () => {})).toBe("base4f-p128");
     for (const pack of Object.keys(PACK_WRITER_BUNDLE)) expect(pack in PILOT_PACKS).toBe(true);

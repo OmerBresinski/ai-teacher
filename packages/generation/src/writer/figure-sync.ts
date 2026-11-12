@@ -263,8 +263,19 @@ export function rederiveFigure(fig: J, slide: J): J | undefined {
   };
 }
 
-/** Words asking what remains of the amount once the fraction is used. */
-const LEFT = /\b(left|remains?|remaining|remainder)\b/i;
+/** A word for what remains of the amount: "is left", "have left", "left over", "remains". */
+const LEFT_WORD =
+  /\b(?:(?:is|are|was|were|be|has|have|had|got)\s+left|left\s+over|remains?|remaining|remainder)\b/i;
+/** A sentence that asks (a question, or an instruction to find or work out). */
+const ASKS = /\?\s*$|^\s*(?:how|what|find|work out|calculate)\b|\bhow (?:much|many)\b/i;
+/**
+ * Whether the slide's words ask for what is left: one sentence that both asks and names the
+ * remainder ("How much is left?", "Find the remaining amount."). A "left" anywhere else (the bar
+ * on the left, "the remaining 1/4 is blue") never flips the brace.
+ */
+export function asksForRest(words: string): boolean {
+  return words.split(/(?<=[.?!])\s+|\n+/).some((s) => LEFT_WORD.test(s) && ASKS.test(s));
+}
 const UNIT_AFTER = /^\s?(mm|cm|km|m|kg|g|ml|l|p)\b/;
 
 /**
@@ -291,7 +302,7 @@ export function fractionBarFor(fig: unknown, words: string): J | undefined {
     typeof old.unit === "string" && old.unit.trim()
       ? old.unit.trim()
       : (money ?? UNIT_AFTER.exec(after)?.[1] ?? null);
-  const left = LEFT.test(words) && n < d;
+  const left = asksForRest(words) && n < d;
   const bar = fractionOfAmountBar({ whole: N, parts: d, shaded: n, unit, left });
   return bar ? (bar as unknown as J) : undefined;
 }

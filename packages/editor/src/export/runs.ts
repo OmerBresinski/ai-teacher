@@ -26,6 +26,8 @@ export type Run = {
   href?: string;
   /** Set in the theme's quote face (`textStyle.font`, TEACH-205 part c). */
   font?: "quote" | "math";
+  /** Part of a stacked fraction (`fraction-runs.ts`): PowerPoint sets it raised or lowered. */
+  frac?: "num" | "den";
 };
 
 export type RunParagraph = {

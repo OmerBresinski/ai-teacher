@@ -7,6 +7,7 @@ import * as base4fP125 from "./bundles/base4f-p125/prompts.gen";
 import * as base4fP126 from "./bundles/base4f-p126/prompts.gen";
 import * as base4fP127 from "./bundles/base4f-p127/prompts.gen";
 import * as base4fP128 from "./bundles/base4f-p128/prompts.gen";
+import * as base4fP129 from "./bundles/base4f-p129/prompts.gen";
 import ACTIVITY_MENU_G from "./bundles/base4g/activity-menu.txt" with { type: "text" };
 import * as base4g from "./bundles/base4g/prompts.gen";
 import { PACK_WRITER_BUNDLE, PILOT_PACK_LIVE_ID } from "./pilot-live";
@@ -102,6 +103,11 @@ export const WRITER_BUNDLES = {
   // turn lists them with a Coverage paragraph in place of Depth, and the notes rely on no picture
   // detail. Pack v5.3-gold runs it (PACK_WRITER_BUNDLE). Writer hash unchanged.
   "base4f-p128": bundle("base4f-p128", base4fP128, "8a0f9b4f6dde", base4Defs, { pitchFloor: true }),
+  // base4f-p128 with the objectives system text from scratchpad/tuning/v5.3b-gold (12 Nov 2026): the
+  // call frames the class as England, and fills builds_on from the curriculum, only when the context
+  // lists England's statements (code sends them only then); otherwise no country is assumed and
+  // builds_on is empty unless the context states it. Pack v5.3b-gold runs it. Writer hash unchanged.
+  "base4f-p129": bundle("base4f-p129", base4fP129, "8a0f9b4f6dde", base4Defs, { pitchFloor: true }),
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.

@@ -58,6 +58,17 @@ describe("fractionOfAmountBar", () => {
     expect(fractionOfAmountBar({ whole: 10, parts: 4, shaded: 5 })).toBeUndefined();
     expect(fractionOfAmountBar({ whole: 10, parts: 4, shaded: 4, left: true })).toBeUndefined();
   });
+  test("the alt never states the answer the brace keeps back on a question slide", () => {
+    const shaded = fractionOfAmountBar({ whole: 28, parts: 4, shaded: 3 });
+    const left = fractionOfAmountBar({ whole: 28, parts: 4, shaded: 3, left: true });
+    const hidden = fractionOfAmountBar({ whole: 28, parts: 4, shaded: 3, answer: false });
+    for (const s of [shaded, left, hidden]) expect(s?.alt).not.toMatch(/\b21\b/);
+    expect(left?.alt).not.toMatch(/\b7 is left\b/);
+    expect(shaded?.alt).toContain("4 equal parts of 7; 3 parts are shaded");
+    expect(left?.alt).toContain("the parts left are braced as the answer");
+    expect(shaded?.combined).toBe("21");
+    expect(hidden?.combined).toBe("?");
+  });
   test("the drawing stacks each part's fraction: whole part, numerator, bar, denominator", () => {
     const svg = svgOf(fractionOfAmountBar({ whole: 10, parts: 4, shaded: 3 }));
     expect(svg).not.toContain("2.5");

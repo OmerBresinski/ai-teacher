@@ -242,6 +242,8 @@ export type GenerationSummary = BudgetTotals & {
   readableMs?: number;
   checkedMs?: number;
   fit?: unknown;
+  /** RC1: the ship gate's counts on the saved deck (faults found, acted on, still shipped). */
+  shipGate?: { detected: number; acted: number; shipped: number };
 };
 
 /**

@@ -51,3 +51,7 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* A mixed number's space (2 1/2), kept a plain space for copying, drawn about a thin space wide. */
+.td-frac-gap {
+  word-spacing: -0.08em;
+}

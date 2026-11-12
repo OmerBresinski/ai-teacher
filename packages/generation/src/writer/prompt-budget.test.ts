@@ -29,7 +29,7 @@ const budget: PromptBudget = JSON.parse(
 );
 
 // The packs whose writer text is budgeted: v5.0a, whichever pack is live, the revert pack, and
-// the lab packs v5.1-gold, v5.1b-gold, v5.2-gold and v5.3-gold (CHANGES.md section 3: growth measured before
+// the lab packs v5.1-gold, v5.1b-gold, v5.2-gold, v5.3-gold and v5.3b-gold (CHANGES.md section 3: growth measured before
 // any Gate B). v5.2-gold's user turn is its own bundle's (base4f-p127), measured as runWriter sends it.
 const PACKS = [
   ...new Set<PilotPackId>([
@@ -40,6 +40,7 @@ const PACKS = [
     "v5.1b-gold",
     "v5.2-gold",
     "v5.3-gold",
+    "v5.3b-gold",
   ]),
 ];
 const LESSONS = [

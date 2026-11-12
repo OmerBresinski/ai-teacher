@@ -877,6 +877,38 @@ export const PILOT_PACKS = {
     workedLineFirst: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v5.3b-gold (12 Nov 2026, lab runs only, selected by id): v5.3-gold exactly (its templates,
+  // switches and model blocks) with writer bundle base4f-p129, whose objectives text frames the class
+  // as England and fills builds_on from the curriculum only when the context lists England's
+  // statements (scratchpad/tuning/v5.3b-gold).
+  "v5.3b-gold": {
+    id: "v5.3b-gold",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v51System(t53g1, "KS1"),
+      KS2: v51System(t53g2, "KS2"),
+      KS3: v51System(t53g3, "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    goldFits: true,
+    goldMenu: true,
+    modelLines: "v5.1-gold",
+    goldNoPictureFallback: true,
+    flowPoints: true,
+    workedLineFirst: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
@@ -896,6 +928,13 @@ export function packFromEnv(env: string | undefined, live: PilotPackId): PilotPa
 export const PILOT_PACK_LIVE: PilotPackId = PILOT_PACK_LIVE_ID;
 /** The pack a revert goes back to (one line: set PILOT_PACK_LIVE to it). Kept measured by the prompt budget so a revert passes CI. */
 export const PILOT_PACK_REVERT: PilotPackId = "v4.17";
+/**
+ * The pack a writer lesson finishes on when its stamps name no pack and its bundle belongs to no
+ * pack (`PACK_WRITER_BUNDLE`): such a lesson was planned before the planned stamp carried the
+ * pack (12 Nov 2026), when the live pack was v5.0b, which runs the shared bundle. A fact about the
+ * past: it never changes when the live pack does.
+ */
+export const PILOT_PACK_BEFORE_STAMP: PilotPackId = "v5.0b";
 export const PILOT_PACK_ID: PilotPackId = packFromEnv(
   typeof process === "undefined" ? undefined : process.env.TJ_PILOT_PACK,
   PILOT_PACK_LIVE,
