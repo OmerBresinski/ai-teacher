@@ -82,20 +82,84 @@ export function copiesAsked(question: string, asked: readonly string[]): boolean
   });
 }
 
+/** Unicode vulgar fractions a result may be written with ("10½", "¾"), and their values. */
+const VULGAR: Record<string, number> = {
+  "½": 1 / 2,
+  "⅓": 1 / 3,
+  "⅔": 2 / 3,
+  "¼": 1 / 4,
+  "¾": 3 / 4,
+  "⅕": 1 / 5,
+  "⅖": 2 / 5,
+  "⅗": 3 / 5,
+  "⅘": 4 / 5,
+  "⅙": 1 / 6,
+  "⅚": 5 / 6,
+  "⅐": 1 / 7,
+  "⅛": 1 / 8,
+  "⅜": 3 / 8,
+  "⅝": 5 / 8,
+  "⅞": 7 / 8,
+  "⅑": 1 / 9,
+  "⅒": 1 / 10,
+};
+const VULGAR_CLASS = `[${Object.keys(VULGAR).join("")}]`;
+/**
+ * One written number: a mixed number ("1 1/4"), a fraction ("3/4"), a whole or decimal with an
+ * optional vulgar fraction ("10½", "3.20"), or a vulgar fraction alone ("¾"). Mixed and plain
+ * fractions come first, so "3/4" is never read as 3.
+ */
+const NUMBER = `\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?(?:\\s?${VULGAR_CLASS})?|${VULGAR_CLASS}`;
+/** A signed amount: a minus before or after a currency sign ("−£3", "£-3"), then a number. */
+const AMOUNT = `(?:([−-])\\s?)?[£$€]?\\s?(?:([−-])\\s?)?(${NUMBER})`;
+/**
+ * R4 (round 3, y5): the working's last "= v [unit]". The result may carry a currency sign, a minus
+ * and a fraction or mixed number ("= £3.20", "= −4", "= 1 1/4 m", "= 10½ m"); before, only a digit
+ * straight after "=" counted, so a money or fraction result was dropped as having none.
+ */
+const WORKING_RESULT = new RegExp(`=\\s*${AMOUNT}[^=]*$`);
+const KEY_FIRST = new RegExp(AMOUNT);
+
+type Amount = { text: string; value: number; places: number | null };
+/** A matched amount's value, and its decimal places (null for a fraction: compared exactly). */
+function amountOf(m: RegExpExecArray | null): Amount | undefined {
+  const tok = m?.[3];
+  if (!m || tok === undefined) return undefined;
+  const sign = m[1] || m[2] ? -1 : 1;
+  const t = tok.trim();
+  let value: number;
+  let places: number | null = null;
+  const mixed = /^(\d+)\s+(\d+)\/(\d+)$/.exec(t);
+  const frac = /^(\d+)\/(\d+)$/.exec(t);
+  const vulgar = t.slice(-1) in VULGAR ? (VULGAR[t.slice(-1)] as number) : 0;
+  if (mixed) value = Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
+  else if (frac) value = Number(frac[1]) / Number(frac[2]);
+  else if (vulgar) value = (Number(t.slice(0, -1).trim()) || 0) + vulgar;
+  else {
+    value = Number(t);
+    places = t.split(".")[1]?.length ?? 0;
+  }
+  return { text: `${sign < 0 ? "-" : ""}${t}`, value: sign * value, places };
+}
+
 /**
  * The working ends "= v [unit]" and the result `v` must be where the key starts: the first number
- * in `key` equals v at the precision v's digits show. Also no wrong sum in either text.
+ * in `key` equals v at the precision v's digits show (a fraction exactly, or at the key's decimal
+ * places). Also no wrong sum in either text.
  */
 export function workingFault(question: string, working: string | null, key: string): string | null {
   if (!working?.trim()) return null;
-  const m = /=\s*(−?-?\d+(?:\.\d+)?)[^=]*$/.exec(working);
-  if (!m) return "the working does not end in = and its result";
-  const v = m[1]?.replace("−", "-") as string;
-  const first = /(−?-?\d+(?:\.\d+)?)/.exec(key)?.[1]?.replace("−", "-");
+  const v = amountOf(WORKING_RESULT.exec(working));
+  if (!v) return "the working does not end in = and its result";
+  const first = amountOf(KEY_FIRST.exec(key));
   if (first === undefined) return "the answer does not give the working's result";
-  const places = v.split(".")[1]?.length ?? 0;
-  if (Number(first).toFixed(places) !== Number(v).toFixed(places)) {
-    return `the answer ${first} does not match the working's result ${v}`;
+  const places = v.places ?? first.places;
+  const same =
+    places === null
+      ? Math.abs(first.value - v.value) < 1e-9
+      : first.value.toFixed(places) === v.value.toFixed(places);
+  if (!same) {
+    return `the answer ${first.text} does not match the working's result ${v.text}`;
   }
   if (checkKey(question, key, working).length > 0) return "the key or working has a wrong sum";
   if (numericMismatches(`${working} ${key}`).length > 0)
@@ -178,8 +242,8 @@ export function repeatedQuestions(questions: readonly string[]): Set<number> {
 
 /** The result a calculation's working ends on ("= v"), or null when it has no working. */
 export function workingResult(working: string | null): number | null {
-  const v = working ? /=\s*(−?-?\d+(?:\.\d+)?)[^=]*$/.exec(working)?.[1] : undefined;
-  return v === undefined ? null : Number(v.replace("−", "-"));
+  const v = working ? amountOf(WORKING_RESULT.exec(working)) : undefined;
+  return v === undefined ? null : v.value;
 }
 
 /** Indices of items whose calculation result an earlier item already has (v2: retry-only). */
