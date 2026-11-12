@@ -555,9 +555,22 @@ export function WorksheetEditor({
                       </button>
                     }
                     renderItem={(item) =>
-                      item.kind === "block" ? (
-                        <BlockShell
+                      // A lines question split over a page break (`splitLines`): the head is the
+                      // question, keyed by its block id so the split never remounts its text box
+                      // (R4 review: the caret was lost mid-typing); the tail is its remaining
+                      // lines, drawn only, with no number, stem or block id of its own.
+                      item.kind === "block" && item.split === "tail" ? (
+                        <div
+                          className={flowItemClass(item)}
                           key={item.key}
+                          data-split-tail={item.block.id}
+                          aria-hidden
+                        >
+                          <FlowItemContent item={item} worksheet={worksheet} mode="edit" />
+                        </div>
+                      ) : item.kind === "block" ? (
+                        <BlockShell
+                          key={item.block.id}
                           block={item.block}
                           selected={active === item.block.id}
                           editing={session.editingId === item.block.id}
