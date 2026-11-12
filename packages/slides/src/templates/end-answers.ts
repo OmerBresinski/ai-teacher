@@ -48,10 +48,18 @@ import { type Ctx, G, kit, type Stage, templateScale } from "./index";
  * A short answer or a sentence model answer (each with an optional working line in its own
  * column), or a true/false chip.
  */
-export type AnswerItem =
+export type AnswerItem = (
   | { n: number; a: string; work?: string }
   | { n: number; s: string; work?: string }
-  | { n: number; tf: boolean; why?: string };
+  | { n: number; tf: boolean; why?: string }
+) & {
+  /**
+   * The question's short text, drawn over its answer so a class marking its work sees which
+   * question each answer belongs to (CRITIQUE-2, 12 Nov: "1 ? 2 ?" alone could not be matched to
+   * a slide five back). Shown from the start; only the answer waits for its step.
+   */
+  q?: string;
+};
 export type AnswerGroup = { kind: "practice" | "exit"; title: string; items: AnswerItem[] };
 /** One Answers slide: its groups (a carried-over group repeats its heading, numbers continue). */
 export type AnswersPage = { groups: AnswerGroup[]; page: number; of: number };
@@ -85,6 +93,7 @@ export const ANSWERS_NAMES = {
   guardLine: "Guard line",
   hidden: "Hidden answer",
   cover: "Revealed",
+  question: "Question",
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -219,7 +228,9 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
   const kicked = !echoesLabel(g.title, kickerWord(g));
   const kickH = kicked ? kickerHeight(t, kickerWord(g)) + 6 : 0;
   const railH = kickH + railTitleH;
-  const cols = answerColumns(t, stage, g.items);
+  // A group whose answers carry their questions goes one per row: the question needs the width.
+  const asked = g.items.some((it) => it.q);
+  const cols = asked ? 1 : answerColumns(t, stage, g.items);
   const line = Math.round(z.size * 1.3);
   const lineH = Math.max(line, z.badge);
   const cellW = Math.floor((ANS.w - (cols - 1) * COL_GAP) / cols);
@@ -248,8 +259,16 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
           ) + Math.round(z.size * 0.3),
         );
   const chipW = chipWidth(t, z.size);
+  // The question sits on the badge's line (centred on it when one line), its answer under it.
+  const qLine = Math.round(sub * 1.25);
+  const qGap = snap(z.size * 0.3);
+  const qTop = (it: AnswerItem) => (it.q ? Math.max(0, Math.round((z.badge - qLine) / 2)) : 0);
+  /** The height a question takes over its answer, gap included (0 without one). */
+  const qH = (it: AnswerItem) =>
+    it.q ? Math.max(z.badge, qTop(it) + measureAt(c, it.q, textW, sub, 500, 1.25)) + qGap : 0;
   /** Each item's height in its cell. */
-  const heights = g.items.map((it) => {
+  const heights = g.items.map((it) => qH(it) + answerH(it));
+  function answerH(it: AnswerItem) {
     if ("s" in it && !it.work) return Math.max(lineH, measureAt(c, it.s, textW, z.size, 500, 1.3));
     if ("tf" in it)
       return it.why
@@ -259,7 +278,7 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
     const a = measureAt(c, sentence ? it.s : it.a, answerW, z.size, sentence ? 500 : 700, 1.3);
     const w = it.work ? measureAt(c, it.work, textW - answerW - WORK_GAP, sub, 500, 1.25) : 0;
     return Math.max(lineH, a, w);
-  });
+  }
   const rows: number[] = [];
   for (let i = 0; i < heights.length; i += cols) rows.push(Math.max(...heights.slice(i, i + cols)));
   const ansH = rows.reduce((a, b) => a + b, 0) + Math.max(0, rows.length - 1) * z.rowGap;
@@ -276,10 +295,20 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
       const k = i % cols;
       if (k === 0 && i > 0) rowY += (rows[r - 1] ?? 0) + z.rowGap;
       const x = ANS.x + k * (cellW + COL_GAP);
-      // The badge sits on the answer's first line.
-      const by = rowY + Math.round((line - z.badge) / 2);
-      badge(c, String(it.n), x, by, z.badge, z.size);
       const tx = x + textX;
+      // The badge sits on the answer's first line, or on the question's when the answer has one;
+      // the question is never hidden, only its answer under it.
+      const top = rowY;
+      if (it.q) {
+        badge(c, String(it.n), x, top, z.badge, z.size);
+        text(c, it.q, { x: tx, y: top + qTop(it), w: textW }, sub, 500, 1.25, {
+          color: t.colors.muted,
+          name: ANSWERS_NAMES.question,
+        });
+      }
+      rowY = top + qH(it);
+      const by = rowY + Math.round((line - z.badge) / 2);
+      if (!it.q) badge(c, String(it.n), x, by, z.badge, z.size);
       // Hidden until its step: the soft "?" disc on the answer's first line, then the answer over
       // a ground patch that covers the disc. Nothing moves when it appears.
       const step = stepOf(i);
@@ -338,6 +367,7 @@ function groupBand(c: Ctx, stage: Stage, g: AnswerGroup, z: Sized): Laid {
           );
       }
       if (step !== undefined) for (const e of c.els.slice(from)) e.revealStep = step;
+      rowY = top;
     });
   };
   return { h, draw };
@@ -891,19 +921,51 @@ export function joinedAsBefore(groups: readonly AnswerGroup[]): readonly AnswerG
   }));
 }
 
-/** The source slide's title: its heading element's words. */
-function slideTitle(slide: Slide): string {
-  const el = slide.elements.find((e) => e.type === "text" && e.name === "Heading");
-  if (el?.type !== "text") return "";
+/** A rich doc's words, paragraphs joined by a space. */
+function docText(doc: unknown): string {
   const walk = (n: unknown): string =>
     !n || typeof n !== "object"
       ? ""
       : "text" in n && typeof n.text === "string"
         ? n.text
         : "content" in n && Array.isArray(n.content)
-          ? n.content.map(walk).join("")
+          ? n.content.map(walk).join("type" in n && n.type === "doc" ? " " : "")
           : "";
-  return walk(el.doc).trim();
+  return walk(doc).replace(/\s+/g, " ").trim();
+}
+
+/** The source slide's title: its heading element's words. */
+function slideTitle(slide: Slide): string {
+  const el = slide.elements.find((e) => e.type === "text" && e.name === "Heading");
+  if (el?.type !== "text") return "";
+  return docText(el.doc);
+}
+
+/** A question at most this many words is shown whole over its answer. */
+export const QUESTION_WORDS = 16;
+/**
+ * A question's short text for the Answers slide: the whole question up to `QUESTION_WORDS` words;
+ * else its first sentence when that is short enough, else its first 12 words, either followed by
+ * an ellipsis so it reads as a reminder of the question, not the question itself.
+ */
+export function shortQuestion(text: string): string {
+  const v = text.replace(/\s+/g, " ").trim();
+  if (words(v) <= QUESTION_WORDS) return v;
+  const first = /^(.+?[.?!])\s/.exec(v)?.[1];
+  const head =
+    first && words(first) <= QUESTION_WORDS
+      ? first.replace(/[.]$/, "")
+      : v.split(" ").slice(0, 12).join(" ");
+  return `${head.replace(/[,;:]$/, "")} …`;
+}
+
+/** The groups as built before an answer carried its question: the same items without `q`. */
+export function withoutQuestions(groups: readonly AnswerGroup[]): readonly AnswerGroup[] {
+  if (!groups.some((g) => g.items.some((it) => it.q))) return groups;
+  return groups.map((g) => ({
+    ...g,
+    items: g.items.map(({ q: _q, ...it }) => it as AnswerItem),
+  }));
 }
 
 /**
@@ -928,10 +990,18 @@ export function answerGroupsOf(slides: readonly Slide[]): AnswerGroup[] {
       return answerItem(m ? Number(m[1]) : i + 1, m ? (m[2] as string) : l, w);
     });
     if (items.some((it) => "a" in it && (it.a === "…" || it.a === ""))) continue;
+    // Each numbered task's words go over its answer, when the slide has one task per answer.
+    const tasks = slide.elements.flatMap((e) =>
+      e.type === "text" && e.name === "Task" ? [docText(e.doc)] : [],
+    );
+    const asked =
+      tasks.length === items.length && tasks.every((q) => q.trim())
+        ? items.map((it, i) => ({ ...it, q: shortQuestion(tasks[i] as string) }))
+        : items;
     out.push({
       kind: slide.kind === "exit-ticket" ? "exit" : "practice",
       title: slideTitle(slide),
-      items,
+      items: asked,
     });
   }
   return out;

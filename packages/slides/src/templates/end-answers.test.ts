@@ -352,13 +352,13 @@ describe("the deck builder", () => {
       ["exit", "Column addition"],
     ]);
     expect(groups[0]?.items).toEqual([
-      { n: 1, a: "6,245" },
-      { n: 2, a: "6,202" },
-      { n: 3, a: "9,221" },
+      { n: 1, a: "6,245", q: "2,345 + 3,900" },
+      { n: 2, a: "6,202", q: "4,102 + 2,100" },
+      { n: 3, a: "9,221", q: "5,000 + 4,221" },
     ]);
     expect(groups[1]?.items).toEqual([
-      { n: 1, tf: true },
-      { n: 2, s: "Because the column holds more than nine." },
+      { n: 1, tf: true, q: "Is 8,252 right?" },
+      { n: 2, s: "Because the column holds more than nine.", q: "Why carry?" },
     ]);
   });
 

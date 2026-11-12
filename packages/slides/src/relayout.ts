@@ -34,6 +34,7 @@ import {
   joinedAsBefore,
   layoutAnswersGuard,
   layoutAnswersPage,
+  withoutQuestions,
 } from "./templates/end-answers";
 import { EXIT_MAX } from "./templates/exit-ticket";
 import { HINGE_MAX, HINGE_MIN, hingePaths } from "./templates/hinge";
@@ -539,7 +540,12 @@ export function endAnswersUntouched(slides: readonly Slide[], theme: Theme, stag
   };
   // Slides built before a sentence's working had its own column drew the two joined on one line.
   const before = joinedAsBefore(groups);
-  return built(groups) || (before !== groups && built(before));
+  if (built(groups) || (before !== groups && built(before))) return true;
+  // Slides built before each answer carried its question (CRITIQUE-2, 12 Nov) drew no question.
+  const bare = withoutQuestions(groups);
+  if (bare === groups) return false;
+  const bareBefore = joinedAsBefore(bare);
+  return built(bare) || (bareBefore !== bare && built(bareBefore));
 }
 
 /** Built slides keep the ids of the ones they replace, in order, where the role matches. */
