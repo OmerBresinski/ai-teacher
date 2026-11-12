@@ -233,15 +233,17 @@ export const READBACK_SHARE = 0.75;
  * Checks that bring no new case: a question whose content words (its answer's included) are nearly
  * all on earlier slides already, so it can be answered by reading back ("What could wind blow
  * towards houses?" after "Wind blew flames towards other houses."). A word count, not a reading:
- * it misses a read-back in new words and flags a fair question that reuses the lesson's terms, so
- * it is a rate to compare between packs, never a verdict on one slide.
+ * it misses a read-back in new words and flags a fair question that reuses the lesson's terms, and
+ * a question of numbers alone is not read. A rate to compare between packs, never a verdict on one
+ * slide.
  */
 export function checkReadbacks(slides: S[]): { slide: number; question: string; share: number }[] {
   const out: { slide: number; question: string; share: number }[] = [];
   const seen: string[] = [];
   slides.forEach((s, k) => {
     for (const q of asked(s)) {
-      const words = [...new Set(contentWords(q))];
+      // Numbers are left out: a calculation's digits recur whatever the case (Year 5, 12 Nov).
+      const words = [...new Set(contentWords(q))].filter((w) => !/^\d/.test(w));
       if (words.length < 3) continue;
       const old = words.filter((w) => seen.some((x) => sameWord(w, x))).length;
       const share = Math.round((old / words.length) * 100) / 100;
