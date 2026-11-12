@@ -44,6 +44,17 @@ export type WrittenSheet = {
   usage: CallUsage;
   /** False when too few items survived: the sheet fails `too-few-checked`. */
   enough: boolean;
+  /** Every item the model wrote and why it was dropped (empty `faults` = kept), for failure logs. */
+  verdicts: ItemVerdict[];
+};
+
+/** One written item as the model returned it, and the faults that dropped it (none = kept). */
+export type ItemVerdict = {
+  where: string;
+  question: string;
+  working: string | null;
+  answer: string;
+  faults: string[];
 };
 
 const drop = (where: string, fault: string, id = where): Finding => ({
@@ -79,6 +90,7 @@ export function practiceBlocks(
   written: number;
   kept: number;
   enough: boolean;
+  verdicts: ItemVerdict[];
 } {
   const ctx = { digest };
   const all: [string, PracticeItem][] = [
@@ -88,12 +100,14 @@ export function practiceBlocks(
   ];
   const repeats = repeatedQuestions(all.map(([, it]) => it.question));
   const findings: Finding[] = [];
+  const verdicts: ItemVerdict[] = [];
   const keep = all.map(([where, it], n) => {
     const faults = [
       ...practiceFaults(it, ctx),
       ...(repeats.has(n) ? ["repeats another item"] : []),
     ];
     for (const f of faults) findings.push(drop(where, f));
+    verdicts.push(verdictOf(where, it, faults));
     return faults.length === 0;
   });
   // v2: a repeated calculation result is retried once by the schema, never dropped; log what is left.
@@ -161,8 +175,15 @@ export function practiceBlocks(
         ]
       : []),
   ];
-  return { blocks, findings, written: all.length, kept, enough };
+  return { blocks, findings, written: all.length, kept, enough, verdicts };
 }
+
+const verdictOf = (
+  where: string,
+  it: { question: string; working: string | null },
+  faults: string[],
+  answer = (it as { answer?: string }).answer ?? "",
+): ItemVerdict => ({ where, question: it.question, working: it.working, answer, faults });
 
 /** Exam items through the gate, each with its code-set marks; the key is the mark scheme. */
 export function examBlocks(
@@ -176,11 +197,13 @@ export function examBlocks(
   written: number;
   kept: number;
   enough: boolean;
+  verdicts: ItemVerdict[];
 } {
   const ctx = { digest };
   const repeats = repeatedQuestions(out.items.map((it) => it.question));
   const findings: Finding[] = [];
   const kept: ExamItem[] = [];
+  const verdicts: ItemVerdict[] = [];
   out.items.forEach((it, i) => {
     const faults = [
       ...examFaults(it, marks[i], ctx),
@@ -188,6 +211,7 @@ export function examBlocks(
       ...(repeats.has(i) ? ["repeats another question"] : []),
     ];
     for (const f of faults) findings.push(drop(`question ${i + 1}`, f));
+    verdicts.push(verdictOf(`question ${i + 1}`, it, faults, it.markScheme.join("; ")));
     if (faults.length === 0) kept.push(it);
   });
   const total = kept.reduce((sum, it) => sum + it.marks, 0);
@@ -208,7 +232,7 @@ export function examBlocks(
       }),
     ),
   ];
-  return { blocks, findings, written: out.items.length, kept: kept.length, enough };
+  return { blocks, findings, written: out.items.length, kept: kept.length, enough, verdicts };
 }
 
 export type WriteSheetInput = {

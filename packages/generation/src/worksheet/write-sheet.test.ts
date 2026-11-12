@@ -231,7 +231,18 @@ describe("writeModelSheet: invalid stub answers", () => {
       recordingDeps(ai),
     );
     await expect(run).rejects.toBeInstanceOf(SheetBuildFailure);
-    await run.catch((e: SheetBuildFailure) => expect(e.code).toBe("too-few-checked"));
+    await run.catch((e: SheetBuildFailure) => {
+      expect(e.code).toBe("too-few-checked");
+      // y5 diag (12 Nov): the failure carries every written item and why each was dropped.
+      const detail = e.detail;
+      expect(detail?.written).toBe(detail?.verdicts.length);
+      const dropped = detail?.verdicts.filter((v) => v.faults.length > 0) ?? [];
+      expect(dropped.map((v) => v.where)).toEqual(["core 1", "core 2", "core 3", "core 4"]);
+      expect(nth(dropped, 1).question).toBe("Using the slides, explain what a gate did.");
+      expect(nth(dropped, 1).faults).toContain("mentions the lesson or its slides");
+      expect(detail?.kept).toBe((detail?.written ?? 0) - 4);
+      expect(detail?.findings.some((f) => f.message.startsWith("Dropped core 3"))).toBe(true);
+    });
   });
 
   test("one bad item: dropped, the rest ship, the finding says why", async () => {
@@ -253,6 +264,9 @@ describe("writeModelSheet: invalid stub answers", () => {
     );
     expect(sheet.worksheet.blocks.filter((b) => b.type === "question")).toHaveLength(7);
     expect(sheet.findings.some((f) => f.message.includes("mentions the lesson"))).toBe(true);
+    expect(sheet.verdicts.filter((v) => v.faults.length > 0).map((v) => v.where)).toEqual([
+      "core 1",
+    ]);
   });
 
   test("a dropped challenge fails the sheet even with enough items", async () => {
