@@ -38,6 +38,11 @@ export const CreateLessonSchema = z.strictObject({
   }),
   subject: SubjectSchema.optional(),
   yearGroup: YearGroupSchema.optional(),
+  /**
+   * The teacher answered the intake's year-group question for a topic that names another year
+   * or stage (`yearGroupProblem`); without it, such a topic is refused rather than guessed.
+   */
+  yearGroupConfirmed: z.boolean().optional(),
   ageBand: AgeBandSchema.optional(),
   readingLevel: z.string().max(40).optional(),
   language: z.string().max(16).optional(),
@@ -72,6 +77,8 @@ export const PlanLessonSchema = z.strictObject({
     level: true,
   }).extend({ durationMin: DurationMinSchema.optional() }),
   yearGroup: YearGroupSchema.optional(),
+  /** As `CreateLessonSchema.yearGroupConfirmed`. */
+  yearGroupConfirmed: z.boolean().optional(),
   subject: SubjectSchema.optional(),
   sourceIds: SourceIdsSchema.optional(),
 });

@@ -36,11 +36,22 @@ describe("the writer's key stage", () => {
     for (const [band, stage] of Object.entries(want)) expect(stageOf(band)).toBe(stage);
   });
 
-  test("no band: the year group's band, else ks3", () => {
+  test("no band: the year group's band, else it throws (ask, never guess; 12 Nov 2026)", () => {
     expect(stageOf(undefined, "Year 13")).toBe("ks5");
     expect(stageOf(undefined, "Year 4")).toBe("ks2");
-    expect(stageOf(undefined, "Mixed")).toBe("ks3");
-    expect(stageOf(undefined)).toBe("ks3");
+    for (const unknown of ["Mixed", "P5", "Grade 4", "S2", "5th class", ""]) {
+      expect(() => stageOf(undefined, unknown)).toThrow(/no key stage/);
+    }
+    expect(() => stageOf(undefined)).toThrow(/no key stage/);
+  });
+
+  test("writerBrief refuses a year group that is not Year 1 to Year 13 (K1)", () => {
+    for (const yearGroup of ["P5", "Grade 4", "Reception", "Year 14", "S2", undefined]) {
+      expect(() => writerBrief(sampleBriefLesson({ yearGroup }))).toThrow(/intake must ask/);
+    }
+    // A label the list spells differently is read as its year, never as KS3 by default.
+    const brief = writerBrief(sampleBriefLesson({ yearGroup: "Y5", ageBand: undefined }));
+    expect([brief.yearGroup, brief.year, brief.keyStage]).toEqual(["Year 5", 5, "ks2"]);
   });
 
   test("every intake year reaches its writer bundle: Years 1-2 KS1, 12-13 KS5", () => {
