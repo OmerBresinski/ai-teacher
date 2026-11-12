@@ -11,6 +11,7 @@ import {
   practiceCounts,
   practicePrompt,
 } from "../prompts/worksheet-sheet";
+import { fixNumberArticles } from "./articles";
 import type { FillDeps } from "./fill";
 import {
   type ExamItem,
@@ -109,9 +110,26 @@ export function practiceBlocks(
   const year = digest.lesson.yearGroup;
   const kept = keep.filter(Boolean).length;
   const enough = kept >= practiceMinimum(year) && keep[keep.length - 1] === true;
+  // R3: "A 11 m ribbon" -> "An 11 m ribbon" (fixNumberArticles), logged so the prompt can learn it.
+  all.forEach(([where, it]) => {
+    if (
+      fixNumberArticles(it.question) !== it.question ||
+      fixNumberArticles(it.answer) !== it.answer
+    )
+      findings.push({
+        check: "sheet-text:number-article",
+        severity: "warning",
+        target: { blockId: where },
+        message: `Fixed "a"/"an" before a number in ${where}.`,
+      });
+  });
   const task = (it: PracticeItem) =>
     answeredTaskBlocks(
-      { question: it.question, answer: it.answer, ...(it.working ? { working: it.working } : {}) },
+      {
+        question: fixNumberArticles(it.question),
+        answer: fixNumberArticles(it.answer),
+        ...(it.working ? { working: it.working } : {}),
+      },
       year,
       ids,
       { split: false },
