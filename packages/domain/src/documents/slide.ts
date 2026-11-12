@@ -254,8 +254,9 @@ export type PhotoSource = {
   /** The photographer's page on the provider, http(s). */
   photographerUrl: string;
   /**
-   * A line shown on the picture itself (TEACH-251 part ay, ruling 300): "Artist's reconstruction"
-   * on a painting of a real place or past scene made because no real picture exists.
+   * Legacy (TEACH-251 part ay, ruling 300): "Artist's reconstruction" or "AI-generated image" on a
+   * made picture. Never written or drawn since 12 Nov 2026 (Greg: "no labels pls"); kept so saved
+   * lessons that carry it still load.
    */
   caption?: string;
   /** Commons (ruling 139): the author as credited, the licence, its deed and the file page. */
@@ -634,7 +635,7 @@ export const PhotoSourceSchema = z.strictObject({
   pageUrl: z.string().refine(isLinkableHref, "pageUrl must be an http(s) address"),
   photographer: z.string(),
   photographerUrl: z.string().refine(isLinkableHref, "photographerUrl must be an http(s) address"),
-  /** On-picture line (ruling 300), e.g. "Artist's reconstruction". */
+  /** Legacy on-picture label (ruling 300, superseded 12 Nov 2026): still parsed, never drawn. */
   caption: z.string().max(60).optional(),
   /** Clipped at 200 characters by `@tj/images` (`COMMONS_AUTHOR_MAX`). */
   author: z.string().max(200).optional(),

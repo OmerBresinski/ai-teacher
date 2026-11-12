@@ -10,7 +10,6 @@ import {
   kindRequest,
   type PictureOutcome,
   placeWriterPicture,
-  RECONSTRUCTION_CAPTION,
   type WriterPhotoAsk,
   type WriterPictureAsk,
 } from "./picture-director";
@@ -105,7 +104,9 @@ describe("a named place's search (TEACH-247 part cc)", () => {
     // Honest on any route: the painting says it is one even with no style line wrapped round it.
     expect(kind?.imagePrompt ?? "").toMatch(/clearly a painting and not a photograph/);
     expect(kind?.realFallback).toBe("illustration");
-    expect(got?.source.caption).toBe(RECONSTRUCTION_CAPTION);
+    // No label on a made picture (Greg, 12 Nov 2026: "no labels pls"; ruling 300's caption gone).
+    expect(got?.source.caption).toBeUndefined();
+    expect(got).toMatchObject({ reconstruction: true });
   });
 });
 

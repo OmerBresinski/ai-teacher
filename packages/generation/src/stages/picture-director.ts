@@ -520,8 +520,8 @@ export function planPicture(
   // painted.
   // TEACH-251 part ay (rulings 299, 300; amends part ai): a real place or monument shown as it was
   // in its own time (a past scene there, a reconstruction, "Pudding Lane in 1666", "Hadrian's Wall
-  // as built") is painted when the search misses, named by the writer or not, and captioned
-  // "Artist's reconstruction". The place as it is today ("at Cawfields today", its remains) or a
+  // as built") is painted when the search misses, named by the writer or not (its "Artist's
+  // reconstruction" label went 12 Nov 2026, Greg: "no labels pls"). The place as it is today ("at Cawfields today", its remains) or a
   // map stays real-only. With no sign of its own time it stays real-only too (fails closed).
   const placeWords = `${first.shows} ${ask.text}`;
   const pastScene =
@@ -1075,21 +1075,17 @@ export async function findDirected(args: {
   if (!out.photo) return undefined;
   // What the slot shows, for the ruling 163 gate: how a generated picture looks (stock is a photo),
   // and the period the request belongs to.
-  // Ruling 300: a painting made because no real picture exists, of a past scene, a place in its own
-  // time or the last step's period scene, says so on the picture.
+  // A painting made because no real picture exists, of a past scene, a place in its own time or the
+  // last step's period scene. Ruling 300's "Artist's reconstruction" label on it is gone (Greg, 12 Nov
+  // 2026: "no labels pls"): no made picture carries a label; the flag only feeds the history-card gate.
   const reconstruction =
     out.photo.source.provider === "generated" &&
     style === "illustration" &&
     (req.route === "real" || lastResort === "painted" || !!args.paintOnly) &&
     (!!req.period || lastResort === "painted" || !!args.paintOnly);
-  const caption = madeCaption({
-    provider: out.photo.source.provider,
-    ...(style ? { style } : {}),
-    reconstruction,
-  });
   return {
     ...out.photo,
-    ...(caption ? { source: { ...out.photo.source, caption } } : {}),
+    ...(reconstruction ? { reconstruction: true } : {}),
     look:
       out.photo.source.provider === "generated"
         ? style === "drawn"
@@ -1113,7 +1109,7 @@ export class RealSearchFailed extends Error {
  * search missed is shown by its kind, never as itself. The request is the place's kind of feature
  * (the writer's must-see words and the period, with the place's own name cut): first a real photo
  * of that kind (Commons, judged against the must-see words; its own caption names where it is),
- * else a painted reconstruction of the kind, captioned "Artist's reconstruction" (ruling 300). A
+ * else a painted reconstruction of the kind, unlabelled (ruling 300's label went 12 Nov 2026). A
  * generic reconstruction is no particular real place, so ruling 163 allows it (ruling 299). Without
  * must-see words there is no kind to show: undefined.
  */
@@ -1170,32 +1166,6 @@ export function kindQueries(req: BankRequest, mustShow: readonly string[]): stri
     .map((m) => (withoutWords(m, req.named) ?? "").trim())
     .filter(Boolean)
     .map((m) => (head ? `${m} ${head}` : m));
-}
-
-/** Ruling 300's caption on a painting made because no real picture exists. */
-export const RECONSTRUCTION_CAPTION = "Artist's reconstruction";
-
-/**
- * 11 Nov blind review (CRITIQUE-1 item 9, y8 s4): the caption on a generated picture in photo
- * style, which could pass for a real photograph (a "micrograph" pupils were told to find the
- * chloroplasts in). New copy, for Greg's call: proposed in PIC-NOTES.md.
- */
-export const MADE_PHOTO_CAPTION = "AI-generated image";
-
-/**
- * The caption a generated picture carries, or undefined: ruling 300's on a painted reconstruction;
- * otherwise every generated picture in photo style says it is made, so no made picture looks like
- * evidence. Before, only paintings were labelled and a photoreal one never was. A drawing (code or
- * drawn style) and a painting that is no reconstruction carry none.
- */
-export function madeCaption(o: {
-  provider: string;
-  style?: string;
-  reconstruction: boolean;
-}): string | undefined {
-  if (o.provider !== "generated") return undefined;
-  if (o.reconstruction) return RECONSTRUCTION_CAPTION;
-  return (o.style ?? "photo") === "photo" ? MADE_PHOTO_CAPTION : undefined;
 }
 
 /**
@@ -1547,6 +1517,8 @@ export function artefactQueries(shows: string, period?: string): string[] {
 export type DirectedPhoto = PlacedPhoto & {
   look: "photo" | "illustration" | "drawn" | "house";
   period?: string;
+  /** A painting made because no real picture exists, of a past scene or place (never drawn on). */
+  reconstruction?: true;
 };
 
 export interface PictureOutcome {
@@ -2332,8 +2304,13 @@ export function createWriterPictures(opts: {
           if (reason === "director-code") slot.draw = diagram;
           return;
         }
-        // The last step's captioned period scene is not the card's real thing painted (ruling 299).
-        if (real && photo.source?.provider === "generated" && !photo.source.caption) {
+        // The last step's period scene (a reconstruction) is not the card's real thing painted
+        // (ruling 299).
+        if (
+          real &&
+          photo.source?.provider === "generated" &&
+          !(photo as Partial<DirectedPhoto>).reconstruction
+        ) {
           slot.state = { status: "failed" };
           slot.miss = "history-card-generated";
           opts.deps.logger.info(
