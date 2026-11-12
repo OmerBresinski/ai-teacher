@@ -745,9 +745,28 @@ export function fixedFallback(
   maxSteps: number,
   opts: { goldNoPicture?: boolean } = {},
 ): { slide: S; how: string } {
+  const from = String(slide.template);
+  // RC2 lost-picture layout: a gold picture-and-text slide with key cards and no points of its own
+  // keeps its cards. The gold's no-picture key card look lays them side by side across the full
+  // width (picture-text.ts `colW`), where cards folded into points sit in a 667 px column.
+  const cards = Array.isArray(slide.cards) ? (slide.cards as S[]) : [];
+  const ownPoints = Array.isArray(slide.points) && slide.points.length > 0;
+  if (
+    opts.goldNoPicture &&
+    cards.length &&
+    !ownPoints &&
+    (from === "visual-text" || from === "picture-text")
+  ) {
+    const out: S = { ...slide, figure: null, picture: null, diagram: null };
+    for (const k of ["lead"])
+      if (typeof out[k] === "string") out[k] = stripPointing(out[k] as string);
+    delete out.fit;
+    return from === "visual-text"
+      ? { slide: { ...out, template: "visual-text", [NO_FIGURE]: true }, how: "figure-dropped" }
+      : { slide: { ...out, template: "picture-text" }, how: "figure-dropped" };
+  }
   const r = wordsFallback(slide, lost, parts, maxSteps);
   if (!opts.goldNoPicture || r.slide.template !== "explain") return r;
-  const from = String(slide.template);
   if (from === "visual-text")
     return { slide: { ...r.slide, template: "visual-text", [NO_FIGURE]: true }, how: r.how };
   if (from === "picture-text" || from === "diagram-text")

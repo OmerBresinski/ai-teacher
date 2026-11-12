@@ -26,7 +26,7 @@ import { overflowFindings, withOverflowFindings } from "../writer/overflow-findi
 import { PILOT_PACK_ID } from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
-import { runWriter, WriterIncompleteError } from "../writer/stage";
+import { MODEL_REPAIRS_DEFAULT, runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
 import { isWriterStamp, writerBundleOf } from "./objectives-first";
 import { hasOpenJobSlots, type OpenSlot, resolveOpenSlots } from "./open-slots";
@@ -659,6 +659,8 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       // 70 B, 20 Oct), and a hinge whose answer alone repeats a question word still goes to the
       // one-slide repair on that fault, answer kept word for word (UX ruling 307, 28 Oct).
       checks: "log",
+      // RC2 (12 Nov): only the model-calling repairs that earned their place run (R4 repair notes).
+      modelRepairs: MODEL_REPAIRS_DEFAULT,
       library: true,
       libraryMenuFilter: true,
       libraryMenuRank: true,
