@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import type { Lesson } from "@tj/domain/documents";
 import { demoWorkspace } from "@tj/editor/starter";
 import { TooltipProvider } from "@tj/ui";
+import { rememberWorksheetIntent } from "@/lib/lesson-worksheets";
 import { installFakeApi } from "@/test/fake-api";
 import { installFakeEventSource } from "@/test/fake-event-source";
 import { LessonWorksheets } from "./LessonWorksheets";
@@ -82,8 +83,12 @@ function serveTypes(types: unknown[]) {
   );
 }
 
-function renderDialog(onLabel = mock((_label: string) => {})) {
+function renderDialog(
+  onLabel = mock((_label: string) => {}),
+  setup: (client: QueryClient) => void = () => {},
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  setup(client);
   render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
@@ -213,5 +218,77 @@ describe("LessonWorksheets (WS2)", () => {
     await waitFor(() =>
       expect(posted).toMatchObject({ recipeId: "exit-ticket", expectedRevision: 2 }),
     );
+  });
+
+  /* R4 review (12 Nov), web finding 3. */
+  it("the types query failing says so with Try again, which loads them", async () => {
+    serveList([]);
+    fakeApi.failNext(
+      (request) =>
+        request.method === "GET" && request.path === `/lessons/${lesson.id}/worksheet-types`,
+      () =>
+        new Response(JSON.stringify({ message: "boom" }), {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    renderDialog();
+    const alert = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>("[data-sheet-types-error]");
+      if (!el) throw new Error("no error yet");
+      return el;
+    });
+    expect(alert).toHaveTextContent("Couldn’t load the worksheet types.");
+    expect(screen.getByRole("button", { name: "Make a worksheet" })).toBeDisabled();
+    serveTypes([{ type: "exit-ticket", name: "Exit ticket", available: true }]);
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Activity type" })).toHaveTextContent(
+        "Exit ticket",
+      ),
+    );
+    expect(document.querySelector("[data-sheet-types-error]")).toBeNull();
+  });
+
+  it("a remembered type the lesson does not offer is not swapped or posted", async () => {
+    serveList([]);
+    serveTypes([{ type: "exit-ticket", name: "Exit ticket", available: true }]);
+    renderDialog(undefined, (client) =>
+      rememberWorksheetIntent(client, lesson.id, {
+        recipeId: "word-search",
+        practiceMinutes: 10,
+        expectedRevision: 2,
+      }),
+    );
+    await waitFor(() => expect(document.querySelector("[data-sheet-type-unknown]")).not.toBeNull());
+    expect(screen.getByRole("combobox", { name: "Activity type" })).not.toHaveTextContent(
+      "Exit ticket",
+    );
+    expect(screen.getByRole("button", { name: "Make a worksheet" })).toBeDisabled();
+    expect(fakeApi.requests.some((r) => r.method === "POST")).toBe(false);
+  });
+
+  it("a remembered offered type is posted by the handoff, once the types say it is offered", async () => {
+    serveList([]);
+    serveTypes([{ type: "exit-ticket", name: "Exit ticket", available: true }]);
+    let posted: unknown;
+    fakeApi.failNext(
+      (request) => request.method === "POST" && request.path === `/lessons/${lesson.id}/worksheet`,
+      () => {
+        posted = fakeApi.requests.at(-1)?.body;
+        return new Response(JSON.stringify({ worksheetId: "sheet-3", jobId: "job-4" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    renderDialog(undefined, (client) =>
+      rememberWorksheetIntent(client, lesson.id, {
+        recipeId: "exit-ticket",
+        practiceMinutes: 10,
+        expectedRevision: 2,
+      }),
+    );
+    await waitFor(() => expect(posted).toMatchObject({ recipeId: "exit-ticket" }));
   });
 });

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Lesson } from "@tj/domain/documents";
+import { type Lesson, offeredRecipeFor } from "@tj/domain/documents";
 import {
   Button,
   Dialog,
@@ -35,6 +35,9 @@ import {
   worksheetStatusLabel,
 } from "@/lib/lesson-worksheets";
 import { sessionMutation } from "@/lib/session-boundary";
+
+/** The offered type a remembered id means (`auto` is Practice, as the api reads it), else itself. */
+const offeredTypeOf = (id: string): string => offeredRecipeFor(id) ?? id;
 
 /** Independent worksheet jobs never keep the slide editor locked. */
 export function LessonWorksheets({
@@ -77,10 +80,16 @@ export function LessonWorksheets({
   );
   const [picked, setRecipeId] = useState<string | undefined>(intent.intent?.recipeId);
   const typeOptions = types.data ?? [];
+  // R4 review (12 Nov): a remembered type the lesson no longer offers (an old id, or one greyed
+  // since) is never swapped silently for another: the picker shows no type and says why, and the
+  // handoff's auto-request waits for the teacher to choose.
+  const asked = picked === undefined ? undefined : offeredTypeOf(picked);
+  const unknownPick =
+    types.isSuccess && asked !== undefined && !typeOptions.some((t) => t.type === asked);
   const recipeId =
-    typeOptions.find((t) => t.type === picked)?.type ??
-    typeOptions.find((t) => t.available)?.type ??
-    typeOptions[0]?.type;
+    asked !== undefined
+      ? typeOptions.find((t) => t.type === asked)?.type
+      : (typeOptions.find((t) => t.available)?.type ?? typeOptions[0]?.type);
   const pickedType = typeOptions.find((t) => t.type === recipeId);
   const [minutes, setMinutes] = useState(String(intent.intent?.practiceMinutes ?? 10));
   const [cooldown, setCooldown] = useState(Date.now() - intent.lastRequestedAt < 30_000);
@@ -179,14 +188,28 @@ export function LessonWorksheets({
       intent.attempted ||
       !list.isSuccess ||
       active ||
-      !canRequestWorksheet(lesson, intent.intent, lessonBusy)
+      !canRequestWorksheet(lesson, intent.intent, lessonBusy) ||
+      // Post only a type this lesson offers now, the one the picker shows.
+      !types.isSuccess ||
+      !types.data.some(
+        (t) => t.available && t.type === offeredTypeOf(intent.intent?.recipeId ?? ""),
+      )
     )
       return;
     // Claim before the async call: remounts and StrictMode cannot enqueue twice. Errors are
     // reconciled by GET above, never automatically retried (the server may have accepted it).
     intent.attempted = true;
     request.mutate(intent.intent);
-  }, [intent, list.isSuccess, active, lesson, lessonBusy, request.mutate]);
+  }, [
+    intent,
+    list.isSuccess,
+    active,
+    lesson,
+    lessonBusy,
+    types.isSuccess,
+    types.data,
+    request.mutate,
+  ]);
   const changedPlan = !!intent.intent && lesson.plan?.revision !== intent.intent.expectedRevision;
   // A lesson with no recorded stage (made before stages were recorded) still has its plan and
   // facts; the types say whether its slides can carry a sheet.
@@ -288,9 +311,9 @@ export function LessonWorksheets({
           ) : null}
           <div className="flex flex-col gap-2">
             <Label htmlFor="worksheet-recipe">Activity type</Label>
-            <Select value={recipeId ?? ""} onValueChange={setRecipeId}>
+            <Select value={recipeId ?? ""} onValueChange={setRecipeId} disabled={!types.isSuccess}>
               <SelectTrigger id="worksheet-recipe">
-                <SelectValue />
+                <SelectValue placeholder={types.isPending ? "Loading…" : "Choose a type"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -307,6 +330,24 @@ export function LessonWorksheets({
                 </SelectGroup>
               </SelectContent>
             </Select>
+            {types.isPending ? (
+              <p role="status" className="text-muted-foreground text-sm" data-sheet-types-loading>
+                Loading the worksheet types for this lesson…
+              </p>
+            ) : null}
+            {types.isError ? (
+              <p role="alert" className="text-sm" data-sheet-types-error>
+                Couldn’t load the worksheet types.{" "}
+                <Button variant="link" onClick={() => void types.refetch()}>
+                  Try again
+                </Button>
+              </p>
+            ) : null}
+            {unknownPick ? (
+              <p className="text-ink-2 text-sm" data-sheet-type-unknown>
+                The type you chose before isn’t offered for this lesson. Choose one to make.
+              </p>
+            ) : null}
             {pickedType && !pickedType.available ? (
               <p className="text-ink-2 text-sm" data-sheet-type-reason>
                 {pickedType.reason}
@@ -334,6 +375,7 @@ export function LessonWorksheets({
             disabled={
               !ready ||
               !list.isSuccess ||
+              !types.isSuccess ||
               active ||
               cooldown ||
               request.isPending ||
