@@ -409,7 +409,18 @@ function askDirection(ask: Ask, d: PictureDirection | undefined): PictureDirecti
         shows: text,
         mustShow: ask.mustShow ?? [],
         queries: uniq([plainSubject(text), ...anchorQueries(text)]),
-        imagePrompt: text,
+        // The ask's own words with the lesson they are for (12 Nov, y8 rows: "Cellulose: ...").
+        imagePrompt: ask.lessonTitle
+          ? [
+              text,
+              ...pictureContextLines({
+                heading: "",
+                lessonTitle: ask.lessonTitle,
+                words: text,
+                period: d?.period ?? null,
+              }),
+            ].join(" ")
+          : text,
       },
     ],
     count: null,
@@ -1247,6 +1258,13 @@ export function lastResortRequest(
       ? lessonIllustrationPrompt(prompt, look)
       : undefined;
   const palette = decked ? paletteKey(look) : undefined;
+  // A real-only scene names only its period and topic (ruling 299): no lesson title, no people line.
+  const made = decked ?? painted;
+  const context = realOnly
+    ? []
+    : pictureContextLines({ heading, lessonTitle, words: req.text, period }).filter(
+        (line) => !made.includes(line),
+      );
   return {
     text: subject,
     named: null,
@@ -1255,10 +1273,56 @@ export function lastResortRequest(
     realFallback: "illustration",
     style: "illustration",
     ...(palette ? { palette } : {}),
-    imagePrompt: `${decked ?? painted}\n${LAST_RESORT_SAFE_LINE}`,
+    imagePrompt: [made, ...context, LAST_RESORT_SAFE_LINE].join("\n"),
     ...(req.period ? { period: req.period, depicts: true } : {}),
   };
 }
+
+/**
+ * 12 Nov blind review (CRITIQUE-1, y8 s8): a row's picture made from its own words alone
+ * ("Respiration: Glucose is used in respiration to release energy.") came back as a girl eating
+ * an apple, on a slide about how plants use glucose. Code owns two lines for a picture made from
+ * the slide's words: the lesson and the slide it is for, and, when no words of the slide, the ask
+ * or the lesson name people and the lesson is set in no past period, that no people are in it.
+ * The image model draws what a prompt names, so the slide is named as a topic in plain words
+ * (no quotes, which it may letter), and the people line names no example.
+ */
+export function pictureContextLines(o: {
+  heading: string;
+  lessonTitle: string;
+  /** The words the picture is made from (the ask or the request's text). */
+  words: string;
+  period?: string | null;
+}): string[] {
+  const about = o.heading
+    .replace(/[“”"?!.:;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(how|why|what|when|where|who|which|the|a|an)\b/i, (w) => w.toLowerCase());
+  const lesson = o.lessonTitle
+    .replace(/[“”"]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lines: string[] = [];
+  if (lesson || about)
+    lines.push(
+      `It is for a school lesson${lesson ? ` on ${lesson}` : ""}${about && about.toLowerCase() !== lesson.toLowerCase() ? `, for the slide about ${about}` : ""}${o.period ? `, set in ${o.period}` : ""}.`,
+    );
+  if (!o.period && !peopleWords().test(`${o.heading} ${o.words} ${o.lessonTitle}`))
+    lines.push(NO_PEOPLE_LINE);
+  return lines;
+}
+
+/** The people line: only where nothing the picture is made from names a person (see above). */
+export const NO_PEOPLE_LINE = "No people, faces or hands are in the picture.";
+
+/** Words that put a person in a picture: DEPICTS's, and people a present-day slide names. */
+let peopleRe: RegExp | undefined;
+const peopleWords = () =>
+  (peopleRe ??= new RegExp(
+    `${DEPICTS.source}|\\b(humans?|human body|bod(y|ies)|boys?|girls?|babies|baby|pupils?|students?|teachers?|doctors?|nurses?|patients?|farmers?|scientists?|athletes?|players?|runners?|cooks?|chefs?|bakers?|firefighters?|we|you|our|your|someone|everyone|face|faces|hands?)\\b`,
+    "i",
+  ));
 
 /**
  * The last step's safety line (KS1 to KS4). No age word ("children" draws young children) and no

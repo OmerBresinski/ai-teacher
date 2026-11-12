@@ -16,10 +16,14 @@ import {
   countImagePrompt,
   createDirectorBatcher,
   directPicture,
+  ILLUSTRATION_LINE,
   illustrationPrompt,
+  LAST_RESORT_SAFE_LINE,
   lastResortRequest,
   monumentInView,
+  NO_PEOPLE_LINE,
   PERIOD_LANDMARK_LINE,
+  pictureContextLines,
   planPicture,
   splitSubjects,
   stockFirstRoute,
@@ -971,5 +975,76 @@ describe("the last step in an illustration lesson", () => {
     const r = lastResortRequest(req, "Roman markets", "Roman Britain");
     expect(r.imagePrompt).not.toContain("Flat illustration in");
     expect(r.palette).toBeUndefined();
+  });
+});
+
+// 12 Nov blind review (y8 s8): a row's picture made from its words alone drew human digestion on a
+// slide about how plants use glucose. Code adds the lesson and slide it is for, and a no-people
+// line when nothing the picture is made from names people and no past period is set.
+describe("a made picture carries its lesson and slide", () => {
+  const row = {
+    text: "Respiration: Glucose is used in respiration to release energy. Respiration (How plants use glucose)",
+    named: null,
+    route: "generic" as const,
+  };
+  test("the last step names the lesson and slide and keeps people out of a plant process", () => {
+    const r = lastResortRequest(row, "How plants use glucose", "Photosynthesis");
+    const lines = (r.imagePrompt ?? "").split("\n");
+    expect(lines).toContain(
+      "It is for a school lesson on Photosynthesis, for the slide about how plants use glucose.",
+    );
+    expect(lines).toContain(NO_PEOPLE_LINE);
+    // Style first, the safety line last, as before.
+    expect(lines[0]).toBe(ILLUSTRATION_LINE);
+    expect(lines.at(-1)).toBe(LAST_RESORT_SAFE_LINE);
+  });
+  test("a retried painting does not repeat the lines", () => {
+    const once = lastResortRequest(row, "How plants use glucose", "Photosynthesis");
+    const twice = lastResortRequest(
+      { ...row, style: "illustration", imagePrompt: once.imagePrompt },
+      "How plants use glucose",
+      "Photosynthesis",
+    );
+    expect(twice.imagePrompt?.split(NO_PEOPLE_LINE).length).toBe(2);
+  });
+  test("people in the words, or a past period, never get the no-people line", () => {
+    expect(
+      pictureContextLines({
+        heading: "How athletes breathe",
+        lessonTitle: "Respiration",
+        words: "A runner breathing hard",
+      }),
+    ).not.toContain(NO_PEOPLE_LINE);
+    const past = pictureContextLines({
+      heading: "Water buckets",
+      lessonTitle: "The Great Fire of London",
+      words: "Buckets of water by a burning house",
+      period: "London, England, 1666",
+    });
+    expect(past).not.toContain(NO_PEOPLE_LINE);
+    expect(past[0]).toBe(
+      "It is for a school lesson on The Great Fire of London, for the slide about Water buckets, set in London, England, 1666.",
+    );
+  });
+  test("a real-only scene gets neither line (ruling 299: no title words reach it)", () => {
+    const r = lastResortRequest(
+      { ...row, route: "real", realFallback: "none" },
+      "How plants use glucose",
+      "Photosynthesis",
+    );
+    expect(r.imagePrompt).not.toContain("school lesson on");
+    expect(r.imagePrompt).not.toContain(NO_PEOPLE_LINE);
+  });
+  test("a kept ask (no director answer) carries the lesson line", () => {
+    const plan = planPicture(undefined, {
+      text: "Starch: Glucose is converted into starch to store energy. Starch (How plants use glucose)",
+      named: null,
+      lessonTitle: "Photosynthesis",
+    });
+    expect(plan.kind).toBe("photo");
+    if (plan.kind !== "photo") return;
+    expect(plan.request.imagePrompt).toContain("It is for a school lesson on Photosynthesis.");
+    expect(plan.request.imagePrompt).toContain(NO_PEOPLE_LINE);
+    expect(plan.request.text).not.toContain("school lesson");
   });
 });
