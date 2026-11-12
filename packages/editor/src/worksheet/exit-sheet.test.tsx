@@ -45,7 +45,7 @@ describe("Exit ticket sheet answer key", () => {
 
 describe("Exit ticket sheet print view", () => {
   test("rivers: heading, three numbered questions and the answer key render", async () => {
-    const { container } = render(<WorksheetPrint worksheet={exitSheet("rivers")} />);
+    const { container } = render(<WorksheetPrint worksheet={exitSheet("rivers")} part="both" />);
     await settle();
     const page = container.querySelector(".ws-print-root")?.textContent ?? "";
     expect(page).toContain("Exit ticket");
@@ -53,5 +53,25 @@ describe("Exit ticket sheet print view", () => {
     expect(page).toContain("How can erosion of neighbouring bends lead to an oxbow lake?");
     expect(page).toContain("Water flows more slowly there, so sediment is deposited.");
     expect(page).not.toContain("No answer recorded");
+    expect(page).toContain("Teacher copy");
+  });
+
+  test("the pupil sheet is the default: no answer key unless asked for (WS8)", async () => {
+    const { container } = render(<WorksheetPrint worksheet={exitSheet("rivers")} />);
+    await settle();
+    const page = container.querySelector(".ws-print-root")?.textContent ?? "";
+    expect(page).toContain("How does hydraulic action weaken cracks in a river channel?");
+    expect(page).not.toContain("Answer key");
+    expect(page).not.toContain("Water flows more slowly there, so sediment is deposited.");
+  });
+
+  test("the answer key alone: no name strip and no questions, marked Teacher copy (WS8)", async () => {
+    const { container } = render(<WorksheetPrint worksheet={exitSheet("rivers")} part="key" />);
+    await settle();
+    const page = container.querySelector(".ws-print-root")?.textContent ?? "";
+    expect(page).toContain("Teacher copy");
+    expect(page).toContain("Water flows more slowly there, so sediment is deposited.");
+    expect(page).not.toContain("Name");
+    expect(page).not.toContain("Answer each question in the space below it.");
   });
 });

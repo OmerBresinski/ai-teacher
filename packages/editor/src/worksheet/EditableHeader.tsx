@@ -1,5 +1,5 @@
 import { memo, type PointerEvent as ReactPointerEvent } from "react";
-import { SheetMeta } from "./BlockContent";
+import { MoreObjectives, SheetMeta } from "./BlockContent";
 import { SheetField } from "./EditableBlocks";
 import { HEADER_KEY } from "./paginate";
 import { setHeader, setTitle } from "./reducers";
@@ -80,8 +80,9 @@ export const EditableHeader = memo(function EditableHeader({
           onChange={commitTitle}
         />
       </h1>
-      {/* Same rule as the printed header: the objective line exists once the toolbar adds it. */}
-      {header.subtitle !== undefined ? (
+      {/* Same rule as the printed header: the objective line exists once the toolbar adds it, and
+          hides while the self-check strip carries the objectives (Lead, 12 Nov). */}
+      {header.subtitle !== undefined && !worksheet.selfAssessment ? (
         <p className="ws-objective">
           <SheetField
             label="Learning objective"
@@ -90,7 +91,12 @@ export const EditableHeader = memo(function EditableHeader({
           />
         </p>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
+      <MoreObjectives worksheet={worksheet} />
+      <SheetMeta
+        blocks={worksheet.blocks}
+        showMarks={worksheet.showMarks}
+        yearGroup={worksheet.yearGroup}
+      />
     </header>
   );
 });

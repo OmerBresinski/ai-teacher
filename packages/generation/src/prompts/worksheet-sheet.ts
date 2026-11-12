@@ -57,7 +57,8 @@ export function digestBrief(digest: LessonDigest, options: { mistakes: boolean }
   blocks.push(
     [
       "THE CLASS",
-      `Subject: ${l.subject}`,
+      // v3: an empty subject printed "Subject: " (e2e 11 Nov); left out like any empty source.
+      ...(l.subject.trim() ? [`Subject: ${l.subject}`] : []),
       `Year group: ${l.yearGroup}${l.keyStage ? ` (${l.keyStage})` : ""}`,
       `Reading level: ${l.readingLevel}`,
       ...(l.historicalPeriod ? [`Historical period: ${l.historicalPeriod}`] : []),
@@ -126,7 +127,7 @@ export type PracticeInput = { digest: LessonDigest; counts: PracticeCounts };
 
 export function practicePrompt(yearGroup: string): StructuredPrompt<PracticeInput> {
   return {
-    version: "worksheet-practice.v2",
+    version: "worksheet-practice.v3",
     system: [
       PRACTICE_SYSTEM,
       BAND_TEXT[bandOf(yearGroup)],

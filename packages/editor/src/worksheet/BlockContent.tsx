@@ -2,6 +2,7 @@ import type { RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import type { CSSProperties, ReactNode } from "react";
 import { StoredImage } from "../images/StoredImage";
 import { RichText } from "../slide/elements/RichText";
+import { plainLineHTML } from "../text/serialize";
 import { escapeHtml, isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, type FillGapBlock, matchingOrder, optionLetter } from "./answers";
 import { sheetSummary } from "./metrics";
@@ -139,6 +140,7 @@ export function BlockContent({
   renderAnswer,
   showMarks = false,
   gapChars,
+  continued = false,
 }: {
   block: WorksheetBlock;
   mode: SheetMode;
@@ -153,6 +155,8 @@ export function BlockContent({
    * and fall back to blanks that say which word fills them.
    */
   gapChars: number | undefined;
+  /** The rest of a lines question's lines, on the page after its text (`splitLines`). */
+  continued?: boolean;
 }) {
   const rich = (doc: RichDoc, className?: string, emptyLabel?: string) => {
     if (renderStem) return renderStem({ doc, className });
@@ -173,6 +177,15 @@ export function BlockContent({
       return rich(block.doc, "ws-instructions", "Instructions for the task");
 
     case "question":
+      if (continued)
+        return (
+          <div className="ws-q ws-q-continued">
+            <div className="ws-q-no" />
+            <div className="ws-q-main">
+              <Lines count={block.answerLines} />
+            </div>
+          </div>
+        );
       return (
         <QuestionRow number={block.number}>
           <div className="ws-q-head">
@@ -271,7 +284,10 @@ export function BlockContent({
           {block.label !== undefined ? (
             <div className="ws-answerbox-label">{fieldText(block.label)}</div>
           ) : null}
-          <div className="ws-answerbox" style={{ height: `${block.heightPt}pt` }} />
+          <div
+            className="ws-answerbox"
+            style={{ height: `calc(${block.heightPt}pt * var(--ws-box, 1))` }}
+          />
         </div>
       );
 
@@ -333,6 +349,20 @@ const HEADER_FIELDS = [
   ["showClass", "Class", "ws-field-class"],
 ] as const;
 
+/** The lesson's other objectives under the objective line (`sheetHead`), in print and the editor. */
+export function MoreObjectives({ worksheet }: { worksheet: Worksheet }) {
+  const { moreObjectives } = sheetHead(worksheet);
+  return (
+    <>
+      {moreObjectives.map((text) => (
+        <p className="ws-objective" key={text}>
+          {text}
+        </p>
+      ))}
+    </>
+  );
+}
+
 export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
   const { header } = worksheet;
   const fields = HEADER_FIELDS.filter(([flag]) => header[flag]);
@@ -352,10 +382,15 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
         </>
       ) : null}
       <h1 className="ws-title">{sheetHead(worksheet).title}</h1>
-      {header.subtitle !== undefined ? (
+      {header.subtitle !== undefined && !worksheet.selfAssessment ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
+      <MoreObjectives worksheet={worksheet} />
+      <SheetMeta
+        blocks={worksheet.blocks}
+        showMarks={worksheet.showMarks}
+        yearGroup={worksheet.yearGroup}
+      />
     </header>
   );
 }
@@ -426,6 +461,7 @@ export function RagStrip({
 export function AnswerKeyTitle({ worksheet }: { worksheet: Worksheet }) {
   return (
     <div>
+      <p className="ws-key-teacher">Teacher copy</p>
       <h2 className="ws-key-title">Answer key</h2>
       <p className="ws-key-sub">{worksheet.header.title || worksheet.title}</p>
       <div className="ws-key-rule" />
@@ -440,10 +476,13 @@ export function AnswerKeyEntry({ entry, showMarks }: { entry: AnswerEntry; showM
       <div className="ws-q-main">
         {entry.search ? <WordSearchView block={entry.search} solved /> : null}
         {entry.lines.map((line, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: answer lines are positional
-          <div key={i} className="ws-key-line">
-            {line}
-          </div>
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: answer lines are positional
+            key={i}
+            className="ws-key-line"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: escaped by plainLineHTML, only its fraction spans are markup
+            dangerouslySetInnerHTML={{ __html: plainLineHTML(line) }}
+          />
         ))}
       </div>
       {showMarks && entry.marks ? <div className="ws-marks">{marksLabel(entry.marks)}</div> : null}
@@ -459,7 +498,7 @@ export function FlowItemContent({
   renderStem,
 }: {
   item:
-    | { kind: "block"; block: WorksheetBlock; gapChars?: number }
+    | { kind: "block"; block: WorksheetBlock; gapChars?: number; split?: "head" | "tail" }
     | { kind: "rag" }
     | { kind: "key-title" }
     | { kind: "key-entry"; entry: AnswerEntry };
@@ -475,6 +514,7 @@ export function FlowItemContent({
         renderStem={renderStem}
         showMarks={worksheet.showMarks}
         gapChars={item.gapChars}
+        continued={item.split === "tail"}
       />
     );
   }
@@ -490,10 +530,13 @@ export function FlowItemContent({
 export function SheetMeta({
   blocks,
   showMarks,
+  yearGroup,
 }: {
   blocks: readonly WorksheetBlock[];
   showMarks?: boolean;
+  /** Reception to Year 2 read as taking longer (`estimateMinutes`). */
+  yearGroup?: string;
 }) {
   if (blocks.length === 0) return null;
-  return <p className="ws-meta">{sheetSummary(blocks, showMarks ?? false)}</p>;
+  return <p className="ws-meta">{sheetSummary(blocks, showMarks ?? false, { yearGroup })}</p>;
 }

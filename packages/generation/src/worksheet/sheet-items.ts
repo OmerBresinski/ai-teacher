@@ -17,8 +17,10 @@ const SPEC = { body: 600, point: 160 } as const;
 
 const itemShape = {
   slides: z.array(z.number().int()).min(1).max(4),
+  demand: z.enum(["recall", "use", "reason"]),
   builds: z.enum(["same-skill-new-numbers", "new-context", "combine", "explain"]),
   question: z.string().min(1).max(SPEC.body),
+  method: z.array(z.number().int()).max(3),
   working: z.string().max(SPEC.body).nullable(),
   answer: z.string().min(1).max(SPEC.body),
 };
@@ -193,6 +195,108 @@ export function repeatedResults(items: readonly { working: string | null }[]): S
   return out;
 }
 
+/** A calculation written out in a slide's text ("12 ÷ 4 = 3"): a shown method (v3). */
+const WRITTEN_CALC = /\d\s*[+\-−×÷*/]\s*\d[^=\n]*=\s*\d/;
+
+/** v3: the slides whose method a calculation may follow: worked steps, a written calculation, an asked working. */
+export function shownMethodSlides(digest: LessonDigest): Set<number> {
+  const out = new Set<number>();
+  for (const t of digest.taught) {
+    if ((t.worked?.length ?? 0) > 0 || WRITTEN_CALC.test(t.text ?? "")) out.add(t.slide);
+  }
+  for (const a of digest.asked) if (a.working?.trim()) out.add(a.slide);
+  return out;
+}
+
+const largestNumber = (text: string): number | null => {
+  const ns = numbersIn(text).map(Number);
+  return ns.length ? Math.max(...ns) : null;
+};
+
+/**
+ * v3: the easiest asked calculation: the smallest "largest number" over asked questions with
+ * numbers, and the smallest first number in their answers. A warm-up is below the lesson's level
+ * only when it is smaller on both (Y5 e2e 11 Nov: 1/4 of 20 = 5 after the lesson asked 1/4 of 28).
+ */
+export function warmUpFloor(digest: LessonDigest): { size: number; result: number } | null {
+  const numeric = digest.asked.filter((a) => largestNumber(a.question) !== null);
+  const results = numeric
+    .map((a) => numbersIn(a.answer)[0])
+    .filter((n): n is string => n !== undefined)
+    .map(Number);
+  if (numeric.length === 0 || results.length === 0) return null;
+  return {
+    size: Math.min(...numeric.map((a) => largestNumber(a.question) as number)),
+    result: Math.min(...results),
+  };
+}
+
+const STOP = new Set(
+  "a an the and or of to in on for is are was were be it its this that what which how why does do did they their them with by from as at can you your write give".split(
+    " ",
+  ),
+);
+const contentWords = (text: string) => new Set([...words(text)].filter((w) => !STOP.has(w)));
+
+/** v3: the share of the exit question's content words that `question` also has. */
+export function contentOverlap(question: string, exit: string): number {
+  const mine = contentWords(question);
+  const theirs = contentWords(exit);
+  const shared = [...theirs].filter((w) => mine.has(w)).length;
+  return shared / Math.max(1, theirs.size);
+}
+
+/** v3: at or above this, a question with no calculation asks what an exit-ticket question asks. */
+export const EXIT_OVERLAP = 0.6;
+
+export type SheetIssue = { path: (string | number)[]; message: string };
+
+/**
+ * v3 sheet rules (CHANGES.md v3): retry-only, never a drop, because each one is a pitch or mix
+ * fault in a correct item and dropping would cost the sheet minimum. What is left after the retry
+ * reaches the sheet's findings through `callStructured`'s editorial misses.
+ */
+export function practiceSheetIssues(out: PracticeOutput, { digest }: Context): SheetIssue[] {
+  const issues: SheetIssue[] = [];
+  const shown = shownMethodSlides(digest);
+  const floor = warmUpFloor(digest);
+  const exits = digest.asked.filter((a) => a.kind === "exit").map((a) => a.question);
+  const all: [string, number | null, PracticeItem][] = [
+    ...out.warmUp.map((it, i) => ["warmUp", i, it] as [string, number, PracticeItem]),
+    ...out.core.map((it, i) => ["core", i, it] as [string, number, PracticeItem]),
+    ["challenge", null, out.challenge],
+  ];
+  for (const [key, i, it] of all) {
+    const path = i === null ? [key] : [key, i];
+    const label = i === null ? "The challenge" : `${key} item ${i + 1}`;
+    const add = (message: string) => issues.push({ path, message: `${label} ${message}.` });
+    if (key !== "warmUp" && it.demand === "recall")
+      add('is "recall"; core items and the challenge make pupils "use" or "reason"');
+    if (it.working?.trim()) {
+      if (it.method.length === 0) add("has working but names no shown method in `method`");
+      for (const n of it.method.filter((m) => !shown.has(m)))
+        add(`names slide ${n} in \`method\`, which shows no worked method`);
+      const size = largestNumber(it.question);
+      const result = workingResult(it.working);
+      if (
+        key === "warmUp" &&
+        floor !== null &&
+        size !== null &&
+        result !== null &&
+        size < floor.size &&
+        result < floor.result
+      )
+        add("is easier than the easiest already-asked question: use larger numbers");
+    } else {
+      const k = exits.findIndex((q) => contentOverlap(it.question, q) >= EXIT_OVERLAP);
+      if (k >= 0) add(`asks what exit-ticket question ${k + 1} asks`);
+    }
+  }
+  if (!all.some(([, , it]) => it.demand === "reason"))
+    issues.push({ path: ["core"], message: 'The sheet has no "reason" item.' });
+  return issues;
+}
+
 /**
  * The Practice schema: exactly 2 warm-ups, core 1..7 (shape; the SHEET line's exact count is an
  * editorial rule), one challenge. With `soft`, the item rules are left out.
@@ -232,6 +336,8 @@ export function practiceSchemaFor(
             editorialIssue(`${label} has the same calculation result as another item.`, path),
           );
       });
+      for (const it of practiceSheetIssues(out, ctx))
+        issues.addIssue(editorialIssue(it.message, it.path));
     }) as z.ZodType<PracticeOutput>;
 }
 

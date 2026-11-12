@@ -46,6 +46,8 @@ export const worksheetPrintSearchSchema = z.object({
     .transform((): "1" => "1")
     .optional()
     .catch(undefined),
+  /** `?part=key|both`: the answer key alone, or after the sheet; anything else is the pupil sheet. */
+  part: z.enum(["pupil", "key", "both"]).optional().catch(undefined),
 });
 /**
  * `/l/$lessonId/print` (ADR 0023 §2; TeachDeck `lib/export/pdf.ts` writes exactly these):

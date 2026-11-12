@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { FlowItemContent, SheetHeader, type SheetMode } from "./BlockContent";
 import { pageMetrics } from "./metrics";
 import type { FlowItem, WorksheetPage } from "./paginate";
+import { SHEET_SIZES, type SheetSizes, sheetSizes } from "./sheet-sizes";
 
 /**
  * A paginated worksheet (TeachDeck `components/worksheet/Sheet.tsx`). The editor and the print
@@ -24,9 +25,17 @@ const ANSWER_TINT = "#fbf0ed";
  * rather than a fixed rule so switching to Letter reflows the same DOM; `--ws-print-*` is the same
  * page in real-world units, which is what the print media query needs.
  */
-export function sheetVars(theme: Theme, size: PageSize = "A4"): CSSProperties {
+export function sheetVars(
+  theme: Theme,
+  size: PageSize = "A4",
+  /** The year band's sizes (`sheetSizes(worksheet)`); the secondary sheet when not given. */
+  sizes: SheetSizes = SHEET_SIZES.secondary,
+): CSSProperties {
   const m = pageMetrics(size);
   return {
+    "--ws-type": String(sizes.type),
+    "--ws-line-gap": `${sizes.lineGapPt}pt`,
+    "--ws-box": String(sizes.boxScale),
     "--ws-ink": theme.colors.ink,
     "--ws-answer-ink": ANSWER_INK,
     "--ws-answer-rule": ANSWER_RULE,
@@ -41,8 +50,8 @@ export function sheetVars(theme: Theme, size: PageSize = "A4"): CSSProperties {
 }
 
 /**
- * The wrapper class for one flow item. The self-assessment strip is pinned to the foot of its
- * page; pagination already reserved its height above.
+ * The wrapper class for one flow item. The self-assessment strip flows after the last question
+ * like any block; its class only drops the block padding under it (it ends its page).
  */
 export function flowItemClass(item: FlowItem): string {
   return item.kind === "rag" ? "ws-block ws-rag-slot" : "ws-block";
@@ -55,6 +64,7 @@ export function PageView({
   mode,
   header,
   empty,
+  noHeader = false,
   children,
 }: {
   worksheet: Worksheet;
@@ -64,6 +74,8 @@ export function PageView({
   header?: ReactNode;
   /** Editor-only hint shown on an empty sheet. */
   empty?: ReactNode;
+  /** The answer key printed alone: no name/title header strip on its first page. */
+  noHeader?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -73,7 +85,7 @@ export function PageView({
       style={mode === "edit" ? { boxShadow: "var(--shadow-slide)" } : undefined}
     >
       <div className="ws-content">
-        {page.index === 0 ? (header ?? <SheetHeader worksheet={worksheet} />) : null}
+        {page.index === 0 && !noHeader ? (header ?? <SheetHeader worksheet={worksheet} />) : null}
         {children}
         {page.index === 0 && page.items.length === 0 ? empty : null}
       </div>
@@ -97,6 +109,7 @@ export function Sheet({
   renderItem,
   pageWrapper,
   className,
+  noHeader,
 }: {
   worksheet: Worksheet;
   theme: Theme;
@@ -111,11 +124,13 @@ export function Sheet({
   /** Editor override that scales each page to fit the column. */
   pageWrapper?: (page: WorksheetPage, node: ReactNode) => ReactNode;
   className?: string;
+  /** The answer key printed alone (`SheetPart` "key"). */
+  noHeader?: boolean;
 }) {
   return (
     <div
       className={className ? `ws-sheet ${className}` : "ws-sheet"}
-      style={sheetVars(theme, worksheet.pageSize)}
+      style={sheetVars(theme, worksheet.pageSize, sheetSizes(worksheet))}
     >
       {pages.map((page) => {
         const node = (
@@ -127,6 +142,7 @@ export function Sheet({
             mode={mode}
             header={header}
             empty={empty}
+            noHeader={noHeader}
           >
             {page.items.map((item) =>
               renderItem ? (

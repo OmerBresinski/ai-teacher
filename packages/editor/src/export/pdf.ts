@@ -5,6 +5,7 @@
  * `ExportControl`'s `onOpenPrint`, so `@tj/editor` never touches `window.open` or knows an origin.
  */
 
+import type { SheetPart } from "../worksheet/paginate";
 import { slideRangeParam } from "./range";
 
 /** One slide per page, or three to an A4 page with note lines beside each. */
@@ -44,7 +45,14 @@ export function printViewHref(lessonId: string, options: PrintViewOptions = {}):
  * and the browser's own "Save as PDF" writes the file. The page size and the answer key come off the
  * saved worksheet, so this URL says nothing about them and cannot disagree with the sheet on screen.
  */
-export function worksheetPrintHref(worksheetId: string, options: { auto?: boolean } = {}): string {
-  const query = options.auto === false ? "" : "?auto=1";
-  return `/w/${encodeURIComponent(worksheetId)}/print${query}`;
+export function worksheetPrintHref(
+  worksheetId: string,
+  options: { auto?: boolean; part?: SheetPart } = {},
+): string {
+  const params = new URLSearchParams();
+  if (options.auto !== false) params.set("auto", "1");
+  // The pupil sheet is the default and needs no parameter.
+  if (options.part && options.part !== "pupil") params.set("part", options.part);
+  const query = params.toString();
+  return `/w/${encodeURIComponent(worksheetId)}/print${query ? `?${query}` : ""}`;
 }

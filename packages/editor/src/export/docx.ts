@@ -15,6 +15,7 @@
  */
 
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
+import { shownSide } from "@tj/slides/fractions";
 import {
   AlignmentType,
   BorderStyle,
@@ -25,6 +26,9 @@ import {
   ImageRun,
   type ISectionOptions,
   LevelFormat,
+  Math as MathBlock,
+  MathFraction,
+  MathRun,
   Packer,
   PageBreak,
   Paragraph,
@@ -36,10 +40,13 @@ import {
   WidthType,
 } from "docx";
 import { resolveImageSrc } from "../images/resolve-src";
+import { findFractions } from "../text/fractions";
 import { answerKey, matchingOrder, optionLetter } from "../worksheet/answers";
 import { gapWidths } from "../worksheet/gaps";
-import { LINE_GAP, PAGE_PAD, pageMetrics } from "../worksheet/metrics";
+import { PAGE_PAD, pageMetrics } from "../worksheet/metrics";
+import { blockKeepsWithNext, type SheetPart } from "../worksheet/paginate";
 import { CRITERIA_HEADING, sheetHead } from "../worksheet/sheet-head";
+import { SHEET_SIZES, type SheetSizes, sheetSizes } from "../worksheet/sheet-sizes";
 import { buildWordSearch, solutionMask, wordSearchLead } from "../worksheet/word-search";
 import { imageCredentials } from "./image-credentials";
 import { slugify } from "./json";
@@ -51,8 +58,14 @@ import { docToRuns, type Run, type RunParagraph } from "./runs";
 
 /** Word measures in twentieths of a point. */
 const twip = (pt: number) => Math.round(pt * 20);
-/** Run sizes are in half-points. */
-const halfPt = (pt: number) => Math.round(pt * 2);
+/**
+ * The sheet's sizes by year band (`worksheet/sheet-sizes.ts`, the table print reads too). Set at
+ * the top of `buildWorksheetDocx`, after its one await, and read by the synchronous build that
+ * follows it, so two builds never interleave on it.
+ */
+let sizes: SheetSizes = SHEET_SIZES.secondary;
+/** Run sizes are in half-points; every type size is its secondary size times the band's `type`. */
+const halfPt = (pt: number) => Math.round(pt * 2 * sizes.type);
 /** docx sizes images in CSS pixels at 96dpi. */
 const px = (pt: number) => Math.round((pt * 96) / 72);
 
@@ -96,10 +109,11 @@ const orderedLevels = Array.from({ length: 9 }, (_, level) => ({
 }));
 
 /** A ruled answer line: an empty paragraph with a rule under it. */
-function ruledLine(): Paragraph {
+function ruledLine(keepNext = true): Paragraph {
   return new Paragraph({
     text: "",
-    spacing: { before: twip(LINE_GAP - 6), after: 0 },
+    keepNext,
+    spacing: { before: twip(sizes.lineGapPt - 6), after: 0 },
     border: { bottom: hairline },
   });
 }
@@ -116,6 +130,52 @@ function textRun(run: Run, extra: { size?: number; font?: string } = {}): TextRu
   });
 }
 
+/**
+ * A paragraph's runs as Word children, with each maths fraction (`findFractions`, the one finder
+ * the slides, the sheet's print view and this export share) as a real stacked Word equation
+ * fraction (OMML `m:f`), numerator over a bar over denominator, which a teacher can still edit in
+ * Word. A bracketed side drops its brackets, as on paper (`shownSide`). Marks inside a fraction
+ * are not carried (Word sets maths in its own face); every other run keeps its marks.
+ */
+function withFractions(runs: Run[], make: (run: Run) => TextRun): ParagraphChild[] {
+  const text = runs.map((run) => run.text).join("");
+  const found = findFractions(text);
+  if (found.length === 0) return runs.map(make);
+  const between = (from: number, to: number): TextRun[] => {
+    const out: TextRun[] = [];
+    let at = 0;
+    for (const run of runs) {
+      const a = Math.max(from, at);
+      const b = Math.min(to, at + run.text.length);
+      if (a < b) out.push(make({ ...run, text: run.text.slice(a - at, b - at) }));
+      at += run.text.length;
+    }
+    return out;
+  };
+  const side = (from: number, to: number) => {
+    const [a, b] = shownSide(text, from, to);
+    return [new MathRun(text.slice(a, b))];
+  };
+  const out: ParagraphChild[] = [];
+  let at = 0;
+  for (const f of found) {
+    out.push(...between(at, f.start));
+    out.push(
+      new MathBlock({
+        children: [
+          new MathFraction({
+            numerator: side(f.start, f.slash),
+            denominator: side(f.slash + 1, f.end),
+          }),
+        ],
+      }),
+    );
+    at = f.end;
+  }
+  out.push(...between(at, text.length));
+  return out;
+}
+
 /** One rich-text doc as Word paragraphs, marks and lists intact. */
 function richParagraphs(
   paragraphs: RunParagraph[],
@@ -124,11 +184,13 @@ function richParagraphs(
     italics?: boolean;
     bold?: boolean;
     heading?: (typeof HeadingLevel)[keyof typeof HeadingLevel];
+    /** Word's "keep with next" on every paragraph (`blockKeepsWithNext`). */
+    keepNext?: boolean;
   } = {},
 ): Paragraph[] {
   const size = halfPt(options.size ?? BODY_PT);
   return paragraphs.map((para) => {
-    const children = para.runs.map((run) =>
+    const children = withFractions(para.runs, (run) =>
       textRun(
         { ...run, italic: run.italic || options.italics, bold: run.bold || options.bold },
         { size },
@@ -137,6 +199,7 @@ function richParagraphs(
     return new Paragraph({
       children: children.length > 0 ? children : [new TextRun({ text: "", size })],
       heading: options.heading,
+      keepNext: options.keepNext,
       bullet: para.list === "bullet" ? { level: para.level } : undefined,
       numbering:
         para.list === "ordered" ? { reference: ORDERED_LIST, level: para.level } : undefined,
@@ -153,10 +216,12 @@ function plain(
     italics?: boolean;
     after?: number;
     alignment?: (typeof AlignmentType)[keyof typeof AlignmentType];
+    keepNext?: boolean;
   } = {},
 ): Paragraph {
   return new Paragraph({
     alignment: options.alignment,
+    keepNext: options.keepNext,
     spacing: { after: twip(options.after ?? 6) },
     children: [
       new TextRun({
@@ -170,7 +235,10 @@ function plain(
   });
 }
 
-/** The stem of a numbered block: "3. Name the process…" plus its marks. */
+/**
+ * The stem of a numbered block: "3. Name the process…" plus its marks. Its paragraphs always keep
+ * with what follows them in the block (options, lines, the spacer).
+ */
 function numberedStem(
   number: number | undefined,
   paragraphs: RunParagraph[],
@@ -181,13 +249,14 @@ function numberedStem(
   const first = paragraphs[0]?.runs ?? [];
   const head = new Paragraph({
     spacing: { after: twip(4) },
+    keepNext: true,
     children: [
       new TextRun({ text: label, bold: true, color: INK, size: halfPt(BODY_PT) }),
-      ...first.map((run) => textRun(run)),
+      ...withFractions(first, (run) => textRun(run)),
       ...(marksText ? [new TextRun({ text: marksText, color: INK, size: halfPt(BODY_PT) })] : []),
     ],
   });
-  return [head, ...richParagraphs(paragraphs.slice(1))];
+  return [head, ...richParagraphs(paragraphs.slice(1), { keepNext: true })];
 }
 
 /* ------------------------------------------------------------------ */
@@ -415,6 +484,11 @@ function blockChildren(
   contentW: number,
   images: ResolvedImages,
   gapChars: number | undefined,
+  /**
+   * The block stays on the page of the block after it (`blockKeepsWithNext`, the rule print
+   * paginates by): its last paragraph carries Word's "keep with next" too.
+   */
+  keep = false,
 ): (Paragraph | Table)[] {
   switch (block.type) {
     case "heading":
@@ -422,26 +496,30 @@ function blockChildren(
         size: block.level === 1 ? 14 : 12,
         bold: true,
         heading: block.level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+        keepNext: keep,
       });
 
     case "paragraph":
       return richParagraphs(docToRuns(block.doc));
 
     case "instructions":
-      return richParagraphs(docToRuns(block.doc), { size: 10.5, italics: true });
+      return richParagraphs(docToRuns(block.doc), { size: 10.5, italics: true, keepNext: keep });
 
     case "question":
       return [
         ...numberedStem(block.number, docToRuns(block.doc), block.marks),
         ...Array.from({ length: block.answerLines }, () => ruledLine()),
-        plain("", { after: 6 }),
+        plain("", { after: 6, keepNext: keep }),
       ];
 
     case "multiple-choice":
       return [
         ...numberedStem(block.number, docToRuns(block.doc)),
         ...block.options.map((option, i) =>
-          plain(`☐  ${optionLetter(i)}  ${option.text}`, { after: 4 }),
+          plain(`☐  ${optionLetter(i)}  ${option.text}`, {
+            after: 4,
+            keepNext: keep || i < block.options.length - 1,
+          }),
         ),
       ];
 
@@ -549,13 +627,14 @@ function blockChildren(
 
     case "answer-box":
       return [
-        ...(block.label ? [plain(block.label, { size: 9.5, after: 3 })] : []),
+        ...(block.label ? [plain(block.label, { size: 9.5, after: 3, keepNext: true })] : []),
         new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
           borders: boxBorders,
           rows: [
             new TableRow({
-              height: { value: twip(block.heightPt), rule: HeightRule.ATLEAST },
+              cantSplit: true,
+              height: { value: twip(block.heightPt * sizes.boxScale), rule: HeightRule.ATLEAST },
               children: [new TableCell({ children: [plain("", { after: 0 })] })],
             }),
           ],
@@ -564,7 +643,10 @@ function blockChildren(
       ];
 
     case "lines":
-      return [...Array.from({ length: block.count }, () => ruledLine()), plain("", { after: 6 })];
+      return [
+        ...Array.from({ length: block.count }, () => ruledLine()),
+        plain("", { after: 6, keepNext: keep }),
+      ];
 
     case "image": {
       const image = images.get(block.id) ?? null;
@@ -671,6 +753,7 @@ function headerChildren(worksheet: Worksheet): (Paragraph | Table)[] {
   );
   // The criteria are not repeated here: they print in the self-assessment strip, as on paper.
   if (head.objective) out.push(plain(head.objective, { size: 10.5, after: 6 }));
+  for (const text of head.moreObjectives) out.push(plain(text, { size: 10.5, after: 6 }));
   out.push(plain("", { after: 8 }));
   return out;
 }
@@ -686,23 +769,36 @@ function ragChildren(worksheet: Worksheet): Paragraph[] {
       text: "",
       spacing: { before: twip(10), after: twip(6) },
       border: { top: hairline },
+      keepNext: true,
     }),
     ...(criteria.length > 0
       ? [
-          plain(CRITERIA_HEADING, { size: 10.5, bold: true, after: 4 }),
-          ...criteria.map((criterion) => plain(`☐  ${criterion}`, { size: 10.5, after: 4 })),
+          plain(CRITERIA_HEADING, { size: 10.5, bold: true, after: 4, keepNext: true }),
+          ...criteria.map((criterion) =>
+            plain(`☐  ${criterion}`, { size: 10.5, after: 4, keepNext: true }),
+          ),
         ]
       : []),
-    plain("How confident do you feel?", { size: 10.5, after: 4 }),
+    plain("How confident do you feel?", { size: 10.5, after: 4, keepNext: true }),
     plain("◯  Red        ◯  Amber        ◯  Green", { size: 11, after: 6 }),
   ];
 }
 
-function answerKeyChildren(worksheet: Worksheet, contentW: number): (Paragraph | Table)[] {
+/** One answer-key line, its fractions stacked as in the stems (and as the print key draws them). */
+const keyLine = (line: string): ParagraphChild[] =>
+  withFractions([{ text: line }], (run) => textRun(run, { size: halfPt(10.5) }));
+
+function answerKeyChildren(
+  worksheet: Worksheet,
+  contentW: number,
+  /** After the pupil sheet: start a new page. Alone: the key is the first page. */
+  afterSheet: boolean,
+): (Paragraph | Table)[] {
   const entries = answerKey(worksheet.blocks);
   if (entries.length === 0) return [];
   const out: (Paragraph | Table)[] = [
-    new Paragraph({ children: [new PageBreak()] }),
+    ...(afterSheet ? [new Paragraph({ children: [new PageBreak()] })] : []),
+    plain("Teacher copy", { size: 9.5, bold: true, after: 4 }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { after: twip(4) },
@@ -723,11 +819,13 @@ function answerKeyChildren(worksheet: Worksheet, contentW: number): (Paragraph |
         spacing: { after: twip(4) },
         children: [
           new TextRun({ text: `${entry.number}. `, bold: true, color: INK, size: halfPt(10.5) }),
-          new TextRun({ text: (entry.lines[0] ?? "") + marks, color: INK, size: halfPt(10.5) }),
+          ...keyLine(entry.lines[0] ?? ""),
+          ...(marks ? [new TextRun({ text: marks, color: INK, size: halfPt(10.5) })] : []),
         ],
       }),
     );
-    for (const line of entry.lines.slice(1)) out.push(plain(line, { size: 10.5, after: 3 }));
+    for (const line of entry.lines.slice(1))
+      out.push(new Paragraph({ spacing: { after: twip(3) }, children: keyLine(line) }));
   }
   return out;
 }
@@ -737,7 +835,9 @@ function answerKeyChildren(worksheet: Worksheet, contentW: number): (Paragraph |
 /* ------------------------------------------------------------------ */
 
 export type DocxOptions = {
-  /** Append the answer key on a new page. Defaults to the sheet's own toggle (ADR 0023 §7). */
+  /** The pupil sheet (default), the answer key alone, or both (the key on its own page). */
+  part?: SheetPart;
+  /** Older callers: `true` is both, `false` the pupil sheet. `part` wins when both are given. */
   includeAnswerKey?: boolean;
   /** The api origin (`${VITE_API_URL}`): image fetches to it carry the session cookie. */
   imageOrigin?: string;
@@ -748,15 +848,25 @@ export async function buildWorksheetDocx(
   options: DocxOptions = {},
 ): Promise<Document> {
   const metrics = pageMetrics(worksheet.pageSize);
-  const includeAnswerKey = options.includeAnswerKey ?? worksheet.includeAnswerKey;
+  const part: SheetPart = options.part ?? (options.includeAnswerKey === true ? "both" : "pupil");
   const images = await resolveImages(worksheet, options.imageOrigin);
+  sizes = sheetSizes(worksheet);
 
-  const children: (Paragraph | Table)[] = [...headerChildren(worksheet)];
-  const gaps = gapWidths(worksheet.blocks);
-  for (const block of worksheet.blocks)
-    children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id)));
-  if (worksheet.selfAssessment) children.push(...ragChildren(worksheet));
-  if (includeAnswerKey) children.push(...answerKeyChildren(worksheet, metrics.contentW));
+  const children: (Paragraph | Table)[] = [];
+  if (part !== "key") {
+    children.push(...headerChildren(worksheet));
+    const gaps = gapWidths(worksheet.blocks);
+    for (const [i, block] of worksheet.blocks.entries()) {
+      // The strip never stands alone on a last page: the last block keeps with it, as on paper.
+      const last = i === worksheet.blocks.length - 1;
+      const keep =
+        blockKeepsWithNext(block, worksheet.blocks[i + 1]) || (last && !!worksheet.selfAssessment);
+      children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id), keep));
+    }
+    if (worksheet.selfAssessment) children.push(...ragChildren(worksheet));
+  }
+  if (part !== "pupil")
+    children.push(...answerKeyChildren(worksheet, metrics.contentW, part === "both"));
 
   const section: ISectionOptions = {
     properties: {

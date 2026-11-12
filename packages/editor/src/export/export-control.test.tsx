@@ -384,7 +384,7 @@ describe("ExportControl (TEACH-111)", () => {
 
 /* E3 (TEACH-112): the Word tab, its answer-key default, and the `import()` boundary. */
 describe("ExportControl (TEACH-112)", () => {
-  it("Word: answer key defaults to the sheet's own setting; one download named <slug>.docx", async () => {
+  it("Word: the pupil sheet by default, the key on request; one download named <slug>.docx", async () => {
     const user = userEvent.setup();
     const worksheetDocxBlob = mock(async () => new Blob(["pk"], { type: "application/zip" }));
     const realDocx = exportLoaders.docx;
@@ -409,18 +409,19 @@ describe("ExportControl (TEACH-112)", () => {
       );
       await openDialog(user);
       await user.click(pickTab("Word"));
-      expect(screen.getByRole("switch", { name: "Include answer key" })).toHaveAttribute(
+      // The pupil sheet by default, whatever the sheet's own "Show answer key" switch says (WS8).
+      expect(screen.getByRole("radio", { name: "Pupil sheet" })).toHaveAttribute(
         "aria-checked",
         "true",
       );
-      await user.click(screen.getByRole("switch", { name: "Include answer key" }));
+      await user.click(screen.getByRole("radio", { name: "Answer key" }));
       await user.click(screen.getByRole("button", { name: "Export Word" }));
       await waitFor(() => expect(downloads).toEqual(["fractions-practice.docx"]));
       const [, options] = worksheetDocxBlob.mock.calls[0] as unknown as [
         unknown,
-        { includeAnswerKey: boolean; imageOrigin: string },
+        { part: string; imageOrigin: string },
       ];
-      expect(options).toEqual({ includeAnswerKey: false, imageOrigin: "https://api.test" });
+      expect(options).toEqual({ part: "key", imageOrigin: "https://api.test" });
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     } finally {
       HTMLAnchorElement.prototype.click = original;

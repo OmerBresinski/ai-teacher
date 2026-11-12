@@ -25,7 +25,9 @@ import {
   copiesAsked,
   examFaults,
   practiceFaults,
+  practiceSheetIssues,
   repeatedResults,
+  shownMethodSlides,
   workingFault,
 } from "./sheet-items";
 import { practiceBlocks } from "./write-sheet";
@@ -127,7 +129,7 @@ describe("writeModelSheet: valid stub answers", () => {
       expect(ai.calls).toHaveLength(1);
       expect(ai.calls[0]?.modelClass).toBe("small");
       expect(ai.calls[0]?.context).toMatchObject({
-        promptVersion: "worksheet-practice.v2",
+        promptVersion: "worksheet-practice.v3",
         effort: "low",
       });
       expect(sheet.findings).toEqual([]);
@@ -360,5 +362,105 @@ describe("item rules", () => {
     expect(examFaults({ ...it, markScheme: ["a"] }, 3, { digest })).toContain(
       "does not give one mark-scheme point per mark",
     );
+  });
+});
+
+describe("v3: sheet rules (retry-only) and the code-built instruction", () => {
+  const rates = lessonDigest(fixtureLesson("rates"));
+  const romans = lessonDigest(fixtureLesson("romans"));
+  const messages = (out: typeof STUB_PRACTICE_RATES, digest = rates) =>
+    practiceSheetIssues(out, { digest }).map((i) => i.message);
+
+  test("v3 clauses reach every band's system text", () => {
+    for (const year of ["Year 2", "Year 8", "Year 11"]) {
+      const system = practicePrompt(year).system;
+      for (const clause of [
+        "A shown method is the steps of a worked example",
+        "Never ask pupils to reverse a shown method or to work back from a result",
+        "Recall means a pupil can answer by remembering one sentence of the brief",
+        'Only warm-up items may be "recall".',
+        'at least one item on the sheet is "reason"',
+        "never ask for what an exit-ticket question asks for, in any wording",
+        "Warm-up items are at least as hard as the easiest already-asked question",
+        'never "objects", "items" or "things"',
+      ]) {
+        expect(system).toContain(clause);
+      }
+      expect(system).toContain("The reason item ");
+    }
+    // v2's licence to work back is gone (it produced an untaught reverse problem, Y5 e2e).
+    expect(practicePrompt("Year 5").system).not.toContain("work back from a result to a value");
+  });
+
+  test("the stubs meet every sheet rule", () => {
+    expect(messages(STUB_PRACTICE_RATES)).toEqual([]);
+    expect(messages(STUB_PRACTICE_ROMANS, romans)).toEqual([]);
+  });
+
+  test("shown methods: worked steps, a written calculation, an asked working", () => {
+    expect([...shownMethodSlides(rates)]).toContain(4);
+    expect(shownMethodSlides(romans).size).toBe(0);
+  });
+
+  test("a recall core item, a sheet with no reason item, and an unshown method are flagged", () => {
+    const out = clone(STUB_PRACTICE_RATES);
+    out.core[0] = { ...nth(out.core, 0), demand: "recall" };
+    expect(messages(out)).toContain(
+      'core item 1 is "recall"; core items and the challenge make pupils "use" or "reason".',
+    );
+    const noReason = clone(STUB_PRACTICE_RATES);
+    for (const it of [...noReason.warmUp, ...noReason.core, noReason.challenge])
+      if (it.demand === "reason") it.demand = "use";
+    expect(messages(noReason)).toContain('The sheet has no "reason" item.');
+    const unshown = clone(STUB_PRACTICE_RATES);
+    unshown.warmUp[1] = { ...nth(unshown.warmUp, 1), method: [3] };
+    unshown.core[0] = { ...nth(unshown.core, 0), method: [] };
+    expect(messages(unshown)).toEqual([
+      "warmUp item 2 names slide 3 in `method`, which shows no worked method.",
+      "core item 1 has working but names no shown method in `method`.",
+    ]);
+  });
+
+  test("a warm-up smaller than the easiest asked calculation, on size and result, is flagged", () => {
+    const out = clone(STUB_PRACTICE_RATES);
+    out.warmUp[1] = {
+      ...nth(out.warmUp, 1),
+      question: "Calculate the mean rate when 10 cm³ of gas forms in 10 s.",
+      working: "Mean rate = gas volume ÷ time; 10 cm³ ÷ 10 s = 1 cm³/s",
+      answer: "1 cm³/s",
+    };
+    expect(messages(out)).toContain(
+      "warmUp item 2 is easier than the easiest already-asked question: use larger numbers.",
+    );
+  });
+
+  test("a non-calculation item that asks the exit ticket's question is flagged", () => {
+    const exit = nth(
+      romans.asked.filter((a) => a.kind === "exit"),
+      0,
+    ).question;
+    const out = clone(STUB_PRACTICE_ROMANS);
+    out.core[0] = { ...nth(out.core, 0), question: `Explain this: ${exit}` };
+    expect(messages(out, romans)).toContain("core item 1 asks what exit-ticket question 1 asks.");
+  });
+
+  test("the working line prints only when a core item calculates", () => {
+    const text = (out: typeof STUB_PRACTICE_RATES, digest: typeof rates) =>
+      practiceBlocks(out, digest, () => "x").blocks.map((b) =>
+        "doc" in b && b.doc ? richDocToPlainText(b.doc as never) : "",
+      );
+    expect(text(STUB_PRACTICE_RATES, rates)).toContain(
+      "Answer each question. Show your working where there is a calculation.",
+    );
+    const romansText = text(STUB_PRACTICE_ROMANS, romans);
+    expect(romansText).toContain("Answer each question.");
+    expect(romansText.join("\n")).not.toContain("Show your working");
+  });
+
+  test("an empty subject leaves the Subject line out of the brief", () => {
+    const digest = clone(romans);
+    digest.lesson.subject = "";
+    expect(digestBrief(digest, { mistakes: true })).not.toContain("Subject:");
+    expect(digestBrief(romans, { mistakes: true })).toContain("Subject: History");
   });
 });

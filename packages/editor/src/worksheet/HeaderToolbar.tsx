@@ -88,7 +88,7 @@ export function HeaderToolbar() {
             onCheckedChange={(on) => click(() => dispatch(setIncludeAnswerKey, on))}
           />
           <Label htmlFor={`${ids}-key`} className="text-body">
-            Print answer key
+            Show answer key
           </Label>
         </span>
         <span className="inline-flex items-center gap-1.5 px-1">

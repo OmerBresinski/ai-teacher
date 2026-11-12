@@ -364,7 +364,7 @@ describe("WorksheetEditor", () => {
     const { container, read } = renderWorksheetEditor();
     fireEvent.pointerDown(row(container, HEADER_KEY), pointer(10, 10));
     fireEvent.click(screen.getByRole("radio", { name: "Letter" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Print answer key" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Show answer key" }));
     // Criterion sits beside the switch and waits for it (TEACH-196).
     const add = screen.getByRole("button", { name: "Criterion" });
     expect(add).toBeDisabled();

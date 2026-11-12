@@ -125,9 +125,12 @@ export function practiceBlocks(
     ...(core.length
       ? [
           heading(ids, "Practice"),
+          // v3: the working line only when a core item calculates (it printed on a science sheet).
           instructions(
             ids,
-            "Answer each question. Show your working where there is a calculation.",
+            core.some((it) => it.working?.trim())
+              ? "Answer each question. Show your working where there is a calculation."
+              : "Answer each question.",
           ),
           ...core.flatMap(task),
         ]
