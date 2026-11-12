@@ -46,12 +46,21 @@ export function iconNamed(name: string, own: string, around: string, subject?: s
   return id && iconFits(id, own, around, ctx) ? id : null;
 }
 
-/** A picture of one item, asked in the lesson's look: the thing alone, its line as context. */
-const pictureOf = (name: string, line: string): Pic => ({
-  shows: line ? `${name}: ${line.replace(/[.!?]+$/, "")}` : name.replace(/[.!?]+$/, ""),
-  must_see: [name],
-  subject: "generic",
-});
+/**
+ * A picture of one item, asked in the lesson's look: the thing alone, its line as context, and the
+ * slide's heading after it. Without the heading the ask names no context at all: y8 photosynthesis
+ * s8 asked "Respiration: Glucose is used in respiration to release energy" on "How plants use
+ * glucose" and was painted as a girl eating an apple (11 Nov blind review, CRITIQUE-1 item 2).
+ */
+const pictureOf = (name: string, line: string, heading = ""): Pic => {
+  const thing = line ? `${name}: ${line.replace(/[.!?]+$/, "")}` : name.replace(/[.!?]+$/, "");
+  const on = heading.replace(/[.!?]+$/, "").trim();
+  return {
+    shows: on && !thing.toLowerCase().includes(on.toLowerCase()) ? `${thing} (${on})` : thing,
+    must_see: [name],
+    subject: "generic",
+  };
+};
 
 /**
  * A row (panel-list rows, stages) whose icons the catalogue could not all give: fill the missing
@@ -93,7 +102,7 @@ function routeRow(
     items: items.map((i) => ({
       ...i,
       icon: null,
-      picture: pictureOf(str(i?.name), str(i?.[textKey])),
+      picture: pictureOf(str(i?.name), str(i?.[textKey]), str(s.heading)),
     })),
   };
   // A picture row has less room for each line: pictures that would cut the writer's words are
@@ -133,7 +142,7 @@ export function routeIconMisses(
       const icons = Array.isArray(p.icons) ? (p.icons as unknown[]) : [];
       if (icons.length && icons.every((i) => hasIcon(i) && resolveIcon(str(i), { subject })))
         return { slide: s };
-      const proof = { ...p, icons: null, picture: pictureOf(line, "") };
+      const proof = { ...p, icons: null, picture: pictureOf(line, "", str(s.heading)) };
       const m2 = { ...m, proof };
       const slide = nested ? { ...s, myth: m2 } : m2;
       const misses = [{ slot: "proof", name: line }];

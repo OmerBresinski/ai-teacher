@@ -9,7 +9,7 @@ import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "./picture-director-batch";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /**
- * The pins: the director (v13), its batched prompt (v3) and the photo judge (v20) as the writer planner
+ * The pins: the director (v13), its batched prompt (v3) and the photo judge (v21) as the writer planner
  * ships them. A wording change bumps the version and this hash in the same commit.
  */
 describe("picture prompt pins", () => {
@@ -27,9 +27,11 @@ describe("picture prompt pins", () => {
 
   // v18 added the painted-picture rules in the user turn (TEACH-251 part x); v19 adds the
   // lesson-language rule for writing in the picture to `fits` (TEACH-251 part al); v20 refuses
-  // `fits` only for what a pupil would notice at slide size or what changes the teaching point.
-  test("the photo judge is v20 and its system prompt is pinned", () => {
-    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v20");
+  // `fits` only for what a pupil would notice at slide size or what changes the teaching point;
+  // v21 adds `needs`, `seen` and `showsNeeds` (12 Nov blind review: a pick "fits" that its own `why`
+  // said does not show what the slide names).
+  test("the photo judge is v21 and its system prompt is pinned", () => {
+    expect(pickOrRequeryPrompt.version).toBe("pick-or-requery-photo.v21");
     expect(sha(pickOrRequeryPrompt.system)).toBe(JUDGE_SYSTEM_SHA);
   });
 });
@@ -65,7 +67,20 @@ const DIRECTOR_EDITS: [string, string][] = [
 ];
 
 const DIRECTOR_SYSTEM_SHA = "872c377c9ebed7228b19f7bad2276267129d36082b31c27f7a997434328387d9";
-const JUDGE_SYSTEM_SHA = "9b5074673e269106f8043f8379d33224d92aac146ff7fe235eb93c79fae6c40e";
+/** What judge v21 added to v20's system text, as [added, v20's text] pairs (undone in order). */
+const V21_EDITS: [string, string][] = [
+  ['  "needs": "an open buttercup flower with its petals and stamens, growing outdoors",\n', ""],
+  [
+    '  "seen": "one open yellow buttercup flower head, its petals and stamens sharp, on a plain green background",\n  "showsNeeds": true,\n',
+    "",
+  ],
+  ['  "seen": null,\n  "showsNeeds": false,\n', ""],
+  ["shows what `needs` names, shows as many", "shows as many"],
+  ["showing what `needs` names and at least one", "showing at least one"],
+];
+const V21_LINES = ["- `needs`: ", "- `seen`: ", "- `showsNeeds`: "];
+
+const JUDGE_SYSTEM_SHA = "496aa5c487eba59b3803d6e00ed1127e9f05c3ca4f186768625edecf5ea12d4d";
 
 /**
  * Independent of the modules above: the lab's own files at base4 (lab/ab 92f1b36d), checked
@@ -96,7 +111,17 @@ describe("base4 lab pins (not circular)", () => {
     expect(system).toBe(edited(read("picture-director.v11.system.txt")));
     // v19 (TEACH-251 part al) inserts the lesson-language rule into `fits` and changes nothing else.
     // v20 (TEACH-251) widens only the "refuse only for a clear miss" sentence.
-    const v19 = pickOrRequeryPrompt.system.replace(
+    // v21 adds three field lines, two clauses and the examples' three new fields, nothing else.
+    let v20 = pickOrRequeryPrompt.system;
+    for (const [from, to] of V21_EDITS) {
+      expect(v20.split(from).length).toBe(from.startsWith('  "needs"') ? 3 : 2);
+      v20 = v20.split(from).join(to);
+    }
+    v20 = v20
+      .split("\n")
+      .filter((line) => !V21_LINES.some((start) => line.startsWith(start)))
+      .join("\n");
+    const v19 = v20.replace(
       "a clear miss you can name that a pupil of this year group would notice on the slide or that changes what it teaches, not for a doubt or a detail too fine to make out at slide size.",
       "a clear miss you can name, not for a doubt.",
     );

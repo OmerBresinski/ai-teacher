@@ -18,6 +18,11 @@
  * - Every check slide left without a visual is a logged skip with its reason: `no-source`, `leak`
  *   or `fit`. Nothing is dropped silently.
  *
+ * Amended 12 Nov 2026 (blind review of 11 Nov, CRITIQUE-1 items 2 and 3): nothing is lent any
+ * more. A visual is never shown on a second slide to fill a slot, so a source found is logged as a
+ * `repeat` skip, and one whose numbers are not the questions' (`numberClash`) as `mismatch`. The
+ * leak guard and fit test stay for `relend` and for the flow look's own check pictures.
+ *
  * A new picture searched for the thing the question names (TEXT-ONLY-DIAG.md Fix 2, route b) is
  * not done here: a slide skipped `no-source` is where it would start.
  */
@@ -36,7 +41,7 @@ export const checkSlotKey = (template: string): "picture" | "figure" =>
   template === "practice" ? "picture" : "figure";
 
 export type CheckForm = "as-is" | "letters" | "neutral-alt";
-export type CheckSkipReason = "no-source" | "leak" | "fit";
+export type CheckSkipReason = "no-source" | "leak" | "fit" | "mismatch" | "repeat";
 
 export type CheckRoute = {
   /** The check slide's index in the deck (0-based). */
@@ -92,6 +97,57 @@ export const stem = (w0: string): string => {
 /** The content words of a text, stemmed. */
 export const terms = (text: string): string[] =>
   (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => !STOP.has(w)).map(stem);
+
+const NUMBER_WORDS: Record<string, number> = Object.fromEntries(
+  (
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen " +
+    "fifteen sixteen seventeen eighteen nineteen twenty"
+  )
+    .split(" ")
+    .map((w, n) => [w, n] as const),
+);
+const TENS: Record<string, number> = {
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+  hundred: 100,
+};
+
+/** The whole numbers a text names, as digits or as words ("twelve", "4", "1/4" gives 1 and 4). */
+export function numbersIn(text: string): Set<number> {
+  const out = new Set<number>();
+  for (const m of text.toLowerCase().matchAll(/\d+(?:\.\d+)?|[a-z]+/g)) {
+    const w = m[0];
+    if (/^\d/.test(w)) out.add(Number(w));
+    else if (w in NUMBER_WORDS) out.add(NUMBER_WORDS[w] as number);
+    else if (w in TENS) out.add(TENS[w] as number);
+  }
+  return out;
+}
+
+/**
+ * Why a visual's numbers are not the question's, or undefined when they agree: both name numbers
+ * ("twelve counters in four groups", "1/4 of 28") and at least one of the visual's is nowhere in
+ * the check slide's questions or right answers. A visual or a question with no numbers (past 1)
+ * never clashes.
+ */
+export function numberClash(visual: string, question: string): string | undefined {
+  // "One" is as often a word as a number ("one flower", "which one"): 0 and 1 never clash.
+  const shown = new Set([...numbersIn(visual)].filter((n) => n > 1));
+  if (!shown.size) return undefined;
+  // A question with no numbers makes no claim a number could contradict ("a fire in 1666" beside
+  // "How did people pass water?").
+  const asked = numbersIn(question);
+  if (![...asked].some((n) => n > 1)) return undefined;
+  const other = [...shown].filter((n) => !asked.has(n));
+  return other.length
+    ? `the visual shows ${other.join(", ")}, which the questions never use`
+    : undefined;
+}
 
 /** The question and answer pairs a check slide asks. */
 export function checkPairs(s: S): { question: string; answer: string }[] {
@@ -407,6 +463,7 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
       score: number;
       shared: number;
     }[] = [];
+    const mismatched: string[] = [];
     for (let j = i - 1; j >= 2; j--) {
       const src = a.slides[j];
       if (!src || CHECK_TEMPLATES.has(str(src.template))) continue;
@@ -419,8 +476,23 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
         );
         const score = [...both].filter(telling).length;
         // A visual that shares no telling word with the questions is not what they work from.
-        if (score > 0) candidates.push({ from: j, key, ask, st, score, shared: both.size });
+        if (score <= 0) continue;
+        // A visual of other numbers (12 counters in 4 groups beside "1/4 of 28") shows a wrong
+        // value for the question: never lent (y5 fractions, 11 Nov review).
+        // A photo's numbers are its request and alt, never its credits ("gpt-image-2.5", a date).
+        const shown =
+          st.status === "photo" ? str((st.photo as { alt?: unknown }).alt) : visibleText(st);
+        const clash = numberClash(`${askText(src, ask)} ${shown}`, checkWords(s));
+        if (clash) {
+          mismatched.push(`slide ${j + 1} ${key}: ${clash}`);
+          continue;
+        }
+        candidates.push({ from: j, key, ask, st, score, shared: both.size });
       }
+    }
+    if (!candidates.length && mismatched.length) {
+      skip("mismatch", mismatched.join("; "));
+      continue;
     }
     if (!candidates.length) {
       skip(
@@ -431,37 +503,14 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
     }
     // Most shared words first; the nearer slide on a tie (candidates run nearest first).
     candidates.sort((x, y) => y.score - x.score || y.shared - x.shared);
-    const failed: { reason: CheckSkipReason; why: string }[] = [];
-    for (const c of candidates) {
-      const safe = safeForm(s, c.st);
-      if ("leak" in safe) {
-        failed.push({ reason: "leak", why: `slide ${c.from + 1} ${c.key}: ${safe.leak}` });
-        continue;
-      }
-      const key = checkSlotKey(template);
-      const json: S = { ...s, [key]: lentAsk(c.ask) };
-      if (!a.fits(i, json, key, safe.state)) {
-        failed.push({
-          reason: "fit",
-          why: `slide ${c.from + 1} ${c.key}: the words do not fit beside the visual`,
-        });
-        continue;
-      }
-      routes.push({
-        slide: i,
-        from: c.from,
-        fromKey: c.key,
-        key,
-        json,
-        state: safe.state,
-        form: safe.form,
-      });
-      break;
-    }
-    if (routes.at(-1)?.slide === i) continue;
-    // The first candidate's reason leads: it was the best match.
-    const first = failed[0] as { reason: CheckSkipReason; why: string };
-    skip(first.reason, failed.map((f) => f.why).join("; "));
+    // 11 Nov blind review (CRITIQUE-1 item 3): a picture or diagram is never shown on a second slide
+    // to fill a slot. The source slide already shows it, so the check slide keeps its no-picture
+    // form: an empty slot beats a repeat. A writer who wants a picture on a check slide asks for it
+    // in the flow's look (`lookAdded`), which is a new picture, never this one again.
+    skip(
+      "repeat",
+      candidates.map((c) => `slide ${c.from + 1} ${c.key} already shows it`).join("; "),
+    );
   }
   return { routes, skips };
 }

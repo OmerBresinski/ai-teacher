@@ -43,6 +43,7 @@ import {
   type PlacedPhoto,
   pickDirectedPhoto,
   plainSubject,
+  type SlideClaim,
 } from "./illustrate";
 import {
   type BankRequest,
@@ -408,7 +409,18 @@ function askDirection(ask: Ask, d: PictureDirection | undefined): PictureDirecti
         shows: text,
         mustShow: ask.mustShow ?? [],
         queries: uniq([plainSubject(text), ...anchorQueries(text)]),
-        imagePrompt: text,
+        // The ask's own words with the lesson they are for (12 Nov, y8 rows: "Cellulose: ...").
+        imagePrompt: ask.lessonTitle
+          ? [
+              text,
+              ...pictureContextLines({
+                heading: "",
+                lessonTitle: ask.lessonTitle,
+                words: text,
+                period: d?.period ?? null,
+              }),
+            ].join(" ")
+          : text,
       },
     ],
     count: null,
@@ -1070,9 +1082,14 @@ export async function findDirected(args: {
     style === "illustration" &&
     (req.route === "real" || lastResort === "painted" || !!args.paintOnly) &&
     (!!req.period || lastResort === "painted" || !!args.paintOnly);
+  const caption = madeCaption({
+    provider: out.photo.source.provider,
+    ...(style ? { style } : {}),
+    reconstruction,
+  });
   return {
     ...out.photo,
-    ...(reconstruction ? { source: { ...out.photo.source, caption: RECONSTRUCTION_CAPTION } } : {}),
+    ...(caption ? { source: { ...out.photo.source, caption } } : {}),
     look:
       out.photo.source.provider === "generated"
         ? style === "drawn"
@@ -1159,6 +1176,29 @@ export function kindQueries(req: BankRequest, mustShow: readonly string[]): stri
 export const RECONSTRUCTION_CAPTION = "Artist's reconstruction";
 
 /**
+ * 11 Nov blind review (CRITIQUE-1 item 9, y8 s4): the caption on a generated picture in photo
+ * style, which could pass for a real photograph (a "micrograph" pupils were told to find the
+ * chloroplasts in). New copy, for Greg's call: proposed in PIC-NOTES.md.
+ */
+export const MADE_PHOTO_CAPTION = "AI-generated image";
+
+/**
+ * The caption a generated picture carries, or undefined: ruling 300's on a painted reconstruction;
+ * otherwise every generated picture in photo style says it is made, so no made picture looks like
+ * evidence. Before, only paintings were labelled and a photoreal one never was. A drawing (code or
+ * drawn style) and a painting that is no reconstruction carry none.
+ */
+export function madeCaption(o: {
+  provider: string;
+  style?: string;
+  reconstruction: boolean;
+}): string | undefined {
+  if (o.provider !== "generated") return undefined;
+  if (o.reconstruction) return RECONSTRUCTION_CAPTION;
+  return (o.style ?? "photo") === "photo" ? MADE_PHOTO_CAPTION : undefined;
+}
+
+/**
  * TEACH-251 part ay: the last step's request. A subject that may be painted is painted again; a
  * real-only thing (a named person, a place today, a unique artefact) is never painted itself:
  * the slot takes a painted scene of its period, or of the slide's topic, with no particular real
@@ -1218,6 +1258,13 @@ export function lastResortRequest(
       ? lessonIllustrationPrompt(prompt, look)
       : undefined;
   const palette = decked ? paletteKey(look) : undefined;
+  // A real-only scene names only its period and topic (ruling 299): no lesson title, no people line.
+  const made = decked ?? painted;
+  const context = realOnly
+    ? []
+    : pictureContextLines({ heading, lessonTitle, words: req.text, period }).filter(
+        (line) => !made.includes(line),
+      );
   return {
     text: subject,
     named: null,
@@ -1226,10 +1273,56 @@ export function lastResortRequest(
     realFallback: "illustration",
     style: "illustration",
     ...(palette ? { palette } : {}),
-    imagePrompt: `${decked ?? painted}\n${LAST_RESORT_SAFE_LINE}`,
+    imagePrompt: [made, ...context, LAST_RESORT_SAFE_LINE].join("\n"),
     ...(req.period ? { period: req.period, depicts: true } : {}),
   };
 }
+
+/**
+ * 12 Nov blind review (CRITIQUE-1, y8 s8): a row's picture made from its own words alone
+ * ("Respiration: Glucose is used in respiration to release energy.") came back as a girl eating
+ * an apple, on a slide about how plants use glucose. Code owns two lines for a picture made from
+ * the slide's words: the lesson and the slide it is for, and, when no words of the slide, the ask
+ * or the lesson name people and the lesson is set in no past period, that no people are in it.
+ * The image model draws what a prompt names, so the slide is named as a topic in plain words
+ * (no quotes, which it may letter), and the people line names no example.
+ */
+export function pictureContextLines(o: {
+  heading: string;
+  lessonTitle: string;
+  /** The words the picture is made from (the ask or the request's text). */
+  words: string;
+  period?: string | null;
+}): string[] {
+  const about = o.heading
+    .replace(/[“”"?!.:;]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(how|why|what|when|where|who|which|the|a|an)\b/i, (w) => w.toLowerCase());
+  const lesson = o.lessonTitle
+    .replace(/[“”"]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lines: string[] = [];
+  if (lesson || about)
+    lines.push(
+      `It is for a school lesson${lesson ? ` on ${lesson}` : ""}${about && about.toLowerCase() !== lesson.toLowerCase() ? `, for the slide about ${about}` : ""}${o.period ? `, set in ${o.period}` : ""}.`,
+    );
+  if (!o.period && !peopleWords().test(`${o.heading} ${o.words} ${o.lessonTitle}`))
+    lines.push(NO_PEOPLE_LINE);
+  return lines;
+}
+
+/** The people line: only where nothing the picture is made from names a person (see above). */
+export const NO_PEOPLE_LINE = "No people, faces or hands are in the picture.";
+
+/** Words that put a person in a picture: DEPICTS's, and people a present-day slide names. */
+let peopleRe: RegExp | undefined;
+const peopleWords = () =>
+  (peopleRe ??= new RegExp(
+    `${DEPICTS.source}|\\b(humans?|human body|bod(y|ies)|boys?|girls?|babies|baby|pupils?|students?|teachers?|doctors?|nurses?|patients?|farmers?|scientists?|athletes?|players?|runners?|cooks?|chefs?|bakers?|firefighters?|we|you|our|your|someone|everyone|face|faces|hands?)\\b`,
+    "i",
+  ));
 
 /**
  * The last step's safety line (KS1 to KS4). No age word ("children" draws young children) and no
@@ -1610,6 +1703,11 @@ export async function placeWriterPicture(args: {
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
+  // The slide's own claim (heading and lead): every pick and painting is checked against it.
+  const claim: SlideClaim = {
+    words: [ask.slide.heading, ask.slide.text ?? ""].filter((w) => w.trim()).join(". "),
+    lessonTitle: lesson.title,
+  };
   const taken = args.taken ?? new Set<string>();
   const illustrated = ask.style === "illustration";
   const stock = async (
@@ -1627,6 +1725,7 @@ export async function placeWriterPicture(args: {
       // A race this search lost aborts its searches and its judge calls.
       deps: signal ? { ...deps, signal: AbortSignal.any([deps.signal, signal]) } : deps,
       taken,
+      claim,
       // A budget stop or a cancel is never a missing picture: it stops the lesson.
     }).catch(
       whenNonFatal((error: unknown) => {
@@ -1704,8 +1803,11 @@ export async function placeWriterPicture(args: {
                 brief,
                 deps,
                 dataUrl: made.dataUrl,
+                claim,
                 ...(reuse !== undefined ? { reuse } : {}),
-                ...(onWhy ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v)) } : {}),
+                ...(onWhy
+                  ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v, claim)) }
+                  : {}),
               })
             : Promise.resolve(false),
         deps,
