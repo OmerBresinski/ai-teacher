@@ -306,6 +306,15 @@ export type WriterRun = {
    */
   checks?: "act" | "log";
   /**
+   * RC2 (12 Nov 2026, e2e-11nov ROOT-CAUSES): the model-calling repairs and retry rounds that run
+   * after the writer's output, each by name; one not named is off, and its slide goes straight to
+   * the deterministic outcome (the failing element dropped, one words-only layout, no word added).
+   * Pure-code steps (the overflow split, the layout fallback) are not repairs and always run.
+   * Absent: every one runs (the old behaviour, which the unit tests pin). The write stage passes
+   * `MODEL_REPAIRS_DEFAULT`; `[]` turns every one off.
+   */
+  modelRepairs?: readonly ModelRepair[];
+  /**
    * Library turn-on, step 4 (CROSSCHECK point 1; default off): the writer's model menu and the
    * schema's model enum hold only models for the lesson's year and its subject (or general
    * ones); an empty list leaves out the Models block, the model kind line and the schema branch.
@@ -551,7 +560,24 @@ type PhotoAsk = Extract<VisualAsk, { type: "photo" }>;
 const setPanel = (a: PhotoAsk) => a.set === "stages";
 /** A photo ask lostPic may fill once it fails: never a fixed shape, a card or a sequence set. */
 export const lostable = (a: VisualAsk): a is PhotoAsk => a.type === "photo" && lostableAsk(a);
+/**
+ * A model-calling step after the writer (RC2): `fit` the fit repair by model (pilot, key card and
+ * act-mode rewords), `leak` the hinge answer-leak repair (ruling 307), `restage` the stand-alone or
+ * reroute rewrite of a slide whose figure is lost, `meaning` the reroute of a meaning diagram that
+ * does not draw, `picture-retry` the lost-picture rounds (search again, generation, the library
+ * drawing or split in its place).
+ */
+export type ModelRepair = "fit" | "leak" | "restage" | "meaning" | "picture-retry";
+/**
+ * The write stage's default (R4 repair notes, scratchpad/plans-10nov/build/R4-REPAIR-NOTES.md:
+ * 53 recorded runs, 6-12 Nov). leak: 4 of 4 cleared at about 5 s each. picture-retry: 22 of 33
+ * rounds landed a picture or drawing. fit (1: no change, 10 s), restage (3: two invented content,
+ * one errored) and meaning (never triggered) did not earn their place.
+ */
+export const MODEL_REPAIRS_DEFAULT: readonly ModelRepair[] = ["leak", "picture-retry"];
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
+  /** A model-calling repair or retry round may run (RC2; absent option: every one). */
+  const repairOn = (k: ModelRepair) => !run.modelRepairs || run.modelRepairs.includes(k);
   /** The checks act on their results ("act", the default) or are only logged (part i). */
   const act = run.checks !== "log";
   /**
@@ -2244,6 +2270,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
    */
   const retryLost = async (i: number, ro: { noDrawing?: boolean } = {}) => {
     if (i < 2) return;
+    if (!repairOn("picture-retry")) {
+      if (lostAsks(i).length) log({ ev: "repair-off", slide: i + 1, repair: "picture-retry" });
+      return;
+    }
     const again: PhotoAsk[] = [];
     for (const lost of lostAsks(i)) {
       // A stages panel is never drawn alone: it is made again in the set's look, or not at all.
@@ -2690,6 +2720,13 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     } = {},
   ): Promise<boolean> => {
     const i = c.slide - 1;
+    // RC2: a repair that is off makes no call; the caller takes its deterministic outcome.
+    const which: ModelRepair =
+      mode !== "fit" ? "restage" : ro.via === "meaning" ? "meaning" : ro.only ? "leak" : "fit";
+    if (!repairOn(which)) {
+      log({ ev: "repair-off", slide: i + 1, repair: which });
+      return false;
+    }
     const ask = asks.get(i) ?? [];
     const found = ask
       .map((a) => visualState(i)(a.key))
@@ -3322,7 +3359,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     // choose the layout): the writer restages the slide (the reroute below), knowing the picture
     // could not be shown.
     const how0 =
-      setPanel(lost) || !heldPhotoFills(s0, others)
+      setPanel(lost) || !heldPhotoFills(s0, others) || !repairOn("picture-retry")
         ? undefined
         : await lostPictureFallback(s0, lost.key, lost.shows, attemptLost(i, s0, n0, lost));
     if (how0) {
