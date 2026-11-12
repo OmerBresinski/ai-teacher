@@ -65,7 +65,12 @@ export const GenerationUsageSchema = GenerationUsageTotalsSchema.extend({
   uncertain: GenerationUsageTotalsSchema.optional(),
 });
 
-export const GenerationSchema = z.strictObject({
+/**
+ * Loose, not strict (rollback tolerance, release 11 Nov): keys a newer build adds, such as the
+ * ship gate's record `shipGate`, are kept as they are rather than refused, so this build still
+ * saves and reloads a lesson the newer build wrote and never deletes what it added.
+ */
+export const GenerationSchema = z.looseObject({
   jobId: z.string(),
   stage: GenerationStageSchema,
   startedAt: z.iso.datetime(),

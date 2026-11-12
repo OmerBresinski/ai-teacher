@@ -66,6 +66,13 @@ export const WORKSHEET_GENERATION_STAGES = ["framed", "filled", "checked"] as co
 export type WorksheetGenerationStage = (typeof WORKSHEET_GENERATION_STAGES)[number];
 
 /**
+ * Rollback tolerance (release 11 Nov): stages a newer build saves that this build never writes.
+ * `failed` is a sheet whose job stopped; this build reuses only `framed` rows, so it leaves a
+ * `failed` row alone and lists it as "Incomplete" (it has no `completedAt`).
+ */
+const FORWARD_WORKSHEET_GENERATION_STAGES = ["failed"] as const;
+
+/**
  * The nine worksheet recipes by id (Worksheets and activities, rulings 46 to 55). The recipes
  * themselves live in `@tj/slides` (`WORKSHEET_RECIPES`, ADR 0030 item 4), which domain cannot
  * import, so the id list is here and `@tj/slides` asserts the catalogue matches it. The
@@ -85,6 +92,13 @@ export const WORKSHEET_RECIPE_IDS = [
 export const RecipeIdSchema = z.enum(WORKSHEET_RECIPE_IDS);
 export type RecipeId = z.infer<typeof RecipeIdSchema>;
 
+/**
+ * Rollback tolerance (release 11 Nov): recipe ids a newer build saves on `Worksheet.generation`.
+ * Accepted only on the stored record, never by the request or the job payload: this build reads
+ * the stored id nowhere, so a sheet of one of these types opens, lists and saves as it is.
+ */
+const FORWARD_RECIPE_IDS = ["practice", "quick-quiz", "key-words"] as const;
+
 /** The practice times `POST /lessons/:id/worksheet` offers (ADR 0030 item 8). */
 export const PRACTICE_MINUTES_OPTIONS = [5, 10, 15, 20, 30, 45] as const;
 export type PracticeMinutes = (typeof PRACTICE_MINUTES_OPTIONS)[number];
@@ -92,16 +106,19 @@ export type PracticeMinutes = (typeof PRACTICE_MINUTES_OPTIONS)[number];
 /**
  * ADR 0030: the worksheet job's own state, a subset of the lesson's `GenerationSchema` plus the
  * recipe and the practice time it was built for.
+ *
+ * Loose, not strict, so a rollback is safe: keys a newer build adds (`failure`) are kept as they
+ * are, so a save by this build never deletes them and the newer build reads them back.
  */
-export const WorksheetGenerationSchema = z.strictObject({
+export const WorksheetGenerationSchema = z.looseObject({
   jobId: z.string(),
-  stage: z.enum(WORKSHEET_GENERATION_STAGES),
+  stage: z.enum([...WORKSHEET_GENERATION_STAGES, ...FORWARD_WORKSHEET_GENERATION_STAGES]),
   startedAt: z.iso.datetime(),
   completedAt: z.iso.datetime().optional(),
   promptVersions: z.record(z.string(), z.string()),
   usage: GenerationUsageSchema,
   findings: z.array(FindingSchema),
-  recipeId: RecipeIdSchema,
+  recipeId: z.enum([...WORKSHEET_RECIPE_IDS, ...FORWARD_RECIPE_IDS]),
   practiceMinutes: z.number().int().positive(),
 });
 export type WorksheetGeneration = z.infer<typeof WorksheetGenerationSchema>;

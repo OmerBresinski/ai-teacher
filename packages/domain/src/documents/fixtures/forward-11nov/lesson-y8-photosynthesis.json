@@ -1,0 +1,4495 @@
+{
+  "version": 1,
+  "id": "01a1cf42-9c59-71f3-90b8-dfae9fe0415c",
+  "title": "Photosynthesis",
+  "themeId": "studio",
+  "slides": [
+    {
+      "id": "s1",
+      "kind": "title",
+      "background": {},
+      "elements": [
+        {
+          "id": "d-s1-Photo-0",
+          "x": 480,
+          "y": 0,
+          "w": 480,
+          "h": 540,
+          "name": "Photo",
+          "authoredBy": "ai",
+          "type": "image",
+          "src": "/files/01a1cf42-990b-7354-a235-fdc618ad592d/images/01a1cf43-5a4f-75cc-a662-4a4b05e7f971.jpg",
+          "alt": "Bright green leaf with detailed veins highlighted by sunlight, showcasing natural beauty.",
+          "fit": "cover",
+          "radius": 0,
+          "source": {
+            "provider": "pexels",
+            "id": "35266083",
+            "pageUrl": "https://www.pexels.com/photo/close-up-of-a-sunlit-leaf-with-detailed-veins-35266083/",
+            "photographer": "prasun_16 .",
+            "photographerUrl": "https://www.pexels.com/@prasun_16-1148408262",
+            "evidence": {
+              "visible": ["green leaf", "sunlit leaf surface"],
+              "count": "one",
+              "alt": "Bright green leaf with detailed veins highlighted by sunlight, showcasing natural beauty.",
+              "promptVersion": "pick-or-requery-photo.v21",
+              "thumbnail": "https://images.pexels.com/photos/35266083/pexels-photo-35266083.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+            }
+          }
+        },
+        {
+          "id": "d-s1-Accent_rule-0",
+          "x": 58,
+          "y": 222,
+          "w": 66.67,
+          "h": 4,
+          "locked": true,
+          "name": "Accent rule",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#0B6E86"
+        },
+        {
+          "id": "d-s1-Title-0",
+          "x": 58,
+          "y": 258,
+          "w": 402.67,
+          "h": 61,
+          "name": "Title",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Photosynthesis"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "title",
+            "fontSize": 54.666666666666664,
+            "lineHeight": 1.04,
+            "fontWeight": 600,
+            "color": "#0F172A",
+            "valign": "top",
+            "autoHeight": false,
+            "fixedSize": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s2",
+      "kind": "objectives",
+      "elements": [
+        {
+          "id": "d-s2-layout",
+          "x": 56,
+          "y": 38,
+          "w": 848,
+          "h": 465,
+          "name": "Layout",
+          "authoredBy": "ai",
+          "type": "group",
+          "children": [
+            {
+              "id": "d-s2-layout:heading",
+              "x": 8,
+              "y": 8,
+              "w": 832,
+              "h": 51,
+              "name": "Heading",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Today we are learning to"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "heading",
+                "fontSize": 45.3,
+                "lineHeight": 1.12,
+                "fontWeight": 600,
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s2-layout:~Objective_card-0",
+              "x": 8,
+              "y": 125,
+              "w": 832,
+              "h": 102,
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "fill": "#FFFFFF",
+              "stroke": "#0B6E86",
+              "strokeWidth": 2,
+              "radius": 14
+            },
+            {
+              "id": "d-s2-layout:~Marker-0",
+              "x": 22,
+              "y": 157,
+              "w": 38,
+              "h": 38,
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "fill": "#0B6E86",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "textStyle": {
+                "preset": "body",
+                "fontSize": 21,
+                "fontWeight": 700,
+                "color": "#FFFFFF",
+                "align": "center",
+                "valign": "middle",
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s2-layout:points.0",
+              "x": 75,
+              "y": 141,
+              "w": 751,
+              "h": 70,
+              "name": "Item",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Describe photosynthesis using its word equation and the roles of light and chlorophyll."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "body",
+                "fontSize": 25,
+                "lineHeight": 1.4,
+                "fontWeight": 400,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s2-layout:~Objective_card-1",
+              "x": 8,
+              "y": 240,
+              "w": 832,
+              "h": 102,
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "fill": "#FFFFFF",
+              "stroke": "#0B6E86",
+              "strokeWidth": 2,
+              "radius": 14
+            },
+            {
+              "id": "d-s2-layout:~Marker-1",
+              "x": 22,
+              "y": 272,
+              "w": 38,
+              "h": 38,
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "fill": "#0B6E86",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "textStyle": {
+                "preset": "body",
+                "fontSize": 21,
+                "fontWeight": 700,
+                "color": "#FFFFFF",
+                "align": "center",
+                "valign": "middle",
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s2-layout:points.1",
+              "x": 75,
+              "y": 274,
+              "w": 751,
+              "h": 35,
+              "name": "Item",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Explain how leaf adaptations support photosynthesis."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "body",
+                "fontSize": 25,
+                "lineHeight": 1.4,
+                "fontWeight": 400,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s2-layout:~Objective_card-2",
+              "x": 8,
+              "y": 355,
+              "w": 832,
+              "h": 102,
+              "name": "Objective card",
+              "type": "shape",
+              "shape": "rounded",
+              "fill": "#FFFFFF",
+              "stroke": "#0B6E86",
+              "strokeWidth": 2,
+              "radius": 14
+            },
+            {
+              "id": "d-s2-layout:~Marker-2",
+              "x": 22,
+              "y": 387,
+              "w": 38,
+              "h": 38,
+              "name": "Marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "fill": "#0B6E86",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "3"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "textStyle": {
+                "preset": "body",
+                "fontSize": 21,
+                "fontWeight": 700,
+                "color": "#FFFFFF",
+                "align": "center",
+                "valign": "middle",
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s2-layout:points.2",
+              "x": 75,
+              "y": 371,
+              "w": 751,
+              "h": 70,
+              "name": "Item",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "body",
+                "fontSize": 25,
+                "lineHeight": 1.4,
+                "fontWeight": 400,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            }
+          ],
+          "layout": {
+            "template": "objectives",
+            "input": {
+              "points": [
+                "Describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+                "Explain how leaf adaptations support photosynthesis.",
+                "Explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+              ],
+              "heading": "Today we are learning to",
+              "template": "objectives"
+            },
+            "frame": {
+              "x": 56,
+              "y": 38,
+              "w": 848,
+              "h": 465
+            }
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "s3",
+      "kind": "worked-example",
+      "elements": [
+        {
+          "id": "d-s3-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The photosynthesis word equation"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s3-Lead-0",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 34,
+          "name": "Lead",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Plants make glucose by photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s3-Formula_panel-0",
+          "x": 64,
+          "y": 210,
+          "w": 832,
+          "h": 91,
+          "name": "Formula panel",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#dfebef",
+          "radius": 14
+        },
+        {
+          "id": "d-s3-Formula-0",
+          "x": 86,
+          "y": 232,
+          "w": 788,
+          "h": 47,
+          "name": "Formula",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "carbon dioxide + water → glucose + oxygen"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 41.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s3-Step-0",
+          "x": 86,
+          "y": 319,
+          "w": 788,
+          "h": 35,
+          "name": "Step",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Carbon dioxide and water are reactants."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s3-Step-1",
+          "x": 86,
+          "y": 364,
+          "w": 788,
+          "h": 35,
+          "name": "Step",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Glucose and oxygen are products."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Misconceptions\nPupils may swap reactants and products. Reactants go into the reaction; glucose and oxygen are made by it.\n\nBackground\nPhotosynthesis is a chemical reaction. The word equation shows the substances used and the substances produced."
+    },
+    {
+      "id": "s4",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "d-s4-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Light energy and chlorophyll"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s4-Lead-0",
+          "x": 64,
+          "y": 183,
+          "w": 392,
+          "h": 68,
+          "name": "Lead",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Photosynthesis transfers energy into glucose."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s4-Bullet-0",
+          "x": 66,
+          "y": 284,
+          "w": 9,
+          "h": 9,
+          "name": "Bullet",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0B6E86"
+        },
+        {
+          "id": "d-s4-Point-0",
+          "x": 89,
+          "y": 271,
+          "w": 367,
+          "h": 70,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Chlorophyll absorbs light energy for photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s4-Bullet-1",
+          "x": 66,
+          "y": 368,
+          "w": 9,
+          "h": 9,
+          "name": "Bullet",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0B6E86"
+        },
+        {
+          "id": "d-s4-Point-1",
+          "x": 89,
+          "y": 355,
+          "w": 367,
+          "h": 70,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Energy is transferred to a chemical store in glucose."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s4-Panel-0",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "name": "Panel",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#dfebef",
+          "radius": 14
+        },
+        {
+          "id": "d-s4-Diagram-0",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "name": "Diagram",
+          "authoredBy": "ai",
+          "type": "image",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20290%20237%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Light%20energy%20is%20absorbed%20by%20chlorophyll%2C%20and%20energy%20is%20stored%20chemically%20in%20glucose.%22%3E%3Ctitle%3ELight%20energy%20is%20absorbed%20by%20chlorophyll%2C%20and%20energy%20is%20stored%20chemically%20in%20glucose.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cg%20data-s%3D%221%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M141%2067.35%20L141%2094.55%22%20data-end%3D%22141%2C94.55%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%22141%2C94.55%22%20data-dir%3D%220.00000%2C1.00000%22%20d%3D%22M144.39%2089.12%20L141%2094.55%20L137.61%2089.12%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22151%22%20y%3D%2288.3%22%3Eabsorbed%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20data-s%3D%222%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M141%20142.45%20L141%20169.65%22%20data-end%3D%22141%2C169.65%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%22141%2C169.65%22%20data-dir%3D%220.00000%2C1.00000%22%20d%3D%22M144.39%20164.22%20L141%20169.65%20L137.61%20164.22%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22400%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22start%22%3E%3Ctspan%20x%3D%22151%22%20y%3D%22163.4%22%3Etransferred%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Crect%20x%3D%222%22%20y%3D%2223.45%22%20width%3D%22278%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22141%22%20y%3D%2250.75%22%3ELight%20energy%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20data-s%3D%221%22%3E%3Crect%20x%3D%222%22%20y%3D%2298.55%22%20width%3D%22278%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22141%22%20y%3D%22125.85%22%3EChlorophyll%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20data-s%3D%222%22%3E%3Crect%20x%3D%222%22%20y%3D%22173.65%22%20width%3D%22278%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22141%22%20y%3D%22200.95%22%3EGlucose%20energy%20store%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Light energy is absorbed by chlorophyll, and energy is stored chemically in glucose.",
+          "fit": "contain",
+          "builds": 2,
+          "diagram": {
+            "kind": "drawer",
+            "spec": {
+              "alt": "Light energy is absorbed by chlorophyll, and energy is stored chemically in glucose.",
+              "kind": "flow",
+              "steps": [
+                {
+                  "arrow": "absorbed",
+                  "label": "Light energy"
+                },
+                {
+                  "arrow": "transferred",
+                  "label": "Chlorophyll"
+                },
+                {
+                  "label": "Glucose energy store"
+                }
+              ],
+              "layout": "chain"
+            },
+            "fs": 21
+          }
+        }
+      ],
+      "notes": "Misconceptions\nPupils may think chlorophyll makes light or that light is a reactant. Light supplies energy; chlorophyll absorbs it, and some energy is stored chemically in glucose.\n\nBackground\nEnergy is transferred during photosynthesis, not created. Glucose can later release stored chemical energy during respiration."
+    },
+    {
+      "id": "s5",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "d-s5-surface_field-b-0",
+          "x": 0,
+          "y": 118,
+          "w": 960,
+          "h": 422,
+          "locked": true,
+          "name": "surface:field-b",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#EBF0F5"
+        },
+        {
+          "id": "d-s5-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What happens without light to a leaf?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-Option-0",
+          "x": 64,
+          "y": 211,
+          "w": 832,
+          "h": 65,
+          "name": "Option",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s5-Hinge_key-0",
+          "x": 83,
+          "y": 224,
+          "w": 39,
+          "h": 39,
+          "name": "Hinge key",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#0B6E86",
+          "radius": 9,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 20.28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-Option_text-0",
+          "x": 141,
+          "y": 229,
+          "w": 693,
+          "h": 30,
+          "name": "Option text",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Chlorophyll absorbs energy from carbon dioxide instead."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 24,
+            "lineHeight": 1.24,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-Option-1",
+          "x": 64,
+          "y": 289,
+          "w": 832,
+          "h": 65,
+          "name": "Option",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s5-Hinge_key-1",
+          "x": 83,
+          "y": 302,
+          "w": 39,
+          "h": 39,
+          "name": "Hinge key",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#7A580A",
+          "radius": 9,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 20.28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-Option_text-1",
+          "x": 141,
+          "y": 307,
+          "w": 693,
+          "h": 30,
+          "name": "Option text",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Chlorophyll cannot absorb light energy for photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 24,
+            "lineHeight": 1.24,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-Option-2",
+          "x": 64,
+          "y": 367,
+          "w": 832,
+          "h": 65,
+          "name": "Option",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s5-Hinge_key-2",
+          "x": 83,
+          "y": 380,
+          "w": 39,
+          "h": 39,
+          "name": "Hinge key",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#6D35D6",
+          "radius": 9,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 20.28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s5-Option_text-2",
+          "x": 141,
+          "y": 385,
+          "w": 693,
+          "h": 30,
+          "name": "Option text",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Chlorophyll makes light energy for photosynthesis instead."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 24,
+            "lineHeight": 1.24,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "fixedSize": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Running\nAsk pupils to choose the statement that best answers the question, then justify their choice to a partner.\n\nAnswers\nB: Chlorophyll cannot absorb light energy for photosynthesis.\n\nMisconceptions\nThe first statement suggests carbon dioxide provides the energy; it does not. The third suggests chlorophyll makes light; it absorbs light from its surroundings. Without light, chlorophyll cannot absorb light energy for photosynthesis.\n\nBackground\nPhotosynthesis requires light energy. Carbon dioxide is a reactant, not an energy source.",
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          {
+            "id": "d-s5-Option-0",
+            "correct": false
+          },
+          {
+            "id": "d-s5-Option-1",
+            "correct": true
+          },
+          {
+            "id": "d-s5-Option-2",
+            "correct": false
+          }
+        ],
+        "oneStep": true
+      }
+    },
+    {
+      "id": "s6",
+      "kind": "content",
+      "elements": [
+        {
+          "id": "d-s6-layout",
+          "x": 0,
+          "y": 0,
+          "w": 960,
+          "h": 521,
+          "name": "Layout",
+          "authoredBy": "ai",
+          "type": "group",
+          "children": [
+            {
+              "id": "d-s6-layout:~Background-0",
+              "x": 0,
+              "y": 0,
+              "w": 960,
+              "h": 540,
+              "name": "Background",
+              "type": "shape",
+              "shape": "rect",
+              "fill": "#F7F9FB",
+              "radius": 0
+            },
+            {
+              "id": "d-s6-layout:~Heading-0",
+              "x": 64,
+              "y": 46,
+              "w": 832,
+              "h": 51,
+              "name": "Heading",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Leaf shape",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0B6E86"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "text",
+                        "text": " helps photosynthesis"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "heading",
+                "fontSize": 45.3,
+                "lineHeight": 1.12,
+                "fontWeight": 600,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s6-layout:~Side_field-0",
+              "x": 0,
+              "y": 135,
+              "w": 478,
+              "h": 405,
+              "name": "Side field",
+              "type": "shape",
+              "shape": "rect",
+              "fill": "#C4DBE2",
+              "radius": 0
+            },
+            {
+              "id": "d-s6-layout:~Side_field-1",
+              "x": 483,
+              "y": 135,
+              "w": 477,
+              "h": 405,
+              "name": "Side field",
+              "type": "shape",
+              "shape": "rect",
+              "fill": "#E9EBEE",
+              "radius": 0
+            },
+            {
+              "id": "d-s6-layout:sides.0.title",
+              "x": 58,
+              "y": 159,
+              "w": 366,
+              "h": 29,
+              "name": "Side title",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Broad"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "heading",
+                "fontSize": 25,
+                "lineHeight": 1.12,
+                "fontWeight": 600,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s6-layout:~Side_picture-0",
+              "x": 58,
+              "y": 217,
+              "w": 359,
+              "h": 202,
+              "name": "Side picture",
+              "type": "image",
+              "src": "/files/01a1cf42-990b-7354-a235-fdc618ad592d/images/01a1cf43-7f1a-72a3-a982-bd3b4b9bccfc.jpg",
+              "alt": "Top view underside of fresh green leaf of Lonicera maackii shrub isolated on white background",
+              "fit": "cover",
+              "crop": {
+                "x": 0,
+                "y": 0.08325679475164009,
+                "w": 1,
+                "h": 0.8434864104967198
+              },
+              "radius": 14,
+              "source": {
+                "provider": "pexels",
+                "id": "4098500",
+                "pageUrl": "https://www.pexels.com/photo/leaf-texture-of-amur-honeysuckle-plant-4098500/",
+                "photographer": "K",
+                "photographerUrl": "https://www.pexels.com/@kelly",
+                "evidence": {
+                  "visible": ["wide leaf blade", "green leaf surface"],
+                  "count": "one",
+                  "alt": "Top view underside of fresh green leaf of Lonicera maackii shrub isolated on white background",
+                  "promptVersion": "pick-or-requery-photo.v21",
+                  "thumbnail": "https://images.pexels.com/photos/4098500/pexels-photo-4098500.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280"
+                }
+              }
+            },
+            {
+              "id": "d-s6-layout:sides.0.text",
+              "x": 58,
+              "y": 438,
+              "w": 366,
+              "h": 30,
+              "name": "Side words",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A broad leaf absorbs more light."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "body",
+                "fontSize": 21,
+                "lineHeight": 1.4,
+                "fontWeight": 400,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s6-layout:sides.1.title",
+              "x": 536,
+              "y": 159,
+              "w": 366,
+              "h": 29,
+              "name": "Side title",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Thin"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "heading",
+                "fontSize": 25,
+                "lineHeight": 1.12,
+                "fontWeight": 600,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s6-layout:~Side_picture-1",
+              "x": 536,
+              "y": 217,
+              "w": 359,
+              "h": 202,
+              "name": "Side picture",
+              "type": "image",
+              "src": "/files/01a1cf42-990b-7354-a235-fdc618ad592d/images/01a1cf43-9095-7413-830e-b22c699b540c.png",
+              "alt": "A single green leaf viewed edge-on, so its thin profile is clearly visible.",
+              "fit": "cover",
+              "crop": {
+                "x": 0,
+                "y": 0.00009372071227738843,
+                "w": 1,
+                "h": 0.9998125585754453
+              },
+              "radius": 14,
+              "source": {
+                "provider": "generated",
+                "id": "01a1cf43-9095-7413-830e-b22c699b540c",
+                "pageUrl": "https://openai.com/policies/",
+                "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+                "photographerUrl": "https://openai.com/policies/",
+                "licence": "generated (openai-2026-10)"
+              }
+            },
+            {
+              "id": "d-s6-layout:sides.1.text",
+              "x": 536,
+              "y": 438,
+              "w": 366,
+              "h": 59,
+              "name": "Side words",
+              "type": "text",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "A thin leaf gives carbon dioxide a short path to photosynthesising cells."
+                      }
+                    ]
+                  }
+                ]
+              },
+              "style": {
+                "preset": "body",
+                "fontSize": 21,
+                "lineHeight": 1.4,
+                "fontWeight": 400,
+                "color": "#0F172A",
+                "autoHeight": true,
+                "padding": 0
+              }
+            },
+            {
+              "id": "d-s6-layout:~Seam_marker_ring-0",
+              "x": 447,
+              "y": 305,
+              "w": 66,
+              "h": 66,
+              "name": "Seam marker ring",
+              "type": "shape",
+              "shape": "ellipse",
+              "fill": "#F7F9FB"
+            },
+            {
+              "id": "d-s6-layout:~Seam_marker-0",
+              "x": 452,
+              "y": 310,
+              "w": 56,
+              "h": 56,
+              "name": "Seam marker",
+              "type": "shape",
+              "shape": "ellipse",
+              "fill": "#0F172A",
+              "doc": {
+                "type": "doc",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "vs"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "textStyle": {
+                "preset": "heading",
+                "fontSize": 20,
+                "fontWeight": 700,
+                "color": "#F7F9FB",
+                "align": "center",
+                "valign": "middle",
+                "padding": 0
+              }
+            }
+          ],
+          "layout": {
+            "template": "split-compare",
+            "input": {
+              "sides": [
+                {
+                  "text": "A broad leaf absorbs more light.",
+                  "title": "Broad",
+                  "picture": {
+                    "alt": "Top view underside of fresh green leaf of Lonicera maackii shrub isolated on white background",
+                    "photo": "/files/01a1cf42-990b-7354-a235-fdc618ad592d/images/01a1cf43-7f1a-72a3-a982-bd3b4b9bccfc.jpg",
+                    "aspect": 1.5,
+                    "source": {
+                      "id": "4098500",
+                      "pageUrl": "https://www.pexels.com/photo/leaf-texture-of-amur-honeysuckle-plant-4098500/",
+                      "evidence": {
+                        "alt": "Top view underside of fresh green leaf of Lonicera maackii shrub isolated on white background",
+                        "count": "one",
+                        "visible": ["wide leaf blade", "green leaf surface"],
+                        "thumbnail": "https://images.pexels.com/photos/4098500/pexels-photo-4098500.jpeg?auto=compress&cs=tinysrgb&dpr=1&fit=crop&h=200&w=280",
+                        "promptVersion": "pick-or-requery-photo.v21"
+                      },
+                      "provider": "pexels",
+                      "photographer": "K",
+                      "photographerUrl": "https://www.pexels.com/@kelly"
+                    },
+                    "request": "A broad green leaf viewed from above. broad leaf blade",
+                    "subjects": [
+                      {
+                        "h": 0.77,
+                        "w": 0.96,
+                        "x": 0,
+                        "y": 0.12,
+                        "name": "wide leaf blade"
+                      },
+                      {
+                        "h": 0.72,
+                        "w": 0.89,
+                        "x": 0.04,
+                        "y": 0.14,
+                        "name": "green leaf surface"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "text": "A thin leaf gives carbon dioxide a short path to photosynthesising cells.",
+                  "title": "Thin",
+                  "picture": {
+                    "alt": "A single green leaf viewed edge-on, so its thin profile is clearly visible.",
+                    "photo": "/files/01a1cf42-990b-7354-a235-fdc618ad592d/images/01a1cf43-9095-7413-830e-b22c699b540c.png",
+                    "aspect": 1.7777777777777777,
+                    "source": {
+                      "id": "01a1cf43-9095-7413-830e-b22c699b540c",
+                      "licence": "generated (openai-2026-10)",
+                      "pageUrl": "https://openai.com/policies/",
+                      "provider": "generated",
+                      "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+                      "photographerUrl": "https://openai.com/policies/"
+                    },
+                    "request": "A thin green leaf viewed edge-on. thin leaf edge"
+                  }
+                }
+              ],
+              "heading": "Leaf shape helps photosynthesis",
+              "template": "split-compare",
+              "accentWord": "Leaf shape"
+            },
+            "frame": {
+              "x": 0,
+              "y": 0,
+              "w": 960,
+              "h": 521
+            }
+          }
+        }
+      ],
+      "notes": "Running\nAsk pupils to think, then explain to a partner how each leaf feature helps photosynthesis. Take responses and link the two adaptations to light absorption and carbon dioxide reaching the cells.\n\nMisconceptions\nPupils may think a broad leaf helps only by being thin, or that thinness increases the amount of light absorbed. A broad surface exposes more area to light; thinness shortens the distance carbon dioxide must diffuse to reach photosynthesising cells.\n\nBackground\nCarbon dioxide moves from the air into leaf cells by diffusion. A short diffusion path helps it reach photosynthesising cells."
+    },
+    {
+      "id": "s7",
+      "kind": "image-text",
+      "elements": [
+        {
+          "id": "d-s7-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Structures inside a leaf"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s7-Photo-0",
+          "x": 573,
+          "y": 129,
+          "w": 407,
+          "h": 431,
+          "name": "Photo",
+          "authoredBy": "ai",
+          "type": "image",
+          "src": "/files/01a1cf42-990b-7354-a235-fdc618ad592d/images/01a1cf43-dc16-74ae-a6b0-9405a4891990.png",
+          "alt": "A cutaway of a green leaf showing cells, chloroplasts, a stoma and a vein. green chloroplasts. leaf stoma. leaf vein",
+          "fit": "cover",
+          "radius": 20,
+          "source": {
+            "provider": "generated",
+            "id": "01a1cf43-dc16-74ae-a6b0-9405a4891990",
+            "pageUrl": "https://openai.com/policies/",
+            "photographer": "AI-generated (gpt-image-2.5-sunburst)",
+            "photographerUrl": "https://openai.com/policies/",
+            "licence": "generated (openai-2026-10)"
+          }
+        },
+        {
+          "id": "d-s7-Lead-0",
+          "x": 64,
+          "y": 133,
+          "w": 461,
+          "h": 68,
+          "name": "Lead",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Leaf structures supply materials for photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s7-Point_dot-0",
+          "x": 67,
+          "y": 233,
+          "w": 7,
+          "h": 7,
+          "opacity": 0.55,
+          "name": "Point dot",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "radius": 14
+        },
+        {
+          "id": "d-s7-Point-0",
+          "x": 86,
+          "y": 222,
+          "w": 439,
+          "h": 30,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Chloroplasts contain chlorophyll."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s7-Point_dot-1",
+          "x": 67,
+          "y": 279,
+          "w": 7,
+          "h": 7,
+          "opacity": 0.55,
+          "name": "Point dot",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "radius": 14
+        },
+        {
+          "id": "d-s7-Point-1",
+          "x": 86,
+          "y": 268,
+          "w": 439,
+          "h": 30,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Stomata allow carbon dioxide to enter."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s7-Point_dot-2",
+          "x": 67,
+          "y": 325,
+          "w": 7,
+          "h": 7,
+          "opacity": 0.55,
+          "name": "Point dot",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "radius": 14
+        },
+        {
+          "id": "d-s7-Point-2",
+          "x": 86,
+          "y": 314,
+          "w": 439,
+          "h": 30,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Leaf veins supply water."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Running\nTalk through how the three structures contribute to photosynthesis. Ask pupils to explain how each one helps the leaf obtain something it needs.\n\nMisconceptions\nPupils may confuse chloroplasts with chlorophyll: chloroplasts are structures in cells, and chlorophyll is the light-absorbing substance inside them. Stomata let gases such as carbon dioxide enter; they do not supply water. Veins carry water, rather than chlorophyll or carbon dioxide. Ask pupils to match each structure to its job: chloroplasts contain chlorophyll, stomata admit carbon dioxide, and veins supply water.\n\nBackground\nLeaf veins connect with the plant’s transport tissues. Water absorbed by roots travels through the stem and into the leaf."
+    },
+    {
+      "id": "s8",
+      "kind": "multiple-choice",
+      "elements": [
+        {
+          "id": "d-s8-surface_field-b-0",
+          "x": 0,
+          "y": 118,
+          "w": 960,
+          "h": 422,
+          "locked": true,
+          "name": "surface:field-b",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#EBF0F5"
+        },
+        {
+          "id": "d-s8-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What if a leaf's stomata are blocked?"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s8-Option-0",
+          "x": 64,
+          "y": 211,
+          "w": 832,
+          "h": 65,
+          "name": "Option",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s8-Hinge_key-0",
+          "x": 83,
+          "y": 224,
+          "w": 39,
+          "h": 39,
+          "name": "Hinge key",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#0B6E86",
+          "radius": 9,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 20.28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s8-Option_text-0",
+          "x": 141,
+          "y": 229,
+          "w": 693,
+          "h": 30,
+          "name": "Option text",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Less carbon dioxide can enter the leaf."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 24,
+            "lineHeight": 1.24,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s8-Option-1",
+          "x": 64,
+          "y": 289,
+          "w": 832,
+          "h": 65,
+          "name": "Option",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s8-Hinge_key-1",
+          "x": 83,
+          "y": 302,
+          "w": 39,
+          "h": 39,
+          "name": "Hinge key",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#7A580A",
+          "radius": 9,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "B"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 20.28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s8-Option_text-1",
+          "x": 141,
+          "y": 307,
+          "w": 693,
+          "h": 30,
+          "name": "Option text",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Less chlorophyll can enter the leaf."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 24,
+            "lineHeight": 1.24,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s8-Option-2",
+          "x": 64,
+          "y": 367,
+          "w": 832,
+          "h": 65,
+          "name": "Option",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s8-Hinge_key-2",
+          "x": 83,
+          "y": 380,
+          "w": 39,
+          "h": 39,
+          "name": "Hinge key",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#6D35D6",
+          "radius": 9,
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "C"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "heading",
+            "fontSize": 20.28,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "fixedSize": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s8-Option_text-2",
+          "x": 141,
+          "y": 385,
+          "w": 693,
+          "h": 30,
+          "name": "Option text",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Less water can enter through leaf veins."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 24,
+            "lineHeight": 1.24,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "fixedSize": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Running\nAsk pupils to select the effect of blocked stomata and explain why the other choices do not fit.\n\nAnswers\nA: Less carbon dioxide can enter the leaf.\n\nMisconceptions\nThe first option correctly links blocked stomata with reduced carbon dioxide entry. The second confuses stomata with chloroplasts, which contain chlorophyll. The third confuses stomata with veins, which supply water.\n\nBackground\nCarbon dioxide moves into leaves through stomata. Blocking these pores limits the supply of a photosynthesis reactant.",
+      "question": {
+        "type": "multiple-choice",
+        "options": [
+          {
+            "id": "d-s8-Option-0",
+            "correct": true
+          },
+          {
+            "id": "d-s8-Option-1",
+            "correct": false
+          },
+          {
+            "id": "d-s8-Option-2",
+            "correct": false
+          }
+        ],
+        "oneStep": true
+      }
+    },
+    {
+      "id": "s9",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "d-s9-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Photosynthesis supports food chains"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s9-Panel-0",
+          "x": 64,
+          "y": 160,
+          "w": 832,
+          "h": 174,
+          "name": "Panel",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#dfebef",
+          "radius": 14
+        },
+        {
+          "id": "d-s9-Diagram-0",
+          "x": 86,
+          "y": 182,
+          "w": 788,
+          "h": 130,
+          "name": "Diagram",
+          "authoredBy": "ai",
+          "type": "image",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20438%2072%22%20width%3D%22788%22%20height%3D%22130%22%20role%3D%22img%22%20aria-label%3D%22A%20food%20chain%20runs%20from%20grass%20to%20rabbit%20to%20fox.%22%3E%3Ctitle%3EA%20food%20chain%20runs%20from%20grass%20to%20rabbit%20to%20fox.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cg%20data-s%3D%221%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M122.8%2036%20L152.6%2036%22%20data-end%3D%22152.6%2C36%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%22152.6%2C36%22%20data-dir%3D%221.00000%2C0.00000%22%20d%3D%22M147.17%2032.61%20L152.6%2036%20L147.17%2039.39%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3Cg%20data-s%3D%222%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M277.4%2036%20L307.2%2036%22%20data-end%3D%22307.2%2C36%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%22307.2%2C36%22%20data-dir%3D%221.00000%2C0.00000%22%20d%3D%22M301.77%2032.61%20L307.2%2036%20L301.77%2039.39%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3Crect%20x%3D%222%22%20y%3D%2216.05%22%20width%3D%22116.8%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%2260.4%22%20y%3D%2243.35%22%3EGrass%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20data-s%3D%221%22%3E%3Crect%20x%3D%22156.6%22%20y%3D%2216.05%22%20width%3D%22116.8%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22215%22%20y%3D%2243.35%22%3ERabbit%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20data-s%3D%222%22%3E%3Crect%20x%3D%22311.2%22%20y%3D%2216.05%22%20width%3D%22116.8%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22369.6%22%20y%3D%2243.35%22%3EFox%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "A food chain runs from grass to rabbit to fox.",
+          "fit": "contain",
+          "builds": 2,
+          "diagram": {
+            "kind": "drawer",
+            "spec": {
+              "alt": "A food chain runs from grass to rabbit to fox.",
+              "kind": "flow",
+              "steps": [
+                {
+                  "label": "Grass"
+                },
+                {
+                  "label": "Rabbit"
+                },
+                {
+                  "label": "Fox"
+                }
+              ],
+              "layout": "chain"
+            },
+            "fs": 21
+          }
+        },
+        {
+          "id": "d-s9-Caption-0",
+          "x": 64,
+          "y": 342,
+          "w": 832,
+          "h": 35,
+          "name": "Caption",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Plants and algae make glucose by photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s9-Key_card-0",
+          "x": 64,
+          "y": 389,
+          "w": 410,
+          "h": 135,
+          "name": "Key card",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#dfebef",
+          "radius": 12
+        },
+        {
+          "id": "d-s9-Key_edge-0",
+          "x": 64,
+          "y": 389,
+          "w": 5,
+          "h": 135,
+          "name": "Key edge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#0B6E86",
+          "radius": 0
+        },
+        {
+          "id": "d-s9-Point-0",
+          "x": 84,
+          "y": 404,
+          "w": 375,
+          "h": 70,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Glucose provides food and stored energy for organisms."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s9-Key_card-1",
+          "x": 486,
+          "y": 389,
+          "w": 410,
+          "h": 135,
+          "name": "Key card",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#dfebef",
+          "radius": 12
+        },
+        {
+          "id": "d-s9-Key_edge-1",
+          "x": 486,
+          "y": 389,
+          "w": 5,
+          "h": 135,
+          "name": "Key edge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#0B6E86",
+          "radius": 0
+        },
+        {
+          "id": "d-s9-Point-1",
+          "x": 506,
+          "y": 404,
+          "w": 375,
+          "h": 105,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "This supports almost all food chains, including grass → rabbit → fox."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Misconceptions\nPupils may think animals get their food and energy directly from sunlight. Plants and algae use light energy to make glucose; that stored energy passes through food chains when organisms eat.\n\nBackground\nFood chains usually begin with a producer, such as a plant or alga. Almost all food chains depend on energy captured by photosynthesis."
+    },
+    {
+      "id": "s10",
+      "kind": "diagram",
+      "elements": [
+        {
+          "id": "d-s10-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Photosynthesis and atmospheric gases"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s10-Lead-0",
+          "x": 64,
+          "y": 183,
+          "w": 392,
+          "h": 68,
+          "name": "Lead",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Photosynthesis changes gases in the atmosphere."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.35,
+            "fontWeight": 700,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s10-Bullet-0",
+          "x": 66,
+          "y": 284,
+          "w": 9,
+          "h": 9,
+          "name": "Bullet",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0B6E86"
+        },
+        {
+          "id": "d-s10-Point-0",
+          "x": 89,
+          "y": 271,
+          "w": 367,
+          "h": 70,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "It removes carbon dioxide from the atmosphere."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s10-Bullet-1",
+          "x": 66,
+          "y": 368,
+          "w": 9,
+          "h": 9,
+          "name": "Bullet",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0B6E86"
+        },
+        {
+          "id": "d-s10-Point-1",
+          "x": 89,
+          "y": 355,
+          "w": 367,
+          "h": 70,
+          "name": "Point",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "It releases oxygen, needed by most organisms for respiration."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.4,
+            "fontWeight": 400,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s10-Panel-0",
+          "x": 504,
+          "y": 160,
+          "w": 392,
+          "h": 328,
+          "name": "Panel",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#dfebef",
+          "radius": 14
+        },
+        {
+          "id": "d-s10-Diagram-0",
+          "x": 526,
+          "y": 182,
+          "w": 348,
+          "h": 284,
+          "name": "Diagram",
+          "authoredBy": "ai",
+          "type": "image",
+          "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20316%20258%22%20width%3D%22348%22%20height%3D%22284%22%20role%3D%22img%22%20aria-label%3D%22Carbon%20dioxide%20moves%20from%20the%20atmosphere%20to%20a%20photosynthesising%20leaf%3B%20oxygen%20moves%20from%20the%20leaf%20to%20the%20atmosphere.%22%3E%3Ctitle%3ECarbon%20dioxide%20moves%20from%20the%20atmosphere%20to%20a%20photosynthesising%20leaf%3B%20oxygen%20moves%20from%20the%20leaf%20to%20the%20atmosphere.%3C%2Ftitle%3E%3Cg%20transform%3D%22translate(4%2C0)%22%3E%3Cg%20data-s%3D%221%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M154%2081.55%20L154%20105.05%22%20data-end%3D%22154%2C105.05%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%22154%2C105.05%22%20data-dir%3D%220.00000%2C1.00000%22%20d%3D%22M157.39%2099.62%20L154%20105.05%20L150.61%2099.62%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3Cg%20data-s%3D%222%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M154%20152.95%20L154%20176.45%22%20data-end%3D%22154%2C176.45%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%22154%2C176.45%22%20data-dir%3D%220.00000%2C1.00000%22%20d%3D%22M157.39%20171.02%20L154%20176.45%20L150.61%20171.02%22%20fill%3D%22none%22%20stroke%3D%22%230F172A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3Crect%20x%3D%227%22%20y%3D%2237.65%22%20width%3D%22294%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22154%22%20y%3D%2264.95%22%3EAtmospheric%20carbon%20dioxide%3C%2Ftspan%3E%3C%2Ftext%3E%3Cg%20data-s%3D%221%22%3E%3Crect%20x%3D%227%22%20y%3D%22109.05%22%20width%3D%22294%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22154%22%20y%3D%22136.35%22%3EPhotosynthesising%20leaf%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20data-s%3D%222%22%3E%3Crect%20x%3D%227%22%20y%3D%22180.45%22%20width%3D%22294%22%20height%3D%2239.9%22%20rx%3D%2210.5%22%20fill%3D%22%23ddebee%22%20stroke%3D%22none%22%20stroke-width%3D%221.5%22%2F%3E%3Ctext%20font-family%3D%22'Outfit%20Variable'%2C%20'Helvetica%20Neue'%2C%20sans-serif%22%20font-size%3D%2221%22%20font-weight%3D%22500%22%20fill%3D%22%230F172A%22%20text-anchor%3D%22middle%22%3E%3Ctspan%20x%3D%22154%22%20y%3D%22207.75%22%3EAtmospheric%20oxygen%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E",
+          "alt": "Carbon dioxide moves from the atmosphere to a photosynthesising leaf; oxygen moves from the leaf to the atmosphere.",
+          "fit": "contain",
+          "builds": 2,
+          "diagram": {
+            "kind": "drawer",
+            "spec": {
+              "alt": "Carbon dioxide moves from the atmosphere to a photosynthesising leaf; oxygen moves from the leaf to the atmosphere.",
+              "kind": "flow",
+              "steps": [
+                {
+                  "label": "Atmospheric carbon dioxide"
+                },
+                {
+                  "label": "Photosynthesising leaf"
+                },
+                {
+                  "label": "Atmospheric oxygen"
+                }
+              ],
+              "layout": "chain"
+            },
+            "fs": 21
+          }
+        }
+      ],
+      "notes": "Misconceptions\nPupils may think photosynthesis releases carbon dioxide or removes oxygen. It removes carbon dioxide and releases oxygen; respiration uses oxygen.\n\nBackground\nPhotosynthesis and respiration affect atmospheric gases in different ways. Most organisms use oxygen for respiration and release carbon dioxide."
+    },
+    {
+      "id": "s11",
+      "kind": "open-response",
+      "elements": [
+        {
+          "id": "d-s11-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Apply your learning"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s11-surface_rule-0",
+          "x": 64,
+          "y": 140,
+          "w": 245,
+          "h": 1.5,
+          "locked": true,
+          "name": "surface:rule",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#D9E1EA"
+        },
+        {
+          "id": "d-s11-surface_badge-0",
+          "x": 64,
+          "y": 160,
+          "w": 32,
+          "h": 32,
+          "locked": false,
+          "name": "surface:badge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s11-Task-0",
+          "x": 64,
+          "y": 208,
+          "w": 245,
+          "h": 130,
+          "name": "Task",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Name the two reactants a plant uses in photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s11-surface_rule-1",
+          "x": 357,
+          "y": 140,
+          "w": 245,
+          "h": 1.5,
+          "locked": true,
+          "name": "surface:rule",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#D9E1EA"
+        },
+        {
+          "id": "d-s11-surface_badge-1",
+          "x": 357,
+          "y": 160,
+          "w": 32,
+          "h": 32,
+          "locked": false,
+          "name": "surface:badge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s11-Task-1",
+          "x": 357,
+          "y": 208,
+          "w": 245,
+          "h": 163,
+          "name": "Task",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how a thin leaf helps carbon dioxide reach photosynthesising cells."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s11-surface_rule-2",
+          "x": 651,
+          "y": 140,
+          "w": 245,
+          "h": 1.5,
+          "locked": true,
+          "name": "surface:rule",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#D9E1EA"
+        },
+        {
+          "id": "d-s11-surface_badge-2",
+          "x": 651,
+          "y": 160,
+          "w": 32,
+          "h": 32,
+          "locked": false,
+          "name": "surface:badge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s11-Task-2",
+          "x": 651,
+          "y": 208,
+          "w": 245,
+          "h": 163,
+          "name": "Task",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pond food chain begins with algae. Explain where its stored energy first comes from."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Running\nGive pupils time to answer independently, then ask them to compare answers in pairs. Take feedback and ask pupils to support each answer with the relevant idea from the lesson.\n\nAnswers\n1. Carbon dioxide and water.\n2. A thin leaf gives carbon dioxide a short path to reach photosynthesising cells.\n3. The stored energy first comes from light. Algae absorb light energy and store some of it as chemical energy in glucose.\n\nMisconceptions\nPupils may name oxygen or glucose as a reactant; these are products. A thin leaf does not help mainly by absorbing more light: it shortens the carbon dioxide diffusion path. In the algae food chain, energy does not begin in the algae's food; it is captured from light and stored in glucose.\n\nBackground\nAlgae are photosynthetic producers, just like plants. Their glucose can provide food and stored energy to organisms that eat them.",
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Carbon dioxide and water\n2. Carbon dioxide travels a short distance to reach the cells.\n3. Algae absorb light energy and transfer it to a chemical store in glucose."
+      }
+    },
+    {
+      "id": "s12",
+      "kind": "exit-ticket",
+      "elements": [
+        {
+          "id": "d-s12-Heading-0",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Exit ticket"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "align": "center",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s12-surface_field-b-0",
+          "x": 0,
+          "y": 285,
+          "w": 960,
+          "h": 255,
+          "locked": true,
+          "name": "surface:field-b",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#EBF0F5"
+        },
+        {
+          "id": "d-s12-surface_card-0",
+          "x": 107,
+          "y": 165,
+          "w": 746,
+          "h": 301,
+          "locked": true,
+          "name": "surface:card",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rounded",
+          "fill": "#FFFFFF",
+          "stroke": "#D9E1EA",
+          "strokeWidth": 2,
+          "radius": 14
+        },
+        {
+          "id": "d-s12-surface_badge-0",
+          "x": 150,
+          "y": 189,
+          "w": 32,
+          "h": 32,
+          "locked": false,
+          "name": "surface:badge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s12-Task-0",
+          "x": 198,
+          "y": 189,
+          "w": 612,
+          "h": 65,
+          "name": "Task",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write the word equation for photosynthesis and state chlorophyll's role."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s12-surface_rule-0",
+          "x": 150,
+          "y": 267,
+          "w": 660,
+          "h": 1.5,
+          "locked": true,
+          "name": "surface:rule",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#D9E1EA"
+        },
+        {
+          "id": "d-s12-surface_badge-1",
+          "x": 150,
+          "y": 282,
+          "w": 32,
+          "h": 32,
+          "locked": false,
+          "name": "surface:badge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s12-Task-1",
+          "x": 198,
+          "y": 282,
+          "w": 612,
+          "h": 65,
+          "name": "Task",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how a broad leaf helps a plant photosynthesise."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s12-surface_rule-1",
+          "x": 150,
+          "y": 360,
+          "w": 660,
+          "h": 1.5,
+          "locked": true,
+          "name": "surface:rule",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#D9E1EA"
+        },
+        {
+          "id": "d-s12-surface_badge-2",
+          "x": 150,
+          "y": 374,
+          "w": 32,
+          "h": 32,
+          "locked": false,
+          "name": "surface:badge",
+          "authoredBy": "ai",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 21,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "d-s12-Task-2",
+          "x": 198,
+          "y": 374,
+          "w": 612,
+          "h": 65,
+          "name": "Task",
+          "authoredBy": "ai",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Describe one effect of photosynthesis on gases in the atmosphere."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "notes": "Running\nPupils complete the exit ticket independently. Collect their answers to check understanding of the three objectives.\n\nAnswers\n1. Carbon dioxide + water → glucose + oxygen. Chlorophyll absorbs light energy for photosynthesis.\n2. A broad leaf absorbs more light, providing more light energy for photosynthesis.\n3. Photosynthesis removes carbon dioxide from the atmosphere, or releases oxygen into the atmosphere.\n\nMisconceptions\nPupils may reverse the equation or put light in as a reactant; light provides energy but is not a substance in the word equation. A broad leaf helps by absorbing more light, not by shortening the carbon dioxide path. Accept either stated effect on atmospheric gases; do not accept that photosynthesis adds carbon dioxide or removes oxygen.\n\nBackground\nUse this as an individual check of the equation, leaf adaptation and effects on atmospheric gases. Ask pupils to write in full sentences where the question asks them to explain or describe.",
+      "question": {
+        "type": "open-response",
+        "modelAnswer": "1. Carbon dioxide + water → glucose + oxygen; chlorophyll absorbs light energy.\n2. A broad leaf absorbs more light for photosynthesis.\n3. Photosynthesis removes carbon dioxide from the atmosphere."
+      }
+    },
+    {
+      "id": "BoxUGZYt17",
+      "kind": "plenary",
+      "elements": [
+        {
+          "id": "AYiPW2tSrc",
+          "x": 413.5,
+          "y": 142,
+          "w": 133,
+          "h": 133,
+          "locked": true,
+          "name": "Guard disc",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5"
+        },
+        {
+          "id": "YrykFIjP2S",
+          "x": 452,
+          "y": 181,
+          "w": 56,
+          "h": 56,
+          "name": "Guard tick",
+          "type": "icon",
+          "icon": "check",
+          "color": "#15803D",
+          "strokeWidth": 6
+        },
+        {
+          "id": "00Yl33PWhz",
+          "x": 64,
+          "y": 309,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answers on the next slide"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "align": "center",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "PT0j1hL2rh",
+          "x": 64,
+          "y": 368,
+          "w": 832,
+          "h": 28,
+          "name": "Guard line",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Get ready to check your work."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.3,
+            "fontWeight": 400,
+            "color": "#4F5D6E",
+            "align": "center",
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "answersRole": "guard"
+    },
+    {
+      "id": "uHKB38kNV8",
+      "kind": "plenary",
+      "elements": [
+        {
+          "id": "3O4i_kMlRt",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answers (1 of 2)"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "Cu4zmvIsqj",
+          "x": 682,
+          "y": 52,
+          "w": 214,
+          "h": 39,
+          "locked": true,
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "fill": "#E4E7EB"
+        },
+        {
+          "id": "L9jUHOk2pS",
+          "x": 701,
+          "y": 60,
+          "w": 23,
+          "h": 23,
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "icon": "eye-off",
+          "color": "#4F5D6E",
+          "strokeWidth": 2
+        },
+        {
+          "id": "7YwaCRNB5r",
+          "x": 732,
+          "y": 59,
+          "w": 214,
+          "h": 26,
+          "name": "answers:teacher-only",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Teacher only"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.2,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "rclZuajpry",
+          "x": 64,
+          "y": 146,
+          "w": 190,
+          "h": 21,
+          "name": "Kicker",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "PRACTICE"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "caption",
+            "fontSize": 17,
+            "lineHeight": 1.2,
+            "fontWeight": 700,
+            "color": "#0B6E86",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "1aCoCXL_as",
+          "x": 64,
+          "y": 173,
+          "w": 190,
+          "h": 26,
+          "name": "Source title",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Apply your learning"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.2,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "i0kRKE6tak",
+          "x": 301,
+          "y": 146,
+          "w": 31,
+          "h": 31,
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 14,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "7XTbv-mb2R",
+          "x": 348,
+          "y": 149,
+          "w": 548,
+          "h": 27,
+          "name": "Question",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Name the two reactants a plant uses in photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.25,
+            "fontWeight": 500,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "JZ9AJbOfpK",
+          "x": 348,
+          "y": 183,
+          "w": 31,
+          "h": 31,
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "?"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "zkaaMN2afN",
+          "x": 347,
+          "y": 182,
+          "w": 33,
+          "h": 33,
+          "name": "Revealed",
+          "revealStep": 1,
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#F7F9FB"
+        },
+        {
+          "id": "qKUJI12lWJ",
+          "x": 348,
+          "y": 182,
+          "w": 548,
+          "h": 33,
+          "name": "Answer",
+          "revealStep": 1,
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Carbon dioxide and water"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 700,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "-1NkPGNY7P",
+          "x": 301,
+          "y": 231,
+          "w": 31,
+          "h": 31,
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 14,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "GrwqMbeziv",
+          "x": 348,
+          "y": 234,
+          "w": 548,
+          "h": 53,
+          "name": "Question",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how a thin leaf helps carbon dioxide reach photosynthesising cells."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.25,
+            "fontWeight": 500,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "kEQYCfiYyA",
+          "x": 348,
+          "y": 294,
+          "w": 31,
+          "h": 31,
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "?"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "2mgW76E49j",
+          "x": 347,
+          "y": 293,
+          "w": 33,
+          "h": 33,
+          "name": "Revealed",
+          "revealStep": 1,
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#F7F9FB"
+        },
+        {
+          "id": "r-XgW1dpFc",
+          "x": 348,
+          "y": 293,
+          "w": 548,
+          "h": 65,
+          "name": "Model answer",
+          "revealStep": 1,
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Carbon dioxide travels a short distance to reach the cells."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "4APyoGMgLE",
+          "x": 301,
+          "y": 374,
+          "w": 31,
+          "h": 31,
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 14,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "y11YO5LgYO",
+          "x": 348,
+          "y": 377,
+          "w": 548,
+          "h": 53,
+          "name": "Question",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pond food chain begins with algae. Explain where its stored energy first comes from."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.25,
+            "fontWeight": 500,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "jARKNXEuA5",
+          "x": 348,
+          "y": 436,
+          "w": 31,
+          "h": 31,
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "?"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 17,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "BNRwyOdzAS",
+          "x": 347,
+          "y": 435,
+          "w": 33,
+          "h": 33,
+          "name": "Revealed",
+          "revealStep": 1,
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#F7F9FB"
+        },
+        {
+          "id": "FU6DJu_-3e",
+          "x": 348,
+          "y": 435,
+          "w": 548,
+          "h": 65,
+          "name": "Model answer",
+          "revealStep": 1,
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Algae absorb light energy and transfer it to a chemical store in glucose."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 25,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "answersRole": "answers"
+    },
+    {
+      "id": "iKrOrMYi4Q",
+      "kind": "plenary",
+      "elements": [
+        {
+          "id": "pTpXh-0pwI",
+          "x": 64,
+          "y": 46,
+          "w": 832,
+          "h": 51,
+          "name": "Heading",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answers (2 of 2)"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "heading",
+            "fontSize": 45.3,
+            "lineHeight": 1.12,
+            "fontWeight": 600,
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "gp-izv6oxr",
+          "x": 682,
+          "y": 52,
+          "w": 214,
+          "h": 39,
+          "locked": true,
+          "name": "answers:teacher-only",
+          "type": "shape",
+          "shape": "pill",
+          "fill": "#E4E7EB"
+        },
+        {
+          "id": "bFEDhQ5u2-",
+          "x": 701,
+          "y": 60,
+          "w": 23,
+          "h": 23,
+          "name": "answers:teacher-only",
+          "type": "icon",
+          "icon": "eye-off",
+          "color": "#4F5D6E",
+          "strokeWidth": 2
+        },
+        {
+          "id": "0jzPGLO49I",
+          "x": 732,
+          "y": 59,
+          "w": 214,
+          "h": 26,
+          "name": "answers:teacher-only",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Teacher only"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.2,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "iVTJU1HWd0",
+          "x": 64,
+          "y": 146,
+          "w": 190,
+          "h": 26,
+          "name": "Source title",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Exit ticket"
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.2,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "tDKj3NwvcA",
+          "x": 301,
+          "y": 146,
+          "w": 26,
+          "h": 26,
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "1"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 14,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "cQkD0TVHWG",
+          "x": 343,
+          "y": 146,
+          "w": 553,
+          "h": 53,
+          "name": "Question",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Write the word equation for photosynthesis and state chlorophyll's role."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.25,
+            "fontWeight": 500,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "DbISdZM4YA",
+          "x": 343,
+          "y": 205,
+          "w": 26,
+          "h": 26,
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "?"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 15,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "_3CWSgabqZ",
+          "x": 342,
+          "y": 204,
+          "w": 28,
+          "h": 28,
+          "name": "Revealed",
+          "revealStep": 1,
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#F7F9FB"
+        },
+        {
+          "id": "BHzrBh1Ore",
+          "x": 343,
+          "y": 204,
+          "w": 553,
+          "h": 55,
+          "name": "Model answer",
+          "revealStep": 1,
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Carbon dioxide + water → glucose + oxygen; chlorophyll absorbs light energy."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "Fg0vcAZ_CY",
+          "x": 301,
+          "y": 270,
+          "w": 26,
+          "h": 26,
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "2"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 14,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "1KOTd0DNzf",
+          "x": 343,
+          "y": 270,
+          "w": 553,
+          "h": 27,
+          "name": "Question",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how a broad leaf helps a plant photosynthesise."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.25,
+            "fontWeight": 500,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "FiadIwo4zy",
+          "x": 343,
+          "y": 303,
+          "w": 26,
+          "h": 26,
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "?"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 15,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "kcZk3rpilR",
+          "x": 342,
+          "y": 302,
+          "w": 28,
+          "h": 28,
+          "name": "Revealed",
+          "revealStep": 1,
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#F7F9FB"
+        },
+        {
+          "id": "oV2oSK0PwC",
+          "x": 343,
+          "y": 302,
+          "w": 553,
+          "h": 28,
+          "name": "Model answer",
+          "revealStep": 1,
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A broad leaf absorbs more light for photosynthesis."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "j9Qyqq5jFt",
+          "x": 301,
+          "y": 341,
+          "w": 26,
+          "h": 26,
+          "name": "surface:badge",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#0F172A",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "3"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 14,
+            "fontWeight": 700,
+            "color": "#FFFFFF",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "lGd4Yczay2",
+          "x": 343,
+          "y": 341,
+          "w": 553,
+          "h": 53,
+          "name": "Question",
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Describe one effect of photosynthesis on gases in the atmosphere."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.25,
+            "fontWeight": 500,
+            "color": "#4F5D6E",
+            "autoHeight": true,
+            "padding": 0
+          }
+        },
+        {
+          "id": "UmqDSvC4cC",
+          "x": 343,
+          "y": 400,
+          "w": 26,
+          "h": 26,
+          "name": "Hidden answer",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#EBF0F5",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "?"
+                  }
+                ]
+              }
+            ]
+          },
+          "textStyle": {
+            "preset": "body",
+            "fontSize": 15,
+            "fontWeight": 700,
+            "color": "#4F5D6E",
+            "align": "center",
+            "valign": "middle",
+            "padding": 0
+          }
+        },
+        {
+          "id": "qNaZ-aLpNk",
+          "x": 342,
+          "y": 399,
+          "w": 28,
+          "h": 28,
+          "name": "Revealed",
+          "revealStep": 1,
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#F7F9FB"
+        },
+        {
+          "id": "HIhArEK5Pu",
+          "x": 343,
+          "y": 399,
+          "w": 553,
+          "h": 55,
+          "name": "Model answer",
+          "revealStep": 1,
+          "type": "text",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Photosynthesis removes carbon dioxide from the atmosphere."
+                  }
+                ]
+              }
+            ]
+          },
+          "style": {
+            "preset": "body",
+            "fontSize": 21,
+            "lineHeight": 1.3,
+            "fontWeight": 500,
+            "color": "#0F172A",
+            "autoHeight": true,
+            "padding": 0
+          }
+        }
+      ],
+      "answersRole": "answers"
+    }
+  ],
+  "createdAt": "2026-11-12T10:16:51.545Z",
+  "updatedAt": "2026-11-12T10:16:51.545Z",
+  "fitVersion": 3,
+  "ageBand": "ks3",
+  "yearGroup": "Year 8",
+  "language": "en-GB",
+  "brief": {
+    "topic": "Photosynthesis",
+    "durationMin": 60,
+    "durationDefaulted": true,
+    "slideTier": "standard",
+    "level": "standard"
+  },
+  "facts": {
+    "objectives": [
+      {
+        "id": "o1",
+        "text": "Describe photosynthesis using its word equation and the roles of light and chlorophyll."
+      },
+      {
+        "id": "o2",
+        "text": "Explain how leaf adaptations support photosynthesis."
+      },
+      {
+        "id": "o3",
+        "text": "Explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+      }
+    ],
+    "vocabulary": [],
+    "workedExamples": [],
+    "questions": [],
+    "misconceptions": [],
+    "outline": [],
+    "durationMin": 60,
+    "buildsOn": "In KS2, pupils learned that plants need light, water and air to grow, and that roots absorb water transported through stems.",
+    "points": [
+      {
+        "objective": 1,
+        "text": "The word equation for photosynthesis is carbon dioxide + water → glucose + oxygen."
+      },
+      {
+        "objective": 1,
+        "text": "Chlorophyll absorbs light energy for photosynthesis, transferring energy into a chemical store in glucose."
+      },
+      {
+        "objective": 2,
+        "text": "Broad leaves absorb more light; thin leaves provide a short distance for carbon dioxide to reach photosynthesising cells."
+      },
+      {
+        "objective": 2,
+        "text": "Chloroplasts contain chlorophyll, stomata allow carbon dioxide to enter, and leaf veins supply water."
+      },
+      {
+        "objective": 3,
+        "text": "Plants and algae produce glucose, providing the food and stored energy supporting almost all food chains."
+      },
+      {
+        "objective": 3,
+        "text": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen needed by most organisms for respiration."
+      }
+    ]
+  },
+  "generation": {
+    "jobId": "01a1cf42-9c5c-731c-b15f-5b3cbc95ee7a",
+    "stage": "generated",
+    "startedAt": "2026-11-12T10:16:51.668Z",
+    "promptVersions": {
+      "planned": "lesson-writer.v1+writer-objectives+bundle-base4f-p128",
+      "generated": "lesson-writer.v1+bundle-base4f-p128+pilot-v5.3-gold"
+    },
+    "usage": {
+      "calls": 29,
+      "inputTokens": 79619,
+      "outputTokens": 12705,
+      "costUsd": 0.053425040000000014
+    },
+    "findings": [],
+    "slideStates": {
+      "s1": "done",
+      "s2": "done",
+      "s3": "done",
+      "s4": "done",
+      "s5": "done",
+      "s6": "done",
+      "s7": "done",
+      "s8": "done",
+      "s9": "done",
+      "s10": "done",
+      "s11": "done",
+      "s12": "done",
+      "BoxUGZYt17": "done",
+      "iKrOrMYi4Q": "done",
+      "uHKB38kNV8": "done"
+    },
+    "shipGate": {
+      "detected": 2,
+      "acted": 1,
+      "shipped": 1,
+      "slides": [
+        {
+          "slide": 3,
+          "id": "s3",
+          "faults": ["empty picture slot"],
+          "action": "slot-removed",
+          "shipped": []
+        },
+        {
+          "slide": 5,
+          "id": "s5",
+          "faults": ["words past the slide edge"],
+          "action": "none",
+          "shipped": ["words past the slide edge"]
+        }
+      ]
+    }
+  },
+  "plan": {
+    "revision": 1,
+    "state": "confirmed",
+    "jobId": "01a1cf42-da50-70b6-ac5c-e804e92caa47"
+  }
+}
