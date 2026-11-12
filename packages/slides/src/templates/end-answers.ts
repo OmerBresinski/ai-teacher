@@ -75,6 +75,8 @@ export const ANSWERS_WORDS = {
   guardLine: "Get ready to check your work.",
   yes: "True",
   no: "False",
+  /** After a "draw a bar model" task's question: where the class saw the model (R4). */
+  barModelAt: (slide: number) => `Bar model: see slide ${slide}.`,
 } as const;
 
 export const ANSWERS_NAMES = {
@@ -655,7 +657,9 @@ const fits = (t: Theme, stage: Stage, groups: readonly AnswerGroup[]) =>
 /**
  * Greedy pagination (gold r2 "Multi-slide"): whole groups first; a group that cannot share the
  * slide starts the next; a group too big for a slide alone splits between answers, never leaving
- * one answer alone on either side. Numbers carry on; the heading repeats on the continuation.
+ * one answer alone on either side while a two-and-two split fits; when none does, it splits at
+ * the most answers that fit, so no answer is ever cut off. Numbers carry on; the heading repeats
+ * on the continuation.
  */
 export function paginateAnswers(
   t: Theme,
@@ -688,9 +692,20 @@ export function paginateAnswers(
           flush();
           continue;
         }
-        // Even two answers overflow an empty slide: keep it whole and let the page mark it over.
-        cur.push(g);
-        break;
+        // R4 (round 3, y2 "Answers (1 of 2)"): a group of three that cannot keep two on each side
+        // was kept whole and its third answer ran off the foot. An answer cut off is worse than one
+        // alone: an empty slide that cannot split two-and-two takes the most answers that fit,
+        // one at the least, and the rest go on to the next Answers slide.
+        let one = g.items.length - 1;
+        while (one > 1 && !fits(t, stage, [{ ...g, items: g.items.slice(0, one) }])) one--;
+        if (one < 1) {
+          cur.push(g);
+          break;
+        }
+        cur.push({ ...g, items: g.items.slice(0, one) });
+        flush();
+        g = { ...g, items: g.items.slice(one) };
+        continue;
       }
       cur.push({ ...g, items: g.items.slice(0, k) });
       flush();
@@ -941,6 +956,24 @@ function slideTitle(slide: Slide): string {
   return docText(el.doc);
 }
 
+/** A task that asks the class to draw or sketch a bar model (its answer key holds only a number). */
+export const DRAW_BAR_TASK = /\b(draw|sketch)\b[^.?!]*\bbar models?\b/i;
+
+/** True when the slide shows a bar model: a drawer's bars, or the library's bar model. */
+const showsBarModel = (slide: Slide) =>
+  slide.elements.some((e) => {
+    const d = e.type === "image" ? e.diagram : undefined;
+    if (!d) return false;
+    return d.kind === "library" ? d.model === "bar_model" : Array.isArray(d.spec?.bars);
+  });
+
+/** The number (1-based) of the last slide before `at` that shows a bar model, if any. */
+function barModelSlideBefore(slides: readonly Slide[], at: number): number | undefined {
+  for (let i = at - 1; i >= 0; i--)
+    if (!slides[i]?.answersRole && showsBarModel(slides[i] as Slide)) return i + 1;
+  return undefined;
+}
+
 /** A question at most this many words is shown whole over its answer. */
 export const QUESTION_WORDS = 16;
 /**
@@ -975,7 +1008,7 @@ export function withoutQuestions(groups: readonly AnswerGroup[]): readonly Answe
  */
 export function answerGroupsOf(slides: readonly Slide[]): AnswerGroup[] {
   const out: AnswerGroup[] = [];
-  for (const slide of slides) {
+  for (const [at, slide] of slides.entries()) {
     if (slide.answersRole) continue;
     if (slide.kind !== "open-response" && slide.kind !== "exit-ticket") continue;
     const q = slide.question;
@@ -996,7 +1029,14 @@ export function answerGroupsOf(slides: readonly Slide[]): AnswerGroup[] {
     );
     const asked =
       tasks.length === items.length && tasks.every((q) => q.trim())
-        ? items.map((it, i) => ({ ...it, q: shortQuestion(tasks[i] as string) }))
+        ? items.map((it, i) => {
+            const task = tasks[i] as string;
+            const q = shortQuestion(task);
+            // A "draw a bar model" task's answer is a number, never a drawn model: the answer says
+            // which slide modelled it rather than pretend the number is the drawing (R4, y5).
+            const shown = DRAW_BAR_TASK.test(task) ? barModelSlideBefore(slides, at) : undefined;
+            return { ...it, q: shown ? `${q} ${ANSWERS_WORDS.barModelAt(shown)}` : q };
+          })
         : items;
     out.push({
       kind: slide.kind === "exit-ticket" ? "exit" : "practice",
