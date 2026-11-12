@@ -355,7 +355,11 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
       {header.subtitle !== undefined ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
+      <SheetMeta
+        blocks={worksheet.blocks}
+        showMarks={worksheet.showMarks}
+        yearGroup={worksheet.yearGroup}
+      />
     </header>
   );
 }
@@ -490,10 +494,13 @@ export function FlowItemContent({
 export function SheetMeta({
   blocks,
   showMarks,
+  yearGroup,
 }: {
   blocks: readonly WorksheetBlock[];
   showMarks?: boolean;
+  /** Reception to Year 2 read as taking longer (`estimateMinutes`). */
+  yearGroup?: string;
 }) {
   if (blocks.length === 0) return null;
-  return <p className="ws-meta">{sheetSummary(blocks, showMarks ?? false)}</p>;
+  return <p className="ws-meta">{sheetSummary(blocks, showMarks ?? false, { yearGroup })}</p>;
 }

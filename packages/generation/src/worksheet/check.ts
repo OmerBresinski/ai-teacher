@@ -20,10 +20,10 @@ export const PRACTICE_TIME_CHECK = "practice-time";
 export const PRACTICE_TIME_TOLERANCE_PERCENT = 30;
 
 export function practiceTimeFinding(
-  worksheet: Pick<Worksheet, "blocks">,
+  worksheet: Pick<Worksheet, "blocks" | "yearGroup">,
   practiceMinutes: number,
 ): Finding | undefined {
-  const estimated = estimateMinutes(worksheet.blocks);
+  const estimated = estimateMinutes(worksheet.blocks, { yearGroup: worksheet.yearGroup });
   // Integer arithmetic: `practiceMinutes * 0.3` is not exact in floating point.
   if (
     Math.abs(estimated - practiceMinutes) * 100 <=

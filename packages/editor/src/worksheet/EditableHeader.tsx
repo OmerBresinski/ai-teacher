@@ -90,7 +90,11 @@ export const EditableHeader = memo(function EditableHeader({
           />
         </p>
       ) : null}
-      <SheetMeta blocks={worksheet.blocks} showMarks={worksheet.showMarks} />
+      <SheetMeta
+        blocks={worksheet.blocks}
+        showMarks={worksheet.showMarks}
+        yearGroup={worksheet.yearGroup}
+      />
     </header>
   );
 });
