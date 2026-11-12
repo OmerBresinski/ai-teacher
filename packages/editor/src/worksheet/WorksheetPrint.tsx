@@ -32,7 +32,7 @@ export function WorksheetPrint({
   backSlot,
 }: WorksheetPrintProps) {
   const theme = getTheme(worksheet.themeId);
-  const { pages, ready, oversize, measureNode } = useSheetPagination(worksheet, theme, part);
+  const { pages, ready, oversize, measureNode } = useSheetPagination(worksheet, theme, part, true);
   const printed = useRef(false);
   const canPrint = ready && oversize.length === 0;
 

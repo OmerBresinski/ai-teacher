@@ -246,3 +246,63 @@ export function paginate(
   if (current.length > 0 || pages.length === 0) flush();
   return { pages, oversize };
 }
+
+/** Answer space never grows past this many times its own height when it fills a page. */
+export const FILL_MAX = 2;
+/** At most this many ruled lines are added to one question when it fills a page. */
+export const FILL_MAX_LINES = 2;
+/** Room left at a page's foot after filling, so a measuring rounding never pushes a block over. */
+const FILL_SAFETY = 12;
+
+/**
+ * R3 (CRITIQUE-2, 12 Nov: "page 2 two-thirds blank", "Y5 17 mm boxes for four-step problems",
+ * "two lines too little for Y2 handwriting"): the room a page has left after its last block goes
+ * to that page's answer space, so a pupil gets more room to write instead of a blank half page.
+ * Each answer box and each ruled-lines question on the page takes an equal share: a box grows by
+ * its share (at most `FILL_MAX` times its height), a question gains whole lines (at most
+ * `FILL_MAX_LINES`). Nothing moves between pages, so the split, the page count and the editor's
+ * page view are unchanged; print passes `fill` (the editor keeps the stored sizes it edits). A page
+ * holding a split question (whose parts have no measured height) is left as it is.
+ */
+export function fillPages(
+  pagination: Pagination,
+  heights: Record<string, number>,
+  headerHeight: number,
+  contentH: number = CONTENT_H,
+  lineGapPt: number = LINE_GAP,
+  /** The sheet's box multiplier (`sheetSizes().boxScale`): a box draws `heightPt * boxScale`. */
+  boxScale = 1,
+): Pagination {
+  const pages = pagination.pages.map((page) => {
+    if (page.items.some((it) => heights[it.key] === undefined)) return page;
+    const used = page.items.reduce((sum, it) => sum + (heights[it.key] ?? 0), 0);
+    const room = contentH - (page.index === 0 ? headerHeight : 0) - FILL_SAFETY;
+    const spaces = page.items.filter(isFillable);
+    if (spaces.length === 0 || room - used <= 0) return page;
+    const share = (room - used) / spaces.length;
+    return {
+      ...page,
+      items: page.items.map((it) => {
+        if (!isFillable(it) || it.kind !== "block") return it;
+        const b = it.block;
+        if (b.type === "answer-box") {
+          const drawn = b.heightPt * boxScale;
+          const grow = Math.min(share, (FILL_MAX - 1) * drawn);
+          return { ...it, block: { ...b, heightPt: Math.floor(b.heightPt + grow / boxScale) } };
+        }
+        if (b.type === "question") {
+          const more = Math.min(FILL_MAX_LINES, Math.floor(share / lineGapPt));
+          return more > 0 ? { ...it, block: { ...b, answerLines: b.answerLines + more } } : it;
+        }
+        return it;
+      }),
+    };
+  });
+  return { ...pagination, pages };
+}
+
+/** Answer space that can take a page's spare room: a box, or a question with ruled lines. */
+const isFillable = (it: FlowItem) =>
+  it.kind === "block" &&
+  !it.split &&
+  (it.block.type === "answer-box" || (it.block.type === "question" && it.block.answerLines > 0));
