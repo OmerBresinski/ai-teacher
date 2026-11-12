@@ -26,8 +26,8 @@ test.describe("real lesson intake over the fake worker", () => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await reachObjectives(page, "States of matter and the particle model");
     await expect(page.getByRole("textbox", { name: /^Objective / })).not.toHaveCount(0);
-    await expect(page.getByRole("combobox", { name: "Slides" })).toContainText(
-      "Standard, 10–12 slides",
+    await expect(page.getByRole("combobox", { name: "Lesson size" })).toContainText(
+      "Standard 10 to 12 slides",
     );
     await expect(page.getByRole("combobox", { name: "Lesson length" })).toHaveCount(0);
 

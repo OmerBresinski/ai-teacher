@@ -25,15 +25,20 @@ import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Field } from "@/components/brief/field";
 
-/** Ruling 164: the teacher picks a length tier; the writer picks the count inside it. */
+/**
+ * Ruling 164: the teacher picks a size; the writer picks the count inside it. Sizes, not minutes
+ * (Greg, 12 Nov 2026: "dont promise minutes"): the helper says only the slides the size makes. The
+ * stored tier ids stay `quick` / `standard` / `detailed`.
+ */
 const TIER_NAMES: Record<SlideTier, string> = {
-  quick: "Quick",
+  quick: "Short",
   standard: "Standard",
-  detailed: "Detailed",
+  detailed: "Long",
 };
 export const SLIDE_TIER_OPTIONS = SLIDE_TIERS.map((tier) => ({
   value: tier,
-  label: `${TIER_NAMES[tier]}, ${SLIDE_TIER_RANGES[tier].min}–${SLIDE_TIER_RANGES[tier].max} slides`,
+  label: TIER_NAMES[tier],
+  hint: `${SLIDE_TIER_RANGES[tier].min} to ${SLIDE_TIER_RANGES[tier].max} slides`,
 }));
 
 /**
@@ -55,7 +60,8 @@ export function ChoiceField({
   compact?: boolean;
   label: string;
   value: string;
-  options: readonly { value: string; label: string }[];
+  /** An option's `hint` is its plain helper, shown muted after the label. */
+  options: readonly { value: string; label: string; hint?: string }[];
   onChange: (value: string) => void;
 }) {
   const id = useId();
@@ -71,6 +77,13 @@ export function ChoiceField({
               {options.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
+                  {option.hint ? (
+                    // The space reads between the two for a screen reader; flex drops it visually.
+                    <>
+                      {" "}
+                      <span className="text-ink-3">{option.hint}</span>
+                    </>
+                  ) : null}
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -309,7 +322,7 @@ export function ObjectivesStep({
         <div className="creation-generation-options">
           <ChoiceField
             compact
-            label="Slides"
+            label="Lesson size"
             value={slideTier}
             onChange={(value) => onSlideTier(value as SlideTier)}
             options={SLIDE_TIER_OPTIONS}
