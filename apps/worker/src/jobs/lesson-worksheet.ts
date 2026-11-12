@@ -188,6 +188,10 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
             ids: uid,
           });
         }
+        // R5: a shipped sheet keeps each dropped item in full, in its record and the log.
+        const dropped = droppedItems(built);
+        if (dropped.length)
+          logger.info({ lessonId, worksheetId, recipeId, dropped }, "worksheet items dropped");
         const generation: WorksheetGeneration = {
           jobId,
           stage: "checked",
@@ -199,6 +203,7 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
           findings: built.findings,
           recipeId,
           practiceMinutes,
+          ...(dropped.length ? { dropped } : {}),
         };
         const sheet: Worksheet = { ...built.worksheet, createdAt: stored.createdAt, generation };
         const result = await putDocumentAsJob(ws, worksheetId, sheet, jobId);
@@ -517,4 +522,21 @@ async function loadPlannedLesson(
     throw new NonRetryableError("lesson is not planned");
   }
   return { lesson, facts };
+}
+
+/** The items a shipped sheet's gate dropped, in full (`WrittenBuiltSheet.verdicts`); none for a slide-built sheet. */
+export function droppedItems(built: object): NonNullable<WorksheetGeneration["dropped"]> {
+  const verdicts = (built as { verdicts?: { faults: string[] }[] }).verdicts ?? [];
+  return verdicts
+    .filter((v) => v.faults.length > 0)
+    .map((v) => {
+      const { where, question, working, answer, faults } = v as {
+        where: string;
+        question: string;
+        working: string | null;
+        answer: string;
+        faults: string[];
+      };
+      return { where, question, working, answer, faults };
+    });
 }
