@@ -401,6 +401,7 @@ export function worksheetFailureCode(error: unknown): WorksheetFailureCode | nul
     if (error.message === "worksheet missing" || error.message === "lock lost") return null;
     if (
       error.message === "revision moved" ||
+      error.message === "lesson changed" ||
       error.message === "lesson missing" ||
       error.message === "lesson is not planned"
     ) {
@@ -481,10 +482,15 @@ async function loadPlannedLesson(
 ): Promise<{ lesson: Lesson; facts: LessonFacts }> {
   const row = await getDocument(ws, lessonId);
   if (row === null || row.kind !== "lesson") throw new NonRetryableError("lesson missing");
+  // R4 review (12 Nov): a lesson job holding the lesson is still writing, checking or repairing
+  // its slides; a sheet read now would miss what it changes.
+  if (row.generatingJobId) throw new NonRetryableError("lesson changed");
   const lesson = parseLesson(row.body);
   if ((lesson.plan?.revision ?? 0) !== revision) throw new NonRetryableError("revision moved");
   const facts = lesson.facts;
-  if (lesson.generation?.stage === undefined || facts === undefined) {
+  // Stage `planned` means no slides yet; no stage at all is a lesson made before stages were
+  // recorded, which the API lets through only with a confirmed plan, facts and slides.
+  if (lesson.generation?.stage === "planned" || facts === undefined) {
     throw new NonRetryableError("lesson is not planned");
   }
   return { lesson, facts };

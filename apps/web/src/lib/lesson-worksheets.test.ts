@@ -64,7 +64,17 @@ describe("worksheet intent isolation and reload", () => {
   it("requires a confirmed matching revision and verified facts", () => {
     const demo = demoWorkspace(new Date()).find((row) => "slides" in row.body)?.body as Lesson;
     const lesson = { ...demo, plan: { state: "confirmed" as const, revision: 1, jobId: "job" } };
-    expect(canRequestWorksheet({ ...lesson, generation: undefined }, intent)).toBe(false);
+    expect(
+      canRequestWorksheet({ ...lesson, generation: { stage: "planned" } as never }, intent),
+    ).toBe(false);
+    // R4 review: a lesson job still holding the lesson (writing, checking, repairing): wait.
+    const written = { ...lesson, generation: { stage: "generated" } as never };
+    expect(canRequestWorksheet(written, intent, true)).toBe(false);
+    expect(canRequestWorksheet(written, intent, false)).toBe(lesson.facts !== undefined);
+    // No recorded stage: read from its slides, as the api does.
+    expect(canRequestWorksheet({ ...lesson, generation: undefined }, intent)).toBe(
+      lesson.slides.length > 0 && lesson.facts !== undefined,
+    );
     expect(
       canRequestWorksheet({ ...lesson, plan: { ...lesson.plan, state: "proposed" } }, intent),
     ).toBe(false);

@@ -130,13 +130,20 @@ export function rememberGenerationOrigin(
 export function generationHandoff(client: QueryClient, id: string) {
   return handoff(client, id);
 }
-export function canRequestWorksheet(lesson: Lesson, intent: WorksheetIntent) {
+/**
+ * Whether the handoff's sheet may be requested now. The sheet is read from the slides (worksheets
+ * plan v2 T6): wait until they are written, and (R4 review, 12 Nov) until no lesson job holds the
+ * lesson (`lessonBusy`, the lesson's `generatingJobId`): stage `generated` is saved before the
+ * slides are checked and repaired, and the api refuses a sheet then. A lesson with no recorded
+ * stage is read from its slides, as the api does.
+ */
+export function canRequestWorksheet(lesson: Lesson, intent: WorksheetIntent, lessonBusy = false) {
+  const stage = lesson.generation?.stage;
   return (
+    !lessonBusy &&
     lesson.plan?.state === "confirmed" &&
     lesson.plan.revision === intent.expectedRevision &&
-    // The sheet is read from the slides (worksheets plan v2 T6): wait until they are written.
-    lesson.generation?.stage !== undefined &&
-    lesson.generation.stage !== "planned" &&
+    (stage === undefined ? lesson.slides.length > 0 : stage !== "planned") &&
     !!lesson.facts
   );
 }
@@ -149,10 +156,16 @@ export type WorksheetTypeOption = {
   reason?: string;
 };
 
-export const lessonWorksheetTypesQuery = (client: QueryClient, id: string, stage?: string) =>
+export const lessonWorksheetTypesQuery = (
+  client: QueryClient,
+  id: string,
+  stage?: string,
+  lessonBusy = false,
+) =>
   queryOptions({
-    // Keyed on the lesson's stage, so the greyed reasons are read again once the slides are written.
-    queryKey: ["library", "lesson-worksheet-types", id, stage ?? "none"],
+    // Keyed on the lesson's stage and on whether a lesson job holds it, so the greyed reasons are
+    // read again once the slides are written and again once they are checked and repaired.
+    queryKey: ["library", "lesson-worksheet-types", id, stage ?? "none", lessonBusy],
     queryFn: async ({ signal }): Promise<WorksheetTypeOption[]> => {
       const res = await api.lessons[":id"]["worksheet-types"].$get(
         { param: { id } },

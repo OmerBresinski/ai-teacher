@@ -44,8 +44,14 @@ export function LessonWorksheets({
   onOpenWorksheet,
   trigger = true,
   onLabel,
+  lessonBusy = false,
 }: {
   lesson: Lesson;
+  /**
+   * A lesson job holds the lesson (`generatingJobId`): its slides may still be checked or
+   * repaired, so no sheet is requested until it lets go (R4 review, 12 Nov).
+   */
+  lessonBusy?: boolean;
   /**
    * `false`: no button here. The editor lists the entry in its ⋯ menu and mounts this outside the
    * menu, so the dialog does not unmount when the menu closes.
@@ -66,7 +72,9 @@ export function LessonWorksheets({
     () => worksheetHandoffSnapshot(client, lesson.id),
   );
   // The offered launch types for this lesson, greyed with their reasons (worksheets plan v2 T6).
-  const types = useQuery(lessonWorksheetTypesQuery(client, lesson.id, lesson.generation?.stage));
+  const types = useQuery(
+    lessonWorksheetTypesQuery(client, lesson.id, lesson.generation?.stage, lessonBusy),
+  );
   const [picked, setRecipeId] = useState<string | undefined>(intent.intent?.recipeId);
   const typeOptions = types.data ?? [];
   const recipeId =
@@ -171,16 +179,18 @@ export function LessonWorksheets({
       intent.attempted ||
       !list.isSuccess ||
       active ||
-      !canRequestWorksheet(lesson, intent.intent)
+      !canRequestWorksheet(lesson, intent.intent, lessonBusy)
     )
       return;
     // Claim before the async call: remounts and StrictMode cannot enqueue twice. Errors are
     // reconciled by GET above, never automatically retried (the server may have accepted it).
     intent.attempted = true;
     request.mutate(intent.intent);
-  }, [intent, list.isSuccess, active, lesson, request.mutate]);
+  }, [intent, list.isSuccess, active, lesson, lessonBusy, request.mutate]);
   const changedPlan = !!intent.intent && lesson.plan?.revision !== intent.intent.expectedRevision;
-  const ready = lesson.plan?.state === "confirmed" && !!lesson.generation && !!lesson.facts;
+  // A lesson with no recorded stage (made before stages were recorded) still has its plan and
+  // facts; the types say whether its slides can carry a sheet.
+  const ready = lesson.plan?.state === "confirmed" && !!lesson.facts;
   const entry = worksheetEntryState(list.data, justFinished);
   const failedSheets = list.data?.filter((item) => item.generation?.stage === "failed") ?? [];
   const retrySheet = (item: (typeof failedSheets)[number]) => {
