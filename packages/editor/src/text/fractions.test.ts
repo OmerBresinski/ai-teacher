@@ -67,6 +67,10 @@ describe("findFractions: a mixed number stacks its fraction (answers, sheets, wo
     ["2 1/2 and 1 3/4", ["1/2", "3/4"]],
     ["10\u00A01/2", ["1/2"]],
     ["(7 1/2)", ["1/2"]],
+    ["7 3/3 − 5 1/3", ["3/3", "1/3"]],
+    ["3/4", ["3/4"]],
+    ["2/5 m", ["2/5"]],
+    ["5 1/3", ["1/3"]],
   ])("%p stacks %p", (text, want) => {
     expect(stacked(text)).toEqual(want);
   });
@@ -78,8 +82,11 @@ describe("findFractions: a mixed number stacks its fraction (answers, sheets, wo
     ["In 2001 9/11 changed air travel"],
     ["Speed: 5 m/s"],
     ["It moved at 3 km/h"],
-    ["Score 3 4/4"],
     ["Version 2.5 1/2"],
+    ["24/7"],
+    ["50/50"],
+    ["12/5"],
+    ["and/or"],
     ["Pages 1,000 1/2"],
     ["Date 12/3 1/2"],
   ])("%p stays a slash", (text) => {

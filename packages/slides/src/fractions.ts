@@ -16,6 +16,9 @@
  * - a mixed number: a whole number of one to three digits, a space, then a proper number fraction
  *   (`10 1/2`, `6 4/5 m`, `= 7 1/2`). Not `24/7` or `50/50` (no whole number before them), not
  *   `3 24/7` (not a proper fraction), not `2001 9/11` (a year is not a whole part), not `5 m/s`;
+ * - the whole paragraph is one proper number fraction, with at most a unit after it: a hinge
+ *   option or an answer cell that reads `3/4` or `2/5 m` (v5.3-gold B6). `24/7` and `50/50` are
+ *   not proper; a bare `9/11` would stack (accepted: an option is never only that date);
  * - the whole paragraph is maths tokens and the fraction has a letter: a worked row's `x/4` cell.
  * Otherwise it stays a slash: `24/7`, `50/50`, `A/B testing`, `9/11`, `speed in m/s`.
  *
@@ -133,14 +136,26 @@ function operatorBeside(text: string, from: number, dir: -1 | 1): boolean {
 }
 
 /** A mixed number's whole part straight before the fraction: `10 ` in `10 1/2`, `= 7 ` in `= 7 1/2`. */
+/** A paragraph that is only a number fraction, a unit word after it at most (`3/4`, `2/5 m`). */
+const BARE = /^\s*(\d{1,3})\/(\d{1,3})(?:\s+[a-zA-Z£]{1,3})?\s*[.?!]?\s*$/;
+
+/** `text` is one proper fraction alone (`3/4`), never `24/7` or `50/50`. */
+function bareProper(text: string): boolean {
+  const m = BARE.exec(text);
+  if (!m) return false;
+  const n = Number(m[1]);
+  const d = Number(m[2]);
+  return n >= 1 && d >= 2 && n < d;
+}
+
 const MIXED_WHOLE = /(?:^|[^\p{L}\p{N}.,/:])\d{1,3}[ \u00A0]$/u;
 
-/** `num/den` is the fraction of a mixed number: both whole numbers, proper, after a whole part. */
+/** `num/den` is the fraction of a mixed number: whole numbers, n ≤ d (a regrouped `7 3/3`), after a whole part. */
 function mixedNumber(before: string, num: string, den: string): boolean {
   if (!/^\d+$/.test(num) || !/^\d+$/.test(den)) return false;
   const n = Number(num);
   const d = Number(den);
-  return n >= 1 && d >= 2 && n < d && MIXED_WHOLE.test(before);
+  return n >= 1 && d >= 2 && n <= d && MIXED_WHOLE.test(before);
 }
 
 /** Where the text sits: `maths` when its box is maths (a worked equation cell, a formula). */
@@ -169,6 +184,7 @@ export function findFractions(text: string, context: FractionContext = {}): Frac
       operatorBeside(text, end, 1) ||
       /^\s+of\s+[\p{N}a-zA-Z(]/u.test(text.slice(end)) ||
       mixedNumber(text.slice(0, start), num, den) ||
+      bareProper(text) ||
       (letters && wholeMaths());
     if (maths && !isWord(num) && !isWord(den)) out.push({ start, slash, end });
     else if (context.maths && !(UNIT.has(num) && UNIT.has(den))) {
