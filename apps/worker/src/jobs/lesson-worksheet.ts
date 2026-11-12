@@ -339,6 +339,22 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         thrown = new NonRetryableError(error.message, { cause: error });
       } else if (error instanceof SheetBuildFailure) {
         // The lesson cannot carry this type, or too few items passed the gate: no retry helps.
+        // The dropped items' reasons (generated text, no pupil data) go to the log so a failed
+        // sheet says whether the model or a check was wrong (y5 fractions, 12 Nov).
+        if (error.detail) {
+          logger.warn(
+            {
+              worksheetId,
+              code: error.code,
+              written: error.detail.written,
+              kept: error.detail.kept,
+              dropped: error.detail.verdicts
+                .filter((v) => v.faults.length > 0)
+                .map((v) => ({ where: v.where, faults: v.faults })),
+            },
+            "worksheet items failed the checks",
+          );
+        }
         thrown = new NonRetryableError(error.message, { cause: error });
       } else if (error instanceof StageFailure) {
         // The fill missed its schema twice: what it had written stays for the next request.

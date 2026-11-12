@@ -14,7 +14,7 @@ import type { CallUsage } from "../call";
 import type { FillDeps } from "./fill";
 import { gateSheet } from "./gate";
 import { sheetSubject } from "./subject";
-import { writeSheet } from "./write-sheet";
+import { type ItemVerdict, writeSheet } from "./write-sheet";
 
 /*
  * The new sheet path (worksheets plan v2 §5, ticket T6): digest → build → `gateSheet`, and the
@@ -29,11 +29,20 @@ export class SheetBuildFailure extends Error {
   constructor(
     readonly code: Extract<WorksheetFailureCode, "not-enough-lesson" | "too-few-checked">,
     message: string,
+    /** too-few-checked: what was written and why each item was dropped (generated text only). */
+    readonly detail?: SheetFailureDetail,
   ) {
     super(message);
     this.name = "SheetBuildFailure";
   }
 }
+
+export type SheetFailureDetail = {
+  written: number;
+  kept: number;
+  findings: Finding[];
+  verdicts: ItemVerdict[];
+};
 
 export type BuildSheetInput = {
   recipeId: SlideSheetRecipeId;
@@ -96,6 +105,8 @@ export const isModelSheetRecipe = (id: string): id is ModelSheetRecipeId =>
   (MODEL_SHEET_RECIPE_IDS as readonly string[]).includes(id);
 
 export type WrittenBuiltSheet = BuiltSheet & {
+  /** Every written item and why any was dropped (the sheet shipped with the rest). */
+  verdicts: ItemVerdict[];
   promptVersion: string;
   modelId: string;
   usage: CallUsage;
@@ -121,14 +132,30 @@ export async function writeModelSheet(
     { type: input.recipeId, digest, practiceMinutes: input.practiceMinutes },
     { ...deps, ids: input.ids ?? deps.ids },
   );
-  if (!written.enough) {
-    throw new SheetBuildFailure("too-few-checked", "too few written items passed the checks");
-  }
-  const sheet = assemble(input, digest, written.blocks, written.findings, {
-    showMarks: input.recipeId === "exam-style",
+  const detail = (findings: Finding[]): SheetFailureDetail => ({
+    written: written.written,
+    kept: written.kept,
+    findings,
+    verdicts: written.verdicts,
   });
+  if (!written.enough) {
+    throw new SheetBuildFailure(
+      "too-few-checked",
+      "too few written items passed the checks",
+      detail(written.findings),
+    );
+  }
+  const sheet = assemble(
+    input,
+    digest,
+    written.blocks,
+    written.findings,
+    { showMarks: input.recipeId === "exam-style" },
+    detail,
+  );
   return {
     ...sheet,
+    verdicts: written.verdicts,
     promptVersion: written.promptVersion,
     modelId: written.modelId,
     usage: written.usage,
@@ -141,6 +168,7 @@ function assemble(
   built: readonly WorksheetBlock[],
   earlier: Finding[],
   options: { showMarks?: boolean } = {},
+  detail?: (findings: Finding[]) => SheetFailureDetail,
 ): BuiltSheet {
   const { recipeId, lesson } = input;
   const gated = gateSheet({
@@ -149,7 +177,11 @@ function assemble(
     blocks: built,
   });
   if (!gated.ok) {
-    throw new SheetBuildFailure("too-few-checked", "too few items passed the sheet gate");
+    throw new SheetBuildFailure(
+      "too-few-checked",
+      "too few items passed the sheet gate",
+      detail?.([...earlier, ...gated.findings]),
+    );
   }
   const at = input.now().toISOString();
   const blocks: WorksheetBlock[] = gated.blocks;

@@ -118,7 +118,11 @@ const AMOUNT = `(?:([−-])\\s?)?[£$€]?\\s?(?:([−-])\\s?)?(${NUMBER})`;
  * straight after "=" counted, so a money or fraction result was dropped as having none.
  */
 const WORKING_RESULT = new RegExp(`=\\s*${AMOUNT}[^=]*$`);
-const KEY_FIRST = new RegExp(AMOUNT);
+const AMOUNTS = new RegExp(AMOUNT, "g");
+const amountsIn = (text: string): Amount[] =>
+  [...text.matchAll(AMOUNTS)]
+    .map((m) => amountOf(m as RegExpExecArray))
+    .filter((a): a is Amount => a !== undefined);
 
 type Amount = { text: string; value: number; places: number | null };
 /** A matched amount's value, and its decimal places (null for a fraction: compared exactly). */
@@ -142,22 +146,33 @@ function amountOf(m: RegExpExecArray | null): Amount | undefined {
   return { text: `${sign < 0 ? "-" : ""}${t}`, value: sign * value, places };
 }
 
+const sameAmount = (a: Amount, v: Amount): boolean => {
+  const places = v.places ?? a.places;
+  return places === null
+    ? Math.abs(a.value - v.value) < 1e-9
+    : a.value.toFixed(places) === v.value.toFixed(places);
+};
+
 /**
- * The working ends "= v [unit]" and the result `v` must be where the key starts: the first number
- * in `key` equals v at the precision v's digits show (a fraction exactly, or at the key's decimal
- * places). Also no wrong sum in either text.
+ * The working ends "= v [unit]" and the result `v` must be the key's first new number: the first
+ * number in `key` that the question does not already hold equals v at the precision v's digits
+ * show (a fraction exactly, or at the key's decimal places). y5 fractions (12 Nov): "No. Six
+ * fifths of 25 is 30." and "6/5 of the counters is greater: 36 counters." lead with the question's
+ * own numbers and were dropped. When every key number is the question's, v must be one of them.
+ * Also no wrong sum in either text.
  */
 export function workingFault(question: string, working: string | null, key: string): string | null {
   if (!working?.trim()) return null;
   const v = amountOf(WORKING_RESULT.exec(working));
   if (!v) return "the working does not end in = and its result";
-  const first = amountOf(KEY_FIRST.exec(key));
-  if (first === undefined) return "the answer does not give the working's result";
-  const places = v.places ?? first.places;
-  const same =
-    places === null
-      ? Math.abs(first.value - v.value) < 1e-9
-      : first.value.toFixed(places) === v.value.toFixed(places);
+  const all = amountsIn(key);
+  if (all.length === 0) return "the answer does not give the working's result";
+  // The question's numbers, fractions whole and in parts ("3/4" gives 3/4, 3 and 4: ws-fix2's key
+  // "First divide 18 by 4 ..." leads with the 4 of "3/4").
+  const given = [...amountsIn(question).map((q) => q.value), ...numbersIn(question).map(Number)];
+  const fresh = all.filter((a) => !given.some((q) => Math.abs(q - a.value) < 1e-9));
+  const first = (fresh[0] ?? all[0]) as Amount;
+  const same = fresh.length > 0 ? sameAmount(first, v) : all.some((a) => sameAmount(a, v));
   if (!same) {
     return `the answer ${first.text} does not match the working's result ${v.text}`;
   }
@@ -167,9 +182,35 @@ export function workingFault(question: string, working: string | null, key: stri
   return null;
 }
 
+/** An explain or judge command: the item reasons about a method rather than working one out. */
+const EXPLAIN = /\b(explain|why|is (?:the pupil|she|he|they|this|that) (?:right|correct))\b/i;
+
+/**
+ * y5 fractions (12 Nov): "A pupil says, 'To find 3/4 of 12 metres, I divide by 3 ...' Is the pupil
+ * right? Explain the correct steps." was dropped as a calculation with no working: its "3/4" read
+ * as a sum; so were "When finding 6/5 of an amount, what does the denominator tell you to do
+ * first?" warm-ups. An item with no working that explains, or does not open with a calculate
+ * command, may ship when its answer states no number the question does not already hold (it
+ * explains the steps, it gives no new result) and its own sums hold. A key with a new number, or a
+ * "Calculate / Work out / Find" item, still needs its working.
+ */
+export function explainsAMethod(question: string, answer: string): boolean {
+  if (!EXPLAIN.test(question) && /^\W*(calculate|work out|find)\b/i.test(question)) return false;
+  const given = new Set(numbersIn(question));
+  if (numbersIn(answer).some((n) => !given.has(n))) return false;
+  return numericMismatches(answer).length === 0 && checkKey(question, answer).length === 0;
+}
+
 type Context = { digest: LessonDigest };
 const askedQuestions = (digest: LessonDigest) => digest.asked.map((a) => a.question);
-const taughtSlides = (digest: LessonDigest) => new Set(digest.taught.map((t) => t.slide));
+/**
+ * The slides an item may rest on: taught slides, and slides whose questions the brief gives with
+ * their answers (y5 fractions ws-fix1, 12 Nov: two correct items rested on practice slide 10, whose
+ * worked answers the `method` rule already counts as a shown method, and were dropped, failing the
+ * sheet). A number the brief does not hold at all is still a fault.
+ */
+const taughtSlides = (digest: LessonDigest) =>
+  new Set([...digest.taught.map((t) => t.slide), ...digest.asked.map((a) => a.slide)]);
 
 /** What every model item must hold, whatever its type. */
 function commonFaults(
@@ -194,7 +235,12 @@ export function practiceFaults(item: PracticeItem, ctx: Context): string[] {
   if (isNonAnswer(item.answer)) out.push("has no answer");
   if (GAP.test(item.question)) out.push("leaves a gap to fill in the question");
   const early = isEarlyYears(ctx.digest.lesson.yearGroup);
-  if (!early && CALC_QUESTION.test(item.question) && !item.working?.trim()) {
+  if (
+    !early &&
+    CALC_QUESTION.test(item.question) &&
+    !item.working?.trim() &&
+    !explainsAMethod(item.question, item.answer)
+  ) {
     out.push("calculates but gives no working");
   }
   const w = workingFault(item.question, item.working, item.answer);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { workingFault, workingResult } from "./sheet-items";
+import { explainsAMethod, workingFault, workingResult } from "./sheet-items";
 
 /*
  * R4 (round 3, y5 practice sheet): "the working ends in = and its result" needed a digit straight
@@ -46,5 +46,108 @@ describe("the working's result may be money, negative or a fraction", () => {
     expect(workingResult("5 ÷ 4 = 1 1/4 m")).toBe(1.25);
     expect(workingResult("3 − 7 = −4")).toBe(-4);
     expect(workingResult("84 ÷ 28")).toBeNull();
+  });
+});
+
+/*
+ * y5 fractions diag (12 Nov, live rounds ws-diag1..3): every dropped item was correct maths; the
+ * checks were wrong. These are the real model items, verbatim.
+ */
+describe("y5 fractions: correct items the checks dropped", () => {
+  test("a working through pence (£9 = 900p) holds", () => {
+    expect(
+      workingFault(
+        "A ribbon costs £9. Find 4/5 of its cost. Give your answer in pounds.",
+        "£9 = 900p; 900p ÷ 5 = 180p; 180p × 4 = 720p; 720p = 7.20 pounds",
+        "7.20 pounds",
+      ),
+    ).toBeNull();
+    expect(
+      workingFault(
+        "A school bag costs £12. Find 6/5 of its price. Give your answer in pounds.",
+        "£12 = 1200p; 1200p ÷ 5 = 240p; 240p × 6 = 1440p; 1440p = £14.40",
+        "£14.40",
+      ),
+    ).toBeNull();
+    expect(
+      workingFault(
+        "A book costs £9. What is 2/5 of its cost? Give your answer in pounds.",
+        "£9 = 900p; 900p ÷ 5 = 180p; 180p × 2 = 360p = 3.60 pounds",
+        "3.60 pounds",
+      ),
+    ).toBeNull();
+  });
+  test("a wrong pence sum is still caught", () => {
+    expect(
+      workingFault("q", "£9 = 900p; 900p ÷ 5 = 170p; 170p × 4 = 680p = 6.80 pounds", "6.80 pounds"),
+    ).not.toBeNull();
+    expect(workingFault("q", "£12 = 1000p; 1000p ÷ 5 = 200p", "200p")).not.toBeNull();
+  });
+  test("the key may lead with the question's own numbers before the result", () => {
+    expect(
+      workingFault(
+        "A pupil says, “Six fifths of 25 must be less than 25 because it is a fraction.” Is the pupil right? Give the answer and explain why.",
+        "25 ÷ 5 = 5; 5 × 6 = 30",
+        "No. Six fifths of 25 is 30. Five fifths make one whole, and the sixth fifth takes the amount beyond the whole.",
+      ),
+    ).toBeNull();
+    expect(
+      workingFault(
+        "A bag holds 30 counters. Which is greater: 6/5 of the counters in the bag, or the number of counters in the bag? Give the greater amount in counters.",
+        "30 ÷ 5 = 6; 6 × 6 = 36",
+        "6/5 of the counters in the bag is greater: 36 counters.",
+      ),
+    ).toBeNull();
+  });
+  test("a key whose first new number is not the result still fails", () => {
+    expect(
+      workingFault("Six fifths of 25?", "25 ÷ 5 = 5; 5 × 6 = 30", "No. Six fifths of 25 is 35."),
+    ).toContain("does not match");
+    // Every key number is the question's: the result must be one of them.
+    expect(
+      workingFault("Is 4/4 of 20 equal to 20?", "20 ÷ 4 = 5; 5 × 4 = 20", "Yes, 20."),
+    ).toBeNull();
+    expect(
+      workingFault("Is 4/4 of 20 equal to 20?", "20 ÷ 4 = 5; 5 × 4 = 20", "No, 4/4."),
+    ).toContain("does not match");
+  });
+  test("ws-fix2: quarters in the working and a key that names the fraction's parts first", () => {
+    expect(
+      workingFault(
+        "A quantity is 28. Find 3/4 of 1¼ of the quantity. Give your answer.",
+        "28 ÷ 4 = 7; 28 + 7 = 35; 35 ÷ 4 = 8¾; 8¾ × 3 = 26¼",
+        "26¼",
+      ),
+    ).toBeNull();
+    expect(workingFault("q", "35 ÷ 4 = 8¼; 8¼ × 3 = 24¾", "24¾")).not.toBeNull();
+    expect(
+      workingFault(
+        "A pupil says, “To find 3/4 of 18 metres, I should multiply 18 by 3 first.” Is the pupil right? Explain the correct order and give the answer in metres.",
+        "18 ÷ 4 = 4½; 4½ × 3 = 13½ m",
+        "No. First divide 18 by 4 to find one quarter, then multiply by 3 to find three quarters. The answer is 13½ m.",
+      ),
+    ).toBeNull();
+  });
+  test("an explain item with no new number needs no working", () => {
+    const q =
+      "A pupil says, “To find 3/4 of 12 metres, I divide by 3 and then multiply by 4.” Is the pupil right? Explain the correct steps.";
+    expect(
+      explainsAMethod(
+        q,
+        "No. Divide 12 metres by 4 to find one quarter, then multiply that answer by 3 to find three quarters.",
+      ),
+    ).toBe(true);
+    // A new number in the key is a result: it needs its working.
+    expect(explainsAMethod(q, "No. Divide 12 by 4, then multiply by 3: 9 metres.")).toBe(false);
+    // A method question whose fraction read as a sum (ws-diag2's first attempt, both warm-ups).
+    expect(
+      explainsAMethod(
+        "When finding 6/5 of an amount, what does the denominator tell you to do first?",
+        "Divide the amount into five equal parts.",
+      ),
+    ).toBe(true);
+    // A calculate command, or a new number in the key: still a calculation that needs working.
+    expect(explainsAMethod("Find 3/4 of 12 metres.", "Divide by 4, multiply by 3.")).toBe(false);
+    expect(explainsAMethod("What is 3/4 of 12 metres?", "9 metres")).toBe(false);
   });
 });
