@@ -36,7 +36,7 @@ export const checkSlotKey = (template: string): "picture" | "figure" =>
   template === "practice" ? "picture" : "figure";
 
 export type CheckForm = "as-is" | "letters" | "neutral-alt";
-export type CheckSkipReason = "no-source" | "leak" | "fit";
+export type CheckSkipReason = "no-source" | "leak" | "fit" | "mismatch" | "repeat";
 
 export type CheckRoute = {
   /** The check slide's index in the deck (0-based). */
@@ -92,6 +92,57 @@ export const stem = (w0: string): string => {
 /** The content words of a text, stemmed. */
 export const terms = (text: string): string[] =>
   (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => !STOP.has(w)).map(stem);
+
+const NUMBER_WORDS: Record<string, number> = Object.fromEntries(
+  (
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen " +
+    "fifteen sixteen seventeen eighteen nineteen twenty"
+  )
+    .split(" ")
+    .map((w, n) => [w, n] as const),
+);
+const TENS: Record<string, number> = {
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+  hundred: 100,
+};
+
+/** The whole numbers a text names, as digits or as words ("twelve", "4", "1/4" gives 1 and 4). */
+export function numbersIn(text: string): Set<number> {
+  const out = new Set<number>();
+  for (const m of text.toLowerCase().matchAll(/\d+(?:\.\d+)?|[a-z]+/g)) {
+    const w = m[0];
+    if (/^\d/.test(w)) out.add(Number(w));
+    else if (w in NUMBER_WORDS) out.add(NUMBER_WORDS[w] as number);
+    else if (w in TENS) out.add(TENS[w] as number);
+  }
+  return out;
+}
+
+/**
+ * Why a visual's numbers are not the question's, or undefined when they agree: both name numbers
+ * ("twelve counters in four groups", "1/4 of 28") and at least one of the visual's is nowhere in
+ * the check slide's questions or right answers. A visual or a question with no numbers (past 1)
+ * never clashes.
+ */
+export function numberClash(visual: string, question: string): string | undefined {
+  // "One" is as often a word as a number ("one flower", "which one"): 0 and 1 never clash.
+  const shown = new Set([...numbersIn(visual)].filter((n) => n > 1));
+  if (!shown.size) return undefined;
+  // A question with no numbers makes no claim a number could contradict ("a fire in 1666" beside
+  // "How did people pass water?").
+  const asked = numbersIn(question);
+  if (![...asked].some((n) => n > 1)) return undefined;
+  const other = [...shown].filter((n) => !asked.has(n));
+  return other.length
+    ? `the visual shows ${other.join(", ")}, which the questions never use`
+    : undefined;
+}
 
 /** The question and answer pairs a check slide asks. */
 export function checkPairs(s: S): { question: string; answer: string }[] {
@@ -407,6 +458,7 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
       score: number;
       shared: number;
     }[] = [];
+    const mismatched: string[] = [];
     for (let j = i - 1; j >= 2; j--) {
       const src = a.slides[j];
       if (!src || CHECK_TEMPLATES.has(str(src.template))) continue;
@@ -419,8 +471,20 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
         );
         const score = [...both].filter(telling).length;
         // A visual that shares no telling word with the questions is not what they work from.
-        if (score > 0) candidates.push({ from: j, key, ask, st, score, shared: both.size });
+        if (score <= 0) continue;
+        // A visual of other numbers (12 counters in 4 groups beside "1/4 of 28") shows a wrong
+        // value for the question: never lent (y5 fractions, 11 Nov review).
+        const clash = numberClash(`${askText(src, ask)} ${visibleText(st)}`, checkWords(s));
+        if (clash) {
+          mismatched.push(`slide ${j + 1} ${key}: ${clash}`);
+          continue;
+        }
+        candidates.push({ from: j, key, ask, st, score, shared: both.size });
       }
+    }
+    if (!candidates.length && mismatched.length) {
+      skip("mismatch", mismatched.join("; "));
+      continue;
     }
     if (!candidates.length) {
       skip(
