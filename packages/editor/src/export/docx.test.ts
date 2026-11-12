@@ -629,3 +629,25 @@ describe("what the Word file carries (WS8)", () => {
     expect(xml).not.toContain('w:type="page"');
   });
 });
+
+describe("multiple-choice options in Word (REVIEW-web 4)", () => {
+  it("stack an option's fraction as the stem's", async () => {
+    const sheet: Worksheet = {
+      ...headSheet(),
+      blocks: [
+        {
+          id: "mc",
+          type: "multiple-choice",
+          doc: docFromText("Which is the same as six eighths?"),
+          options: [
+            { id: "o1", text: "3/4", correct: true },
+            { id: "o2", text: "2/3", correct: false },
+          ],
+          number: 1,
+        } as WorksheetBlock,
+      ],
+    };
+    const { xml } = await xmlFor({ ...sheet, includeAnswerKey: false });
+    expect((xml.match(/<m:f>/g) ?? []).length).toBe(2);
+  });
+});

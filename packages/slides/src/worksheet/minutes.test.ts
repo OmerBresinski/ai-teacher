@@ -28,12 +28,7 @@ describe("time estimate from the sheet's own content", () => {
 
   test("answer lines count half a minute each; a box after a marked question adds nothing", () => {
     expect(minutesUnrounded([q("a", { answerLines: 2 })])).toBe(2);
-    expect(
-      minutesUnrounded([
-        { id: "a", type: "question", doc, answerLines: 0, answer: "A" },
-        { id: "l", type: "lines", count: 4 },
-      ]),
-    ).toBe(3);
+    expect(minutesUnrounded([q("a"), { id: "l", type: "lines", count: 4 }])).toBe(3);
     expect(minutesUnrounded([q("m", { marks: 2 }), box("b")])).toBe(3);
   });
 

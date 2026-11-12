@@ -515,11 +515,21 @@ function blockChildren(
     case "multiple-choice":
       return [
         ...numberedStem(block.number, docToRuns(block.doc)),
-        ...block.options.map((option, i) =>
-          plain(`☐  ${optionLetter(i)}  ${option.text}`, {
-            after: 4,
-            keepNext: keep || i < block.options.length - 1,
-          }),
+        // An option's fractions stack as the stem's do (REVIEW-web 4; the print view stacks them).
+        ...block.options.map(
+          (option, i) =>
+            new Paragraph({
+              keepNext: keep || i < block.options.length - 1,
+              spacing: { after: twip(4) },
+              // The option's text alone, as the print view draws it (a bare "3/4" stacks).
+              children:
+                findFractions(option.text).length > 0
+                  ? [
+                      textRun({ text: `☐  ${optionLetter(i)}  ` }),
+                      ...withFractions([{ text: option.text }], (run) => textRun(run)),
+                    ]
+                  : [textRun({ text: `☐  ${optionLetter(i)}  ${option.text}` })],
+            }),
         ),
       ];
 
