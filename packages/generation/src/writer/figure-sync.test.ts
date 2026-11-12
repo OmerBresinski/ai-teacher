@@ -216,6 +216,31 @@ describe("fractionBarFor (v5.3-gold B1): a fraction of an amount drawn by code f
     expect(labels(s)).toEqual(["2 2/3 m*", "2 2/3 m*", "2 2/3 m"]);
     expect(s).toMatchObject({ combined: "2 2/3 m left", rest: true });
   });
+  test("the brace flips to the rest only when the words ask for it (REVIEW-pipeline minor)", () => {
+    const bar = (words: string) =>
+      fractionBarFor({ kind: "bar-model", bars: [{ whole: 12, parts: 4 }] }, words) as
+        | { rest?: boolean; combined?: string }
+        | undefined;
+    // A "left" or "remaining" that asks nothing: the shaded run stays the answer.
+    for (const w of [
+      "Find 3/4 of 12. The bar on the left shows the whole.",
+      "Find 3/4 of 12. Turn left at the second part.",
+      "Shade 3/4 of 12. The remaining part stays white.",
+    ])
+      expect({ w, rest: bar(w)?.rest, combined: bar(w)?.combined }).toEqual({
+        w,
+        rest: undefined,
+        combined: "9",
+      });
+    // Asking for what is left: braced under the rest.
+    for (const w of [
+      "Sam eats 3/4 of 12 sweets. How many are left?",
+      "Sam eats 3/4 of 12 sweets. How many does he have left?",
+      "Use 3/4 of 12 m. Find the remaining length.",
+      "Spend 3/4 of 12. What remains?",
+    ])
+      expect({ w, rest: bar(w)?.rest }).toEqual({ w, rest: true });
+  });
   test("money from the words: 1/4 of £10 is £2.50 a part", () => {
     const s = fractionBarFor({ kind: "bar-model", bars: [] }, "Find 1/4 of £10.");
     expect(labels(s)[0]).toBe("£2.50*");

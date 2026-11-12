@@ -286,7 +286,9 @@ export function fractionOfAmountBar(o: {
   const shadedWord = shaded === 1 ? "part is" : "parts are";
   return {
     kind: "bar-model",
-    alt: `A bar of ${wholeText} split into ${parts} equal parts of ${each}; ${shaded} ${shadedWord} shaded${o.left ? `, and ${answer} is left` : `, ${answer}`}.`,
+    // The alt never states the answer: on a question slide the brace is kept back until the
+    // reveal, and a screen reader (or the PDF's alt) must not hear it first.
+    alt: `A bar of ${wholeText} split into ${parts} equal parts of ${each}; ${shaded} ${shadedWord} shaded, and ${o.left ? "the parts left are" : "the shaded parts are"} braced as the answer.`,
     ...(o.title ? { title: o.title } : {}),
     bars: [
       {
