@@ -272,3 +272,12 @@ function render(node: RichNode, o: Options): string {
 export function serializeDoc(doc: RichDoc, options: Partial<Options> = {}): string {
   return blocks(doc, { fractions: options.fractions ?? false });
 }
+
+/**
+ * One line of plain text (a worksheet answer-key line, which is a string, not a doc) as inline
+ * HTML: escaped, with its maths fractions set stacked by the same finder and markup as a doc's
+ * paragraphs, so a key line and a question stem draw 3/4 the same way.
+ */
+export function plainLineHTML(text: string): string {
+  return text ? inline([{ type: "text", text }], true) : "";
+}

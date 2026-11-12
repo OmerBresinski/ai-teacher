@@ -42,8 +42,7 @@ export function buildFlow(worksheet: Worksheet, includeAnswerKey: boolean): Flow
     gapChars: gaps.get(block.id),
   }));
   // The self-assessment strip is the last thing a pupil fills in, so it goes after the questions
-  // and before the answer key. The page paints it at the foot of whichever page it lands on;
-  // pagination only reserves its height.
+  // and before the answer key. It flows straight after them, on whichever page it fits.
   if (worksheet.selfAssessment) items.push({ key: RAG_KEY, kind: "rag" });
   if (!includeAnswerKey) return items;
   const entries = answerKey(worksheet.blocks);
@@ -54,6 +53,32 @@ export function buildFlow(worksheet: Worksheet, includeAnswerKey: boolean): Flow
 }
 
 const isPageBreak = (item: FlowItem) => item.kind === "block" && item.block.type === "page-break";
+
+const isAnswerSpace = (block: WorksheetBlock) =>
+  block.type === "answer-box" || block.type === "lines";
+
+/**
+ * Whether a block must print on the same page as the block after it, on paper and in Word alike
+ * (`export/docx.ts` sets Word's "keep with next" from this). A heading or an instruction line
+ * never ends a page (it belongs to what it introduces), and a question never sits at the foot of a
+ * page with its answer box or lines over the page: the pupil would write the answer under the
+ * wrong question.
+ */
+export function blockKeepsWithNext(
+  block: WorksheetBlock,
+  next: WorksheetBlock | undefined,
+): boolean {
+  if (!next || next.type === "page-break") return false;
+  if (block.type === "heading" || block.type === "instructions") return true;
+  return !isAnswerSpace(block) && isAnswerSpace(next);
+}
+
+/** `blockKeepsWithNext` over the flow: the strip and the key are never kept with anything. */
+export function keepsWithNext(item: FlowItem, next: FlowItem | undefined): boolean {
+  return (
+    item.kind === "block" && next?.kind === "block" && blockKeepsWithNext(item.block, next.block)
+  );
+}
 
 /** The answer key always starts a fresh page (research/02 decision 17). */
 const startsPage = (item: FlowItem) => item.kind === "key-title";
@@ -77,7 +102,7 @@ export function paginate(
     used = 0;
   };
 
-  for (const item of items) {
+  for (const [i, item] of items.entries()) {
     // A page break carries no height of its own: it ends the page it sits on. But a break that
     // lands on an otherwise-empty page — a fresh page with nothing on it yet — has nothing to
     // break, so it is a no-op: it stays on the page without flushing. This covers both a leading
@@ -93,6 +118,20 @@ export function paginate(
 
     const height = heights[item.key] ?? 0;
     let room = available();
+    // A run kept together (a heading, its instructions, the first question and its answer box)
+    // moves to a fresh page whole when it does not fit what is left of this one. Only the run's
+    // first item decides, and only when the run fits a fresh page: a run taller than a page
+    // breaks between its items as before rather than leaving a page empty.
+    const prev = items[i - 1];
+    if (current.length > 0 && !(prev && keepsWithNext(prev, item))) {
+      let run = height;
+      for (let j = i; keepsWithNext(items[j] as FlowItem, items[j + 1]); j++)
+        run += heights[(items[j + 1] as FlowItem).key] ?? 0;
+      if (run > height && used + run > room && run <= contentH) {
+        flush();
+        room = available();
+      }
+    }
     // Move to a fresh page when this one is out of room — but only once page 1 already carries
     // something. Reflowing an empty page 1 would leave it holding only the header strip, which
     // prints as a baffling blank first page; instead the block stays put and is reported as

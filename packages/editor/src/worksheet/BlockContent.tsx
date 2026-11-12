@@ -2,6 +2,7 @@ import type { RichDoc, Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import type { CSSProperties, ReactNode } from "react";
 import { StoredImage } from "../images/StoredImage";
 import { RichText } from "../slide/elements/RichText";
+import { plainLineHTML } from "../text/serialize";
 import { escapeHtml, isDocEmpty, renderDocHTML } from "../text/static";
 import { type AnswerEntry, type FillGapBlock, matchingOrder, optionLetter } from "./answers";
 import { sheetSummary } from "./metrics";
@@ -444,10 +445,13 @@ export function AnswerKeyEntry({ entry, showMarks }: { entry: AnswerEntry; showM
       <div className="ws-q-main">
         {entry.search ? <WordSearchView block={entry.search} solved /> : null}
         {entry.lines.map((line, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: answer lines are positional
-          <div key={i} className="ws-key-line">
-            {line}
-          </div>
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: answer lines are positional
+            key={i}
+            className="ws-key-line"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: escaped by plainLineHTML, only its fraction spans are markup
+            dangerouslySetInnerHTML={{ __html: plainLineHTML(line) }}
+          />
         ))}
       </div>
       {showMarks && entry.marks ? <div className="ws-marks">{marksLabel(entry.marks)}</div> : null}

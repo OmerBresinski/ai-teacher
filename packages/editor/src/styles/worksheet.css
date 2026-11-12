@@ -9,7 +9,12 @@
  * prints. Only `--ws-*` variables are read here; the sheet paints from `sheetVars()` alone.
  */
 
+@import "./fractions.css";
+
 .ws-sheet {
+  /* Every fraction on a sheet is running text (a question, an answer, a key line): set tall
+     (`fractions.css`), 1.6em, so it reads from a desk as on a slide's body text. */
+  --td-frac: 1;
   --ws-pad: 51.02pt; /* 18mm */
   --ws-line-gap: 25.51pt; /* 9mm */
   --ws-rule: color-mix(in srgb, var(--ws-ink) 38%, #ffffff);
@@ -46,8 +51,8 @@
    four-sided clip would swallow them. */
 .ws-content {
   position: relative;
-  /* A definite height, not a max: the self-assessment strip is pinned to the
-     foot of this box, and `bottom: 0` needs a floor to sit on. */
+  /* A definite height, not a max, so the clip below sits at the foot of the
+     content box on every page. */
   height: calc(100% - 26pt);
   clip-path: inset(-100pt -100pt 0 -100pt);
 }
@@ -264,15 +269,10 @@
   padding-bottom: 0;
 }
 
-/* Pinned to the foot of the page it lands on. Pagination reserved the height,
-   so nothing above it moves. Scoped to the page: the measuring column keeps
-   the strip in flow. */
-.ws-page .ws-block.ws-rag-slot {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
+/* The strip flows straight after the last question, at the sheet's normal
+   block gap, on whichever page it fits. It used to be pinned to the foot of
+   its page, which left a tall empty band above it whenever the questions
+   ended high on the page (WS8). */
 
 /* ------------------------------------------------------------------ */
 /* Blocks                                                              */

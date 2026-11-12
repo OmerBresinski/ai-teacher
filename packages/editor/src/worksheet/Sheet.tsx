@@ -41,8 +41,8 @@ export function sheetVars(theme: Theme, size: PageSize = "A4"): CSSProperties {
 }
 
 /**
- * The wrapper class for one flow item. The self-assessment strip is pinned to the foot of its
- * page; pagination already reserved its height above.
+ * The wrapper class for one flow item. The self-assessment strip flows after the last question
+ * like any block; its class only drops the block padding under it (it ends its page).
  */
 export function flowItemClass(item: FlowItem): string {
   return item.kind === "rag" ? "ws-block ws-rag-slot" : "ws-block";
