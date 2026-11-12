@@ -179,7 +179,7 @@ export function WorksheetEditor({
   // context; it is stable per app boot, so it never re-renders session consumers by itself.
   const sessionWithImages = useMemo(() => ({ ...session, images }), [session, images]);
   const theme = useMemo(() => getTheme(worksheet?.themeId), [worksheet?.themeId]);
-  const { pages, oversize, measureNode } = useSheetPagination(
+  const { pages, oversize, measureNode, space } = useSheetPagination(
     worksheet ?? null,
     theme,
     worksheet?.includeAnswerKey ?? false,
@@ -536,6 +536,7 @@ export function WorksheetEditor({
                     worksheet={worksheet}
                     theme={theme}
                     pages={pages}
+                    space={space}
                     mode="edit"
                     className={session.editingId ? "ws-edit ws-typing" : "ws-edit"}
                     header={

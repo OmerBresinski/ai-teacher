@@ -31,6 +31,12 @@ export type SheetSizes = {
    * editor (`fonts-playful.css`) and so embedded in print.
    */
   font?: string;
+  /**
+   * R5: the tightest the sheet's answer spacing may go to save a whole page (`layoutPages`):
+   * ruled-line gap in pt and box multiplier. Print's page fill then hands the spare room back.
+   */
+  minLineGapPt: number;
+  minBoxScale: number;
 };
 
 export const SHEET_SIZES: Record<SheetBand, SheetSizes> = {
@@ -42,9 +48,24 @@ export const SHEET_SIZES: Record<SheetBand, SheetSizes> = {
     lineGapPt: Math.round(15 * MM * 100) / 100,
     boxScale: 1.3,
     font: FONT_STACKS.playpen,
+    // R5: 12mm, the ruling of a Year 2 exercise book, only when it saves a page.
+    minLineGapPt: Math.round(12 * MM * 100) / 100,
+    minBoxScale: 1.05,
   },
-  ks2: { type: 1.18, lineGapPt: Math.round(11 * MM * 100) / 100, boxScale: 1 },
-  secondary: { type: 1, lineGapPt: LINE_GAP, boxScale: 1 },
+  ks2: {
+    type: 1.18,
+    lineGapPt: Math.round(11 * MM * 100) / 100,
+    boxScale: 1,
+    minLineGapPt: LINE_GAP,
+    minBoxScale: 0.85,
+  },
+  secondary: {
+    type: 1,
+    lineGapPt: LINE_GAP,
+    boxScale: 1,
+    minLineGapPt: Math.round(8 * MM * 100) / 100,
+    minBoxScale: 0.85,
+  },
 };
 
 /** The sheet's band, from its year group, else its stored age band; secondary when neither says. */
