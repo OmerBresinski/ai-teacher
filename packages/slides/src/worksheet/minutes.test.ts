@@ -37,17 +37,21 @@ describe("time estimate from the sheet's own content", () => {
     expect(minutesUnrounded([q("m", { marks: 2 }), box("b")])).toBe(3);
   });
 
-  test("Reception to Year 2 take half as long again; secondary years take the weights as they are", () => {
+  test("Reception to Year 2 take a quarter longer; secondary years take the weights as they are", () => {
     const exit = [
       q("a", { answerLines: 2 }),
       q("b", { answerLines: 2 }),
       q("c", { answerLines: 2 }),
       q("d", { answerLines: 2 }),
     ];
-    expect(minutesUnrounded(exit, { yearGroup: "Year 2" })).toBe(12);
-    expect(minutesUnrounded(exit, { yearGroup: "Reception" })).toBe(12);
+    expect(minutesUnrounded(exit, { yearGroup: "Year 2" })).toBe(10);
+    expect(minutesUnrounded(exit, { yearGroup: "Reception" })).toBe(10);
     expect(minutesUnrounded(exit, { yearGroup: "Year 10" })).toBe(8);
     expect(estimateMinutes(exit, { yearGroup: "Year 2" })).toBe(10);
+    // A real Y2 Practice at 15 minutes is 6 items (practiceCounts: 2 + 3 + 1), two lines each:
+    // it must read as the 15 minutes it was made for (the 25 seen on 11 Nov was an 8-item STUB).
+    const y2Practice = Array.from({ length: 6 }, (_, i) => q(`p${i}`, { answerLines: 2 }));
+    expect(estimateMinutes(y2Practice, { yearGroup: "Year 2" })).toBe(15);
   });
 
   test("marked sheets are unchanged: marks at a minute and a half each", () => {

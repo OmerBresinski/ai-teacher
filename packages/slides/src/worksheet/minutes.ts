@@ -35,9 +35,9 @@ export const MINUTE_WEIGHTS = {
 
 /**
  * Pupils in Reception to Year 2 read and write more slowly, so their sheet's minutes are scaled
- * up by half; every other year takes the weights as they are.
+ * up by a quarter; every other year takes the weights as they are.
  */
-export const EARLY_YEARS_FACTOR = 1.5;
+export const EARLY_YEARS_FACTOR = 1.25;
 
 export type MinutesOptions = {
   /** The sheet's year group ("Year 2", "Reception"): Reception to Year 2 take longer. */
@@ -73,7 +73,7 @@ const wordCount = (doc: RichDoc): number => {
  * a word search 8, a matching block 4, a paragraph a minute per 80 words, a gap a minute, a
  * multiple choice item a minute; a question with no marks a minute plus its answer space (half a
  * minute a line, a minute per 48pt of working box), so a Practice sheet's seven unmarked items are
- * not read as zero (WS8); half as long again for Reception to Year 2; the sum to the nearest
+ * not read as zero (WS8); a quarter longer for Reception to Year 2; the sum to the nearest
  * five, and never under five. A rough guide
  * for the header and the recipe cards, not a timer.
  */
