@@ -1,0 +1,1718 @@
+{
+  "v5-r1-y2-greatfire": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did Pepys’s diary tell us about people escaping?",
+      "answer": "Some people escaped by boat with their belongings.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A child says only strong winds helped the fire spread. Is this right? Write why.",
+      "answer": "No. The houses were wooden and close together, and the summer before the fire was dry too.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which would help stop flames reaching another house: leaving close wooden houses standing or pulling houses down to make gaps?",
+      "answer": "Pulling houses down to make gaps.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A person writes that they saw the fire and saw some people escape by boat with their belongings. Which person’s diary matches this?",
+      "answer": "Samuel Pepys’s diary.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "A dry summer and close wooden houses helped the fire spread. Name one more thing that helped it spread and one way people helped stop it.",
+      "answer": "Strong winds carried flames between houses. People carried water in buckets or pulled down houses to make gaps.",
+      "working": null
+    }
+  ],
+  "v5-r1-y5-fractions": [
+    {
+      "where": "warm-up",
+      "question": "What is one quarter of 16 metres?",
+      "answer": "4 m",
+      "working": "16 ÷ 4 = 4 m"
+    },
+    {
+      "where": "warm-up",
+      "question": "A bar is split into five equal parts. What does six fifths show about the whole bar?",
+      "answer": "Six fifths extend one fifth beyond the whole.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A piece of ribbon is 18 metres long. How long is 3/4 of the ribbon?",
+      "answer": "13½ m",
+      "working": "18 ÷ 4 = 4½; 4½ × 3 = 13½ m"
+    },
+    {
+      "where": "core",
+      "question": "A bag costs £9. How much is 4/5 of its cost?",
+      "answer": "£7.20",
+      "working": "£9 = 900p; 900p ÷ 5 = 180p; 180p × 4 = 720p = £7.20"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “To find 3/4 of 20, I should divide 20 by 3 and then stop.” Is the pupil right? Explain the correct steps.",
+      "answer": "No. Divide 20 by 4 to find one quarter, then multiply that amount by 3 to find three quarters.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A length is 25 metres. How long is 8/5 of the length?",
+      "answer": "40 m",
+      "working": "25 ÷ 5 = 5; 5 × 8 = 40 m"
+    },
+    {
+      "where": "core",
+      "question": "A runner travels 40 metres. How far is 1¼ times that distance?",
+      "answer": "50 m",
+      "working": "40 ÷ 4 = 10; 40 + 10 = 50 m"
+    },
+    {
+      "where": "challenge",
+      "question": "A length of 32 metres is multiplied by 7/4. What is 3/4 of the result?",
+      "answer": "42 m",
+      "working": "32 ÷ 4 = 8; 8 × 7 = 56; 56 ÷ 4 = 14; 14 × 3 = 42 m"
+    }
+  ],
+  "v5-r1-y8-photosynthesis": [
+    {
+      "where": "warm-up",
+      "question": "Which two substances are the products of photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do leaf veins supply for photosynthesis?",
+      "answer": "Water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Sort these substances into reactants and products of photosynthesis: oxygen, water, glucose and carbon dioxide.",
+      "answer": "Reactants: carbon dioxide and water. Products: glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant's leaf becomes narrower but stays equally thin. Which support for photosynthesis changes, and which remains the same?",
+      "answer": "It absorbs less light. The short path for carbon dioxide to reach photosynthesising cells remains the same.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Stomata contain chlorophyll and absorb light for photosynthesis.” Correct the claim by stating the job of stomata and the job of chloroplasts.",
+      "answer": "Stomata allow carbon dioxide to enter the leaf. Chloroplasts contain chlorophyll, which absorbs light energy for photosynthesis.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil claims that the energy in a food chain comes directly from sunlight reaching the animals. What is the source of the stored energy passed through food chains?",
+      "answer": "Plants and algae absorb light energy and transfer it to a chemical store in glucose. Glucose provides food and stored energy for organisms.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Photosynthesis adds carbon dioxide to the atmosphere, so there is less oxygen available for respiration.” Is the pupil right? Explain using the effects of photosynthesis on atmospheric gases.",
+      "answer": "No. Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen, which most organisms need for respiration.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain two ways photosynthesis by plants supports organisms beyond the plants themselves: one through food chains and one through atmospheric gases.",
+      "answer": "Plants make glucose, which provides food and stored energy for organisms and supports almost all food chains. Photosynthesis also releases oxygen, which most organisms need for respiration.",
+      "working": null
+    }
+  ],
+  "v5-r2-y2-greatfire": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did the fire destroy besides St Paul’s Cathedral?",
+      "answer": "Thousands of London homes.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Two streets are in London during the fire. Both have strong winds, but only one has close wooden houses and a dry summer. Which street has more of the conditions that helped the fire spread?",
+      "answer": "The street with close wooden houses and a dry summer.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A person says carrying buckets was the only way people helped stop the fire. Is the person right? Give one other way people helped.",
+      "answer": "No. People also pulled down houses to make gaps.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Pepys saw people escaping by boat and wrote in an open diary. What could his diary tell us about their escape?",
+      "answer": "It could tell us that people escaped by boat with their belongings.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Give one reason the fire spread and one way people helped stop it.",
+      "answer": "Strong winds carried flames between houses. People pulled down houses to make gaps, and the gaps helped stop the flames.",
+      "working": null
+    }
+  ],
+  "v5-r2-y5-fractions": [
+    {
+      "where": "warm-up",
+      "question": "A bar is split into five equal parts. What does six fifths show about the whole bar?",
+      "answer": "Six fifths extend one fifth beyond the whole.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "One quarter of an amount is 3½ m. How many metres are three of those quarters?",
+      "answer": "10½ m",
+      "working": "3½ × 3 = 10½ m"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says that 6/5 of 25 is 30. Check the calculation and say whether the pupil is right.",
+      "answer": "30. Yes, the pupil is right.",
+      "working": "25 ÷ 5 = 5; 5 × 6 = 30"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon is 22 metres long. How many metres is 3/4 of the ribbon?",
+      "answer": "16½ m",
+      "working": "22 ÷ 4 = 5½; 5½ × 3 = 16½ m"
+    },
+    {
+      "where": "core",
+      "question": "A toy costs £9. How much is 4/5 of its price?",
+      "answer": "£7.20",
+      "working": "£9 = 900p; 900p ÷ 5 = 180p; 180p × 4 = 720p = £7.20"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “A fraction cannot be greater than one whole, so 7/5 of 20 must be less than 20.” Is the pupil right? Explain how you can tell.",
+      "answer": "No. Five fifths make one whole, and the seventh fifth is beyond the whole. So 7/5 of 20 is greater than 20.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A piece of fabric costs £8. How much is 3/4 of its price?",
+      "answer": "£6.00",
+      "working": "£8 = 800p; 800p ÷ 4 = 200p; 200p × 3 = 600p = £6.00"
+    },
+    {
+      "where": "challenge",
+      "question": "A bag costs £10. Find 6/5 of its price. Give your answer in pounds.",
+      "answer": "£12.00",
+      "working": "£10 = 1000p; 1000p ÷ 5 = 200p; 200p × 6 = 1200p = £12.00"
+    }
+  ],
+  "v5-r2-y8-photosynthesis": [
+    {
+      "where": "warm-up",
+      "question": "Which two products are made by photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which structures in a leaf contain chlorophyll?",
+      "answer": "Chloroplasts.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “A thin leaf absorbs more light because it is thin.” Is the pupil right? Explain what thinness helps with.",
+      "answer": "No. Thinness gives carbon dioxide a short path to photosynthesising cells.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf has chloroplasts, stomata and veins. Match each structure to its job: containing chlorophyll, allowing carbon dioxide to enter, or supplying water.",
+      "answer": "Chloroplasts contain chlorophyll; stomata allow carbon dioxide to enter; veins supply water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Light is a reactant, and carbon dioxide supplies the energy stored in glucose.” Explain why both parts of the claim are wrong.",
+      "answer": "Light is not a reactant in the word equation; chlorophyll absorbs light energy for photosynthesis. That energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, which organism first makes glucose and stores energy for the chain?",
+      "answer": "The grass makes glucose by photosynthesis, storing energy that supports the food chain.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant has water available, but carbon dioxide cannot enter one of its leaves. Which reactant is missing from that leaf, and which structure normally lets it enter?",
+      "answer": "Carbon dioxide is missing, and stomata normally let it enter.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain how a broad leaf can help a plant make glucose, and how the glucose can then support a food chain.",
+      "answer": "A broad leaf absorbs more light, and chlorophyll absorbs light energy for photosynthesis. This energy is transferred to a chemical store in glucose, which provides food and stored energy for organisms in food chains.",
+      "working": null
+    }
+  ],
+  "v5-r3-y2-greatfire": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the Great Fire like?",
+      "answer": "It was dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In 1666, one London street had close wooden houses and strong winds. Another had only a dry summer. Which street had 2 of the named causes that helped the fire spread?",
+      "answer": "The street with close wooden houses and strong winds.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Why can Pepys’s diary help us know about both the fire and people escaping by boat?",
+      "answer": "Pepys saw the fire himself, and his diary describes people escaping by boat with their belongings.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A child says the Great Fire destroyed every building in London. Is the child right?",
+      "answer": "No. The fire destroyed thousands of London homes and St Paul’s Cathedral, not every building.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain how wind helped the fire spread and how gaps and weaker winds helped stop it.",
+      "answer": "Strong winds carried flames between the houses. Gaps and weaker winds helped stop the flames.",
+      "working": null
+    }
+  ],
+  "v5-r3-y5-fractions": [
+    {
+      "where": "warm-up",
+      "question": "Find 6/5 of 25.",
+      "answer": "30",
+      "working": "25 ÷ 5 = 5; 5 × 6 = 30"
+    },
+    {
+      "where": "warm-up",
+      "question": "Find 3/4 of 16 metres.",
+      "answer": "12 m",
+      "working": "16 ÷ 4 = 4; 4 × 3 = 12 m"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon costs £9. Find 2/5 of its cost.",
+      "answer": "£3.60",
+      "working": "£9 = 900p; 900p ÷ 5 = 180p; 180p × 2 = 360p = £3.60"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “To find 7/5 of 30, I should divide 30 by 7.” Is the pupil right? Explain how to find 7/5 of 30.",
+      "answer": "42. No. The denominator tells us to divide 30 by 5 to find one fifth: 30 ÷ 5 = 6. Then take seven fifths: 6 × 7 = 42.",
+      "working": "30 ÷ 5 = 6; 6 × 7 = 42"
+    },
+    {
+      "where": "core",
+      "question": "Draw a bar model to find 5/4 of 20. Divide the bar into quarters and show which quarters you count.",
+      "answer": "25. A correct bar model shows 20 split into four equal parts, with five quarter-sized parts counted, including the part beyond the whole bar.",
+      "working": "20 ÷ 4 = 5; 5 × 5 = 25"
+    },
+    {
+      "where": "core",
+      "question": "A garden bed is 44 metres long. Find 1¼ of its length.",
+      "answer": "55 m",
+      "working": "44 ÷ 4 = 11; 44 + 11 = 55 m"
+    },
+    {
+      "where": "challenge",
+      "question": "A shop sells a bag for £10. Find 2/5 of the cost, then find 6/5 of that amount.",
+      "answer": "£4.80",
+      "working": "£10 = 1000p; 1000p ÷ 5 = 200p; 200p × 2 = 400p = £4; £4 = 400p; 400p ÷ 5 = 80p; 80p × 6 = 480p = £4.80"
+    }
+  ],
+  "v5-r3-y8-photosynthesis": [
+    {
+      "where": "warm-up",
+      "question": "In photosynthesis, which two substances are products?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do chloroplasts contain?",
+      "answer": "Chloroplasts contain chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Two leaves are the same in every way except that one is broad and the other is thin. Which one absorbs more light?",
+      "answer": "The broad leaf absorbs more light.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf needs to let carbon dioxide reach its photosynthesising cells over a short distance. Which leaf feature helps with this?",
+      "answer": "Being thin helps because carbon dioxide has a short path to the photosynthesising cells.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil is labelling a leaf diagram. Which structure should they label as allowing carbon dioxide to enter the leaf?",
+      "answer": "The stomata.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil claims that a rabbit gets its food and energy directly from sunlight. Is the pupil right? Explain why.",
+      "answer": "No. Plants and algae use light energy to make glucose, which provides food and stored energy for organisms. This stored energy supports food chains when organisms eat.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant photosynthesises. What happens to the carbon dioxide in the atmosphere, and what gas does the plant release?",
+      "answer": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain how photosynthesis in plants can both support a food chain and change the gases in the atmosphere.",
+      "answer": "Plants make glucose using light energy, and glucose provides food and stored energy for organisms in food chains. Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    }
+  ],
+  "v5-r4-y2-greatfire": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What happened to thousands of London homes in the fire?",
+      "answer": "The fire destroyed them.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says strong winds were the only thing that helped the fire spread. Are they right? Write 2 other things that helped it spread.",
+      "answer": "No. Close wooden houses and a dry summer also helped the fire spread.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which could Pepys’s diary tell us about: people escaping by boat with their belongings, or people using a quill?",
+      "answer": "People escaping by boat with their belongings.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "People have made gaps by pulling down houses, and the winds are weaker. Will these changes help stop the fire?",
+      "answer": "Yes. Gaps and weaker winds helped stop the fire.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Draw a diary page with a picture showing what Pepys saw and a quill he could use to write about it.",
+      "answer": "A correct drawing shows the fire Pepys saw and a quill.",
+      "working": null
+    }
+  ],
+  "v5-r4-y5-fractions": [
+    {
+      "where": "warm-up",
+      "question": "What is 1/4 of 18 metres?",
+      "answer": "4½ m",
+      "working": "18 ÷ 4 = 4½ m"
+    },
+    {
+      "where": "warm-up",
+      "question": "What is 1/5 of 35?",
+      "answer": "7",
+      "working": "35 ÷ 5 = 7"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon is £9. What is 3/5 of its price?",
+      "answer": "£5.40",
+      "working": "£9 = 900p; 900p ÷ 5 = 180p; 180p × 3 = 540p = £5.40"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says that 4/5 of 35 is 7 because 35 ÷ 5 = 7. What is 4/5 of 35?",
+      "answer": "28. The pupil has found one fifth. Four fifths means taking four of those parts.",
+      "working": "35 ÷ 5 = 7; 7 × 4 = 28"
+    },
+    {
+      "where": "core",
+      "question": "A tray holds 44 biscuits. How many biscuits are in 1¼ trays?",
+      "answer": "55 biscuits",
+      "working": "44 ÷ 4 = 11; 44 + 11 = 55 biscuits"
+    },
+    {
+      "where": "core",
+      "question": "How much is 7/5 of 30?",
+      "answer": "42",
+      "working": "30 ÷ 5 = 6; 6 × 7 = 42"
+    },
+    {
+      "where": "core",
+      "question": "A pupil finds 1/4 of 22 metres and says this is the answer to 3/4 of 22 metres. Is the pupil right? Give the correct answer and explain.",
+      "answer": "16½ m. No. The pupil has found one quarter; to find three quarters, multiply one quarter by 3.",
+      "working": "22 ÷ 4 = 5½; 5½ × 3 = 16½ m"
+    },
+    {
+      "where": "challenge",
+      "question": "A length of ribbon is 25 metres. How many metres is 1¼ times 4/5 of its length?",
+      "answer": "25 m",
+      "working": "25 ÷ 5 = 5; 5 × 4 = 20; 20 ÷ 4 = 5; 20 + 5 = 25 m"
+    }
+  ],
+  "v5-r4-y8-photosynthesis": [
+    {
+      "where": "warm-up",
+      "question": "A plant makes glucose by photosynthesis. What two products are made?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do chloroplasts contain?",
+      "answer": "Chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant has one broad, thick leaf and one narrow, thin leaf. Which leaf absorbs more light, and which gives carbon dioxide a shorter path to photosynthesising cells?",
+      "answer": "The broad leaf absorbs more light. The thin leaf gives carbon dioxide a shorter path.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf needs carbon dioxide and water for photosynthesis. Which leaf structure allows each material to enter or reach the leaf: stomata or veins?",
+      "answer": "Stomata allow carbon dioxide to enter. Veins supply water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Carbon dioxide supplies the energy for photosynthesis.” Is the pupil right? Explain where the energy comes from and where it is transferred.",
+      "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and the energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A process in plants removes carbon dioxide from the atmosphere and releases a gas needed by most organisms for respiration. Which gas does it release?",
+      "answer": "Oxygen.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, which organism first makes glucose by photosynthesis?",
+      "answer": "The grass.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "A pupil says, “The rabbit gets its stored energy directly from sunlight in the food chain grass → rabbit → fox.” Explain how the energy gets from sunlight to the rabbit.",
+      "answer": "Plants absorb light energy and transfer it to a chemical store in glucose. The rabbit gets food and stored energy by eating the grass.",
+      "working": null
+    }
+  ],
+  "v5-r5-y2-greatfire": [
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the fire like?",
+      "answer": "It was dry.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In one part of London, strong winds blew past wooden houses built close together. In another, strong winds blew past houses that were not close together. Where would flames have more nearby houses to reach?",
+      "answer": "In the part where the wooden houses were close together.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A child says Pepys only heard about the fire. Is the child right? Why?",
+      "answer": "No. Pepys saw the fire himself.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which plan uses both ways people helped stop the fire: carrying water in buckets and pulling down houses?",
+      "answer": "Carry water in buckets and pull down houses to make gaps.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "How did strong winds and close wooden houses help the fire spread?",
+      "answer": "Strong winds carried flames between the houses, and the close wooden houses gave the flames nearby houses to reach.",
+      "working": null
+    }
+  ],
+  "v5-r5-y5-fractions": [
+    {
+      "where": "warm-up",
+      "question": "What is one fifth of 35?",
+      "answer": "7",
+      "working": "35 ÷ 5 = 7"
+    },
+    {
+      "where": "warm-up",
+      "question": "What is one quarter of 18 metres?",
+      "answer": "4½ m",
+      "working": "18 ÷ 4 = 4½ m"
+    },
+    {
+      "where": "core",
+      "question": "A piece of ribbon is 18 metres long. How long is 3/4 of it?",
+      "answer": "13½ m",
+      "working": "18 ÷ 4 = 4½; 4½ × 3 = 13½ m"
+    },
+    {
+      "where": "core",
+      "question": "A book costs £9. How much do 2/5 of its cost come to?",
+      "answer": "£3.60",
+      "working": "£9 = 900p; 900p ÷ 5 = 180p; 180p × 2 = 360p = £3.60"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “6/5 of 25 must be less than 25 because a fraction is always less than a whole.” Is the pupil right? Explain why.",
+      "answer": "30. No. Six fifths means six fifth-sized parts. Five parts make one whole, and the sixth part extends beyond the whole.",
+      "working": "25 ÷ 5 = 5; 5 × 6 = 30"
+    },
+    {
+      "where": "core",
+      "question": "Draw a bar model to find 1¼ of 40.",
+      "answer": "50. A correct bar model shows one whole of 40 and one quarter of 40, which is 10, making 50 altogether.",
+      "working": "40 ÷ 4 = 10; 40 + 10 = 50"
+    },
+    {
+      "where": "core",
+      "question": "A shop has £10 to share equally into five parts. How much are three of those parts worth?",
+      "answer": "£6",
+      "working": "£10 = 1000p; 1000p ÷ 5 = 200p; 200p × 3 = 600p = £6"
+    },
+    {
+      "where": "challenge",
+      "question": "A piece of ribbon is 20 metres long. Find 3/4 of its length, then find 6/5 of that amount. What is the final amount?",
+      "answer": "18 m",
+      "working": "20 ÷ 4 = 5; 5 × 3 = 15; 15 ÷ 5 = 3; 3 × 6 = 18 m"
+    }
+  ],
+  "v5-r5-y8-photosynthesis": [
+    {
+      "where": "warm-up",
+      "question": "Which two substances are made by photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do chloroplasts contain?",
+      "answer": "Chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant's leaf veins are damaged, but its stomata are open. Which material will be less well supplied to the leaf for photosynthesis?",
+      "answer": "Water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf has working veins and chloroplasts, but its stomata are blocked. Which reactant will have more difficulty entering the leaf?",
+      "answer": "Carbon dioxide.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Carbon dioxide supplies the energy that is stored in glucose.” Is the pupil right? Explain your answer.",
+      "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and that energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, which organism makes glucose by photosynthesis?",
+      "answer": "The grass.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “A rabbit gets its food and stored energy directly from sunlight.” Explain why this claim is wrong.",
+      "answer": "Plants use light energy to make glucose, which stores energy. The rabbit gets food and stored energy through the food chain when it eats.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain how chlorophyll in a plant's chloroplasts helps stored energy reach an organism that eats the plant.",
+      "answer": "Chlorophyll absorbs light energy for photosynthesis, and this energy is transferred to a chemical store in glucose. The glucose provides food and stored energy, which can pass through a food chain when the plant is eaten.",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-A": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the fire like?",
+      "answer": "It was dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which would help stop flames reaching more houses: close wooden houses or a gap where houses had been pulled down? Why?",
+      "answer": "A gap would help because there would be fewer nearby houses for the flames to reach.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A child says the fire destroyed every building in London. Is that right? Write what the fire destroyed.",
+      "answer": "No. It destroyed thousands of London homes and St Paul’s Cathedral.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Pepys saw the fire and wrote about it in his diary. What does this tell us about his diary?",
+      "answer": "It is an eyewitness account.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Give two reasons the fire spread between the houses.",
+      "answer": "Strong winds carried flames between the houses. The wooden houses were close together.",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-B": [
+    {
+      "where": "warm-up",
+      "question": "What tool did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the fire like?",
+      "answer": "It was dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A child says strong winds were the only reason the fire spread. Is this right? Give one other reason.",
+      "answer": "No. Wooden houses were built close together, or the summer before the fire was dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Pepys saw the fire and wrote about people escaping. Was his diary about something he saw himself or something he only heard about?",
+      "answer": "Something he saw himself.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "People are carrying water in buckets, but a neighbour says that was the only way they helped stop the fire. What else did people do?",
+      "answer": "They pulled down houses to make gaps.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Give two reasons, other than strong winds, that helped the fire spread.",
+      "answer": "Wooden houses were built close together, and the summer before the fire was dry.",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-C": [
+    {
+      "where": "warm-up",
+      "question": "Where did Pepys write?",
+      "answer": "In an open diary.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did Pepys use to write?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which case has all three things that helped flames spread? Tick one. Strong winds, close wooden houses, dry summer Strong winds, gaps, weaker winds",
+      "answer": "Strong winds, close wooden houses, dry summer",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Finish the sentence. The fire spread because",
+      "answer": "strong winds carried flames between close wooden houses, and the summer before was dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which could Pepys’s diary tell us about? Tick one. Some people escaping by boat with belongings Every Londoner escaping by boat",
+      "answer": "Some people escaping by boat with belongings",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Put these in order. Write the letters. A. Gaps and weaker winds helped stop the fire. B. People carried water in buckets. C. People pulled down houses to make gaps.",
+      "answer": "B, C, A",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-D": [
+    {
+      "where": "warm-up",
+      "question": "Where did Pepys write? Write one answer.",
+      "answer": "In an open diary.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did Pepys use to write? Write one word.",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A dry summer came before the fire. Which helped flames spread? Tick one. Dry summer Heavy rain",
+      "answer": "Dry summer",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which sentence fits Pepys’s diary? Tick one. Some people escaped by boat Everyone escaped by boat",
+      "answer": "Some people escaped by boat",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Finish the sentence. Buckets were not the only help because",
+      "answer": "People also pulled down houses to make gaps.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Which pair shows how flames spread and how people helped stop them? Tick one. Wind, gaps Buckets, dry summer",
+      "answer": "Wind, gaps",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-E": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What happened to thousands of London homes?",
+      "answer": "They were destroyed.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Circle the set of conditions that helped the fire spread: strong winds, close wooden houses and a dry summer; or gaps between houses and weaker winds.",
+      "answer": "Strong winds, close wooden houses and a dry summer.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A person says that pulling down houses made the flames spread faster. Is this right? Why?",
+      "answer": "No. Pulling down houses made gaps, and gaps helped stop the flames.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A child says Pepys only heard about the fire from other people. What fact shows this is wrong?",
+      "answer": "Pepys saw the fire himself.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "A report says the close wooden houses helped the fire spread. Give two other facts that also helped the fire spread.",
+      "answer": "Strong winds carried flames between the houses, and the summer before the fire was dry.",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-F": [
+    {
+      "where": "warm-up",
+      "question": "What did Pepys use to write? Write one word.",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the fire like? Write one word.",
+      "answer": "Dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A house is near strong winds and close wooden houses. Which could help flames spread? Tick one. Strong winds Buckets Weaker winds",
+      "answer": "Strong winds",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Finish the sentence. People pulled down houses to make gaps because",
+      "answer": "gaps and weaker winds helped stop the fire.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Pepys saw people escaping by boat. What did they carry away? Write one word.",
+      "answer": "Belongings.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "People make gaps between houses, and the winds become weaker. What helps stop the fire? Tick one. Gaps and weaker winds Close wooden houses Strong winds",
+      "answer": "Gaps and weaker winds",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-G": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write?",
+      "answer": "A quill",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the fire like?",
+      "answer": "Dry",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which would help flames spread between London houses? Tick one. Close wooden houses Gaps between houses Weaker winds",
+      "answer": "Close wooden houses",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Finish the sentence. Buckets were not the only help because",
+      "answer": "People also pulled down houses. Gaps and weaker winds helped stop the fire.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which does Pepys’s diary tell us about escaping? Tick one. Some people escaped by boat with belongings Everyone escaped by boat People escaped by quill",
+      "answer": "Some people escaped by boat with belongings",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Which pair helped spread, then stop the fire? Tick one. Strong winds; gaps between houses Weaker winds; close wooden houses Gaps between houses; strong winds",
+      "answer": "Strong winds; gaps between houses",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-H": [
+    {
+      "where": "warm-up",
+      "question": "Who saw the fire? Tick one. Samuel Pepys London homes",
+      "answer": "Samuel Pepys",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did Pepys use to write?",
+      "answer": "A quill",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Which set helped the fire spread? Tick one. Strong winds, close wooden houses, dry summer Buckets, gaps, weaker winds",
+      "answer": "Strong winds, close wooden houses, dry summer",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Put these in order. Write the letters. A. Gaps and weaker winds helped stop the fire. B. People pulled down houses. C. People carried water in buckets.",
+      "answer": "C, B, A",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Finish the sentence. The fire spread because",
+      "answer": "strong winds carried flames between close wooden houses, and the summer before was dry.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Which fits Pepys’s diary? Tick one. Some escaped by boat. Everyone escaped by boat.",
+      "answer": "Some escaped by boat.",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-I": [
+    {
+      "where": "warm-up",
+      "question": "What did Samuel Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What was the summer before the fire like?",
+      "answer": "It was dry.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In 1666, one London street had strong winds and close wooden houses. Another had only strong winds. Which street had more conditions that helped flames spread?",
+      "answer": "The street with strong winds and close wooden houses.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A person says buckets alone helped stop the fire. Write why this is not right.",
+      "answer": "People also pulled down houses to make gaps, and gaps and weaker winds helped stop the fire.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Pepys saw the fire and wrote in an open diary. What could his diary tell us about people escaping?",
+      "answer": "It tells us that some people escaped by boat with their belongings.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "A person says Pepys’s diary proves everyone escaped by boat. Write why this is not right, using two facts about Pepys’s account.",
+      "answer": "Pepys saw the fire and described some people escaping by boat with their belongings, but his diary does not tell us that everyone escaped that way.",
+      "working": null
+    }
+  ],
+  "blind-y2-greatfire-sheet-J": [
+    {
+      "where": "warm-up",
+      "question": "What did Pepys use to write in his diary?",
+      "answer": "A quill.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What did the fire destroy in London besides St Paul’s Cathedral?",
+      "answer": "Thousands of homes.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Circle the two things that helped the flames spread: strong winds, close wooden houses, buckets or gaps.",
+      "answer": "Strong winds and close wooden houses.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A Londoner says buckets were the only help in stopping the fire. Is this right? Write one reason.",
+      "answer": "No. People also pulled down houses to make gaps, and gaps and weaker winds helped stop the fire.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Pepys saw the fire and wrote in his diary about people escaping by boat with their belongings. What does this tell you about his diary?",
+      "answer": "It is an eyewitness account.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Write two facts that help explain why the fire spread and how people helped stop it.",
+      "answer": "Strong winds carried flames between the houses. People pulled down houses to make gaps, and gaps and weaker winds helped stop the fire.",
+      "working": null
+    }
+  ],
+  "blind-y5-fractions-sheet-A": [
+    {
+      "where": "warm-up",
+      "question": "Find 3/4 of 12 metres.",
+      "answer": "9 m",
+      "working": "12 ÷ 4 = 3; 3 × 3 = 9 m"
+    },
+    {
+      "where": "warm-up",
+      "question": "Find 6/5 of 25.",
+      "answer": "30",
+      "working": "25 ÷ 5 = 5; 5 × 6 = 30"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says that 7/5 of 15 is 3 because they divided 15 by 5 and stopped. Is the pupil right? Explain how to find the answer.",
+      "answer": "21. No. First find one fifth: 15 ÷ 5 = 3. Then find seven fifths: 3 × 7 = 21.",
+      "working": "15 ÷ 5 = 3; 3 × 7 = 21"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon is 18 metres long. Find 3/4 of its length.",
+      "answer": "13½ m",
+      "working": "18 ÷ 4 = 4½; 4½ × 3 = 13½ m"
+    },
+    {
+      "where": "core",
+      "question": "A bag holds 30 marbles. Find 6/5 of the number of marbles in the bag.",
+      "answer": "36 marbles",
+      "working": "30 ÷ 5 = 6; 6 × 6 = 36"
+    },
+    {
+      "where": "challenge",
+      "question": "A bottle contains 20 litres of water. Find 6/5 of 3/4 of the amount of water in the bottle.",
+      "answer": "18 litres",
+      "working": "20 ÷ 4 = 5; 5 × 3 = 15; 15 ÷ 5 = 3; 3 × 6 = 18 litres"
+    }
+  ],
+  "blind-y5-fractions-sheet-B": [
+    {
+      "where": "warm-up",
+      "question": "What is 1/4 of 12 metres?",
+      "answer": "3 m",
+      "working": "12 ÷ 4 = 3 m"
+    },
+    {
+      "where": "warm-up",
+      "question": "What is 6/5 of 25?",
+      "answer": "30",
+      "working": "25 ÷ 5 = 5; 5 × 6 = 30"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon is 18 metres long. How long is 3/4 of the ribbon?",
+      "answer": "13½ m",
+      "working": "18 ÷ 4 = 4½; 4½ × 3 = 13½ m"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Each quarter of 10 metres must be a whole number of metres.” Is the pupil right? Give a reason.",
+      "answer": "No. Dividing 10 metres into four equal parts gives 2½ metres in each part, so each quarter does not have to be a whole number of metres.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A 20-metre length of rope is used to make a length that is 6/5 as long. How long is the new length?",
+      "answer": "24 m",
+      "working": "20 ÷ 5 = 4; 4 × 6 = 24 m"
+    },
+    {
+      "where": "challenge",
+      "question": "First find 3/4 of 18. Then find 6/5 of your answer. What is the final answer?",
+      "answer": "16.2",
+      "working": "18 ÷ 4 = 4½; 4½ × 3 = 13½; 13½ ÷ 5 = 2.7; 2.7 × 6 = 16.2"
+    }
+  ],
+  "blind-y5-fractions-sheet-C": [
+    {
+      "where": "warm-up",
+      "question": "What is 1/4 of 16?",
+      "answer": "4",
+      "working": "16 ÷ 4 = 4"
+    },
+    {
+      "where": "warm-up",
+      "question": "What is 1/5 of 30?",
+      "answer": "6",
+      "working": "30 ÷ 5 = 6"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon is 35 metres long. How long is 6/5 of the ribbon?",
+      "answer": "42 m",
+      "working": "35 ÷ 5 = 7; 7 × 6 = 42 m"
+    },
+    {
+      "where": "core",
+      "question": "Use a bar model to find 1¼ of 40.",
+      "answer": "50",
+      "working": "40 ÷ 4 = 10; 40 + 10 = 50"
+    },
+    {
+      "where": "core",
+      "question": "What is 3/4 of 20?",
+      "answer": "15",
+      "working": "20 ÷ 4 = 5; 5 × 3 = 15"
+    },
+    {
+      "where": "challenge",
+      "question": "A bar represents 30. Use a bar model to find 7/5 of 30.",
+      "answer": "42",
+      "working": "30 ÷ 5 = 6; 6 × 7 = 42"
+    }
+  ],
+  "blind-y5-fractions-sheet-D": [
+    {
+      "where": "warm-up",
+      "question": "What is 1/4 of 18 metres? Give your answer in metres.",
+      "answer": "4½ m",
+      "working": "18 ÷ 4 = 4½ m"
+    },
+    {
+      "where": "warm-up",
+      "question": "What is 1/5 of 25? Give your answer.",
+      "answer": "5",
+      "working": "25 ÷ 5 = 5"
+    },
+    {
+      "where": "core",
+      "question": "A ribbon is 18 metres long. How long is 3/4 of the ribbon? Give your answer in metres.",
+      "answer": "13½ m",
+      "working": "18 ÷ 4 = 4½; 4½ × 3 = 13½ m"
+    },
+    {
+      "where": "core",
+      "question": "A pupil says that 2/5 of £9 is 360 pounds because 900p ÷ 5 × 2 = 360p. Is the pupil right? Give the correct amount in pounds and explain.",
+      "answer": "3.60 pounds. The pupil is not right because 360p is 3.60 pounds, not 360 pounds.",
+      "working": "900p ÷ 5 = 180p; 180p × 2 = 360p; 360p = 3.60 pounds"
+    },
+    {
+      "where": "core",
+      "question": "A bag holds 35 counters. How many counters is 6/5 of that amount?",
+      "answer": "42 counters",
+      "working": "35 ÷ 5 = 7; 7 × 6 = 42"
+    },
+    {
+      "where": "core",
+      "question": "A pupil claims that 7/4 of 16 must be less than 16 because it is written as a fraction. Is the claim right? Find 7/4 of 16 and explain.",
+      "answer": "28. The claim is not right: seven quarters are more than one whole because four quarters make one whole and three more quarters extend beyond it.",
+      "working": "16 ÷ 4 = 4; 4 × 7 = 28"
+    },
+    {
+      "where": "challenge",
+      "question": "A pupil says that 3/5 of £10 is more than 7/5 of 25. Work out both amounts, then decide whether the claim is right. Give the money amount in pounds.",
+      "answer": "35; 3/5 of £10 is £6, and £6 is less than 35, so the claim is not right.",
+      "working": "1000p ÷ 5 = 200p; 200p × 3 = 600p; 600p = 6 pounds; 25 ÷ 5 = 5; 5 × 7 = 35"
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-A": [
+    {
+      "where": "warm-up",
+      "question": "A plant has made glucose by photosynthesis. What other product has it made?",
+      "answer": "Oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What kind of store does energy enter when it is transferred into glucose?",
+      "answer": "A chemical store.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant's leaf veins are damaged and cannot supply water. Which reactant can no longer be supplied to the leaf for photosynthesis?",
+      "answer": "Water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Chloroplasts absorb light energy.” Explain the mistake.",
+      "answer": "Chloroplasts contain chlorophyll. Chlorophyll absorbs light energy for photosynthesis.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A fox gets energy by eating a rabbit that has eaten grass. Explain how energy from light can reach the fox.",
+      "answer": "Grass absorbs light energy and transfers it to a chemical store in glucose. Glucose provides food and stored energy, which can pass through the food chain when organisms eat.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf needs carbon dioxide and water for photosynthesis. Which leaf structure lets carbon dioxide enter, and which supplies water?",
+      "answer": "Stomata let carbon dioxide enter, and leaf veins supply water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant is photosynthesising. Which gas does it release that most organisms need for respiration?",
+      "answer": "Oxygen.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "A plant has a broad leaf. Trace how the extra light it absorbs can contribute to energy being stored in glucose.",
+      "answer": "A broad leaf absorbs more light. Chlorophyll absorbs light energy for photosynthesis, and energy is transferred to a chemical store in glucose.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-B": [
+    {
+      "where": "warm-up",
+      "question": "Name the two products of photosynthesis.",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which substance do chloroplasts contain?",
+      "answer": "Chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant's leaf veins are not supplying water. Which material for photosynthesis is affected, and which leaf structure normally supplies it?",
+      "answer": "Water is affected. Leaf veins normally supply it.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “A rabbit gets the energy for its food chain directly from sunlight.” Is this claim right? Explain how energy gets into the food chain.",
+      "answer": "No. Plants and algae use light energy to make glucose, where the energy is stored. This supports food chains when organisms get food from plants or other organisms.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf is broad but thick. Which feature helps it absorb more light, and which feature would need to change to give carbon dioxide a shorter path to photosynthesising cells?",
+      "answer": "Its broad shape helps it absorb more light. It would need to be thinner to give carbon dioxide a shorter path.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil puts light in the photosynthesis word equation as a reactant. Explain why this is incorrect, and state what light does instead.",
+      "answer": "Light is not a substance in the word equation. It supplies energy, which chlorophyll absorbs for photosynthesis; energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant is photosynthesising. What happens to the carbon dioxide in the atmosphere, and what happens to the oxygen?",
+      "answer": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain how a broad, thin leaf with chloroplasts can support photosynthesis in two different ways.",
+      "answer": "A broad leaf absorbs more light, and a thin leaf gives carbon dioxide a short path to photosynthesising cells. Chloroplasts contain chlorophyll, which absorbs light energy for photosynthesis.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-C": [
+    {
+      "where": "warm-up",
+      "question": "Which leaf structure contains chlorophyll?",
+      "answer": "Chloroplasts contain chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which leaf structure supplies water?",
+      "answer": "Leaf veins supply water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says that glucose and oxygen are reactants in photosynthesis. Is the pupil right? Give the correct category for both substances.",
+      "answer": "No. Glucose and oxygen are products of photosynthesis.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf has chloroplasts but receives no light. Can its chlorophyll absorb light energy for photosynthesis? Choose yes or no.",
+      "answer": "No. Without light, chlorophyll cannot absorb light energy for photosynthesis.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf is thin, but its stomata are blocked. Which material needed for photosynthesis will have less access to the leaf: carbon dioxide or water?",
+      "answer": "Carbon dioxide. Stomata allow carbon dioxide to enter the leaf.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil claims that photosynthesis adds carbon dioxide to the atmosphere and removes oxygen. State the correct change to each gas.",
+      "answer": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, how does energy from light first become stored energy available to the rabbit?",
+      "answer": "Grass absorbs light energy and transfers energy to a chemical store in glucose. The rabbit gets food and stored energy by eating the grass.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain two ways photosynthesis in grass supports the rabbit and fox food chain and affects the atmosphere.",
+      "answer": "Photosynthesis makes glucose, which provides food and stored energy for organisms in the food chain. It also removes carbon dioxide from the atmosphere and releases oxygen, which most organisms need for respiration.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-D": [
+    {
+      "where": "warm-up",
+      "question": "Which two products are made during photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do chloroplasts contain?",
+      "answer": "Chloroplasts contain chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A gardener is checking a leaf's structures. Match each structure to its job: chloroplasts, stomata and leaf veins. The jobs are containing chlorophyll, allowing carbon dioxide to enter, and supplying water.",
+      "answer": "Chloroplasts contain chlorophyll; stomata allow carbon dioxide to enter; leaf veins supply water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, which organism first makes the glucose that provides food and stored energy for the chain?",
+      "answer": "The grass first makes the glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says that a fox gets its food and stored energy directly from sunlight. Is the pupil right? Explain why.",
+      "answer": "No. Plants use light energy to make glucose, where energy is stored. That food and stored energy support organisms through food chains.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "If photosynthesis in plants and algae stopped, which two changes caused by photosynthesis would no longer happen in the atmosphere?",
+      "answer": "Carbon dioxide would no longer be removed from the atmosphere, and oxygen would no longer be released.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "The word equation for photosynthesis includes carbon dioxide and water. Explain how stomata and leaf veins help supply these two reactants.",
+      "answer": "Stomata allow carbon dioxide to enter the leaf. Leaf veins supply water.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-E": [
+    {
+      "where": "warm-up",
+      "question": "What two substances are made by photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do chloroplasts contain?",
+      "answer": "Chloroplasts contain chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf's stomata allow carbon dioxide to enter, but its veins are not supplying water. Explain why the leaf is not being supplied with both reactants for photosynthesis.",
+      "answer": "Stomata allow carbon dioxide to enter, but veins supply water. Without water being supplied by the veins, the leaf does not have both reactants.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf's veins are not supplying water. Which material needed for photosynthesis is not being supplied by the veins?",
+      "answer": "Water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Light is one of the substances in the word equation for photosynthesis.” Is the pupil right? Explain why or why not.",
+      "answer": "No. Light supplies energy for photosynthesis, and chlorophyll absorbs that energy. The energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, which organism makes glucose by photosynthesis?",
+      "answer": "The grass.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Photosynthesis is happening in a group of plants. Which gas does it remove from the atmosphere, and which gas does it release?",
+      "answer": "It removes carbon dioxide and releases oxygen.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain two ways photosynthesis supports organisms beyond the plant: one through food chains and one through atmospheric gases.",
+      "answer": "Plants make glucose, which provides food and stored energy for organisms and supports almost all food chains. Photosynthesis releases oxygen, which most organisms need for respiration.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-F": [
+    {
+      "where": "warm-up",
+      "question": "Which two substances are products of photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which leaf structures supply water for photosynthesis?",
+      "answer": "Leaf veins.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant’s leaf veins are not supplying water to its leaves. Which reactant named in the photosynthesis word equation is affected?",
+      "answer": "Water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A learner says, “Carbon dioxide gives photosynthesis its energy.” Is the learner right? Explain why.",
+      "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A learner labels glucose as a reactant and water as a product. Correct both labels using the photosynthesis word equation.",
+      "answer": "Glucose is a product and water is a reactant.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In a food chain, a plant is eaten by an insect, which is then eaten by a bird. If the plant makes glucose by photosynthesis, what does that glucose provide for organisms in the food chain?",
+      "answer": "Food and stored energy.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf is broad but not thin. Which benefit of its broad shape can it still have?",
+      "answer": "It can absorb more light.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Give two ways photosynthesis by plants supports other organisms, using food chains and atmospheric gases in your answer.",
+      "answer": "Plants make glucose, which provides food and stored energy for organisms and supports almost all food chains. Photosynthesis releases oxygen, which most organisms need for respiration.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-G": [
+    {
+      "where": "warm-up",
+      "question": "Which leaf structure supplies water for photosynthesis?",
+      "answer": "Leaf veins.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "What do chloroplasts contain?",
+      "answer": "Chlorophyll.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A food chain starts with algae. Which organism in the chain makes glucose by photosynthesis?",
+      "answer": "The algae make glucose by photosynthesis.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A gardener says that leaf veins let carbon dioxide into a leaf. Is this right? Give the correct job of veins and the structure that lets carbon dioxide enter.",
+      "answer": "No. Leaf veins supply water, while stomata allow carbon dioxide to enter.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant has water and carbon dioxide but no light. Which product will it not make by photosynthesis, and why?",
+      "answer": "It will not make glucose by photosynthesis because chlorophyll cannot absorb light energy for photosynthesis.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "Someone says a rabbit gets its food and stored energy directly from sunlight. Explain why this is not right, using the grass → rabbit → fox food chain.",
+      "answer": "Plants use light energy to make glucose, which provides food and stored energy. This stored energy supports the food chain when organisms eat.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant makes glucose and oxygen by photosynthesis. Which of these products provides food and stored energy for organisms, and which is needed by most organisms for respiration?",
+      "answer": "Glucose provides food and stored energy; oxygen is needed by most organisms for respiration.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "A classmate claims that photosynthesis matters only to plants. Give two reasons from its effects on food chains and atmospheric gases to show why this claim is wrong.",
+      "answer": "Glucose made by plants provides food and stored energy for organisms, supporting almost all food chains. Photosynthesis also releases oxygen, which is needed by most organisms for respiration.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-H": [
+    {
+      "where": "warm-up",
+      "question": "Name the two products of photosynthesis.",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which structures in leaf cells contain chlorophyll?",
+      "answer": "Chloroplasts.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A gardener compares a broad, thick leaf with a narrow, thin leaf. Which leaf absorbs more light, and which gives carbon dioxide a shorter path to photosynthesising cells? Name one leaf for each effect.",
+      "answer": "The broad, thick leaf absorbs more light. The narrow, thin leaf gives carbon dioxide a shorter path.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf's veins are not supplying water. Which material for photosynthesis is no longer being supplied by the veins?",
+      "answer": "Water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "In the food chain grass → rabbit → fox, which organism first makes glucose, and how does the stored energy reach the fox?",
+      "answer": "Grass first makes glucose by photosynthesis. Its stored energy reaches the rabbit when it eats the grass, then reaches the fox when it eats the rabbit.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Light is a reactant in photosynthesis because it provides energy.” Is the pupil right? Explain why.",
+      "answer": "No. Light supplies energy, but it is not a substance in the word equation. Chlorophyll absorbs the light energy, which is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A plant carries out more photosynthesis. What happens to the amounts of carbon dioxide and oxygen in the atmosphere as a result?",
+      "answer": "The amount of carbon dioxide decreases and the amount of oxygen increases.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "One leaf has blocked stomata and another has veins that are not supplying water. For each leaf, name the material whose supply is affected and the structure that normally supplies or admits it.",
+      "answer": "In the leaf with blocked stomata, the entry of carbon dioxide is affected; stomata allow carbon dioxide to enter. In the leaf with veins that are not supplying water, the supply of water is affected; leaf veins supply water.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-I": [
+    {
+      "where": "warm-up",
+      "question": "Which two substances are the products of photosynthesis?",
+      "answer": "Glucose and oxygen.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which leaf structure contains chlorophyll?",
+      "answer": "Chloroplasts.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Carbon dioxide provides the energy for photosynthesis.” Is this right? Explain where the energy comes from and where it is stored.",
+      "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and the energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf is broad but thick. Which benefit of leaf shape does it have: absorbing more light or giving carbon dioxide a short path to photosynthesising cells?",
+      "answer": "It absorbs more light.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf has working chloroplasts and veins, but its stomata are blocked. Which material needed for photosynthesis can no longer enter through the stomata?",
+      "answer": "Carbon dioxide.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “A rabbit gets its food and energy directly from sunlight.” Is this right? Use the grass → rabbit → fox food chain to explain.",
+      "answer": "No. Plants make glucose using light energy, and glucose provides food and stored energy for organisms. In this food chain, the rabbit gets food and stored energy through the grass.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil claims that photosynthesis adds carbon dioxide to the atmosphere and removes oxygen. Correct the claim by stating what happens to each gas.",
+      "answer": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain two different ways a broad, thin leaf supports photosynthesis, and how the glucose made can support organisms in a food chain.",
+      "answer": "A broad leaf absorbs more light, and a thin leaf gives carbon dioxide a short path to photosynthesising cells. Glucose provides food and stored energy for organisms, supporting food chains.",
+      "working": null
+    }
+  ],
+  "blind-y8-photosynthesis-sheet-J": [
+    {
+      "where": "warm-up",
+      "question": "Which leaf structure contains chlorophyll?",
+      "answer": "Chloroplasts.",
+      "working": null
+    },
+    {
+      "where": "warm-up",
+      "question": "Which gas released by photosynthesis is needed by most organisms for respiration?",
+      "answer": "Oxygen.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “Carbon dioxide supplies the energy for photosynthesis.” Is this claim right? Explain where the energy comes from and where it is stored.",
+      "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and the energy is transferred to a chemical store in glucose.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A leaf has chloroplasts, stomata and veins. Match each structure to its job: contains chlorophyll, lets carbon dioxide enter, or supplies water.",
+      "answer": "Chloroplasts contain chlorophyll; stomata let carbon dioxide enter; veins supply water.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "One leaf is broad and thick; another is narrow and thin. Which leaf would absorb more light, and which would give carbon dioxide a shorter path to photosynthesising cells?",
+      "answer": "The broad leaf would absorb more light. The thin leaf would give carbon dioxide a shorter path to photosynthesising cells.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil says, “The rabbit in the grass → rabbit → fox food chain gets its food and stored energy directly from sunlight.” Is the pupil right? Explain how the stored energy reaches the rabbit.",
+      "answer": "No. Grass makes glucose by photosynthesis, transferring light energy into a chemical store in glucose. The rabbit gets food and stored energy by eating the grass.",
+      "working": null
+    },
+    {
+      "where": "core",
+      "question": "A pupil claims that photosynthesis releases carbon dioxide and removes oxygen from the atmosphere. Correct both parts of the claim.",
+      "answer": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    },
+    {
+      "where": "challenge",
+      "question": "Explain how photosynthesis by grass can support the rabbit and fox in a grass → rabbit → fox food chain, and state how it changes the amounts of carbon dioxide and oxygen in the atmosphere.",
+      "answer": "Grass uses light energy in photosynthesis to make glucose, storing energy that provides food and energy for organisms in the food chain. Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+      "working": null
+    }
+  ]
+}
