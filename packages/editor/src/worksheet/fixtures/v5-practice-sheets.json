@@ -1,0 +1,4240 @@
+{
+  "v5-r1-y2-greatfire": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y2-greatfire-practice",
+      "title": "The Great Fire of London",
+      "themeId": "crayon",
+      "createdAt": "2026-11-12T14:03:21.937Z",
+      "updatedAt": "2026-11-12T14:03:21.937Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "The Great Fire of London",
+        "subtitle": "I can describe where the Great Fire began and what happened before it ended.",
+        "criteria": [
+          "I can describe where the Great Fire began and what happened before it ended.",
+          "I can explain why the fire spread and how people helped stop it.",
+          "I can describe what Samuel Pepys\u2019s diary tells us about the fire."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y2-greatfire-b5",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b6",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b7",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What did Samuel Pepys use to write in his diary?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "A quill.",
+          "number": 1
+        },
+        {
+          "id": "y2-greatfire-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What did Pepys\u2019s diary tell us about people escaping?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Some people escaped by boat with their belongings.",
+          "number": 2
+        },
+        {
+          "id": "y2-greatfire-b9",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b10",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A child says only strong winds helped the fire spread. Is this right? Write why."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. The houses were wooden and close together, and the summer before the fire was dry too.",
+          "number": 3
+        },
+        {
+          "id": "y2-greatfire-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which would help stop flames reaching another house: leaving close wooden houses standing or pulling houses down to make gaps?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Pulling houses down to make gaps.",
+          "number": 4
+        },
+        {
+          "id": "y2-greatfire-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A person writes that they saw the fire and saw some people escape by boat with their belongings. Which person\u2019s diary matches this?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Samuel Pepys\u2019s diary.",
+          "number": 5
+        },
+        {
+          "id": "y2-greatfire-b14",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b15",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A dry summer and close wooden houses helped the fire spread. Name one more thing that helped it spread and one way people helped stop it."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Strong winds carried flames between houses. People carried water in buckets or pulled down houses to make gaps.",
+          "number": 6
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf35-7cdc-7137-854c-4ba5280c108b",
+      "ageBand": "ks1",
+      "yearGroup": "Year 2",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 106.69,
+      "y2-greatfire-b5": 28.29,
+      "y2-greatfire-b6": 27.62,
+      "y2-greatfire-b7": 86.02,
+      "y2-greatfire-b8": 129.28,
+      "y2-greatfire-b9": 28.29,
+      "y2-greatfire-b10": 27.62,
+      "y2-greatfire-b11": 154.03,
+      "y2-greatfire-b12": 178.78,
+      "y2-greatfire-b13": 135.52,
+      "y2-greatfire-b14": 28.29,
+      "y2-greatfire-b15": 27.62,
+      "y2-greatfire-b16": 178.78,
+      "__rag__": 176.2
+    },
+    "pagesBefore": 3
+  },
+  "v5-r1-y5-fractions": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y5-fractions-practice",
+      "title": "Fractions of amounts",
+      "themeId": "splash",
+      "createdAt": "2026-11-12T14:03:41.749Z",
+      "updatedAt": "2026-11-12T14:03:41.749Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Fractions of amounts",
+        "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+        "criteria": [
+          "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+          "I can calculate improper fractions and mixed numbers of amounts using bar models."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y5-fractions-b7",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b8",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is one quarter of 16 metres?" }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "4 m (16 \u00f7 4 = 4 m)",
+          "number": 1
+        },
+        {
+          "id": "y5-fractions-b10",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A bar is split into five equal parts. What does six fifths show about the whole bar?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Six fifths extend one fifth beyond the whole.",
+          "number": 2
+        },
+        {
+          "id": "y5-fractions-b12",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b13",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer each question. Show your working where there is a calculation."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A piece of ribbon is 18 metres long. How long is 3/4 of the ribbon?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "13\u00bd m (18 \u00f7 4 = 4\u00bd; 4\u00bd \u00d7 3 = 13\u00bd m)",
+          "number": 3
+        },
+        {
+          "id": "y5-fractions-b15",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "A bag costs \u00a39. How much is 4/5 of its cost?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a37.20 (\u00a39 = 900p; 900p \u00f7 5 = 180p; 180p \u00d7 4 = 720p = \u00a37.20)",
+          "number": 4
+        },
+        {
+          "id": "y5-fractions-b17",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b18",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cTo find 3/4 of 20, I should divide 20 by 3 and then stop.\u201d Is the pupil right? Explain the correct steps."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "No. Divide 20 by 4 to find one quarter, then multiply that amount by 3 to find three quarters.",
+          "number": 5
+        },
+        {
+          "id": "y5-fractions-b19",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b20",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A length is 25 metres. How long is 8/5 of the length?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "40 m (25 \u00f7 5 = 5; 5 \u00d7 8 = 40 m)",
+          "number": 6
+        },
+        {
+          "id": "y5-fractions-b21",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b22",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A runner travels 40 metres. How far is 1\u00bc times that distance?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "50 m (40 \u00f7 4 = 10; 40 + 10 = 50 m)",
+          "number": 7
+        },
+        {
+          "id": "y5-fractions-b23",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b24",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b25",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b26",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A length of 32 metres is multiplied by 7/4. What is 3/4 of the result?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "42 m (32 \u00f7 4 = 8; 8 \u00d7 7 = 56; 56 \u00f7 4 = 14; 14 \u00d7 3 = 42 m)",
+          "number": 8
+        },
+        {
+          "id": "y5-fractions-b27",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+      "ageBand": "ks2",
+      "yearGroup": "Year 5",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 96.02,
+      "y5-fractions-b7": 23.1,
+      "y5-fractions-b8": 22.57,
+      "y5-fractions-b9": 23.47,
+      "y5-fractions-b10": 82.18,
+      "y5-fractions-b11": 101.32,
+      "y5-fractions-b12": 23.1,
+      "y5-fractions-b13": 22.57,
+      "y5-fractions-b14": 31.25,
+      "y5-fractions-b15": 82.18,
+      "y5-fractions-b16": 31.25,
+      "y5-fractions-b17": 82.18,
+      "y5-fractions-b18": 50.73,
+      "y5-fractions-b19": 82.18,
+      "y5-fractions-b20": 31.25,
+      "y5-fractions-b21": 82.18,
+      "y5-fractions-b22": 23.47,
+      "y5-fractions-b23": 82.18,
+      "y5-fractions-b24": 23.1,
+      "y5-fractions-b25": 22.57,
+      "y5-fractions-b26": 31.25,
+      "y5-fractions-b27": 82.18,
+      "__rag__": 135.93
+    },
+    "pagesBefore": 2
+  },
+  "v5-r1-y8-photosynthesis": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y8-photosynthesis-practice",
+      "title": "Photosynthesis",
+      "themeId": "studio",
+      "createdAt": "2026-11-12T14:04:07.151Z",
+      "updatedAt": "2026-11-12T14:04:07.151Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Photosynthesis",
+        "subtitle": "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+        "criteria": [
+          "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+          "I can explain how leaf adaptations support photosynthesis.",
+          "I can explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y8-photosynthesis-b6",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b7",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which two substances are the products of photosynthesis?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Glucose and oxygen.",
+          "number": 1
+        },
+        {
+          "id": "y8-photosynthesis-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What do leaf veins supply for photosynthesis?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Water.",
+          "number": 2
+        },
+        {
+          "id": "y8-photosynthesis-b10",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b11",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Sort these substances into reactants and products of photosynthesis: oxygen, water, glucose and carbon dioxide."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Reactants: carbon dioxide and water. Products: glucose and oxygen.",
+          "number": 3
+        },
+        {
+          "id": "y8-photosynthesis-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A plant's leaf becomes narrower but stays equally thin. Which support for photosynthesis changes, and which remains the same?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "It absorbs less light. The short path for carbon dioxide to reach photosynthesising cells remains the same.",
+          "number": 4
+        },
+        {
+          "id": "y8-photosynthesis-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cStomata contain chlorophyll and absorb light for photosynthesis.\u201d Correct the claim by stating the job of stomata and the job of chloroplasts."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Stomata allow carbon dioxide to enter the leaf. Chloroplasts contain chlorophyll, which absorbs light energy for photosynthesis.",
+          "number": 5
+        },
+        {
+          "id": "y8-photosynthesis-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil claims that the energy in a food chain comes directly from sunlight reaching the animals. What is the source of the stored energy passed through food chains?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Plants and algae absorb light energy and transfer it to a chemical store in glucose. Glucose provides food and stored energy for organisms.",
+          "number": 6
+        },
+        {
+          "id": "y8-photosynthesis-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cPhotosynthesis adds carbon dioxide to the atmosphere, so there is less oxygen available for respiration.\u201d Is the pupil right? Explain using the effects of photosynthesis on atmospheric gases."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen, which most organisms need for respiration.",
+          "number": 7
+        },
+        {
+          "id": "y8-photosynthesis-b17",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b18",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain two ways photosynthesis by plants supports organisms beyond the plants themselves: one through food chains and one through atmospheric gases."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Plants make glucose, which provides food and stored energy for organisms and supports almost all food chains. Photosynthesis also releases oxygen, which most organisms need for respiration.",
+          "number": 8
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf42-9c59-71f3-90b8-dfae9fe0415c",
+      "ageBand": "ks3",
+      "yearGroup": "Year 8",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 90.04,
+      "y8-photosynthesis-b6": 20.19,
+      "y8-photosynthesis-b7": 19.75,
+      "y8-photosynthesis-b8": 60.75,
+      "y8-photosynthesis-b9": 60.75,
+      "y8-photosynthesis-b10": 20.19,
+      "y8-photosynthesis-b11": 19.75,
+      "y8-photosynthesis-b12": 103.5,
+      "y8-photosynthesis-b13": 103.5,
+      "y8-photosynthesis-b14": 103.5,
+      "y8-photosynthesis-b15": 129.75,
+      "y8-photosynthesis-b16": 120,
+      "y8-photosynthesis-b17": 20.19,
+      "y8-photosynthesis-b18": 19.75,
+      "y8-photosynthesis-b19": 129.75,
+      "__rag__": 137.52
+    },
+    "pagesBefore": 2
+  },
+  "v5-r2-y2-greatfire": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y2-greatfire-practice",
+      "title": "The Great Fire of London",
+      "themeId": "crayon",
+      "createdAt": "2026-11-12T14:04:21.768Z",
+      "updatedAt": "2026-11-12T14:04:21.768Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "The Great Fire of London",
+        "subtitle": "I can describe where the Great Fire began and what happened before it ended.",
+        "criteria": [
+          "I can describe where the Great Fire began and what happened before it ended.",
+          "I can explain why the fire spread and how people helped stop it.",
+          "I can describe what Samuel Pepys\u2019s diary tells us about the fire."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y2-greatfire-b5",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b6",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b7",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What did Samuel Pepys use to write in his diary?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "A quill.",
+          "number": 1
+        },
+        {
+          "id": "y2-greatfire-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What did the fire destroy besides St Paul\u2019s Cathedral?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Thousands of London homes.",
+          "number": 2
+        },
+        {
+          "id": "y2-greatfire-b9",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b10",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Two streets are in London during the fire. Both have strong winds, but only one has close wooden houses and a dry summer. Which street has more of the conditions that helped the fire spread?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "The street with close wooden houses and a dry summer.",
+          "number": 3
+        },
+        {
+          "id": "y2-greatfire-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A person says carrying buckets was the only way people helped stop the fire. Is the person right? Give one other way people helped."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. People also pulled down houses to make gaps.",
+          "number": 4
+        },
+        {
+          "id": "y2-greatfire-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Pepys saw people escaping by boat and wrote in an open diary. What could his diary tell us about their escape?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "It could tell us that people escaped by boat with their belongings.",
+          "number": 5
+        },
+        {
+          "id": "y2-greatfire-b14",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b15",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Give one reason the fire spread and one way people helped stop it."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Strong winds carried flames between houses. People pulled down houses to make gaps, and the gaps helped stop the flames.",
+          "number": 6
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf35-7cdc-7137-854c-4ba5280c108b",
+      "ageBand": "ks1",
+      "yearGroup": "Year 2",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 106.69,
+      "y2-greatfire-b5": 28.29,
+      "y2-greatfire-b6": 27.62,
+      "y2-greatfire-b7": 86.02,
+      "y2-greatfire-b8": 86.02,
+      "y2-greatfire-b9": 28.29,
+      "y2-greatfire-b10": 27.62,
+      "y2-greatfire-b11": 203.53,
+      "y2-greatfire-b12": 178.78,
+      "y2-greatfire-b13": 154.03,
+      "y2-greatfire-b14": 28.29,
+      "y2-greatfire-b15": 27.62,
+      "y2-greatfire-b16": 154.03,
+      "__rag__": 176.2
+    },
+    "pagesBefore": 3
+  },
+  "v5-r2-y5-fractions": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y5-fractions-practice",
+      "title": "Fractions of amounts",
+      "themeId": "splash",
+      "createdAt": "2026-11-12T14:04:42.681Z",
+      "updatedAt": "2026-11-12T14:04:42.681Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Fractions of amounts",
+        "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+        "criteria": [
+          "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+          "I can calculate improper fractions and mixed numbers of amounts using bar models."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y5-fractions-b7",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b8",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A bar is split into five equal parts. What does six fifths show about the whole bar?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Six fifths extend one fifth beyond the whole.",
+          "number": 1
+        },
+        {
+          "id": "y5-fractions-b10",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "One quarter of an amount is 3\u00bd m. How many metres are three of those quarters?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "10\u00bd m (3\u00bd \u00d7 3 = 10\u00bd m)",
+          "number": 2
+        },
+        {
+          "id": "y5-fractions-b11",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b12",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b13",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer each question. Show your working where there is a calculation."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says that 6/5 of 25 is 30. Check the calculation and say whether the pupil is right."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "30. Yes, the pupil is right. (25 \u00f7 5 = 5; 5 \u00d7 6 = 30)",
+          "number": 3
+        },
+        {
+          "id": "y5-fractions-b15",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A ribbon is 22 metres long. How many metres is 3/4 of the ribbon?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "16\u00bd m (22 \u00f7 4 = 5\u00bd; 5\u00bd \u00d7 3 = 16\u00bd m)",
+          "number": 4
+        },
+        {
+          "id": "y5-fractions-b17",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b18",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "A toy costs \u00a39. How much is 4/5 of its price?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a37.20 (\u00a39 = 900p; 900p \u00f7 5 = 180p; 180p \u00d7 4 = 720p = \u00a37.20)",
+          "number": 5
+        },
+        {
+          "id": "y5-fractions-b19",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b20",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cA fraction cannot be greater than one whole, so 7/5 of 20 must be less than 20.\u201d Is the pupil right? Explain how you can tell."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "No. Five fifths make one whole, and the seventh fifth is beyond the whole. So 7/5 of 20 is greater than 20.",
+          "number": 6
+        },
+        {
+          "id": "y5-fractions-b21",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b22",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A piece of fabric costs \u00a38. How much is 3/4 of its price?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a36.00 (\u00a38 = 800p; 800p \u00f7 4 = 200p; 200p \u00d7 3 = 600p = \u00a36.00)",
+          "number": 7
+        },
+        {
+          "id": "y5-fractions-b23",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b24",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b25",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b26",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A bag costs \u00a310. Find 6/5 of its price. Give your answer in pounds."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a312.00 (\u00a310 = 1000p; 1000p \u00f7 5 = 200p; 200p \u00d7 6 = 1200p = \u00a312.00)",
+          "number": 8
+        },
+        {
+          "id": "y5-fractions-b27",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+      "ageBand": "ks2",
+      "yearGroup": "Year 5",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 96.02,
+      "y5-fractions-b7": 23.1,
+      "y5-fractions-b8": 22.57,
+      "y5-fractions-b9": 101.32,
+      "y5-fractions-b10": 42.95,
+      "y5-fractions-b11": 82.18,
+      "y5-fractions-b12": 23.1,
+      "y5-fractions-b13": 22.57,
+      "y5-fractions-b14": 50.73,
+      "y5-fractions-b15": 82.18,
+      "y5-fractions-b16": 31.25,
+      "y5-fractions-b17": 82.18,
+      "y5-fractions-b18": 31.25,
+      "y5-fractions-b19": 82.18,
+      "y5-fractions-b20": 50.73,
+      "y5-fractions-b21": 82.18,
+      "y5-fractions-b22": 31.25,
+      "y5-fractions-b23": 82.18,
+      "y5-fractions-b24": 23.1,
+      "y5-fractions-b25": 22.57,
+      "y5-fractions-b26": 31.25,
+      "y5-fractions-b27": 82.18,
+      "__rag__": 135.93
+    },
+    "pagesBefore": 2
+  },
+  "v5-r2-y8-photosynthesis": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y8-photosynthesis-practice",
+      "title": "Photosynthesis",
+      "themeId": "studio",
+      "createdAt": "2026-11-12T14:05:03.134Z",
+      "updatedAt": "2026-11-12T14:05:03.134Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Photosynthesis",
+        "subtitle": "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+        "criteria": [
+          "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+          "I can explain how leaf adaptations support photosynthesis.",
+          "I can explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y8-photosynthesis-b6",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b7",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Which two products are made by photosynthesis?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Glucose and oxygen.",
+          "number": 1
+        },
+        {
+          "id": "y8-photosynthesis-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Which structures in a leaf contain chlorophyll?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Chloroplasts.",
+          "number": 2
+        },
+        {
+          "id": "y8-photosynthesis-b10",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b11",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cA thin leaf absorbs more light because it is thin.\u201d Is the pupil right? Explain what thinness helps with."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. Thinness gives carbon dioxide a short path to photosynthesising cells.",
+          "number": 3
+        },
+        {
+          "id": "y8-photosynthesis-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A leaf has chloroplasts, stomata and veins. Match each structure to its job: containing chlorophyll, allowing carbon dioxide to enter, or supplying water."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Chloroplasts contain chlorophyll; stomata allow carbon dioxide to enter; veins supply water.",
+          "number": 4
+        },
+        {
+          "id": "y8-photosynthesis-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cLight is a reactant, and carbon dioxide supplies the energy stored in glucose.\u201d Explain why both parts of the claim are wrong."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Light is not a reactant in the word equation; chlorophyll absorbs light energy for photosynthesis. That energy is transferred to a chemical store in glucose.",
+          "number": 5
+        },
+        {
+          "id": "y8-photosynthesis-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In the food chain grass \u2192 rabbit \u2192 fox, which organism first makes glucose and stores energy for the chain?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "The grass makes glucose by photosynthesis, storing energy that supports the food chain.",
+          "number": 6
+        },
+        {
+          "id": "y8-photosynthesis-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A plant has water available, but carbon dioxide cannot enter one of its leaves. Which reactant is missing from that leaf, and which structure normally lets it enter?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Carbon dioxide is missing, and stomata normally let it enter.",
+          "number": 7
+        },
+        {
+          "id": "y8-photosynthesis-b17",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b18",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how a broad leaf can help a plant make glucose, and how the glucose can then support a food chain."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "A broad leaf absorbs more light, and chlorophyll absorbs light energy for photosynthesis. This energy is transferred to a chemical store in glucose, which provides food and stored energy for organisms in food chains.",
+          "number": 8
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf42-9c59-71f3-90b8-dfae9fe0415c",
+      "ageBand": "ks3",
+      "yearGroup": "Year 8",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 90.04,
+      "y8-photosynthesis-b6": 20.19,
+      "y8-photosynthesis-b7": 19.75,
+      "y8-photosynthesis-b8": 60.75,
+      "y8-photosynthesis-b9": 60.75,
+      "y8-photosynthesis-b10": 20.19,
+      "y8-photosynthesis-b11": 19.75,
+      "y8-photosynthesis-b12": 103.5,
+      "y8-photosynthesis-b13": 103.5,
+      "y8-photosynthesis-b14": 129.75,
+      "y8-photosynthesis-b15": 103.5,
+      "y8-photosynthesis-b16": 103.5,
+      "y8-photosynthesis-b17": 20.19,
+      "y8-photosynthesis-b18": 19.75,
+      "y8-photosynthesis-b19": 129.75,
+      "__rag__": 137.52
+    },
+    "pagesBefore": 2
+  },
+  "v5-r3-y2-greatfire": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y2-greatfire-practice",
+      "title": "The Great Fire of London",
+      "themeId": "crayon",
+      "createdAt": "2026-11-12T14:05:21.352Z",
+      "updatedAt": "2026-11-12T14:05:21.352Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "The Great Fire of London",
+        "subtitle": "I can describe where the Great Fire began and what happened before it ended.",
+        "criteria": [
+          "I can describe where the Great Fire began and what happened before it ended.",
+          "I can explain why the fire spread and how people helped stop it.",
+          "I can describe what Samuel Pepys\u2019s diary tells us about the fire."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y2-greatfire-b5",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b6",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b7",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What did Samuel Pepys use to write in his diary?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "A quill.",
+          "number": 1
+        },
+        {
+          "id": "y2-greatfire-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What was the summer before the Great Fire like?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "It was dry.",
+          "number": 2
+        },
+        {
+          "id": "y2-greatfire-b9",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b10",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In 1666, one London street had close wooden houses and strong winds. Another had only a dry summer. Which street had 2 of the named causes that helped the fire spread?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "The street with close wooden houses and strong winds.",
+          "number": 3
+        },
+        {
+          "id": "y2-greatfire-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Why can Pepys\u2019s diary help us know about both the fire and people escaping by boat?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Pepys saw the fire himself, and his diary describes people escaping by boat with their belongings.",
+          "number": 4
+        },
+        {
+          "id": "y2-greatfire-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A child says the Great Fire destroyed every building in London. Is the child right?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. The fire destroyed thousands of London homes and St Paul\u2019s Cathedral, not every building.",
+          "number": 5
+        },
+        {
+          "id": "y2-greatfire-b14",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b15",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how wind helped the fire spread and how gaps and weaker winds helped stop it."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Strong winds carried flames between the houses. Gaps and weaker winds helped stop the flames.",
+          "number": 6
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf35-7cdc-7137-854c-4ba5280c108b",
+      "ageBand": "ks1",
+      "yearGroup": "Year 2",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 106.69,
+      "y2-greatfire-b5": 28.29,
+      "y2-greatfire-b6": 27.62,
+      "y2-greatfire-b7": 86.02,
+      "y2-greatfire-b8": 86.02,
+      "y2-greatfire-b9": 28.29,
+      "y2-greatfire-b10": 27.62,
+      "y2-greatfire-b11": 203.53,
+      "y2-greatfire-b12": 154.03,
+      "y2-greatfire-b13": 154.03,
+      "y2-greatfire-b14": 28.29,
+      "y2-greatfire-b15": 27.62,
+      "y2-greatfire-b16": 154.03,
+      "__rag__": 176.2
+    },
+    "pagesBefore": 2
+  },
+  "v5-r3-y5-fractions": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y5-fractions-practice",
+      "title": "Fractions of amounts",
+      "themeId": "splash",
+      "createdAt": "2026-11-12T14:05:51.356Z",
+      "updatedAt": "2026-11-12T14:05:51.356Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Fractions of amounts",
+        "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+        "criteria": [
+          "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+          "I can calculate improper fractions and mixed numbers of amounts using bar models."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y5-fractions-b7",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b8",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Find 6/5 of 25." }] }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "30 (25 \u00f7 5 = 5; 5 \u00d7 6 = 30)",
+          "number": 1
+        },
+        {
+          "id": "y5-fractions-b10",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Find 3/4 of 16 metres." }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "12 m (16 \u00f7 4 = 4; 4 \u00d7 3 = 12 m)",
+          "number": 2
+        },
+        {
+          "id": "y5-fractions-b12",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b13",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b14",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer each question. Show your working where there is a calculation."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "A ribbon costs \u00a39. Find 2/5 of its cost." }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a33.60 (\u00a39 = 900p; 900p \u00f7 5 = 180p; 180p \u00d7 2 = 360p = \u00a33.60)",
+          "number": 3
+        },
+        {
+          "id": "y5-fractions-b16",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b17",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cTo find 7/5 of 30, I should divide 30 by 7.\u201d Is the pupil right? Explain how to find 7/5 of 30."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "42. No. The denominator tells us to divide 30 by 5 to find one fifth: 30 \u00f7 5 = 6. Then take seven fifths: 6 \u00d7 7 = 42. (30 \u00f7 5 = 6; 6 \u00d7 7 = 42)",
+          "number": 4
+        },
+        {
+          "id": "y5-fractions-b18",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw a bar model to find 5/4 of 20. Divide the bar into quarters and show which quarters you count."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "25. A correct bar model shows 20 split into four equal parts, with five quarter-sized parts counted, including the part beyond the whole bar. (20 \u00f7 4 = 5; 5 \u00d7 5 = 25)",
+          "number": 5
+        },
+        { "id": "y5-fractions-b20", "type": "answer-box", "heightPt": 128 },
+        {
+          "id": "y5-fractions-b21",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A garden bed is 44 metres long. Find 1\u00bc of its length."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "55 m (44 \u00f7 4 = 11; 44 + 11 = 55 m)",
+          "number": 6
+        },
+        {
+          "id": "y5-fractions-b22",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b23",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b24",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b25",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A shop sells a bag for \u00a310. Find 2/5 of the cost, then find 6/5 of that amount."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a34.80 (\u00a310 = 1000p; 1000p \u00f7 5 = 200p; 200p \u00d7 2 = 400p = \u00a34; \u00a34 = 400p; 400p \u00f7 5 = 80p; 80p \u00d7 6 = 480p = \u00a34.80)",
+          "number": 7
+        },
+        {
+          "id": "y5-fractions-b26",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+      "ageBand": "ks2",
+      "yearGroup": "Year 5",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 96.02,
+      "y5-fractions-b7": 23.1,
+      "y5-fractions-b8": 22.57,
+      "y5-fractions-b9": 31.25,
+      "y5-fractions-b10": 82.18,
+      "y5-fractions-b11": 31.25,
+      "y5-fractions-b12": 82.18,
+      "y5-fractions-b13": 23.1,
+      "y5-fractions-b14": 22.57,
+      "y5-fractions-b15": 31.25,
+      "y5-fractions-b16": 82.18,
+      "y5-fractions-b17": 58.51,
+      "y5-fractions-b18": 82.18,
+      "y5-fractions-b19": 50.73,
+      "y5-fractions-b20": 141.49,
+      "y5-fractions-b21": 23.47,
+      "y5-fractions-b22": 82.18,
+      "y5-fractions-b23": 23.1,
+      "y5-fractions-b24": 22.57,
+      "y5-fractions-b25": 31.25,
+      "y5-fractions-b26": 82.18,
+      "__rag__": 135.93
+    },
+    "pagesBefore": 2
+  },
+  "v5-r3-y8-photosynthesis": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y8-photosynthesis-practice",
+      "title": "Photosynthesis",
+      "themeId": "studio",
+      "createdAt": "2026-11-12T14:06:04.793Z",
+      "updatedAt": "2026-11-12T14:06:04.793Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Photosynthesis",
+        "subtitle": "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+        "criteria": [
+          "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+          "I can explain how leaf adaptations support photosynthesis.",
+          "I can explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y8-photosynthesis-b6",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b7",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In photosynthesis, which two substances are products?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Glucose and oxygen.",
+          "number": 1
+        },
+        {
+          "id": "y8-photosynthesis-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What do chloroplasts contain?" }]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Chloroplasts contain chlorophyll.",
+          "number": 2
+        },
+        {
+          "id": "y8-photosynthesis-b10",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b11",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Two leaves are the same in every way except that one is broad and the other is thin. Which one absorbs more light?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "The broad leaf absorbs more light.",
+          "number": 3
+        },
+        {
+          "id": "y8-photosynthesis-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A leaf needs to let carbon dioxide reach its photosynthesising cells over a short distance. Which leaf feature helps with this?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Being thin helps because carbon dioxide has a short path to the photosynthesising cells.",
+          "number": 4
+        },
+        {
+          "id": "y8-photosynthesis-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil is labelling a leaf diagram. Which structure should they label as allowing carbon dioxide to enter the leaf?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "The stomata.",
+          "number": 5
+        },
+        { "id": "y8-photosynthesis-b15", "type": "answer-box", "heightPt": 128 },
+        {
+          "id": "y8-photosynthesis-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil claims that a rabbit gets its food and energy directly from sunlight. Is the pupil right? Explain why."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "No. Plants and algae use light energy to make glucose, which provides food and stored energy for organisms. This stored energy supports food chains when organisms eat.",
+          "number": 6
+        },
+        {
+          "id": "y8-photosynthesis-b17",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A plant photosynthesises. What happens to the carbon dioxide in the atmosphere, and what gas does the plant release?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+          "number": 7
+        },
+        {
+          "id": "y8-photosynthesis-b18",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b19",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b20",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how photosynthesis in plants can both support a food chain and change the gases in the atmosphere."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Plants make glucose using light energy, and glucose provides food and stored energy for organisms in food chains. Photosynthesis removes carbon dioxide from the atmosphere and releases oxygen.",
+          "number": 8
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf42-9c59-71f3-90b8-dfae9fe0415c",
+      "ageBand": "ks3",
+      "yearGroup": "Year 8",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 90.04,
+      "y8-photosynthesis-b6": 20.19,
+      "y8-photosynthesis-b7": 19.75,
+      "y8-photosynthesis-b8": 60.75,
+      "y8-photosynthesis-b9": 60.75,
+      "y8-photosynthesis-b10": 20.19,
+      "y8-photosynthesis-b11": 19.75,
+      "y8-photosynthesis-b12": 103.5,
+      "y8-photosynthesis-b13": 103.5,
+      "y8-photosynthesis-b14": 37,
+      "y8-photosynthesis-b15": 141.49,
+      "y8-photosynthesis-b16": 129.75,
+      "y8-photosynthesis-b17": 103.5,
+      "y8-photosynthesis-b18": 20.19,
+      "y8-photosynthesis-b19": 19.75,
+      "y8-photosynthesis-b20": 129.75,
+      "__rag__": 137.52
+    },
+    "pagesBefore": 2
+  },
+  "v5-r4-y2-greatfire": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y2-greatfire-practice",
+      "title": "The Great Fire of London",
+      "themeId": "crayon",
+      "createdAt": "2026-11-12T14:06:56.143Z",
+      "updatedAt": "2026-11-12T14:06:56.143Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "The Great Fire of London",
+        "subtitle": "I can describe where the Great Fire began and what happened before it ended.",
+        "criteria": [
+          "I can describe where the Great Fire began and what happened before it ended.",
+          "I can explain why the fire spread and how people helped stop it.",
+          "I can describe what Samuel Pepys\u2019s diary tells us about the fire."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y2-greatfire-b5",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b6",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b7",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What did Samuel Pepys use to write in his diary?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "A quill.",
+          "number": 1
+        },
+        {
+          "id": "y2-greatfire-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "What happened to thousands of London homes in the fire?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "The fire destroyed them.",
+          "number": 2
+        },
+        {
+          "id": "y2-greatfire-b9",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b10",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says strong winds were the only thing that helped the fire spread. Are they right? Write 2 other things that helped it spread."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. Close wooden houses and a dry summer also helped the fire spread.",
+          "number": 3
+        },
+        {
+          "id": "y2-greatfire-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which could Pepys\u2019s diary tell us about: people escaping by boat with their belongings, or people using a quill?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "People escaping by boat with their belongings.",
+          "number": 4
+        },
+        {
+          "id": "y2-greatfire-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "People have made gaps by pulling down houses, and the winds are weaker. Will these changes help stop the fire?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Yes. Gaps and weaker winds helped stop the fire.",
+          "number": 5
+        },
+        {
+          "id": "y2-greatfire-b14",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b15",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Draw a diary page with a picture showing what Pepys saw and a quill he could use to write about it."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "A correct drawing shows the fire Pepys saw and a quill.",
+          "number": 6
+        },
+        { "id": "y2-greatfire-b17", "type": "answer-box", "heightPt": 128 }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf35-7cdc-7137-854c-4ba5280c108b",
+      "ageBand": "ks1",
+      "yearGroup": "Year 2",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 106.69,
+      "y2-greatfire-b5": 28.29,
+      "y2-greatfire-b6": 27.62,
+      "y2-greatfire-b7": 86.02,
+      "y2-greatfire-b8": 86.02,
+      "y2-greatfire-b9": 28.29,
+      "y2-greatfire-b10": 27.62,
+      "y2-greatfire-b11": 178.78,
+      "y2-greatfire-b12": 154.03,
+      "y2-greatfire-b13": 154.03,
+      "y2-greatfire-b14": 28.29,
+      "y2-greatfire-b15": 27.62,
+      "y2-greatfire-b16": 53.5,
+      "y2-greatfire-b17": 179.89,
+      "__rag__": 176.2
+    },
+    "pagesBefore": 3
+  },
+  "v5-r4-y5-fractions": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y5-fractions-practice",
+      "title": "Fractions of amounts",
+      "themeId": "splash",
+      "createdAt": "2026-11-12T14:07:16.788Z",
+      "updatedAt": "2026-11-12T14:07:16.788Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Fractions of amounts",
+        "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+        "criteria": [
+          "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+          "I can calculate improper fractions and mixed numbers of amounts using bar models."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y5-fractions-b7",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b8",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is 1/4 of 18 metres?" }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "4\u00bd m (18 \u00f7 4 = 4\u00bd m)",
+          "number": 1
+        },
+        {
+          "id": "y5-fractions-b10",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "What is 1/5 of 35?" }] }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "7 (35 \u00f7 5 = 7)",
+          "number": 2
+        },
+        {
+          "id": "y5-fractions-b12",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b13",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b14",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer each question. Show your working where there is a calculation."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "A ribbon is \u00a39. What is 3/5 of its price?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a35.40 (\u00a39 = 900p; 900p \u00f7 5 = 180p; 180p \u00d7 3 = 540p = \u00a35.40)",
+          "number": 3
+        },
+        {
+          "id": "y5-fractions-b16",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b17",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says that 4/5 of 35 is 7 because 35 \u00f7 5 = 7. What is 4/5 of 35?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "28. The pupil has found one fifth. Four fifths means taking four of those parts. (35 \u00f7 5 = 7; 7 \u00d7 4 = 28)",
+          "number": 4
+        },
+        {
+          "id": "y5-fractions-b18",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A tray holds 44 biscuits. How many biscuits are in 1\u00bc trays?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "55 biscuits (44 \u00f7 4 = 11; 44 + 11 = 55 biscuits)",
+          "number": 5
+        },
+        {
+          "id": "y5-fractions-b20",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b21",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "How much is 7/5 of 30?" }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "42 (30 \u00f7 5 = 6; 6 \u00d7 7 = 42)",
+          "number": 6
+        },
+        {
+          "id": "y5-fractions-b22",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b23",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil finds 1/4 of 22 metres and says this is the answer to 3/4 of 22 metres. Is the pupil right? Give the correct answer and explain."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "16\u00bd m. No. The pupil has found one quarter; to find three quarters, multiply one quarter by 3. (22 \u00f7 4 = 5\u00bd; 5\u00bd \u00d7 3 = 16\u00bd m)",
+          "number": 7
+        },
+        {
+          "id": "y5-fractions-b24",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b25",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b26",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b27",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A length of ribbon is 25 metres. How many metres is 1\u00bc times 4/5 of its length?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "25 m (25 \u00f7 5 = 5; 5 \u00d7 4 = 20; 20 \u00f7 4 = 5; 20 + 5 = 25 m)",
+          "number": 8
+        },
+        {
+          "id": "y5-fractions-b28",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+      "ageBand": "ks2",
+      "yearGroup": "Year 5",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 96.02,
+      "y5-fractions-b7": 23.1,
+      "y5-fractions-b8": 22.57,
+      "y5-fractions-b9": 31.25,
+      "y5-fractions-b10": 82.18,
+      "y5-fractions-b11": 31.25,
+      "y5-fractions-b12": 82.18,
+      "y5-fractions-b13": 23.1,
+      "y5-fractions-b14": 22.57,
+      "y5-fractions-b15": 31.25,
+      "y5-fractions-b16": 82.18,
+      "y5-fractions-b17": 31.25,
+      "y5-fractions-b18": 82.18,
+      "y5-fractions-b19": 23.47,
+      "y5-fractions-b20": 82.18,
+      "y5-fractions-b21": 31.25,
+      "y5-fractions-b22": 82.18,
+      "y5-fractions-b23": 50.73,
+      "y5-fractions-b24": 82.18,
+      "y5-fractions-b25": 23.1,
+      "y5-fractions-b26": 22.57,
+      "y5-fractions-b27": 31.25,
+      "y5-fractions-b28": 82.18,
+      "__rag__": 135.93
+    },
+    "pagesBefore": 2
+  },
+  "v5-r4-y8-photosynthesis": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y8-photosynthesis-practice",
+      "title": "Photosynthesis",
+      "themeId": "studio",
+      "createdAt": "2026-11-12T14:08:04.548Z",
+      "updatedAt": "2026-11-12T14:08:04.548Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Photosynthesis",
+        "subtitle": "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+        "criteria": [
+          "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+          "I can explain how leaf adaptations support photosynthesis.",
+          "I can explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y8-photosynthesis-b6",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b7",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A plant makes glucose by photosynthesis. What two products are made?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Glucose and oxygen.",
+          "number": 1
+        },
+        {
+          "id": "y8-photosynthesis-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What do chloroplasts contain?" }]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Chlorophyll.",
+          "number": 2
+        },
+        {
+          "id": "y8-photosynthesis-b10",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b11",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A plant has one broad, thick leaf and one narrow, thin leaf. Which leaf absorbs more light, and which gives carbon dioxide a shorter path to photosynthesising cells?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "The broad leaf absorbs more light. The thin leaf gives carbon dioxide a shorter path.",
+          "number": 3
+        },
+        {
+          "id": "y8-photosynthesis-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A leaf needs carbon dioxide and water for photosynthesis. Which leaf structure allows each material to enter or reach the leaf: stomata or veins?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Stomata allow carbon dioxide to enter. Veins supply water.",
+          "number": 4
+        },
+        {
+          "id": "y8-photosynthesis-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cCarbon dioxide supplies the energy for photosynthesis.\u201d Is the pupil right? Explain where the energy comes from and where it is transferred."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and the energy is transferred to a chemical store in glucose.",
+          "number": 5
+        },
+        {
+          "id": "y8-photosynthesis-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A process in plants removes carbon dioxide from the atmosphere and releases a gas needed by most organisms for respiration. Which gas does it release?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Oxygen.",
+          "number": 6
+        },
+        {
+          "id": "y8-photosynthesis-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In the food chain grass \u2192 rabbit \u2192 fox, which organism first makes glucose by photosynthesis?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "The grass.",
+          "number": 7
+        },
+        {
+          "id": "y8-photosynthesis-b17",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b18",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cThe rabbit gets its stored energy directly from sunlight in the food chain grass \u2192 rabbit \u2192 fox.\u201d Explain how the energy gets from sunlight to the rabbit."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Plants absorb light energy and transfer it to a chemical store in glucose. The rabbit gets food and stored energy by eating the grass.",
+          "number": 8
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf42-9c59-71f3-90b8-dfae9fe0415c",
+      "ageBand": "ks3",
+      "yearGroup": "Year 8",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 90.04,
+      "y8-photosynthesis-b6": 20.19,
+      "y8-photosynthesis-b7": 19.75,
+      "y8-photosynthesis-b8": 60.75,
+      "y8-photosynthesis-b9": 60.75,
+      "y8-photosynthesis-b10": 20.19,
+      "y8-photosynthesis-b11": 19.75,
+      "y8-photosynthesis-b12": 103.5,
+      "y8-photosynthesis-b13": 103.5,
+      "y8-photosynthesis-b14": 103.5,
+      "y8-photosynthesis-b15": 77.25,
+      "y8-photosynthesis-b16": 60.75,
+      "y8-photosynthesis-b17": 20.19,
+      "y8-photosynthesis-b18": 19.75,
+      "y8-photosynthesis-b19": 129.75,
+      "__rag__": 137.52
+    },
+    "pagesBefore": 2
+  },
+  "v5-r5-y2-greatfire": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y2-greatfire-practice",
+      "title": "The Great Fire of London",
+      "themeId": "crayon",
+      "createdAt": "2026-11-12T14:08:20.578Z",
+      "updatedAt": "2026-11-12T14:08:20.578Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "The Great Fire of London",
+        "subtitle": "I can describe where the Great Fire began and what happened before it ended.",
+        "criteria": [
+          "I can describe where the Great Fire began and what happened before it ended.",
+          "I can explain why the fire spread and how people helped stop it.",
+          "I can describe what Samuel Pepys\u2019s diary tells us about the fire."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y2-greatfire-b5",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b6",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b7",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What was the summer before the fire like?" }]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "It was dry.",
+          "number": 1
+        },
+        {
+          "id": "y2-greatfire-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "What did Samuel Pepys use to write in his diary?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "A quill.",
+          "number": 2
+        },
+        {
+          "id": "y2-greatfire-b9",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b10",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In one part of London, strong winds blew past wooden houses built close together. In another, strong winds blew past houses that were not close together. Where would flames have more nearby houses to reach?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "In the part where the wooden houses were close together.",
+          "number": 3
+        },
+        {
+          "id": "y2-greatfire-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A child says Pepys only heard about the fire. Is the child right? Why?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. Pepys saw the fire himself.",
+          "number": 4
+        },
+        {
+          "id": "y2-greatfire-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Which plan uses both ways people helped stop the fire: carrying water in buckets and pulling down houses?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Carry water in buckets and pull down houses to make gaps.",
+          "number": 5
+        },
+        {
+          "id": "y2-greatfire-b14",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y2-greatfire-b15",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y2-greatfire-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "How did strong winds and close wooden houses help the fire spread?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "Strong winds carried flames between the houses, and the close wooden houses gave the flames nearby houses to reach.",
+          "number": 6
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf35-7cdc-7137-854c-4ba5280c108b",
+      "ageBand": "ks1",
+      "yearGroup": "Year 2",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 106.69,
+      "y2-greatfire-b5": 28.29,
+      "y2-greatfire-b6": 27.62,
+      "y2-greatfire-b7": 86.02,
+      "y2-greatfire-b8": 86.02,
+      "y2-greatfire-b9": 28.29,
+      "y2-greatfire-b10": 27.62,
+      "y2-greatfire-b11": 203.53,
+      "y2-greatfire-b12": 154.03,
+      "y2-greatfire-b13": 154.03,
+      "y2-greatfire-b14": 28.29,
+      "y2-greatfire-b15": 27.62,
+      "y2-greatfire-b16": 154.03,
+      "__rag__": 176.2
+    },
+    "pagesBefore": 2
+  },
+  "v5-r5-y5-fractions": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y5-fractions-practice",
+      "title": "Fractions of amounts",
+      "themeId": "splash",
+      "createdAt": "2026-11-12T14:08:46.515Z",
+      "updatedAt": "2026-11-12T14:08:46.515Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Fractions of amounts",
+        "subtitle": "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+        "criteria": [
+          "I can calculate proper fractions of amounts where answers include fractions or decimals.",
+          "I can calculate improper fractions and mixed numbers of amounts using bar models."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y5-fractions-b7",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b8",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is one fifth of 35?" }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "7 (35 \u00f7 5 = 7)",
+          "number": 1
+        },
+        {
+          "id": "y5-fractions-b10",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b11",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What is one quarter of 18 metres?" }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "4\u00bd m (18 \u00f7 4 = 4\u00bd m)",
+          "number": 2
+        },
+        {
+          "id": "y5-fractions-b12",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b13",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b14",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Answer each question. Show your working where there is a calculation."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A piece of ribbon is 18 metres long. How long is 3/4 of it?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "13\u00bd m (18 \u00f7 4 = 4\u00bd; 4\u00bd \u00d7 3 = 13\u00bd m)",
+          "number": 3
+        },
+        {
+          "id": "y5-fractions-b16",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b17",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A book costs \u00a39. How much do 2/5 of its cost come to?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a33.60 (\u00a39 = 900p; 900p \u00f7 5 = 180p; 180p \u00d7 2 = 360p = \u00a33.60)",
+          "number": 4
+        },
+        {
+          "id": "y5-fractions-b18",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201c6/5 of 25 must be less than 25 because a fraction is always less than a whole.\u201d Is the pupil right? Explain why."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "30. No. Six fifths means six fifth-sized parts. Five parts make one whole, and the sixth part extends beyond the whole. (25 \u00f7 5 = 5; 5 \u00d7 6 = 30)",
+          "number": 5
+        },
+        {
+          "id": "y5-fractions-b20",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b21",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Draw a bar model to find 1\u00bc of 40." }]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "50. A correct bar model shows one whole of 40 and one quarter of 40, which is 10, making 50 altogether. (40 \u00f7 4 = 10; 40 + 10 = 50)",
+          "number": 6
+        },
+        { "id": "y5-fractions-b22", "type": "answer-box", "heightPt": 128 },
+        {
+          "id": "y5-fractions-b23",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A shop has \u00a310 to share equally into five parts. How much are three of those parts worth?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "\u00a36 (\u00a310 = 1000p; 1000p \u00f7 5 = 200p; 200p \u00d7 3 = 600p = \u00a36)",
+          "number": 7
+        },
+        {
+          "id": "y5-fractions-b24",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        },
+        {
+          "id": "y5-fractions-b25",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y5-fractions-b26",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y5-fractions-b27",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A piece of ribbon is 20 metres long. Find 3/4 of its length, then find 6/5 of that amount. What is the final amount?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 0,
+          "answer": "18 m (20 \u00f7 4 = 5; 5 \u00d7 3 = 15; 15 \u00f7 5 = 3; 3 \u00d7 6 = 18 m)",
+          "number": 8
+        },
+        {
+          "id": "y5-fractions-b28",
+          "type": "answer-box",
+          "heightPt": 48,
+          "label": "Working and answer"
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf3b-2057-7111-9511-ae3d81943e5f",
+      "ageBand": "ks2",
+      "yearGroup": "Year 5",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 96.02,
+      "y5-fractions-b7": 23.1,
+      "y5-fractions-b8": 22.57,
+      "y5-fractions-b9": 23.47,
+      "y5-fractions-b10": 82.18,
+      "y5-fractions-b11": 23.47,
+      "y5-fractions-b12": 82.18,
+      "y5-fractions-b13": 23.1,
+      "y5-fractions-b14": 22.57,
+      "y5-fractions-b15": 31.25,
+      "y5-fractions-b16": 82.18,
+      "y5-fractions-b17": 31.25,
+      "y5-fractions-b18": 82.18,
+      "y5-fractions-b19": 50.73,
+      "y5-fractions-b20": 82.18,
+      "y5-fractions-b21": 23.47,
+      "y5-fractions-b22": 141.49,
+      "y5-fractions-b23": 42.95,
+      "y5-fractions-b24": 82.18,
+      "y5-fractions-b25": 23.1,
+      "y5-fractions-b26": 22.57,
+      "y5-fractions-b27": 50.73,
+      "y5-fractions-b28": 82.18,
+      "__rag__": 135.93
+    },
+    "pagesBefore": 3
+  },
+  "v5-r5-y8-photosynthesis": {
+    "worksheet": {
+      "version": 1,
+      "id": "e2e-y8-photosynthesis-practice",
+      "title": "Photosynthesis",
+      "themeId": "studio",
+      "createdAt": "2026-11-12T14:08:57.857Z",
+      "updatedAt": "2026-11-12T14:08:57.857Z",
+      "header": {
+        "showName": true,
+        "showDate": true,
+        "showClass": true,
+        "title": "Photosynthesis",
+        "subtitle": "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+        "criteria": [
+          "I can describe photosynthesis using its word equation and the roles of light and chlorophyll.",
+          "I can explain how leaf adaptations support photosynthesis.",
+          "I can explain how photosynthesis supports food chains and maintains atmospheric oxygen and carbon dioxide."
+        ]
+      },
+      "blocks": [
+        {
+          "id": "y8-photosynthesis-b6",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Warm up" }] }]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b7",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b8",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Which two substances are made by photosynthesis?" }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Glucose and oxygen.",
+          "number": 1
+        },
+        {
+          "id": "y8-photosynthesis-b9",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "What do chloroplasts contain?" }]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Chlorophyll.",
+          "number": 2
+        },
+        {
+          "id": "y8-photosynthesis-b10",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Practice" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b11",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Answer each question." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b12",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A plant's leaf veins are damaged, but its stomata are open. Which material will be less well supplied to the leaf for photosynthesis?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Water.",
+          "number": 3
+        },
+        {
+          "id": "y8-photosynthesis-b13",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A leaf has working veins and chloroplasts, but its stomata are blocked. Which reactant will have more difficulty entering the leaf?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "Carbon dioxide.",
+          "number": 4
+        },
+        {
+          "id": "y8-photosynthesis-b14",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cCarbon dioxide supplies the energy that is stored in glucose.\u201d Is the pupil right? Explain your answer."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 2,
+          "answer": "No. Chlorophyll absorbs light energy for photosynthesis, and that energy is transferred to a chemical store in glucose.",
+          "number": 5
+        },
+        {
+          "id": "y8-photosynthesis-b15",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "In the food chain grass \u2192 rabbit \u2192 fox, which organism makes glucose by photosynthesis?"
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 1,
+          "answer": "The grass.",
+          "number": 6
+        },
+        {
+          "id": "y8-photosynthesis-b16",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A pupil says, \u201cA rabbit gets its food and stored energy directly from sunlight.\u201d Explain why this claim is wrong."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Plants use light energy to make glucose, which stores energy. The rabbit gets food and stored energy through the food chain when it eats.",
+          "number": 7
+        },
+        {
+          "id": "y8-photosynthesis-b17",
+          "type": "heading",
+          "doc": {
+            "type": "doc",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Challenge" }] }
+            ]
+          },
+          "level": 2
+        },
+        {
+          "id": "y8-photosynthesis-b18",
+          "type": "instructions",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [{ "type": "text", "text": "Take this one step further." }]
+              }
+            ]
+          }
+        },
+        {
+          "id": "y8-photosynthesis-b19",
+          "type": "question",
+          "doc": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Explain how chlorophyll in a plant's chloroplasts helps stored energy reach an organism that eats the plant."
+                  }
+                ]
+              }
+            ]
+          },
+          "answerLines": 3,
+          "answer": "Chlorophyll absorbs light energy for photosynthesis, and this energy is transferred to a chemical store in glucose. The glucose provides food and stored energy, which can pass through a food chain when the plant is eaten.",
+          "number": 8
+        }
+      ],
+      "includeAnswerKey": true,
+      "selfAssessment": true,
+      "pageSize": "A4",
+      "lessonId": "01a1cf42-9c59-71f3-90b8-dfae9fe0415c",
+      "ageBand": "ks3",
+      "yearGroup": "Year 8",
+      "language": "en-GB"
+    },
+    "heights": {
+      "__header__": 90.04,
+      "y8-photosynthesis-b6": 20.19,
+      "y8-photosynthesis-b7": 19.75,
+      "y8-photosynthesis-b8": 60.75,
+      "y8-photosynthesis-b9": 60.75,
+      "y8-photosynthesis-b10": 20.19,
+      "y8-photosynthesis-b11": 19.75,
+      "y8-photosynthesis-b12": 77.25,
+      "y8-photosynthesis-b13": 77.25,
+      "y8-photosynthesis-b14": 103.5,
+      "y8-photosynthesis-b15": 60.75,
+      "y8-photosynthesis-b16": 129.75,
+      "y8-photosynthesis-b17": 20.19,
+      "y8-photosynthesis-b18": 19.75,
+      "y8-photosynthesis-b19": 129.75,
+      "__rag__": 137.52
+    },
+    "pagesBefore": 2
+  }
+}

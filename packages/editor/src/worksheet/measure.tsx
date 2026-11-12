@@ -8,10 +8,11 @@ import {
   type FlowItem,
   fillPages,
   HEADER_KEY,
+  layoutPages,
   type Pagination,
-  paginate,
   partHasHeader,
   type SheetPart,
+  type SpaceSizes,
 } from "./paginate";
 import { flowItemClass, sheetVars } from "./Sheet";
 import { SHEET_SIZES, sheetSizes } from "./sheet-sizes";
@@ -122,6 +123,8 @@ export type SheetPagination = Pagination & {
   ready: boolean;
   /** Mount this beside the sheet: the off-screen column the heights are read from. */
   measureNode: ReactNode;
+  /** The answer spacing the pages were laid out at (`layoutPages`); pass it to `Sheet`. */
+  space: SpaceSizes;
 };
 
 export function useSheetPagination(
@@ -148,11 +151,16 @@ export function useSheetPagination(
   // worksheet's own size rather than a fixed A4 constant.
   const contentH = pageMetrics(worksheet?.pageSize).contentH;
   const sizes = worksheet ? sheetSizes(worksheet) : SHEET_SIZES.secondary;
-  const { lineGapPt, boxScale } = sizes;
-  const { pages, oversize } = useMemo(() => {
-    const flowed = paginate(items, heights, headerHeight, contentH, lineGapPt);
-    return fill ? fillPages(flowed, heights, headerHeight, contentH, lineGapPt, boxScale) : flowed;
-  }, [items, heights, headerHeight, contentH, lineGapPt, boxScale, fill]);
+  const { pages, oversize, space } = useMemo(() => {
+    const base = { lineGapPt: sizes.lineGapPt, boxScale: sizes.boxScale };
+    const min = { lineGapPt: sizes.minLineGapPt, boxScale: sizes.minBoxScale };
+    const laid = layoutPages(items, heights, headerHeight, contentH, base, min);
+    const s = laid.space;
+    const paged = fill
+      ? fillPages(laid, laid.heights, headerHeight, contentH, s.lineGapPt, s.boxScale)
+      : laid;
+    return { pages: paged.pages, oversize: paged.oversize, space: s };
+  }, [items, heights, headerHeight, contentH, sizes, fill]);
 
   const ready =
     fontsReady &&
@@ -170,5 +178,5 @@ export function useSheetPagination(
     />
   ) : null;
 
-  return { items, pages, oversize, ready, measureNode };
+  return { items, pages, oversize, ready, measureNode, space };
 }

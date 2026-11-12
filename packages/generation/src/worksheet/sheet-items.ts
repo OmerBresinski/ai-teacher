@@ -654,3 +654,166 @@ export function examSchemaFor(
     });
   }) as z.ZodType<ExamOutput>;
 }
+
+/* ---- R5 item checks at the gate (12 Nov key check / blind judge) ----------------------------- */
+
+/** A content word cut to a rough stem, so "escaping" meets "escaped" and "houses" meets "house". */
+const stem = (w: string) => (w.length > 4 ? w.replace(/(?:ing|ed|es|s)$/, "") : w);
+
+/** The stemmed content words of a text: no stop words, no numbers, at least three letters. */
+export function keyWords(text: string): Set<string> {
+  return new Set(
+    [...words(text.replace(/[’']s\b/g, ""))]
+      .filter((w) => !STOP.has(w) && !/\d/.test(w) && w.length >= 3)
+      .map(stem),
+  );
+}
+
+/** Words a key wraps its answer in ("It could tell us that ..."), not the answer itself. */
+const KEY_FILLER = new Set(["could", "would", "tell", "tells", "because", "shows", "show"]);
+const YES_NO = /^\W*(?:yes|no)\b[.,!]?\s*/i;
+const QUOTED = /[“"][^”"]*[”"]/g;
+/** A claim to judge: "A pupil says/claims/thinks/labels ..." to the end of its sentence. */
+const CLAIM = /\b(?:says?|said|claims?|thinks?|believes?|labels?|argues?)\b[^.?!]*/gi;
+const sentences = (text: string) =>
+  (text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? []).map((s) => s.trim()).filter(Boolean);
+/** An ask that offers its options: "A or B?", "Tick one", "Circle", "Sort", "Match", a "→" chain. */
+const OFFERS_OPTIONS = /\bor\b|\btick\b|\bcircle\b|\bchoose\b|\bsort\b|\bmatch\b|→/i;
+/** A yes/no question: the key's "Yes."/"No." is the answer, the rest restates. */
+const YES_NO_ASK = /^\W*(?:will|is|are|does|do|can|could|did|was|were|would|should|has|have)\b/i;
+/** The stem sets two cases side by side; the ask picks one ("One leaf is broad...; another..."). */
+const COMPARES = /\banother\b|\bother\b|\bbut only\b|\bcompares?\b|;/i;
+const ASKING =
+  /\?|^\W*(?:explain|describe|give|name|write|state|say|list|correct|draw|tell|finish)\b/i;
+
+/**
+ * The part of a question that is told, not asked (R5): the sentences before the asking one, less
+ * any quoted words or claim to judge; and the asking sentence's tail after a colon when it offers
+ * no options ("Which plan uses both ways: carrying water in buckets and pulling down houses?").
+ */
+export function premiseOf(question: string): string {
+  const parts = sentences(question.replace(QUOTED, " "));
+  const at = parts.findIndex((p) => ASKING.test(p));
+  const ask = at >= 0 ? (parts[at] as string) : "";
+  const told = (at >= 0 ? parts.slice(0, at) : parts.slice(0, -1)).map((p) =>
+    p.replace(CLAIM, " "),
+  );
+  const tail =
+    ask.includes(":") && !OFFERS_OPTIONS.test(ask) ? ask.slice(ask.indexOf(":") + 1) : "";
+  return [...told, tail].join(" ");
+}
+
+/** At or above this share of the key's content words in the question's premise, the item is a giveaway. */
+export const GIVEAWAY = 0.75;
+
+/**
+ * Giveaway (R5): the question already tells the pupil its keyed answer ("Pepys saw people escaping
+ * by boat... What could his diary tell us?" / "It could tell us that people escaped by boat").
+ * The key (less a leading "Yes."/"No.") needs at least two content words, at least `GIVEAWAY` of
+ * them in the premise (`premiseOf`). Not judged: choosing from listed options (the asking sentence
+ * and what follows it are not premise, so "Which would help: X or Y?" and "Tick one." lists pass),
+ * a yes/no question, correcting or judging a claim, a "Which...?" between two cases the stem sets
+ * side by side, and any calculation.
+ */
+export function giveawayFault(item: {
+  question: string;
+  answer: string;
+  working: string | null;
+}): string | null {
+  if (item.working?.trim()) return null;
+  const parts = sentences(item.question.replace(QUOTED, " "));
+  const ask = parts.find((p) => ASKING.test(p)) ?? parts[parts.length - 1] ?? "";
+  if (YES_NO_ASK.test(ask) || /\bcorrect\b|\bright\b|\bmistake\b|\bwrong\b/i.test(ask)) return null;
+  if (/\b(?:which|where|who)\b/i.test(ask) && COMPARES.test(item.question)) return null;
+  const key = new Set(
+    [...keyWords(item.answer.replace(YES_NO, ""))].filter((w) => !KEY_FILLER.has(w)),
+  );
+  if (key.size < 2) return null;
+  const told = keyWords(premiseOf(item.question));
+  const shared = [...key].filter((w) => told.has(w)).length;
+  return shared / key.size >= GIVEAWAY ? "its question already gives the answer" : null;
+}
+
+/** The single steps a working takes, as "a op b" with its numbers ("35÷5"). */
+const stepsOf = (working: string | null): Set<string> =>
+  new Set(
+    (working ?? "").replace(/\s+/g, "").match(/\d+(?:[.,]\d+)?[×÷+−*x]\d+(?:[.,]\d+)?/g) ?? [],
+  );
+
+/** At or above this overlap of two keys' content words (and of their questions'), the same fact is asked twice. */
+export const SAME_FACT = 0.6;
+export const SAME_FACT_QUESTION = 0.35;
+
+const jaccard = (a: Set<string>, b: Set<string>) => {
+  const shared = [...a].filter((w) => b.has(w)).length;
+  return shared / Math.max(1, new Set([...a, ...b]).size);
+};
+
+/**
+ * Near-duplicates (R5), as [later, earlier, reason]: two core calculations whose working opens
+ * with the same step on the same numbers ("35 ÷ 5" twice), or two worded items whose keys share `SAME_FACT` of their
+ * content words and whose questions share `SAME_FACT_QUESTION` (the same fact asked twice). Exact
+ * repeats are `repeatedQuestions`' job.
+ */
+export function sameItemPairs(
+  items: readonly { question: string; answer: string; working: string | null; where?: string }[],
+): [number, number, string][] {
+  const out: [number, number, string][] = [];
+  items.forEach((it, i) => {
+    for (let j = 0; j < i; j++) {
+      const other = items[j] as (typeof items)[number];
+      if (it.working?.trim() && other.working?.trim()) {
+        // Only two core items: a core item on a warm-up's numbers builds on it (1/4 of 18, then
+        // 3/4 of 18), and the challenge is `challengeRestates`/`challengeEasierThan`'s.
+        if (it.where !== "core" || other.where !== "core") continue;
+        const first = [...stepsOf(it.working)][0];
+        const shared = first && [...stepsOf(other.working)][0] === first ? first : undefined;
+        if (shared) {
+          out.push([i, j, `takes the same step (${shared}) as`]);
+          break;
+        }
+        continue;
+      }
+      if (it.working?.trim() || other.working?.trim()) continue;
+      // A sum with no working (Years 1-2) is the same story with new numbers: `nearDuplicates`'.
+      if (isCalculation(it.question) || isCalculation(other.question)) continue;
+      const mine = keyWords(it.answer.replace(YES_NO, ""));
+      const theirs = keyWords(other.answer.replace(YES_NO, ""));
+      if (mine.size < 2 || theirs.size < 2) continue;
+      const keys = jaccard(mine, theirs);
+      const asks = jaccard(keyWords(it.question), keyWords(other.question));
+      if (keys >= SAME_FACT && asks >= SAME_FACT_QUESTION) {
+        out.push([i, j, "asks the same fact as"]);
+        break;
+      }
+    }
+  });
+  return out;
+}
+
+/** At or above this share of the challenge's content words found in earlier keys, it restates them. */
+export const RESTATES = 0.8;
+
+/**
+ * The challenge (the last item) is a restatement or a plain join of earlier items (R5): its key's
+ * content words are at least `RESTATES` covered by one earlier key, or by two together. Returns the
+ * earlier indices, or null. Worded items only; a calculation challenge is `challengeEasierThan`'s.
+ */
+export function challengeRestates(
+  items: readonly { answer: string; working: string | null }[],
+): number[] | null {
+  const last = items[items.length - 1];
+  if (!last || last.working?.trim()) return null;
+  const key = keyWords(last.answer.replace(YES_NO, ""));
+  if (key.size < 3) return null;
+  const earlier = items.slice(0, -1).map((it) => keyWords(it.answer.replace(YES_NO, "")));
+  const cover = (sets: Set<string>[]) =>
+    [...key].filter((w) => sets.some((s) => s.has(w))).length / key.size;
+  for (let i = 0; i < earlier.length; i++) {
+    if (cover([earlier[i] as Set<string>]) >= RESTATES) return [i];
+  }
+  for (let i = 0; i < earlier.length; i++)
+    for (let j = i + 1; j < earlier.length; j++)
+      if (cover([earlier[i] as Set<string>, earlier[j] as Set<string>]) >= RESTATES) return [i, j];
+  return null;
+}

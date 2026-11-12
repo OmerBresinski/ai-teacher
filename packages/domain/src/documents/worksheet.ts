@@ -193,6 +193,21 @@ export const WorksheetGenerationSchema = z.strictObject({
   practiceMinutes: z.number().int().positive(),
   /** Set only at `stage: "failed"`: why the job stopped. */
   failure: WorksheetFailureSchema.optional(),
+  /**
+   * R5: every item the gate dropped from a sheet that still shipped, in full, with its reasons, so
+   * drops can be audited (generated text only, no pupil data). Absent when nothing was dropped.
+   */
+  dropped: z
+    .array(
+      z.strictObject({
+        where: z.string(),
+        question: z.string(),
+        working: z.string().nullable(),
+        answer: z.string(),
+        faults: z.array(z.string()),
+      }),
+    )
+    .optional(),
 });
 export type WorksheetGeneration = z.infer<typeof WorksheetGenerationSchema>;
 

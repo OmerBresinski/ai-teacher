@@ -14,16 +14,20 @@ import {
 import { fixNumberArticles } from "./articles";
 import type { FillDeps } from "./fill";
 import {
+  challengeEasierThan,
+  challengeRestates,
   type ExamItem,
   type ExamOutput,
   examFaults,
   examSchemaFor,
+  giveawayFault,
   type PracticeItem,
   type PracticeOutput,
   practiceFaults,
   practiceSchemaFor,
   repeatedQuestions,
   repeatedResults,
+  sameItemPairs,
 } from "./sheet-items";
 
 /*
@@ -122,6 +126,7 @@ export function practiceBlocks(
       });
   });
   const year = digest.lesson.yearGroup;
+  itemChecks(all, keep, verdicts, findings, practiceMinimum(year));
   const kept = keep.filter(Boolean).length;
   const enough = kept >= practiceMinimum(year) && keep[keep.length - 1] === true;
   // R3: "A 11 m ribbon" -> "An 11 m ribbon" (fixNumberArticles), logged so the prompt can learn it.
@@ -176,6 +181,76 @@ export function practiceBlocks(
       : []),
   ];
   return { blocks, findings, written: all.length, kept, enough, verdicts };
+}
+
+/**
+ * R5 item checks (12 Nov key check, blind judge): a giveaway, a near-duplicate, and a challenge
+ * that restates earlier items or takes fewer steps than one. Each drops one core or warm-up item
+ * only while the sheet keeps its minimum (otherwise it is kept and flagged); the challenge is never
+ * dropped by these (a dropped challenge fails the sheet), only flagged. Runs on the items that
+ * passed `practiceFaults`; `keep`, `verdicts` and `findings` are updated in place.
+ */
+function itemChecks(
+  all: [string, PracticeItem][],
+  keep: boolean[],
+  verdicts: ItemVerdict[],
+  findings: Finding[],
+  minimum: number,
+): void {
+  const last = all.length - 1;
+  const flag = (n: number, check: string, fault: string) =>
+    findings.push({
+      check,
+      severity: "warning",
+      target: { blockId: all[n]?.[0] ?? "" },
+      message: `Kept ${all[n]?.[0]}: ${fault}.`,
+    });
+  const softDrop = (n: number, check: string, fault: string) => {
+    if (!keep[n]) return;
+    if (n === last || keep.filter(Boolean).length - 1 < minimum) {
+      flag(n, check, n === last ? fault : `${fault} (too few items left to drop it)`);
+      return;
+    }
+    keep[n] = false;
+    (verdicts[n] as ItemVerdict).faults.push(fault);
+    findings.push(drop(all[n]?.[0] ?? "", fault));
+  };
+  const live = all.map((_, n) => n).filter((n) => keep[n]);
+  const item = (n: number) => {
+    const [where, it] = all[n] as [string, PracticeItem];
+    const kind = n === last ? "challenge" : where.startsWith("warm") ? "warm-up" : "core";
+    return { ...it, where: kind };
+  };
+  for (const n of live) {
+    const g = giveawayFault(item(n));
+    if (g) softDrop(n, "sheet-gate:giveaway", g);
+  }
+  const liveNow = live.filter((n) => keep[n] || n === last);
+  for (const [a, b, why] of sameItemPairs(liveNow.map(item))) {
+    const later = liveNow[a] as number;
+    const earlier = liveNow[b] as number;
+    // The challenge stays; the core item it repeats goes instead.
+    const target = later === last ? earlier : later;
+    const other = target === later ? earlier : later;
+    softDrop(target, "sheet-gate:near-duplicate", `${why} ${all[other]?.[0]}`);
+  }
+  if (!keep[last]) return;
+  const before = all.map((_, n) => n).filter((n) => keep[n]);
+  const items = before.map(item);
+  const restates = challengeRestates(items);
+  if (restates)
+    flag(
+      last,
+      "sheet-gate:challenge-restates",
+      `the challenge restates ${restates.map((i) => all[before[i] as number]?.[0]).join(" and ")}`,
+    );
+  const easier = challengeEasierThan(items);
+  if (easier !== null)
+    flag(
+      last,
+      "sheet-gate:challenge-easier",
+      `the challenge takes fewer steps than ${all[before[easier] as number]?.[0]}`,
+    );
 }
 
 const verdictOf = (

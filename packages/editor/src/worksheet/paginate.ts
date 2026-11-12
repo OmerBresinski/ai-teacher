@@ -169,6 +169,8 @@ export function paginate(
   contentH: number = CONTENT_H,
   /** The sheet's ruled-line spacing (`sheetSizes`), for splitting a lines question. */
   lineGapPt: number = LINE_GAP,
+  /** Keys that start a fresh page whatever room is left (`layoutPages`' widow control). */
+  breakBefore: ReadonlySet<string> = new Set(),
 ): Pagination {
   const pages: WorksheetPage[] = [];
   const oversize: string[] = [];
@@ -194,7 +196,7 @@ export function paginate(
       if (!landsOnEmptyPage) flush();
       continue;
     }
-    if (startsPage(item) && current.length > 0) flush();
+    if ((startsPage(item) || breakBefore.has(item.key)) && current.length > 0) flush();
 
     const height = heights[item.key] ?? 0;
     let room = available();
@@ -301,8 +303,148 @@ export function fillPages(
   return { ...pagination, pages };
 }
 
-/** Answer space that can take a page's spare room: a box, or a question with ruled lines. */
+/**
+ * Answer space that can take a page's spare room: a box, or a question with two or more ruled
+ * lines. R5 (12 Nov key check: "a one-word answer gets 3 lines while a two-part explanation gets
+ * 2"): a one-line question is sized to a word or a number from its key and keeps its one line.
+ */
 const isFillable = (it: FlowItem) =>
   it.kind === "block" &&
   !it.split &&
-  (it.block.type === "answer-box" || (it.block.type === "question" && it.block.answerLines > 0));
+  (it.block.type === "answer-box" || (it.block.type === "question" && it.block.answerLines > 1));
+
+/* ---- fewest pages (R5, 12 Nov) ------------------------------------------------ */
+
+/** The two spacing values a sheet may tighten to save a page: ruled-line gap and box multiplier. */
+export type SpaceSizes = { lineGapPt: number; boxScale: number };
+
+/**
+ * Heights at other answer spacing, from heights measured at `from`: a question's ruled lines and
+ * a lines block are `lineGapPt` each, an answer box draws `heightPt * boxScale`; nothing else
+ * moves. Exact for the DOM `Sheet` draws (`.ws-line` height, the box's inline height), so no
+ * second measuring pass is needed.
+ */
+export function heightsAt(
+  items: FlowItem[],
+  heights: Record<string, number>,
+  from: SpaceSizes,
+  to: SpaceSizes,
+): Record<string, number> {
+  const out: Record<string, number> = { ...heights };
+  for (const item of items) {
+    if (item.kind !== "block" || out[item.key] === undefined) continue;
+    const b = item.block;
+    const lines = b.type === "question" ? b.answerLines : b.type === "lines" ? b.count : 0;
+    let h = out[item.key] as number;
+    h -= lines * (from.lineGapPt - to.lineGapPt);
+    if (b.type === "answer-box") h -= b.heightPt * (from.boxScale - to.boxScale);
+    out[item.key] = h;
+  }
+  return out;
+}
+
+/** How tight a sheet may go, as steps from its band's size to its floor (`SheetSizes.min*`). */
+export const COMPACT_STEPS = [0.25, 0.5, 0.75, 1] as const;
+
+const questionCount = (page: WorksheetPage) =>
+  page.items.filter((it) => it.kind === "block" && it.block.type === "question" && !it.split)
+    .length;
+
+const pageUsed = (page: WorksheetPage, heights: Record<string, number>, headerHeight: number) =>
+  page.items.reduce((sum, it) => sum + (heights[it.key] ?? 0), page.index === 0 ? headerHeight : 0);
+
+export type SheetLayout = Pagination & {
+  /** The spacing the pages were laid out at; `Sheet` draws with it. */
+  space: SpaceSizes;
+  /** The heights at that spacing (for `fillPages`). */
+  heights: Record<string, number>;
+};
+
+/**
+ * The sheet's pages (R5, from the 12 Nov key check: "Year 2 sheets of 6 items run to 3 pages with
+ * half-empty pages"; "the Challenge alone on p3"). Three rules on top of `paginate`:
+ *
+ * 1. Fewest pages: when tighter answer spacing, down to the band's floor (`min`), saves a page,
+ *    the sheet uses the loosest spacing that does. Print's `fillPages` then gives the spare room
+ *    back as lines and box height, so the pupil's space is not lost, only rebalanced.
+ * 2. No stranded section: a last page (not the only one) holding a single question, or under a
+ *    third full, takes the question run before it from the previous page, as long as that page
+ *    stays at least a third full and the page count does not change.
+ * 3. A question always stays with its space, a heading with what it introduces (`keepsWithNext`).
+ */
+export function layoutPages(
+  items: FlowItem[],
+  heights: Record<string, number>,
+  headerHeight: number,
+  contentH: number,
+  base: SpaceSizes,
+  min: SpaceSizes = base,
+): SheetLayout {
+  const at = (t: number): SpaceSizes => ({
+    lineGapPt: base.lineGapPt - t * (base.lineGapPt - min.lineGapPt),
+    boxScale: base.boxScale - t * (base.boxScale - min.boxScale),
+  });
+  let space = base;
+  let hs = heights;
+  let best = paginate(items, hs, headerHeight, contentH, space.lineGapPt);
+  const canTighten = min.lineGapPt < base.lineGapPt || min.boxScale < base.boxScale;
+  if (best.pages.length > 1 && canTighten) {
+    for (const t of COMPACT_STEPS) {
+      const s = at(t);
+      const h = heightsAt(items, heights, base, s);
+      const p = paginate(items, h, headerHeight, contentH, s.lineGapPt);
+      if (p.pages.length < best.pages.length && p.oversize.length <= best.oversize.length) {
+        best = p;
+        space = s;
+        hs = h;
+        break;
+      }
+    }
+  }
+  return {
+    ...balanceLastPage(items, hs, headerHeight, contentH, space.lineGapPt, best),
+    space,
+    heights: hs,
+  };
+}
+
+/** Rule 2 of `layoutPages`: pull the run before a stranded last page onto it. */
+function balanceLastPage(
+  items: FlowItem[],
+  heights: Record<string, number>,
+  headerHeight: number,
+  contentH: number,
+  lineGapPt: number,
+  start: Pagination,
+): Pagination {
+  let result = start;
+  const breaks = new Set<string>();
+  const third = contentH / 3;
+  for (let tries = 0; tries < 3; tries++) {
+    const n = result.pages.length;
+    if (n < 2) return result;
+    const last = result.pages[n - 1] as WorksheetPage;
+    const prev = result.pages[n - 2] as WorksheetPage;
+    if (last.items.some((it) => it.kind === "key-title" || it.kind === "key-entry")) return result;
+    const stranded = questionCount(last) <= 1 || pageUsed(last, heights, headerHeight) < third;
+    if (!stranded || prev.items.some((it) => it.kind === "block" && it.split)) return result;
+    // The run that ends the previous page: its last item and every item kept with it.
+    let j = prev.items.length - 1;
+    while (j > 0 && keepsWithNext(prev.items[j - 1] as FlowItem, prev.items[j])) j--;
+    const first = prev.items[j] as FlowItem;
+    if (j === 0 || first.kind !== "block" || isPageBreak(first)) return result;
+    const next = new Set([...breaks, first.key]);
+    const p = paginate(items, heights, headerHeight, contentH, lineGapPt, next);
+    const moved = p.pages[n - 2];
+    if (
+      p.pages.length !== n ||
+      p.oversize.length > result.oversize.length ||
+      !moved ||
+      pageUsed(moved, heights, headerHeight) < third
+    )
+      return result;
+    breaks.add(first.key);
+    result = p;
+  }
+  return result;
+}

@@ -2,7 +2,7 @@ import type { PageSize, Theme, Worksheet } from "@tj/domain/documents";
 import type { CSSProperties, ReactNode } from "react";
 import { FlowItemContent, SheetHeader, type SheetMode } from "./BlockContent";
 import { pageMetrics } from "./metrics";
-import type { FlowItem, WorksheetPage } from "./paginate";
+import type { FlowItem, SpaceSizes, WorksheetPage } from "./paginate";
 import { SHEET_SIZES, type SheetSizes, sheetSizes } from "./sheet-sizes";
 
 /**
@@ -112,6 +112,7 @@ export function Sheet({
   pageWrapper,
   className,
   noHeader,
+  space,
 }: {
   worksheet: Worksheet;
   theme: Theme;
@@ -128,11 +129,14 @@ export function Sheet({
   className?: string;
   /** The answer key printed alone (`SheetPart` "key"). */
   noHeader?: boolean;
+  /** The spacing the pages were laid out at (`useSheetPagination().space`); the band's own if unset. */
+  space?: SpaceSizes;
 }) {
+  const sizes = sheetSizes(worksheet);
   return (
     <div
       className={className ? `ws-sheet ${className}` : "ws-sheet"}
-      style={sheetVars(theme, worksheet.pageSize, sheetSizes(worksheet))}
+      style={sheetVars(theme, worksheet.pageSize, space ? { ...sizes, ...space } : sizes)}
     >
       {pages.map((page) => {
         const node = (
