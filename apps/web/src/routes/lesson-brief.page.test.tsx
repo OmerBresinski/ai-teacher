@@ -96,6 +96,9 @@ describe("real lesson intake", () => {
     fakeApi.requests.length = 0;
     navigate.mockReset();
     localStorage.clear();
+    // A teacher who chose Year 4 last time: a fresh brief has no year group (founder's ruling,
+    // 12 Nov 2026), so the rows that only press Next start from a remembered class.
+    localStorage.setItem("tj:brief:last-class", JSON.stringify({ yearGroup: "Year 4" }));
     search = {};
     turnstile.getToken.mockReset();
     turnstile.getToken.mockImplementation(async () => "turnstile-token");
@@ -109,6 +112,7 @@ describe("real lesson intake", () => {
     mock.restore();
   });
   it("opens on the brief with its heading focused and nothing filled in", async () => {
+    localStorage.clear();
     show();
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Let’s start with your idea." })).toHaveFocus(),
@@ -116,8 +120,24 @@ describe("real lesson intake", () => {
     expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("");
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Skip planning" })).toBeDisabled();
-    expect(screen.getByRole("combobox", { name: "Year group" })).toHaveTextContent("Year 4");
+    // Founder's ruling (12 Nov 2026): no preset year group; the teacher chooses one.
+    expect(screen.getByRole("combobox", { name: "Year group" })).toHaveTextContent(
+      "Choose a year group",
+    );
     expect(screen.getByRole("button", { name: "Blank lesson" })).toBeVisible();
+  });
+  it("asks for the year group instead of starting a fresh guest's lesson (12 Nov 2026)", async () => {
+    localStorage.clear();
+    search = { topic: "The water cycle" };
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Skip planning" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Which year group is this for? Choose one from the list.",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fakeApi.requests.filter((r) => r.path === "/lessons")).toHaveLength(0);
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("The water cycle");
   });
   it("preserves homepage topic and creates an idempotent proposed plan without minutes", async () => {
     search = { topic: "The water cycle" };

@@ -6,6 +6,7 @@ import {
   deriveAgeBand,
   LESSON_TITLE_MAX,
   type Lesson,
+  recogniseYearGroup,
   SLIDE_TIER_RANGES,
   type Slide,
   type SlideGenerationState,
@@ -85,13 +86,17 @@ const STAGE_OF_BAND: Record<AgeBand, Stage> = {
 };
 
 /**
- * The lesson's key stage: its `ageBand`, else the band its year group gives, else KS3 (a lesson
- * with no year group, as `writerBrief`'s Year 7 default). A band the writer does not know throws:
- * it must never be written at KS3 by accident.
+ * The lesson's key stage: its `ageBand`, else the band its year group gives. No band and no year
+ * group the writer can read throws (founder's ruling, 12 Nov 2026: ask, never guess): a "P5" or a
+ * "Grade 4" must never be written at KS3, nor any band the writer does not know.
  */
 export function stageOf(ageBand: string | undefined, yearGroup?: string): Stage {
   const band = ageBand ?? deriveAgeBand(yearGroup);
-  if (band === undefined) return "ks3";
+  if (band === undefined) {
+    throw new Error(
+      `writer: no key stage for year group ${JSON.stringify(yearGroup ?? null)}; the intake must ask the teacher`,
+    );
+  }
   if (!Object.hasOwn(STAGE_OF_BAND, band)) {
     throw new Error(`writer: no key stage for age band ${JSON.stringify(band)}`);
   }
@@ -116,7 +121,15 @@ export function coverageFloor(
 
 /** The writer's brief, read off the lesson. */
 export function writerBrief(lesson: Lesson): Brief {
-  const year = Number(/\d+/.exec(lesson.yearGroup ?? "")?.[0] ?? 7);
+  // Founder's ruling (12 Nov 2026): only a supported England year is written; anything else
+  // (blank, "P5", "Grade 4", "Reception") fails the job loudly rather than becoming Year 7 or KS3.
+  const yearGroup = recogniseYearGroup(lesson.yearGroup);
+  if (yearGroup === undefined) {
+    throw new Error(
+      `writer: year group ${JSON.stringify(lesson.yearGroup ?? null)} is not one of Year 1 to Year 13; the intake must ask the teacher`,
+    );
+  }
+  const year = Number(/\d+/.exec(yearGroup)?.[0]);
   const b = lesson.brief;
   // v5.3-gold: the stored points whose objective the lesson still has.
   const nObjectives = lesson.facts?.objectives?.length ?? 0;
@@ -129,12 +142,12 @@ export function writerBrief(lesson: Lesson): Brief {
     ...(lesson.historicalPeriod
       ? { historicalPeriod: lesson.historicalPeriod, fictionInPeriod: lesson.fictionInPeriod }
       : {}),
-    yearGroup: lesson.yearGroup ?? `Year ${year}`,
+    yearGroup,
     year,
-    keyStage: stageOf(lesson.ageBand, lesson.yearGroup),
+    keyStage: stageOf(lesson.ageBand, yearGroup),
     challenge: b?.level === "easier" ? "support" : b?.level === "harder" ? "stretch" : "core",
     theme: lesson.themeId,
-    readingLevel: lesson.readingLevel ?? lesson.yearGroup ?? "",
+    readingLevel: lesson.readingLevel ?? yearGroup,
     language: lesson.language ?? "en-GB",
     durationMin: b?.durationMin ?? lesson.facts?.durationMin ?? 60,
     // The writer reads the flag through its user turn (rulings 141, 148). The exit ticket is

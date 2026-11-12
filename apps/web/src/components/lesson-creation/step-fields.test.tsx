@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { render, screen } from "@testing-library/react";
-import { draftsForYear, ObjectivesStep } from "./step-fields";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { BriefStep, draftsForYear, type IntakeBrief, ObjectivesStep } from "./step-fields";
 
 const renderObjectives = (slideTier: "quick" | "standard" | "detailed" = "standard") =>
   render(
@@ -64,5 +65,80 @@ describe("draftsForYear", () => {
       { id: "a", recipe: "practice", minutes: "15" },
       { id: "b", recipe: "exit-ticket", minutes: "10" },
     ]);
+  });
+});
+
+/* Founder's ruling (12 Nov 2026): an unrecognised year group asks the teacher, never guesses. */
+describe("BriefStep year group question", () => {
+  function Harness({
+    initial,
+    onNext,
+  }: {
+    initial: IntakeBrief;
+    onNext: (b: IntakeBrief) => void;
+  }) {
+    const [brief, setBrief] = useState(initial);
+    return <BriefStep brief={brief} onChange={setBrief} onNext={() => onNext(brief)} />;
+  }
+  const brief = (patch: Partial<IntakeBrief> = {}): IntakeBrief => ({
+    topic: "Fractions of amounts",
+    yearGroup: "",
+    level: "standard",
+    files: [],
+    ...patch,
+  });
+  const year = () => screen.getByRole("combobox", { name: "Year group" });
+  const question = () => screen.queryByRole("alert");
+  // Radix keeps a native select beside the trigger for forms; a change there is a pick.
+  const pick = (value: string) => {
+    const native = document.querySelector("select") as HTMLSelectElement;
+    fireEvent.change(native, { target: { value } });
+  };
+
+  it("starts empty with “Choose a year group”, and Next asks instead of guessing", () => {
+    cleanup();
+    const next: IntakeBrief[] = [];
+    render(<Harness initial={brief()} onNext={(b) => next.push(b)} />);
+    expect(year()).toHaveTextContent("Choose a year group");
+    expect(question()).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(next).toHaveLength(0);
+    expect(question()).toHaveTextContent("Which year group is this for? Choose one from the list.");
+    // The question is tied to the field and takes focus there, for keyboard and screen reader.
+    expect(year()).toHaveAttribute("aria-invalid", "true");
+    expect(year().getAttribute("aria-describedby")).toBe(question()?.id ?? "missing");
+    expect(year()).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue("Fractions of amounts");
+    pick("Year 4");
+    expect(question()).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(next.map((b) => b.yearGroup)).toEqual(["Year 4"]);
+  });
+
+  it("asks at once about a stored year group that is not on the list, naming it", () => {
+    cleanup();
+    render(<Harness initial={brief({ yearGroup: "P5" })} onNext={() => {}} />);
+    expect(year()).toHaveTextContent("Choose a year group");
+    expect(question()).toHaveTextContent("“P5” isn’t on our list. Which year group is this for?");
+  });
+
+  it("asks when the topic names another year, keeps the topic, and takes the teacher's pick", () => {
+    cleanup();
+    const next: IntakeBrief[] = [];
+    const topic = "Fractions for my P5 class";
+    render(
+      <Harness initial={brief({ topic, yearGroup: "Year 4" })} onNext={(b) => next.push(b)} />,
+    );
+    expect(question()).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(next).toHaveLength(0);
+    expect(question()).toHaveTextContent("Your topic says “P5”. Which year group is this for?");
+    // The choice is cleared so the teacher picks it themselves; their topic stays as typed.
+    expect(year()).toHaveTextContent("Choose a year group");
+    expect(screen.getByRole("textbox", { name: "Topic" })).toHaveValue(topic);
+    pick("Year 4");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(next).toHaveLength(1);
+    expect(next[0]).toMatchObject({ yearGroup: "Year 4", yearConfirmedFor: "p5" });
   });
 });

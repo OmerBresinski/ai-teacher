@@ -2,11 +2,17 @@ import {
   DEFAULT_SHEET_RECIPE_ID,
   OFFERED_RECIPE_IDS,
   offeredForYear,
+  recogniseYearGroup,
   SLIDE_TIER_RANGES,
   SLIDE_TIERS,
   type SlideSheetRecipeId,
   type SlideTier,
+  YEAR_GROUP_PLACEHOLDER,
   YEAR_GROUPS,
+  type YearGroupProblem,
+  yearGroupMessage,
+  yearGroupProblem,
+  yearMentionKey,
   yearNumberOf,
 } from "@tj/domain/documents";
 import {
@@ -57,10 +63,18 @@ export function ChoiceField({
   options,
   onChange,
   compact = false,
+  placeholder,
+  error,
+  triggerRef,
 }: {
   compact?: boolean;
   label: string;
   value: string;
+  /** Shown while nothing is chosen (`value` is ""). */
+  placeholder?: string;
+  /** The field's error line, tied to the control by `aria-describedby`. */
+  error?: string;
+  triggerRef?: React.Ref<HTMLButtonElement>;
   /** An option's `hint` is its plain helper, shown muted after the label. */
   options: readonly { value: string; label: string; hint?: string }[];
   onChange: (value: string) => void;
@@ -70,8 +84,14 @@ export function ChoiceField({
     <div className={compact ? "creation-compact-choice" : undefined}>
       <Field id={id} label={label}>
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger id={id} className="w-full">
-            <SelectValue />
+          <SelectTrigger
+            id={id}
+            ref={triggerRef}
+            className="w-full"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+          >
+            <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
@@ -90,12 +110,36 @@ export function ChoiceField({
             </SelectGroup>
           </SelectContent>
         </Select>
+        {error ? (
+          <p id={`${id}-error`} role="alert" className="text-meta text-destructive">
+            {error}
+          </p>
+        ) : null}
       </Field>
     </div>
   );
 }
 
-export type IntakeBrief = { topic: string; yearGroup: string; level: string; files: string[] };
+export type IntakeBrief = {
+  topic: string;
+  /** "" until the teacher chooses (founder's ruling, 12 Nov 2026: no preset year group). */
+  yearGroup: string;
+  level: string;
+  files: string[];
+  /**
+   * The topic's year mentions (`yearMentionKey`) when the teacher answered the year-group
+   * question for them: the answer holds while the topic names the same years.
+   */
+  yearConfirmedFor?: string;
+};
+
+/** Whether the teacher has answered the year-group question for the topic as it now reads. */
+export const yearConfirmed = (brief: IntakeBrief) =>
+  brief.yearConfirmedFor !== undefined && brief.yearConfirmedFor === yearMentionKey(brief.topic);
+
+/** What the brief's year group needs before planning can start; undefined when it can go. */
+export const briefYearProblem = (brief: IntakeBrief) =>
+  yearGroupProblem(brief.yearGroup, brief.topic, yearConfirmed(brief));
 export function BriefStep({
   brief,
   onChange,
@@ -112,12 +156,28 @@ export function BriefStep({
 }) {
   const id = useId();
   const [levelOpen, setLevelOpen] = useState(false);
+  // Founder's ruling (12 Nov 2026): a year group the list does not have is asked, never guessed.
+  // A stored one that is not on the list (an older lesson's "P5") asks at once; the rest on Next.
+  const [yearAsk, setYearAsk] = useState<YearGroupProblem | undefined>(() => {
+    const problem = briefYearProblem(brief);
+    return problem?.reason === "unrecognised" ? problem : undefined;
+  });
+  const yearTrigger = useRef<HTMLButtonElement>(null);
+  /** Runs `next` when the year group can go; else asks, keeping everything the teacher typed. */
+  const go = (next: () => void) => {
+    const problem = briefYearProblem(brief);
+    if (problem === undefined) return next();
+    setYearAsk(problem);
+    // A topic naming another year: the teacher picks again, so the choice is theirs, not ours.
+    if (problem.reason === "conflict") onChange({ ...brief, yearGroup: "" });
+    yearTrigger.current?.focus();
+  };
   return (
     <form
       className="creation-form"
       onSubmit={(event) => {
         event.preventDefault();
-        onNext();
+        go(onNext);
       }}
     >
       <div className="creation-brief-source">
@@ -135,8 +195,16 @@ export function BriefStep({
       </div>
       <ChoiceField
         label="Year group"
-        value={brief.yearGroup}
-        onChange={(yearGroup) => onChange({ ...brief, yearGroup })}
+        value={recogniseYearGroup(brief.yearGroup) ?? ""}
+        placeholder={YEAR_GROUP_PLACEHOLDER}
+        error={yearAsk ? yearGroupMessage(yearAsk) : undefined}
+        triggerRef={yearTrigger}
+        onChange={(yearGroup) => {
+          // A pick made in answer to the question settles it for the topic's year mentions.
+          const answered = yearAsk?.reason === "conflict" ? yearMentionKey(brief.topic) : undefined;
+          onChange({ ...brief, yearGroup, yearConfirmedFor: answered ?? brief.yearConfirmedFor });
+          setYearAsk(undefined);
+        }}
         options={YEAR_GROUP_OPTIONS}
       />
       <div className="creation-disclosure" data-open={levelOpen}>
@@ -193,7 +261,7 @@ export function BriefStep({
           Next <ArrowRight />
         </Button>
         {onSkip ? (
-          <Button variant="link" disabled={!brief.topic.trim()} onClick={onSkip}>
+          <Button variant="link" disabled={!brief.topic.trim()} onClick={() => go(onSkip)}>
             Skip planning
           </Button>
         ) : null}

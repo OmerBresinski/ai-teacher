@@ -78,8 +78,9 @@ const RETRYABLE_STATUSES = new Set([408, 425, 429, 502, 503, 504]);
 /** Thrown by the shared `validationHook`; carries the failing top-level field names. */
 export class ValidationError extends Error {
   readonly fields: string[];
-  constructor(fields: string[]) {
-    super("The request contains invalid fields.");
+  /** `message` is shown to the teacher as it is when given (e.g. the year-group question). */
+  constructor(fields: string[], message = "The request contains invalid fields.") {
+    super(message);
     this.name = "ValidationError";
     this.fields = fields;
   }

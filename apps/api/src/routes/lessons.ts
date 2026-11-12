@@ -88,9 +88,12 @@ import {
   offeredRecipeFor,
   PlanLessonSchema,
   RequestWorksheetSchema,
+  recogniseYearGroup,
   type SourceRef,
   WORKSHEET_TYPE_UNAVAILABLE_MESSAGE,
   type Worksheet,
+  yearGroupMessage,
+  yearGroupProblem,
   yearNumberOf,
 } from "@tj/domain/documents";
 import { cancel, enqueue } from "@tj/jobs";
@@ -109,7 +112,7 @@ import {
 } from "../auth/anonymous-limits";
 import { smallJsonBodyLimit } from "../body-limits";
 import type { AppEnv } from "../context";
-import { AnonymousRefusedError, ConflictError } from "../errors";
+import { AnonymousRefusedError, ConflictError, ValidationError } from "../errors";
 import type { EventsRuntime } from "../events/runtime";
 import { requireJsonBody, validationHook } from "../validation";
 import { getWorkspaceId } from "../workspace";
@@ -122,6 +125,21 @@ import {
 import { requireRuntime } from "./jobs";
 import { confirmLesson, replanLesson } from "./plan-patches";
 import { assertKnownTheme } from "./theme-guard";
+
+/**
+ * The year group as the list spells it, or a `400` naming `yearGroup` whose message is the
+ * intake's own question (founder's ruling, 12 Nov 2026): a blank or unrecognised year group, or a
+ * topic naming another year or stage the teacher has not confirmed, is refused, never mapped.
+ */
+function assertYearGroup(
+  yearGroup: string | undefined,
+  topic: string,
+  confirmed: boolean | undefined,
+): string {
+  const problem = yearGroupProblem(yearGroup, topic, confirmed === true);
+  if (problem !== undefined) throw new ValidationError(["yearGroup"], yearGroupMessage(problem));
+  return recogniseYearGroup(yearGroup) as string;
+}
 
 // `lessonFromBrief` lives in `@tj/domain/documents` (shared with the Studio entry); re-exported
 // because `lessons.test.ts` and the brief screen import it from here.
@@ -540,11 +558,18 @@ export function lessonRoutes(
         zValidator("json", CreateLessonSchema, validationHook),
         async (c) => {
           const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-          const rt = requireRuntime(runtime);
           const sent = c.req.valid("json");
+          // Founder's ruling (12 Nov 2026): an unrecognised year group is asked, never guessed.
+          // Checked before the runtime, so a refused brief is a 400 whatever the server's state.
+          const yearGroup = assertYearGroup(
+            sent.yearGroup,
+            sent.brief.topic,
+            sent.yearGroupConfirmed,
+          );
+          const rt = requireRuntime(runtime);
           // Ruling 202: a retired theme (an older client's chalk) is stored as the one it renders in.
           const themeId = assertKnownTheme(sent.themeId);
-          const input = themeId === sent.themeId ? sent : { ...sent, themeId };
+          const input = { ...sent, yearGroup, ...(themeId === sent.themeId ? {} : { themeId }) };
           const ws = forWorkspace(unsafeDb, workspaceId);
           const { requestId, skipPlanning = false } = input;
           if (requestId !== undefined) {
@@ -601,9 +626,21 @@ export function lessonRoutes(
         zValidator("json", PlanLessonSchema, validationHook),
         async (c) => {
           const workspaceId = getWorkspaceId(c, { allowHeaderShim: false });
-          const rt = requireRuntime(runtime);
           const lessonId = c.req.valid("param").id as LessonId;
-          const input = c.req.valid("json");
+          const sent = c.req.valid("json");
+          // A re-plan that sends a year group is held to the same rule as the create.
+          const input =
+            sent.yearGroup === undefined
+              ? sent
+              : {
+                  ...sent,
+                  yearGroup: assertYearGroup(
+                    sent.yearGroup,
+                    sent.brief.topic,
+                    sent.yearGroupConfirmed,
+                  ),
+                };
+          const rt = requireRuntime(runtime);
           const ws = forWorkspace(unsafeDb, workspaceId);
           const jobId = newId<JobId>();
           const anonymousUser = c.get("user")?.isAnonymous === true;
@@ -630,6 +667,9 @@ export function lessonRoutes(
                 if (anonymousUser && (stored.plan?.revision ?? 1) > ANONYMOUS_REPLAN_LIMIT) {
                   throw new AnonymousRefusedError("sign_in_required", REPLAN_LIMIT_MESSAGE);
                 }
+                // No year group sent: the stored one must still be one the writer can pitch to.
+                if (sent.yearGroup === undefined)
+                  assertYearGroup(stored.yearGroup, input.brief.topic, sent.yearGroupConfirmed);
                 const next = replanLesson(stored, input, { jobId, sources: sources?.sources });
                 return { lesson: next.lesson, meta: next.pinned };
               },
