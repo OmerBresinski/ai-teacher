@@ -159,6 +159,7 @@ import {
   notesText,
   renderedLines,
   type SlideNotes,
+  slideImages,
 } from "./notes";
 import { PartialJson } from "./partial";
 import { asksToSee, heldPhotoFills, orphansAfterFit, pastedPictureList } from "./picture-checks";
@@ -2371,12 +2372,17 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   // afterwards, or that loses a visual, gets its note written again once it settles (below); a
   // picture that lands as asked changes nothing. Nothing waits for the notes until the very end,
   // so they no longer add their ~20 s after the last picture (gen-health audit, 26 Oct).
-  const placedLines = (i: number) =>
-    (asks.get(i) ?? []).flatMap((a) => {
+  // BUILDER v5.3-gold B2: a picture is listed only when the laid slide holds it. A picture still
+  // loading, or one the layout did not place (four item pictures laid as one panel picture), is
+  // left out, so no note can point at a picture the slide does not have.
+  const placedLines = (i: number) => {
+    const onSlide = new Set(
+      slideImages((laid.get(i)?.slide.elements ?? []) as never).map((e) => e.src),
+    );
+    return (asks.get(i) ?? []).flatMap((a) => {
       const v = visualState(i)(a.key);
-      if (v?.status === "photo") return [`Picture: ${v.photo.alt || a.shows}`];
-      // Still loading (the stream-end call): the picture as asked for.
-      if (v?.status === "pending" && a.type === "photo") return [`Picture: ${a.shows}`];
+      if (v?.status === "photo")
+        return onSlide.has(v.photo.src) ? [`Picture: ${v.photo.alt || a.shows}`] : [];
       // A drawing the layout could not place is not on the slide (unless it ships with warnings).
       if (
         v?.status === "diagram" &&
@@ -2386,6 +2392,7 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         return [`Diagram (${a.kind}): ${(a.labels ?? []).join(", ")}`];
       return [];
     });
+  };
   const asShown = (i: number) =>
     renderedLines(i + 1, (laid.get(i)?.slide.elements ?? []) as never, placedLines(i));
   const notesCall = (only?: number) => {

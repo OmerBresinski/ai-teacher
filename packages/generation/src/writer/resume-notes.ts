@@ -1,7 +1,7 @@
 import { type WriterBundleId, writerBundle } from "./bundle";
 import { type Brief, contextBlock, fillTemplate } from "./fixes";
 import { localise } from "./locale";
-import { lessonNotes, notesText, renderedLines } from "./notes";
+import { lessonNotes, notesText, renderedLines, slideImages } from "./notes";
 import type { WriterServices } from "./services";
 
 /*
@@ -25,9 +25,7 @@ const primaryIndex = (id: string): number | undefined => {
 
 /** What a slide's pictures show, as the writer's notes call is told (`Picture: <alt>`). */
 const pictureLines = (elements: unknown[]): string[] =>
-  (elements as { type?: string; alt?: string }[])
-    .filter((e) => e.type === "image")
-    .map((e) => `Picture: ${e.alt ?? "a picture"}`);
+  slideImages(elements as never).map((e) => `Picture: ${e.alt || "a picture"}`);
 
 /**
  * `slides` with speaker notes written for the primary slides from 3 on whose id is in `only` (all
