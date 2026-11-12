@@ -511,6 +511,13 @@ export type WriterOutput = {
    * its room but on the slide is not reported). Each is also logged as `overflow-shipped`.
    */
   overflow: { slide: number; id: string; faults: string[] }[];
+  /**
+   * RC1 ship gate: one of the writer's own deck slides (`s<n>`, not a continuation) laid as the
+   * design's words-only look (`fixedFallback` with the pack's gold no-picture look, no visual), its
+   * notes kept; undefined for the title, the objectives, a slide pupils answer on, or an unknown
+   * id. Code only, no model call, no word added.
+   */
+  wordsOnly?: (id: string) => WriterSlide | undefined;
 };
 
 /**
@@ -4002,8 +4009,25 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     coverage: unmet.length,
     placeholders: placeholders.length,
   });
+  const wordsOnly = (id: string): WriterSlide | undefined => {
+    const k = /^s(\d+)$/.exec(id);
+    const i = k ? Number(k[1]) - 1 : -1;
+    const s0 = plan.slides[i] as S | undefined;
+    const own = slideAt(i);
+    if (i < 2 || i >= n || !s0 || !own || own.question) return undefined;
+    const words = fixedFallback(s0, { type: "photo" }, [], 0, goldDrop).slide;
+    const m = materialise(words, {
+      ...base,
+      index: i,
+      plan,
+      visual: () => ({ status: "failed" }) as VisualState,
+    });
+    if (m.slide.question) return undefined;
+    return { ...m.slide, id, notes: own.notes };
+  };
   return {
     overflow,
+    wordsOnly,
     slides: finalDeck,
     plan,
     checks,

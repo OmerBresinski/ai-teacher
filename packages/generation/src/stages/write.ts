@@ -12,13 +12,14 @@ import {
   SlideSchema,
   type SlideTier,
 } from "@tj/domain/documents";
-import { answersFaults, measureHeadless } from "@tj/slides";
+import { measureHeadless } from "@tj/slides";
 import { atKeyStage, getTheme } from "@tj/slides/themes";
 import { curriculumSubjectForTopic } from "../curriculum";
 import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch";
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
+import { faultKind, shipCounts, shipGate } from "../writer/final-gate";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
 import { withEndAnswers } from "../writer/materialise";
@@ -929,21 +930,45 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
   // wider face and ran into the next (Great Fire Y2 verify4 s15).
   const themeNow = await deps.themeNow?.().catch(() => undefined);
   const answersTheme = atKeyStage(getTheme(themeNow ?? lesson.themeId, null), keyStage);
-  const shipped = withEndAnswers(deck as unknown as Slide[], {
+  const ended = withEndAnswers(deck as unknown as Slide[], {
     theme: answersTheme,
     stage: keyStage,
   });
-  const generated = toLesson(shipped, "generated", allIn(shipped, "done"));
-  // TEACH-247 part ai: the writer's checks never see the guard and Answers slides (they are added
-  // here, after them), and `lintSlide` reads their designed disc-under-answer layering as overlaps.
-  // They are checked on their own rules, measured in the theme they were laid in.
+  // RC1 (e2e-11nov ROOT-CAUSES): the ship gate, last of all, over the deck exactly as it is saved
+  // (the writer's slides and the code-built Answers slides). It finds only certain faults (an empty
+  // picture slot or figure plate, words past the slide's edge or on other words; the Answers slides
+  // on their own template rules, TEACH-247 part ai), measured in the theme the deck is laid in, and
+  // acts in code without adding a word: the slot goes, the Answers are paginated again, a writer
+  // slide is laid as words only. The stage's own off-slide residuals count as found here too.
   const ruler = measureHeadless(answersTheme);
-  const answersOver = shipped.flatMap((s, i) => {
-    const faults = answersFaults(s, ruler);
-    return faults.length ? [{ slide: i + 1, id: s.id, faults }] : [];
+  const gate = shipGate(ended, {
+    theme: answersTheme,
+    themeId: themeNow ?? lesson.themeId,
+    stage: keyStage,
+    measure: ruler,
+    ...(out.wordsOnly ? { wordsOnly: out.wordsOnly as (id: string) => Slide | undefined } : {}),
+    reported: new Map(out.overflow.map((o) => [o.id, o.faults])),
   });
-  const over = [...out.overflow, ...answersOver];
-  // UX-C J8: a slide the stage could not fit ships with a "things to check" finding, never silently.
+  const shipped = gate.slides;
+  const counts = shipCounts(gate.records);
+  // Every gate action is logged by slide, fault kind and action (never slide text).
+  for (const r of gate.records)
+    deps.logger[r.shipped.length ? "warn" : "info"](
+      {
+        stage: "generate",
+        slide: r.slide,
+        faults: r.faults.map(faultKind),
+        action: r.action,
+        shipped: r.shipped.length,
+      },
+      "ship gate",
+    );
+  if (gate.records.length) deps.logger.info({ stage: "generate", ...counts }, "ship gate counts");
+  const generated = toLesson(shipped, "generated", allIn(shipped, "done"));
+  const over = gate.records
+    .filter((r) => r.shipped.length)
+    .map((r) => ({ slide: r.slide, id: r.id, faults: r.shipped }));
+  // UX-C J8: a slide the gate could not clear ships with a "things to check" finding, never silently.
   const overflow = overflowFindings(over, shipped);
   if (overflow.length)
     deps.logger.warn(
@@ -957,6 +982,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           generation: {
             ...generated.generation,
             findings: withOverflowFindings(generated.generation.findings, overflow),
+            shipGate: { ...counts, slides: gate.records },
           },
         }
       : {}),

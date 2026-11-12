@@ -409,6 +409,7 @@ export async function runLessonPipeline(
       checkpoint && hasGeneratedSlides(checkpoint.lesson)
         ? fitOf(checkpoint.lesson, deps)
         : undefined;
+    const shipGate = checkpoint?.lesson.generation?.shipGate;
     const generation: GenerationSummary = {
       lessonId: deps.context.lessonId,
       jobId: deps.context.jobId,
@@ -422,6 +423,15 @@ export async function runLessonPipeline(
       ...(readableMs !== undefined ? { readableMs } : {}),
       ...(checkedMs !== undefined ? { checkedMs } : {}),
       ...(fit ? { fit } : {}),
+      ...(shipGate
+        ? {
+            shipGate: {
+              detected: shipGate.detected,
+              acted: shipGate.acted,
+              shipped: shipGate.shipped,
+            },
+          }
+        : {}),
     };
     deps.logger.info({ generation }, "generation summary");
     if (deps.onSummary) {
