@@ -43,6 +43,7 @@ import {
   type PlacedPhoto,
   pickDirectedPhoto,
   plainSubject,
+  type SlideClaim,
 } from "./illustrate";
 import {
   type BankRequest,
@@ -1610,6 +1611,11 @@ export async function placeWriterPicture(args: {
 }): Promise<DirectedPhoto | undefined> {
   const { ask, lesson, deps } = args;
   const b = writerAskBrief(ask);
+  // The slide's own claim (heading and lead): every pick and painting is checked against it.
+  const claim: SlideClaim = {
+    words: [ask.slide.heading, ask.slide.text ?? ""].filter((w) => w.trim()).join(". "),
+    lessonTitle: lesson.title,
+  };
   const taken = args.taken ?? new Set<string>();
   const illustrated = ask.style === "illustration";
   const stock = async (
@@ -1627,6 +1633,7 @@ export async function placeWriterPicture(args: {
       // A race this search lost aborts its searches and its judge calls.
       deps: signal ? { ...deps, signal: AbortSignal.any([deps.signal, signal]) } : deps,
       taken,
+      claim,
       // A budget stop or a cancel is never a missing picture: it stops the lesson.
     }).catch(
       whenNonFatal((error: unknown) => {
@@ -1704,8 +1711,11 @@ export async function placeWriterPicture(args: {
                 brief,
                 deps,
                 dataUrl: made.dataUrl,
+                claim,
                 ...(reuse !== undefined ? { reuse } : {}),
-                ...(onWhy ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v)) } : {}),
+                ...(onWhy
+                  ? { onVerdict: (v) => onWhy(v.why ?? "", failedChecks(brief, v, claim)) }
+                  : {}),
               })
             : Promise.resolve(false),
         deps,
