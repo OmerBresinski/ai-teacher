@@ -19,12 +19,17 @@ import { blockKeepsWithNext, buildFlow, type FlowItem, paginate } from "./pagina
  * strip was pinned to the foot of page 2 under a tall empty band.
  */
 
-const q = (id: string, text: string, number: number): WorksheetBlock => ({
+const q = (
+  id: string,
+  text: string,
+  number: number,
+  answer = "5 (20 ÷ 4 = 5)",
+): WorksheetBlock => ({
   id,
   type: "question",
   doc: docFromText(text),
   answerLines: 0,
-  answer: "5 (20 ÷ 4 = 5)",
+  answer,
   number,
 });
 const box = (id: string): WorksheetBlock => ({
@@ -171,9 +176,7 @@ describe("fractions on the sheet are stacked, by the slides' finder", () => {
   });
 
   test("Word draws a real stacked fraction (an equation m:f) in the stem and in the key", async () => {
-    const xml = await documentXml(
-      sheet([{ ...q("q1", "What is 1/4 of 20?", 1), answer: "6 (2/5 of 15 = 6)" }]),
-    );
+    const xml = await documentXml(sheet([q("q1", "What is 1/4 of 20?", 1, "6 (2/5 of 15 = 6)")]));
     const fractions = xml.match(/<m:f>/g) ?? [];
     expect(fractions).toHaveLength(2);
     expect(xml).toMatch(/<m:num>.*?<m:t[^>]*>1<\/m:t>.*?<\/m:num>/);
