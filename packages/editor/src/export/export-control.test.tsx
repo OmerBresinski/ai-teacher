@@ -503,6 +503,25 @@ describe("ExportControl on a sheet with an unkeyed question", () => {
 
   it("a hand-made or old sheet exports as before", async () => {
     const user = userEvent.setup();
+
+    /* R4 review (12 Nov), web finding 6: no answers, no answer key. */
+    describe("ExportControl on a sheet with no answers", () => {
+      it("offers only the pupil sheet and says why", async () => {
+        const user = userEvent.setup();
+        const sheet: Worksheet = {
+          ...demoWorksheet(),
+          blocks: [{ id: "p", type: "paragraph", doc: docFromText("Read the passage.") }],
+        };
+        renderControl(sheet);
+        await openDialog(user);
+        expect(screen.getByRole("radio", { name: "Answer key" })).toBeDisabled();
+        expect(screen.getByRole("radio", { name: "Both" })).toBeDisabled();
+        expect(
+          screen.getByText("This sheet has no answers yet, so there is no answer key to print."),
+        ).toBeVisible();
+        expect(screen.getByRole("button", { name: "Export PDF" })).toBeEnabled();
+      });
+    });
     renderControl(unkeyed());
     await openDialog(user);
     await user.click(screen.getByRole("radio", { name: "Answer key" }));

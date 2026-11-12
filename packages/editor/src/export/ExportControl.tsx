@@ -32,6 +32,7 @@ import { prepareDiagramFonts } from "../images/diagram-fonts";
 import { Segmented } from "../kit/Segmented";
 import { renderTheme } from "../model/themes";
 import { SlideView } from "../slide/SlideView";
+import { hasAnyAnswer } from "../worksheet/answers";
 import type { SheetPart } from "../worksheet/paginate";
 import { KEY_PRINT_BLOCKED, UNFINISHED_PRINT_BLOCKED } from "../worksheet/unfinished-copy";
 import { downloadBlob } from "./download";
@@ -182,11 +183,15 @@ export function ExportControl({
   // say why. A question with no answer stops only the key parts (R4 review: a teacher-added
   // question must not stop the pupil copy). JSON is the stored document, so it stays on.
   const sheetFormat = worksheet && (format === "pdf" || format === "docx");
+  // A sheet with no answers has no key to print (R4 review: Answer key opened a blank page and an
+  // empty Word section): only the pupil sheet is offered, and the row says why.
+  const hasKey = worksheet && hasAnyAnswer((document as Worksheet).blocks);
+  const sheetPart: SheetPart = hasKey ? part : "pupil";
   const unfinishedBlocked = !!sheetFormat && isUnfinishedWorksheet(document as Worksheet);
   const keyBlocked =
     !!sheetFormat &&
     !unfinishedBlocked &&
-    part !== "pupil" &&
+    sheetPart !== "pupil" &&
     answerKeyBlockedReason(document as Worksheet) === "missing-answer";
   const blocked =
     (rangeApplies && !!rangeError) || empty || !!run || unfinishedBlocked || keyBlocked;
@@ -226,7 +231,7 @@ export function ExportControl({
     // `docx` packs the whole file in one call: there is nothing to stop.
     setRun({ label: "Building the Word file", cancellable: false });
     const { worksheetDocxBlob, docxFilename } = await exportLoaders.docx();
-    const blob = await worksheetDocxBlob(sheet, { part, imageOrigin });
+    const blob = await worksheetDocxBlob(sheet, { part: sheetPart, imageOrigin });
     downloadBlob(blob, docxFilename(sheet));
     finish("Worksheet exported as Word");
   };
@@ -299,7 +304,7 @@ export function ExportControl({
                   layout,
                   slides,
                 })
-              : worksheetPrintHref(document.id, { part }),
+              : worksheetPrintHref(document.id, { part: sheetPart }),
           );
           finish("Opened the print view");
           return;
@@ -415,7 +420,7 @@ export function ExportControl({
               </>
             ) : (
               <>
-                <PartRow value={part} onChange={setPart} />
+                <PartRow value={sheetPart} onChange={setPart} hasKey={!!hasKey} />
                 <Note>The sheet prints at its saved page size.</Note>
                 {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
                 {keyBlocked ? <Note>{KEY_PRINT_BLOCKED}</Note> : null}
@@ -469,7 +474,7 @@ export function ExportControl({
           ) : null}
           {worksheet ? (
             <TabsContent value="docx" className="flex min-h-[180px] flex-col gap-3 pt-2">
-              <PartRow value={part} onChange={setPart} />
+              <PartRow value={sheetPart} onChange={setPart} hasKey={!!hasKey} />
               <Note>Every question, box and line as real Word text and tables, in Calibri.</Note>
               {unfinishedBlocked ? <Note>{UNFINISHED_PRINT_BLOCKED}</Note> : null}
               {keyBlocked ? <Note>{KEY_PRINT_BLOCKED}</Note> : null}
@@ -667,7 +672,15 @@ const PART_OPTIONS: { value: SheetPart; label: string }[] = [
   { value: "both", label: "Both" },
 ];
 
-function PartRow({ value, onChange }: { value: SheetPart; onChange: (part: SheetPart) => void }) {
+function PartRow({
+  value,
+  onChange,
+  hasKey,
+}: {
+  value: SheetPart;
+  onChange: (part: SheetPart) => void;
+  hasKey: boolean;
+}) {
   return (
     <>
       <OptionRow label="Print">
@@ -675,9 +688,12 @@ function PartRow({ value, onChange }: { value: SheetPart; onChange: (part: Sheet
           aria-label="What to print"
           value={value}
           onChange={(v) => onChange(v as SheetPart)}
-          options={PART_OPTIONS}
+          options={PART_OPTIONS.map((o) => ({ ...o, disabled: !hasKey && o.value !== "pupil" }))}
         />
       </OptionRow>
+      {hasKey ? null : (
+        <Note>This sheet has no answers yet, so there is no answer key to print.</Note>
+      )}
       {value === "both" ? (
         <Note>The answer key starts on its own page, marked Teacher copy.</Note>
       ) : null}

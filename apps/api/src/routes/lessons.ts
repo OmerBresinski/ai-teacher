@@ -948,7 +948,11 @@ export function lessonRoutes(
               ? defaultPracticeMinutes(recipe)
               : input.practiceMinutes;
           const jobId = newId<JobId>();
-          const found = await findWorksheetForGeneration(ws, lessonId);
+          const found = await findWorksheetForGeneration(ws, lessonId, {
+            ...(input.worksheetId !== undefined
+              ? { worksheetId: input.worksheetId }
+              : { recipeId: recipe.id }),
+          });
           if (found.kind === "generating") {
             throw new ConflictError("generating", WORKSHEET_GENERATING_MESSAGE, {
               worksheetId: found.row.id,

@@ -143,7 +143,56 @@ describe("LessonWorksheets (WS2)", () => {
     );
     fireEvent.click(within(row).getByRole("button", { name: "Try again" }));
     await waitFor(() =>
-      expect(posted).toEqual({ expectedRevision: 2, recipeId: "exit-ticket", practiceMinutes: 15 }),
+      expect(posted).toEqual({
+        expectedRevision: 2,
+        recipeId: "exit-ticket",
+        practiceMinutes: 15,
+        worksheetId: "sheet-1",
+      }),
+    );
+  });
+
+  /* R4 review (12 Nov), worksheets minor 8: Try again retries the row clicked. */
+  it("with two failed sheets, Try again on the second asks for the second", async () => {
+    const second = {
+      ...failedItem,
+      id: "sheet-2",
+      title: "Water cycle practice",
+      updatedAt: "2026-11-11T11:00:00.000Z",
+      generation: {
+        ...failedItem.generation,
+        jobId: "job-9",
+        recipeId: "practice",
+        practiceMinutes: 20,
+      },
+    };
+    serveList([failedItem, second]);
+    let posted: unknown;
+    fakeApi.failNext(
+      (request) => request.method === "POST" && request.path === `/lessons/${lesson.id}/worksheet`,
+      () => {
+        posted = fakeApi.requests.at(-1)?.body;
+        return new Response(JSON.stringify({ worksheetId: "sheet-2", jobId: "job-10" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    renderDialog();
+    const row = await waitFor(() => {
+      const el = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-worksheet-row="Didn’t finish"]'),
+      ).find((r) => r.textContent?.includes("Water cycle practice"));
+      if (!el) throw new Error("no second row yet");
+      return el;
+    });
+    fireEvent.click(within(row).getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(posted).toMatchObject({
+        recipeId: "practice",
+        practiceMinutes: 20,
+        worksheetId: "sheet-2",
+      }),
     );
   });
 
@@ -151,6 +200,7 @@ describe("LessonWorksheets (WS2)", () => {
     serveList([
       { ...failedItem, generatingJobId: "job-2", generation: undefined, unfinished: true },
     ]);
+    serveTypes([{ type: "exit-ticket", name: "Exit ticket", available: true }]);
     const { onLabel } = renderDialog();
     expect(await screen.findByText("Making…")).toBeVisible();
     await waitFor(() => expect(onLabel).toHaveBeenCalledWith("Worksheet: making…"));
@@ -170,6 +220,7 @@ describe("LessonWorksheets (WS2)", () => {
         },
       },
     ]);
+    serveTypes([{ type: "exit-ticket", name: "Exit ticket", available: true }]);
     const { onLabel } = renderDialog();
     expect(await screen.findByText("Ready")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();

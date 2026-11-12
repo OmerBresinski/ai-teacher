@@ -1,4 +1,4 @@
-import { type Budget, createBudget, isAiError } from "@tj/ai";
+import { type Budget, type BudgetTotals, createBudget, isAiError } from "@tj/ai";
 import {
   clearGenerating,
   type DocumentRow,
@@ -80,6 +80,27 @@ import { budgetFailure } from "../job-errors";
  * same shape as `runLessonJob` (try / classify / release in `finally`), not the function: that
  * one locks and budgets the lesson.
  */
+/**
+ * R4 review (12 Nov): one $0.10 budget per sheet request, not per attempt. A retryable failure
+ * after a billed call (429, timeout) used to start the retry on a fresh budget, so one request
+ * could spend twice the cap. What an attempt spent is kept here under the job id (pg-boss keeps
+ * the id across its retries) and seeds the next attempt; the last attempt clears it. In memory:
+ * a worker restart between attempts starts the retry fresh (at most one more capped call).
+ */
+const spentByJob = new Map<string, BudgetTotals>();
+export const sheetAttemptSpend = {
+  seed: (jobId: string): { spent?: BudgetTotals } => {
+    const spent = spentByJob.get(jobId);
+    return spent ? { spent } : {};
+  },
+  keep: (jobId: string, budget: Budget | undefined) => {
+    if (budget) spentByJob.set(jobId, budget.totals());
+  },
+  clear: (jobId: string) => {
+    spentByJob.delete(jobId);
+  },
+};
+
 export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
   "lesson.worksheet",
   async (ctx) => {
@@ -133,10 +154,10 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
               "AI provider is not configured (AWS_BEARER_TOKEN_BEDROCK unset)",
             );
           }
-          const jobBudget = createBudget({
-            capUsd: deps.worksheetCapUsd,
-            capTokens: deps.caps.capTokens,
-          });
+          const jobBudget = createBudget(
+            { capUsd: deps.worksheetCapUsd, capTokens: deps.caps.capTokens },
+            sheetAttemptSpend.seed(jobId),
+          );
           budget = jobBudget;
           await ctx.progress(20, "Writing the questions", {
             stage: "worksheet",
@@ -376,8 +397,10 @@ export const lessonWorksheetJob = defineJob<"lesson.worksheet", WorkerDeps>(
         else await debug.close();
       }
       if (keepLockForRetry) {
+        sheetAttemptSpend.keep(jobId, budget);
         logger.info({ worksheetId }, "worksheet generating lock kept for the retry");
       } else {
+        sheetAttemptSpend.clear(jobId);
         // Released after `runJob` writes the terminal event (TEACH-202 part j).
         const release = async () => {
           await clearGenerating(ws, worksheetId, jobId);
