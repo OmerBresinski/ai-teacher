@@ -243,26 +243,36 @@
   width: 42pt;
 }
 
+/* R3 (CRITIQUE-2, 12 Nov: "Red/Amber/Green circles printed as uncoloured grey outlines, so a
+   6-year-old cannot tell which is which"): each circle prints in its own colour, a strong ring
+   over a pale fill a pupil can still colour or tick, and `print-color-adjust: exact` so a
+   browser's print keeps the fill. Without colour (a grey photocopy) the word under each circle
+   and the three ring styles (thick, dashed, thin) still tell them apart. The colours are fixed,
+   not theme roles: red, amber and green mean the same on every sheet. */
 .ws-rag-dot {
   width: calc(22pt * var(--ws-type, 1));
   height: calc(22pt * var(--ws-type, 1));
   border-radius: 50%;
   border: 0.75pt solid var(--ws-rule-strong);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .ws-rag-red {
-  border-width: 3pt;
+  border: 3pt solid #c62828;
+  background: #f8d7d7;
 }
 
 .ws-rag-amber {
-  border-width: 1.5pt;
-  border-style: dashed;
+  border: 2pt dashed #d98a00;
+  background: #fde9bf;
 }
 
-/* Stated rather than inherited from .ws-rag-dot: the three weights are the only
-   thing telling the circles apart, so green owns its own. */
+/* Stated rather than inherited from .ws-rag-dot: the ring style is what tells the circles
+   apart without colour, so green owns its own. */
 .ws-rag-green {
-  border-width: 0.75pt;
+  border: 1.25pt solid #2e7d32;
+  background: #d5ecd6;
 }
 
 .ws-rag-label {
