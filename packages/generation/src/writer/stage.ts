@@ -27,7 +27,7 @@ import {
 } from "./activities";
 import { checkNotesAnswers, checkWriterSlide, isMaths, swapInSlide } from "./answer-key";
 import { BODY_MODELS } from "./body-figure";
-import { type WriterBundleId, writerBundle } from "./bundle";
+import { packOwnBundleId, type WriterBundleId, writerBundle } from "./bundle";
 import {
   borrowCheckVisuals,
   CHECK_TEMPLATES,
@@ -184,6 +184,7 @@ import {
 import { withV51ModelLines } from "./pilot-v51-gold";
 import { pointTaskFault, stripPointTasks } from "./point-guard";
 import { continuePractice } from "./practice-split";
+import { proofChecks } from "./proof-checks";
 import { continueQuickCheck } from "./question-set-split";
 import { ROLE_ASK_DEFAULT, ROLE_STAMP_DEFAULT, slideHidesAnswer, slideRoles } from "./role";
 import { eachBounded, TAIL_CONCURRENCY } from "./schedule";
@@ -559,7 +560,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return act;
   };
   const { brief } = run;
-  const P = writerBundle(run.bundle);
+  // A pack with its own bundle (v5.2-gold: base4f-p127) runs it unless the lesson's stamp names one.
+  const P = writerBundle(run.bundle ?? packOwnBundleId(run.pilotPack));
   // The pinned repair schema without the hinge's counted `correct`: code finds the key by the
   // answer's words (`keepAnswerKey`), so the model is not asked to count (ANSWER-BUG.md).
   const repairSchemaFor = (k: string) =>
@@ -643,10 +645,14 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   const chat: WriterServices["chat"] = (r) =>
     run.services.chat({ ...r, system: localise(r.system), user: localise(r.user) });
   const themeId = brief.teacherTheme ?? brief.theme;
-  const base: { brief: Brief; theme: Theme; stage: Brief["keyStage"] } = {
+  const base: { brief: Brief; theme: Theme; stage: Brief["keyStage"]; goldLooks?: boolean } = {
     brief,
     theme: getTheme(themeId, brief.keyStage),
     stage: brief.keyStage,
+    // A pack whose limits are measured on the gold looks draws its slides on them (materialise).
+    ...(run.pilotPack && (PILOT_PACKS[run.pilotPack] as PilotPack).goldFits
+      ? { goldLooks: true }
+      : {}),
   };
   const plan: Plan = {
     slides: [],
@@ -1712,6 +1718,8 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         ? countMiss(writtenCount, brief.slides.min)
         : undefined;
   if (miss) log({ ev: "count-miss", level: "warn", ...miss });
+  // v5.2-gold's proof counts (BUILDER B7): logged per lesson, never acted on.
+  log({ ev: "proof-checks", ...proofChecks(out, brief.slides, run.objectives.length) });
   plan.design = out.design;
   plan.flow = out.flow;
   if (!designShown) run.onDesign?.(plan.design);

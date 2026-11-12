@@ -30,6 +30,8 @@ function lay(e: GoldEntry) {
     },
     visual: (k: string) => e.sample.visual?.[k] ?? { status: "failed" },
     ...(e.sample.draft ? { draft: true } : {}),
+    // The manifest is what a gold-looks pack (`PilotPack.goldFits`) draws; the live pack routes as before.
+    goldLooks: true,
   } as unknown as Parameters<typeof materialise>[1];
   return materialise(e.sample.slide, ctx);
 }
@@ -131,6 +133,7 @@ test("panel-list's pie (panel.shares) reaches the gold", async () => {
     index: 2,
     plan: { slides: [] },
     visual: () => ({ status: "failed" }),
+    goldLooks: true,
   } as unknown as Parameters<typeof toInput>[1];
   expect((toInput(e.sample.slide, ctx) as { panel?: unknown }).panel).toEqual({ shares: [3, 1] });
 });

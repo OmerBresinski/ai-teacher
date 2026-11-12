@@ -42,6 +42,15 @@ export type Brief = {
   exitTicketOnSlides: boolean;
   slides: { min: number; max: number };
   teacherTheme?: string;
+  /**
+   * The curriculum subject the topic gives (`curriculumSubjectForTopic`) when the lesson has no
+   * subject; read only by a template's "{{subject, or the curriculum subject…}}" (v5.2-gold).
+   */
+  inferredSubject?: string;
+  /** The teacher never chose the length (`brief.durationDefaulted`): "{{lessonLength: …}}" is empty. */
+  durationDefaulted?: boolean;
+  /** `facts.buildsOn`, for "{{buildsOn: …}}" (v5.2-gold). */
+  buildsOn?: string;
 };
 
 /** The prompt files' stage key. */
@@ -1008,6 +1017,15 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
         .map((o, k) => `${k + 1}. Teacher: ${o.teacher}${o.pupil ? ` | Pupils: ${o.pupil}` : ""}`)
         .join("\n");
     if (expr.startsWith("context block")) return x.context ?? "";
+    // v5.2-gold's described fills (bundle base4f-p127): the subject, else the one the topic gives;
+    // the length line only when the teacher set it; the earlier learning when the lesson has it;
+    // the curriculum block from the stage.
+    if (expr.startsWith("subject, or")) return b.subject.trim() || (b.inferredSubject ?? "");
+    if (expr.startsWith("lessonLength:"))
+      return b.durationDefaulted === true ? "" : `Lesson length: ${b.durationMin} minutes\n`;
+    if (expr.startsWith("buildsOn:"))
+      return b.buildsOn ? `Pupils already know: ${b.buildsOn}\n\n` : "";
+    if (expr.startsWith("curriculum:")) return String(x.curriculum ?? "");
     if (expr.startsWith("for each final slide")) return String(x.slidesAsShown ?? "");
     if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] });
     if (expr in x) return String(x[expr]);

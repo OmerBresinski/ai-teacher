@@ -24,6 +24,7 @@ import {
   FIGURE_CAPTION_TWO_LINE_FITS,
   FIGURE_TOO_SMALL,
   FIGURE_WIDE_ASPECT,
+  figureSlideAllowed,
 } from "@tj/slides/templates/figure-rules";
 import { isSameSubjectSet } from "../stages/picture-set";
 import { activityWords } from "./activities";
@@ -121,6 +122,13 @@ export type MaterialiseCtx = {
   diagramWarnings?: boolean;
   /** The slide is still being written (the draft path, TEACH-110 part s): a picture to come holds its slot. */
   draft?: boolean;
+  /**
+   * Gold alignment (11 Nov 2026): the pack states its limits from the gold looks (`PilotPack.goldFits`),
+   * so its slides are drawn on them: every picture-text slide the gold picture and text, a near-square
+   * model beside words too, every photo or model across the slide the gold figure slide, a panel's
+   * pie drawn. Off (the live pack, saved lessons): every slide routes exactly as before.
+   */
+  goldLooks?: boolean;
 };
 export type Materialised = {
   slide: Pick<Slide, "kind" | "elements" | "background" | "question">;
@@ -189,6 +197,18 @@ const isPic = (f: unknown): f is Pic =>
 /** A figure the diagram library draws (`kind: "model"`). */
 export const isModel = (f: unknown): boolean =>
   isDia(f) && (f as { kind?: unknown }).kind === "model";
+/** TEACH-239 part b (C7): a big visual asking for a library model may become the figure slide. */
+const isModelSlide = (s: unknown): boolean => {
+  const o = (s ?? {}) as S;
+  return (
+    o.template === "figure" ||
+    (["big-visual", "big-diagram"].includes(str(o.template)) &&
+      (isModel(o.figure) || isModel(o.diagram)))
+  );
+};
+/** A drawn library model wider than the figure slide's threshold (narrower ones go beside words). */
+const wideModel = (f: Figure | undefined): boolean =>
+  !!f && "drawn" in f && !!f.drawn.bare && f.drawn.aspect > FIGURE_WIDE_ASPECT;
 /**
  * Points on a full library slide (big-visual, which has none in the schema): a fallback for an
  * output that still carries them, read in the notes rather than dropped. The stage logs it.
@@ -589,7 +609,9 @@ export function toInput(
       // Gold alignment (11 Nov 2026): a drawn library model near-square enough for the side field
       // (the gold's own rule, `fitsSideField`: aspect at most FIGURE_WIDE_ASPECT) takes the gold picture-and-text design. A wide model
       // or a data diagram beside words has no gold design and keeps the old layout (gold manifest).
+      const gold = !!ctx.goldLooks;
       if (
+        gold &&
         template === "diagram-text" &&
         f &&
         "drawn" in f &&
@@ -605,13 +627,13 @@ export function toInput(
           pictureText: {},
         } as TemplateInput;
       // Wave C (TEACH-110 part v): picture-text's key cards and the icon shown if the picture fails.
-      // Every new picture-text slide takes the gold picture-and-text design (TEACH-75 part ae), with
-      // or without cards or an icon: `pictureText` is what selects it. Saved slides keep their
-      // elements; a slide without it lays out the old way.
+      // A gold-looks pack's picture-text slide takes the gold picture-and-text design (TEACH-75 part
+      // ae), with or without cards or an icon: `pictureText` is what selects it. Otherwise (the live
+      // pack) only cards or an icon select it, as before. Saved slides keep their elements.
       const cards = Array.isArray(s.cards) ? (s.cards as S[]) : [];
       const ptIcon = typeof s.icon === "string" && s.icon.trim() ? s.icon : null;
       const pictureText =
-        template === "picture-text"
+        template === "picture-text" && (gold || cards.length || ptIcon)
           ? {
               ...(ptIcon ? { icon: ptIcon } : {}),
               ...(cards.length
@@ -624,17 +646,18 @@ export function toInput(
             }
           : null;
       // A picture or diagram that could not be made: the words stand alone, never an empty panel.
-      // A picture-text slide keeps the gold design: its icon in a medal, or with no icon the words
-      // take the width (the gold's no-picture look).
+      // A gold-looks pack's picture-text slide keeps the gold design: its icon in a medal, or with no
+      // icon the words take the width (the gold's no-picture look). The live pack's goes to explain.
+      const goldPt = gold && !!pictureText;
       return {
-        template: f || pictureText ? template : "explain",
+        template: f || goldPt ? template : "explain",
         heading,
         lead,
         // The gold's plain look draws a point's words only: a labelled point (the retired callout,
         // `points-1-key-fig`) keeps its label as the gold folds a key card, "Label: text".
-        points: pictureText ? points.map(asPlainPoint) : points,
+        points: goldPt ? points.map(asPlainPoint) : points,
         figure: f,
-        ...(pictureText ? { pictureText } : {}),
+        ...(pictureText && (f || goldPt) ? { pictureText } : {}),
       } as TemplateInput;
     }
     case "big-picture":
@@ -650,8 +673,23 @@ export function toInput(
       // figure route's own caption rule. A data diagram or chart (no gold design) keeps the old one.
       const ask = s[template === "big-picture" ? "picture" : "diagram"];
       // A model the library refused, drawn by a data drawer instead (`{ diagram }`), is a data diagram.
-      if (!cards.length && f && ("photo" in f || "drawn" in f) && (isPic(ask) || isModel(ask)))
+      if (
+        ctx.goldLooks &&
+        !cards.length &&
+        f &&
+        ("photo" in f || "drawn" in f) &&
+        (isPic(ask) || isModel(ask))
+      )
         return toInput({ ...s, template: "figure", caption: lead ?? "" }, ctx, mark, missing);
+      // The live pack (TEACH-239 part b, C7): a wide library model is the lesson's figure slide
+      // (ruling 229, one a lesson).
+      if (
+        !ctx.goldLooks &&
+        !cards.length &&
+        wideModel(f) &&
+        figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide)
+      )
+        return { template: "figure", heading, ...(lead ? { lead } : {}), figure: f };
       return f
         ? {
             template,
@@ -995,7 +1033,7 @@ export function toInput(
         // gold draws it); none is none.
         panel: panelPic
           ? { picture: panelPic }
-          : pn && Array.isArray(pn.shares) && pn.shares.length
+          : ctx.goldLooks && pn && Array.isArray(pn.shares) && pn.shares.length
             ? { shares: (pn.shares as unknown[]).map(Number) }
             : null,
       } as TemplateInput;
@@ -1080,7 +1118,11 @@ export function toInput(
       const longCaption = !fits || !roomy;
       // LEGACY on purpose (gold manifest, known gap): a caption the figure cannot hold in two lines
       // keeps the old big layout, whose lead wraps, rather than lose its words to the ellipsis.
-      if (longCaption)
+      // The live pack keeps ruling 229's one figure slide a lesson; a gold-looks pack has no limit.
+      if (
+        longCaption ||
+        (!ctx.goldLooks && !figureSlideAllowed(ctx.plan.slides, ctx.index, isModelSlide))
+      )
         return f
           ? {
               template: "photo" in f ? "big-picture" : "big-diagram",
