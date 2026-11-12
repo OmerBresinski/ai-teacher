@@ -77,6 +77,7 @@ import {
 import { ARROW_ARM_DEG, ARROW_ARM_K } from "@tj/slides/arrow";
 import { builtSvgDataUrl, svgAtBuild, svgOfDataUrl } from "@tj/slides/diagram-builds";
 import { markHexagonPoints, notchPoints } from "@tj/slides/marks";
+import { mathsElement } from "@tj/slides/maths-names";
 import { surfaceStyle } from "@tj/slides/surfaces";
 import type PptxGenJS from "pptxgenjs";
 import { createElement } from "react";
@@ -101,6 +102,7 @@ import {
 import { isJobPictureSlot } from "../slide/elements/SlotPlaceholder";
 import { docToPlainText } from "../text/static";
 import { licenceCredits } from "./credits";
+import { withFractionRuns } from "./fraction-runs";
 import { hingeRevealShapes, oneStepReveal } from "./hinge-reveal";
 import { imageCredentials } from "./image-credentials";
 import { dataUrlImageSize } from "./image-size";
@@ -346,6 +348,9 @@ export function paragraphsToTextProps(paragraphs: RunParagraph[], style: RunStyl
       if (run.italic) options.italic = true;
       if (run.underline) options.underline = { style: "sng" };
       if (run.strike) options.strike = true;
+      // A fraction the slide stacks: raised numerator, lowered denominator ("³/₄", fraction-runs.ts).
+      if (run.frac === "num") options.superscript = true;
+      if (run.frac === "den") options.subscript = true;
       // pptxgenjs writes a run hyperlink as `a:hlinkClick`, so the link survives as a
       // real PowerPoint link rather than as blue underlined text.
       if (run.href) options.hyperlink = { url: run.href };
@@ -867,7 +872,10 @@ function drawText(
   const marks = runMarkRects(element, theme, r.fontSize, step);
   for (const shape of marks.under) pptxSlide.addShape("roundRect", shape);
   pptxSlide.addText(
-    paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)),
+    paragraphsToTextProps(
+      withFractionRuns(docToRuns(element.doc), mathsElement(element.name)),
+      runStyleFor(r, theme),
+    ),
     textBoxOptions(element, r),
   );
   for (const shape of marks.over) pptxSlide.addShape("rect", shape);
@@ -938,7 +946,10 @@ function drawGapText(
 ): void {
   const r = resolveTextStyle(element.style, theme);
   pptxSlide.addText(
-    paragraphsToTextProps(gapTextToBlanks(element, question), runStyleFor(r, theme)),
+    paragraphsToTextProps(
+      withFractionRuns(gapTextToBlanks(element, question)),
+      runStyleFor(r, theme),
+    ),
     textBoxOptions(element, r),
   );
 }
@@ -1061,11 +1072,14 @@ function drawOption(
     element.textStyle?.preset ?? "small",
     "option",
   );
-  pptxSlide.addText(paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)), {
-    ...textBoxOptions({ ...element, x: textX, w: Math.max(textW, 24) }, r),
-    margin: 0,
-    fit: "none",
-  });
+  pptxSlide.addText(
+    paragraphsToTextProps(withFractionRuns(docToRuns(element.doc)), runStyleFor(r, theme)),
+    {
+      ...textBoxOptions({ ...element, x: textX, w: Math.max(textW, 24) }, r),
+      margin: 0,
+      fit: "none",
+    },
+  );
 
   if (revealed && correct) {
     pptxSlide.addText("✓", {
@@ -1152,12 +1166,15 @@ function drawShape(pptxSlide: PptxGenJS.Slide, element: ShapeElement, theme: The
     const glyph = isBadgeBox(element.w, element.h)
       ? badgeGlyph(docToPlainText(element.doc), r.fontFamily, r.fontSize)
       : null;
-    pptxSlide.addText(paragraphsToTextProps(docToRuns(element.doc), runStyleFor(r, theme)), {
-      ...textBoxOptions(element, r),
-      ...(glyph ? { margin: glyphInsets(glyph), lineSpacingMultiple: 1, wrap: false } : {}),
-      fill: undefined,
-      fit: "none",
-    });
+    pptxSlide.addText(
+      paragraphsToTextProps(withFractionRuns(docToRuns(element.doc)), runStyleFor(r, theme)),
+      {
+        ...textBoxOptions(element, r),
+        ...(glyph ? { margin: glyphInsets(glyph), lineSpacingMultiple: 1, wrap: false } : {}),
+        fill: undefined,
+        fit: "none",
+      },
+    );
   }
 }
 

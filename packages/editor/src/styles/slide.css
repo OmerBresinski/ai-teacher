@@ -86,6 +86,10 @@
   overflow: clip;
   overflow-clip-margin: 0.06em;
 }
+/* A mixed number's space (2 1/2), kept a plain space for copying, drawn about a thin space wide. */
+.td-frac-gap {
+  word-spacing: -0.08em;
+}
 .td-frac-num,
 .td-frac-den {
   font-size: calc(0.64em + var(--td-frac, 0) * 0.16em);

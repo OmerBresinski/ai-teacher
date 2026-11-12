@@ -226,11 +226,12 @@ function inline(children: RichNode[], fractions: boolean, maths = false): string
   let out = "";
   let at = 0;
   for (const f of found) {
-    // A mixed number ("2 1/2") sets its whole part close to its fraction: the space between them
-    // is drawn as a thin space, as a textbook prints 2½ (the stored text keeps its space).
+    // A mixed number ("2 1/2") sets its whole part close to its fraction, as a textbook prints
+    // 2½: the space stays a plain space (a copy pastes "2 1/2", which stacks again and is found by
+    // search) and CSS draws it narrower (`.td-frac-gap`, slide.css).
     const mixed = f.start >= 2 && text[f.start - 1] === " " && /\d/.test(text[f.start - 2] ?? "");
     out += mixed
-      ? `${runs(slice(children, at, f.start - 1))}\u2009`
+      ? `${runs(slice(children, at, f.start - 1))}<span class="td-frac-gap"> </span>`
       : runs(slice(children, at, f.start));
     out += fraction(slice(children, f.start, f.slash), slice(children, f.slash + 1, f.end));
     at = f.end;

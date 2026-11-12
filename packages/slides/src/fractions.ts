@@ -148,7 +148,8 @@ function bareProper(text: string): boolean {
   return n >= 1 && d >= 2 && n < d;
 }
 
-const MIXED_WHOLE = /(?:^|[^\p{L}\p{N}.,/:])\d{1,3}[ \u00A0]$/u;
+/** The whole part's space: a space, a no-break space, or a thin one (text pasted from an older render). */
+const MIXED_WHOLE = /(?:^|[^\p{L}\p{N}.,/:])\d{1,3}[ \u00A0\u2009\u202F]$/u;
 
 /** `num/den` is the fraction of a mixed number: whole numbers, n ≤ d (a regrouped `7 3/3`), after a whole part. */
 function mixedNumber(before: string, num: string, den: string): boolean {

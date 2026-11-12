@@ -182,7 +182,7 @@ describe("renderDocHTML sets a maths fraction stacked", () => {
 
   test("a mixed number keeps its whole part inline and stacks its fraction (an answer, a sheet key)", () => {
     expect(renderDocHTML(doc(p(t("6 4/5 m"))))).toBe(
-      '<p>6\u2009<span class="td-frac"><span class="td-frac-num">4</span>' +
+      '<p>6<span class="td-frac-gap"> </span><span class="td-frac"><span class="td-frac-num">4</span>' +
         '<span class="td-frac-sr">/</span><span class="td-frac-den">5</span></span> m</p>',
     );
   });
