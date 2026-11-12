@@ -56,6 +56,44 @@ describe("findFractions: anything not certainly maths stays a slash", () => {
   });
 });
 
+describe("findFractions: a mixed number stacks its fraction (answers, sheets, worked rows)", () => {
+  test.each([
+    ["10 1/2", ["1/2"]],
+    ["6 4/5 m", ["4/5"]],
+    ["14 ÷ 4 × 3 = 10 1/2", ["1/2"]],
+    ["13 − 13 ÷ 5 × 2 − 1 = 6 4/5 m", ["4/5"]],
+    ["Each part is 2 1/2.", ["1/2"]],
+    ["She ran 3 3/4 km.", ["3/4"]],
+    ["2 1/2 and 1 3/4", ["1/2", "3/4"]],
+    ["10\u00A01/2", ["1/2"]],
+    ["(7 1/2)", ["1/2"]],
+    ["7 3/3 − 5 1/3", ["3/3", "1/3"]],
+    ["3/4", ["3/4"]],
+    ["2/5 m", ["2/5"]],
+    ["5 1/3", ["1/3"]],
+  ])("%p stacks %p", (text, want) => {
+    expect(stacked(text)).toEqual(want);
+  });
+
+  test.each([
+    ["The shop is open 24/7"],
+    ["Open 7 24/7"],
+    ["A 50/50 chance"],
+    ["In 2001 9/11 changed air travel"],
+    ["Speed: 5 m/s"],
+    ["It moved at 3 km/h"],
+    ["Version 2.5 1/2"],
+    ["24/7"],
+    ["50/50"],
+    ["12/5"],
+    ["and/or"],
+    ["Pages 1,000 1/2"],
+    ["Date 12/3 1/2"],
+  ])("%p stays a slash", (text) => {
+    expect(stacked(text)).toEqual([]);
+  });
+});
+
 /** The fractions found in a maths box (a worked equation cell, the equation slide's formula). */
 const stackedMaths = (s: string) =>
   findFractions(s, { maths: true }).map((f) => s.slice(f.start, f.end));
@@ -139,6 +177,13 @@ describe("renderDocHTML sets a maths fraction stacked", () => {
       '<p>Solve <span class="td-frac"><span class="td-frac-num">x</span>' +
         '<span class="td-frac-sr">/</span><span class="td-frac-den">4</span></span>' +
         " + 3 = 8</p>",
+    );
+  });
+
+  test("a mixed number keeps its whole part inline and stacks its fraction (an answer, a sheet key)", () => {
+    expect(renderDocHTML(doc(p(t("6 4/5 m"))))).toBe(
+      '<p>6\u2009<span class="td-frac"><span class="td-frac-num">4</span>' +
+        '<span class="td-frac-sr">/</span><span class="td-frac-den">5</span></span> m</p>',
     );
   });
 

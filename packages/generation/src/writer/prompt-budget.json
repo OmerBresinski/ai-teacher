@@ -1180,6 +1180,186 @@
           "ref": "scratchpad/tuning/LOG.md v5.2-gold; scratchpad/tuning/v5.2-gold/WIRED-NOTES.md"
         }
       ]
+    },
+    "writer/v5.3-gold/KS1/library-off/system": {
+      "history": [
+        {
+          "ceiling": 20096,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-off/user": {
+      "history": [
+        {
+          "ceiling": 786,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 59537,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-on/system": {
+      "history": [
+        {
+          "ceiling": 22039,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-on/user": {
+      "history": [
+        {
+          "ceiling": 786,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS1/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 61256,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-off/system": {
+      "history": [
+        {
+          "ceiling": 21319,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-off/user": {
+      "history": [
+        {
+          "ceiling": 780,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 62508,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-on/system": {
+      "history": [
+        {
+          "ceiling": 23262,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-on/user": {
+      "history": [
+        {
+          "ceiling": 780,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS2/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64382,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-off/system": {
+      "history": [
+        {
+          "ceiling": 22205,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-off/user": {
+      "history": [
+        {
+          "ceiling": 787,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-off/schema": {
+      "history": [
+        {
+          "ceiling": 63053,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-on/system": {
+      "history": [
+        {
+          "ceiling": 24668,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: lab pack, v5.2-gold's text with eight drafted line edits (+312 characters a stage: a check names its new case in the flow, flow points, figure-slide routed by content, the worked move says what its line does, what code's bar model covers, the hinge's new case, the picture ask keeps the lesson's facts; the read-back clause cut); growth is unproven until Gate B; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-on/user": {
+      "history": [
+        {
+          "ceiling": 787,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: writer bundle base4f-p128's user turn as measured here, with no points stored (Coverage in place of Depth, +45 characters over v5.2-gold's); a lesson's points add one line each; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
+    },
+    "writer/v5.3-gold/KS3/library-on/schema": {
+      "history": [
+        {
+          "ceiling": 64360,
+          "date": "2026-11-12",
+          "reason": "v5.3-gold baseline: v5.2-gold's schema plus the flow's points field (+226 characters); the worked row's line before its move changes no length; not live",
+          "ref": "scratchpad/tuning/LOG.md v5.3-gold; scratchpad/tuning/v5.3-gold/CHANGES.md"
+        }
+      ]
     }
   }
 }

@@ -51,10 +51,39 @@ export type Brief = {
   durationDefaulted?: boolean;
   /** `facts.buildsOn`, for "{{buildsOn: …}}" (v5.2-gold). */
   buildsOn?: string;
+  /** `facts.points` whose objective the lesson still has, for "{{points: …}}" (v5.3-gold). */
+  points?: { objective: number; text: string }[];
 };
 
 /** The prompt files' stage key. */
 export const promptStage = (k: Stage) => (k === "ks1" ? "KS1" : k === "ks2" ? "KS2" : "KS3-5");
+
+/**
+ * v5.3-gold: how many points the objectives call writes for the brief's slide range, so the
+ * lesson's content is sized by its length: Quick 2 to 3, Standard 4 to 6, Detailed 6 to 10. The
+ * low end is 0.6 of the slides after the title, objectives and close; the high end leaves three
+ * slides for checks and practice.
+ */
+export function pointCount(b: { slides: { min: number; max: number } }): {
+  lo: number;
+  hi: number;
+} {
+  const lo = Math.max(2, Math.round(0.6 * (b.slides.min - 3)));
+  return { lo, hi: Math.max(lo + 1, b.slides.max - 6) };
+}
+
+/**
+ * A point's label in the writer's user turn and its flow: the objective's number, then a letter
+ * by the point's place under that objective ("2b").
+ */
+export function pointLabels(points: readonly { objective: number }[]): string[] {
+  const seen = new Map<number, number>();
+  return points.map((p) => {
+    const k = seen.get(p.objective) ?? 0;
+    seen.set(p.objective, k + 1);
+    return `${p.objective}${String.fromCharCode(97 + k)}`;
+  });
+}
 
 /** `objectiveCount` at the middle of the brief's slide range. */
 export function objectiveCount(b: Brief): string {
@@ -1026,6 +1055,18 @@ export function fillTemplate(text: string, b: Brief, x: FillExtras = {}): string
     if (expr.startsWith("buildsOn:"))
       return b.buildsOn ? `Pupils already know: ${b.buildsOn}\n\n` : "";
     if (expr.startsWith("curriculum:")) return String(x.curriculum ?? "");
+    // v5.3-gold's described fills (bundle base4f-p128): how many points the objectives call writes,
+    // and the stored points under their labels.
+    if (expr.startsWith("pointCount:")) {
+      const c = pointCount(b);
+      return `${c.lo} to ${c.hi}`;
+    }
+    if (expr.startsWith("points:")) {
+      const ps = b.points ?? [];
+      if (!ps.length) return "";
+      const labels = pointLabels(ps);
+      return `Points the lesson teaches, in order:\n${ps.map((p, k) => `${labels[k]}. ${p.text}`).join("\n")}\n\n`;
+    }
     if (expr.startsWith("for each final slide")) return String(x.slidesAsShown ?? "");
     if (expr === "objectives") return JSON.stringify({ objectives: x.objectives ?? [] });
     if (expr in x) return String(x[expr]);

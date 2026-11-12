@@ -77,10 +77,10 @@ describe("fixedFallback: a figure code drops from a picture-and-text slide", () 
     expect(r.slide.template).toBe("explain");
     expect(NO_FIGURE in r.slide).toBe(false);
   });
-  test("only v5.1b-gold and v5.2-gold (built on it) set the switch", () => {
+  test("only v5.1b-gold and the packs built on it set the switch", () => {
     const on = Object.entries(PILOT_PACKS)
       .filter(([, p]) => (p as { goldNoPictureFallback?: boolean }).goldNoPictureFallback)
       .map(([id]) => id);
-    expect(on).toEqual(["v5.1b-gold", "v5.2-gold"]);
+    expect(on).toEqual(["v5.1b-gold", "v5.2-gold", "v5.3-gold"]);
   });
 });

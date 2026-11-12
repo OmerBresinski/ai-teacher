@@ -101,8 +101,28 @@ type El = {
   type: string;
   name?: string;
   alt?: string;
+  src?: string;
   doc?: { content?: { content?: { text?: string }[] }[] };
+  children?: El[];
 };
+
+/**
+ * A slide's elements in drawing order with every group opened (BUILDER v5.3-gold B2): the gold
+ * panel-list and split-compare nest their text in a group, and the notes call was shown those
+ * slides with no words at all ("Slide 6: " and four picture asks, so it wrote "inspect the images").
+ */
+export function flatElements(elements: readonly El[]): El[] {
+  return elements.flatMap((e) =>
+    e?.type === "group" && Array.isArray(e.children) ? flatElements(e.children) : [e],
+  );
+}
+
+/** The image elements a slide actually holds, groups opened (not its diagrams). */
+export function slideImages(elements: readonly El[]): El[] {
+  return flatElements(elements).filter(
+    (e) => e?.type === "image" && e.name !== "Diagram" && typeof e.src === "string" && !!e.src,
+  );
+}
 const textOf = (e: El) =>
   (e.doc?.content ?? [])
     .map((p) => (p.content ?? []).map((t) => t.text ?? "").join(""))
@@ -112,14 +132,15 @@ const textOf = (e: El) =>
 
 /**
  * A slide's lines as a pupil sees them, in drawing order: a lone list number or option letter
- * (a badge) is joined to the text after it ("B. There is lots of space"). Visuals are given by the
- * caller, only those actually placed.
+ * (a badge) is joined to the text after it ("B. There is lots of space"). Text inside a group
+ * (a gold panel-list row, a split-compare side) is read too. Visuals are given by the caller, only
+ * those actually on the slide.
  */
 export function renderedLines(n: number, elements: El[], visuals: string[]): string {
   const lines: string[] = [];
   let badge = "";
   let heading = "";
-  for (const e of elements) {
+  for (const e of flatElements(elements)) {
     if (e.type !== "text") continue;
     const t = textOf(e);
     if (!t) continue;

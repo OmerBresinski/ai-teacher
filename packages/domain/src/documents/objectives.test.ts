@@ -205,3 +205,55 @@ describe("applyObjectiveEdits", () => {
     expect(result.facts.objectives.map((o) => o.id)).toEqual(["o1", "o4", "o5"]);
   });
 });
+
+describe("applyObjectiveEdits: points follow their objective (v5.3-gold B5)", () => {
+  const withPoints = (): LessonFacts => {
+    const f = lessonFacts();
+    const objectives = [
+      { id: "o1", text: "Describe how the fire began." },
+      { id: "o2", text: "Explain why it spread." },
+      { id: "o3", text: "Describe how it was fought." },
+    ];
+    return {
+      ...f,
+      objectives,
+      points: [
+        { objective: 1, text: "It began in a bakery on Pudding Lane in 1666." },
+        { objective: 2, text: "Wooden houses stood close together." },
+        { objective: 3, text: "People pulled houses down to make firebreaks." },
+      ],
+    } as LessonFacts;
+  };
+  test("the same objectives keep every point", () => {
+    const f = withPoints();
+    const r = applyObjectiveEdits(
+      f,
+      f.objectives.map((o) => ({ id: o.id, text: o.text })),
+    );
+    expect(r.facts.points).toEqual(f.points);
+  });
+  test("a reworded objective drops its own points, the others stay", () => {
+    const f = withPoints();
+    const edits = f.objectives.map((o) => ({
+      id: o.id,
+      text: o.id === "o2" ? "Explain how wind spread it." : o.text,
+    }));
+    expect(applyObjectiveEdits(f, edits).facts.points?.map((p) => p.objective)).toEqual([1, 3]);
+  });
+  test("a removed objective drops its points and the later points move up", () => {
+    const f = withPoints();
+    const edits = f.objectives
+      .filter((o) => o.id !== "o1")
+      .map((o) => ({ id: o.id, text: o.text }));
+    const pts = applyObjectiveEdits(f, edits).facts.points;
+    expect(pts?.map((p) => [p.objective, p.text.slice(0, 6)])).toEqual([
+      [1, "Wooden"],
+      [2, "People"],
+    ]);
+  });
+  test("every objective reworded: no points left", () => {
+    const f = withPoints();
+    const edits = f.objectives.map((o) => ({ id: o.id, text: `${o.text} Again.` }));
+    expect(applyObjectiveEdits(f, edits).facts.points).toBeUndefined();
+  });
+});

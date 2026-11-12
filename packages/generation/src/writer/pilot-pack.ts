@@ -75,6 +75,9 @@ import t51b3 from "./bundles/pilot-v5.1b-gold/system-KS3.template.txt" with { ty
 import t52g1 from "./bundles/pilot-v5.2-gold/system-KS1.template.txt" with { type: "text" };
 import t52g2 from "./bundles/pilot-v5.2-gold/system-KS2.template.txt" with { type: "text" };
 import t52g3 from "./bundles/pilot-v5.2-gold/system-KS3.template.txt" with { type: "text" };
+import t53g1 from "./bundles/pilot-v5.3-gold/system-KS1.template.txt" with { type: "text" };
+import t53g2 from "./bundles/pilot-v5.3-gold/system-KS2.template.txt" with { type: "text" };
+import t53g3 from "./bundles/pilot-v5.3-gold/system-KS3.template.txt" with { type: "text" };
 import { withWriterTemplates } from "./diagrams";
 import { droppedFits, headingWords, withFits } from "./fit-fits";
 import {
@@ -209,6 +212,16 @@ export type PilotPack = {
    * this way, none written by the writer).
    */
   goldNoPictureFallback?: boolean;
+  /**
+   * Each flow entry lists the labels of the context's points it teaches, before `teaches`
+   * (v5.3-gold): the plan says where every point is taught, and `proofChecks` reads it.
+   */
+  flowPoints?: boolean;
+  /**
+   * A worked row's line (`eq`) is written before its `move` (v5.3-gold), so the caption describes
+   * a line already written: the 12 Nov Year 5 run captioned "2 1/2 × 3" "Multiply by three quarters."
+   */
+  workedLineFirst?: boolean;
 };
 
 /** v4.17's items-row reroute: with no labelled diagram on offer, a long list of parts splits. */
@@ -322,6 +335,14 @@ const FLOW_SIZE_COUNTED = {
   type: "string",
   description:
     "the words the idea needs, counted from the idea: how many items, the words each item needs out of its fit's words, then the lead's or stem's words out of its fit's",
+};
+
+/** v5.3-gold's flow `points`: the labels of the context's points the slide teaches. */
+const FLOW_POINTS = {
+  type: "array",
+  items: { type: "string" },
+  description:
+    'the labels of the context\'s points this slide teaches, as ["1a"]; [] on a check, a practice or a frame slide, and when the context lists no points',
 };
 
 /** A flow entry's `layout` value for a slide def key: `visual-text~points-2-fig` → `visual-text points-2-fig`. */
@@ -822,6 +843,40 @@ export const PILOT_PACKS = {
     goldNoPictureFallback: true,
     writer: { model: "openai/gpt-6.1-terra", effort: "low" },
   },
+  // v5.3-gold (12 Nov 2026, lab runs only, selected by id): v5.2-gold's switches and model blocks
+  // with the templates of scratchpad/tuning/v5.3-gold (a check names its new case in the flow, the
+  // figure-slide is routed by content, a worked row's move says what its line does, what code's bar
+  // model covers, the picture ask keeps the lesson's facts). Each flow entry lists the points it
+  // teaches (flowPoints) and a worked row is written line first (workedLineFirst). Its objectives,
+  // user turn and notes are writer bundle base4f-p128's (PACK_WRITER_BUNDLE).
+  "v5.3-gold": {
+    id: "v5.3-gold",
+    layouts: { ...menuFed(l47), flowShapes: WAVE_C_FLOW_SHAPES, flowSize: FLOW_SIZE_COUNTED },
+    base: { KS1: b61, KS2: b62, KS3: b63 },
+    system: {
+      KS1: v51System(t53g1, "KS1"),
+      KS2: v51System(t53g2, "KS2"),
+      KS3: v51System(t53g3, "KS3-5"),
+    },
+    uncapped: true,
+    capsFrom: "v4.5",
+    questionDefs: true,
+    catalogueIcons: true,
+    fitFloor: true,
+    flowLayout: true,
+    waveC: true,
+    tierSlides: true,
+    reasonsPicture: true,
+    writerTemplates: true,
+    noLabelledDiagram: true,
+    goldFits: true,
+    goldMenu: true,
+    modelLines: "v5.1-gold",
+    goldNoPictureFallback: true,
+    flowPoints: true,
+    workedLineFirst: true,
+    writer: { model: "openai/gpt-6.1-terra", effort: "low" },
+  },
 } as const satisfies Record<string, PilotPack>;
 export type PilotPackId = keyof typeof PILOT_PACKS;
 /** A pack's writer model and effort (`PilotPack.writer`), or undefined for the code default. */
@@ -967,6 +1022,18 @@ export function pilotRequest(
     if (isLayout(d) && !refs.some((r) => r.$ref === `#/$defs/${k}`))
       refs.push({ $ref: `#/$defs/${k}` });
   }
+  if (pack.workedLineFirst) {
+    const row = schema.$defs.worked?.properties?.lines?.items;
+    if (!row?.properties?.eq || !row.properties.move)
+      throw new Error(`pilot pack ${id}: no worked row to write line first`);
+    const { move, eq, ...rest } = row.properties;
+    row.properties = { eq, move, ...rest };
+    row.required = [
+      "eq",
+      "move",
+      ...(row.required as string[]).filter((k) => !["eq", "move"].includes(k)),
+    ];
+  }
   const floored = new Set([
     ...(pack.fitFloor ? droppedFits(writerStageOf(ks), fitO) : []),
     ...(pack.routedFits ?? []),
@@ -1011,6 +1078,16 @@ export function pilotRequest(
     const req = (fp.items.required as string[]).filter((k) => k !== "layout");
     const at = req.indexOf(size ? "size" : "teaches");
     fp.items.required = [...req.slice(0, at), "layout", ...req.slice(at)];
+  }
+  if (pack.flowPoints) {
+    // After the layout and its size, as the Flow step lists them: the plan says where each point is taught.
+    const { teaches, ...rest } = fp.items.properties;
+    fp.items.properties = { ...rest, points: FLOW_POINTS, teaches };
+    fp.items.required = [
+      ...fp.items.required.filter((k: string) => k !== "teaches"),
+      "points",
+      "teaches",
+    ];
   }
   if (pack.writerTemplates) Object.assign(schema, withWriterTemplates(schema, writerStageOf(ks)));
   if (pack.noLabelledDiagram) {

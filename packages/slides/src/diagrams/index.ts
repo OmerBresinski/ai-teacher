@@ -35,6 +35,7 @@ import {
   drawTimeline,
 } from "./templates";
 
+export { fractionOfAmountBar } from "./bar-model";
 export {
   answerPart,
   buildCount,
@@ -97,6 +98,7 @@ export {
   withTangents,
   yearOf,
 } from "./normalise";
+export { mixedText, partsText } from "./quantity";
 export { DIAGRAM_SAMPLES } from "./samples";
 export * from "./schema";
 export { LONG_LABEL_STRETCH } from "./stretch";

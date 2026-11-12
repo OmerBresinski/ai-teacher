@@ -11,6 +11,8 @@
  *   still agrees, redrawn from the words when it can be, and dropped otherwise. Never stale.
  */
 
+import { fractionOfAmountBar } from "@tj/slides/diagrams";
+
 type J = Record<string, unknown>;
 
 const VULGAR: Record<string, [number, number]> = {
@@ -219,8 +221,8 @@ export function rederiveFigure(fig: J, slide: J): J | undefined {
   if (distinct.length !== 1) return undefined;
   const { n, d, N } = distinct[0] as { n: number; d: number; N: number };
   if (n > d || d < 2 || d > 12) return undefined;
+  // A part such as 8 ÷ 3 is labelled 2 2/3 (meaning.ts `partsText`), so any whole draws.
   const part = N / d;
-  if (Math.abs(Math.round(part * 100) - part * 100) > 1e-9) return undefined;
   const old = (Array.isArray(fig.bars) && (fig.bars[0] as J)) || {};
   const unit = typeof old.unit === "string" ? old.unit : null;
   const u = (v: number) => (unit && /^[£$€]/.test(unit) ? `${unit}${v}` : `${v}`);
@@ -259,6 +261,39 @@ export function rederiveFigure(fig: J, slide: J): J | undefined {
     combined: null,
     alt: `A bar of ${u(N)} split into ${d} equal parts of ${u(part)}; ${n} ${n === 1 ? "part is" : "parts are"} shaded.`,
   };
+}
+
+/** Words asking what remains of the amount once the fraction is used. */
+const LEFT = /\b(left|remains?|remaining|remainder)\b/i;
+const UNIT_AFTER = /^\s?(mm|cm|km|m|kg|g|ml|l|p)\b/;
+
+/**
+ * BUILDER v5.3-gold B1: a bar model on a slide whose words state exactly one "n/d of N" (2 ≤ d ≤
+ * 12, 1 ≤ n ≤ d) is built by code from those words: N in d equal parts, n shaded, each part
+ * labelled with its value as a mixed number, the answer braced under the shaded run, or under the
+ * rest when the words ask what is left. The writer's spec is only read for its unit. Undefined
+ * for any other figure or words (the writer's spec then stands as it is).
+ */
+export function fractionBarFor(fig: unknown, words: string): J | undefined {
+  const f = fig as J | undefined;
+  if (!f || typeof f !== "object" || f.kind !== "bar-model") return undefined;
+  if (Array.isArray(f.bars) && f.bars.length > 1) return undefined;
+  const fo = fractionsOf(words);
+  const distinct = [...new Map(fo.map((x) => [`${x.n}/${x.d}/${x.N}`, x])).values()];
+  if (distinct.length !== 1) return undefined;
+  const { n, d, N } = distinct[0] as { n: number; d: number; N: number };
+  if (n < 1 || n > d || d < 2 || d > 12 || !(N > 0)) return undefined;
+  const old = (Array.isArray(f.bars) && (f.bars[0] as J)) || {};
+  const at = words.search(new RegExp(`\\bof\\s+[£$€]?\\s*${String(N).replace(".", "\\.")}`));
+  const after = at >= 0 ? words.slice(at).replace(/^of\s+[£$€]?\s*[\d,.]+/, "") : "";
+  const money = at >= 0 ? /of\s+([£$€])/.exec(words.slice(at))?.[1] : undefined;
+  const unit =
+    typeof old.unit === "string" && old.unit.trim()
+      ? old.unit.trim()
+      : (money ?? UNIT_AFTER.exec(after)?.[1] ?? null);
+  const left = LEFT.test(words) && n < d;
+  const bar = fractionOfAmountBar({ whole: N, parts: d, shaded: n, unit, left });
+  return bar ? (bar as unknown as J) : undefined;
 }
 
 /** A figure written as a stub (kind, shows, labels: the repair schema's form) has no spec. */

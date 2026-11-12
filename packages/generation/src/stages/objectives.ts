@@ -3,6 +3,9 @@ import {
   fallbackThemeFor,
   type Lesson,
   type LessonFacts,
+  type LessonPoint,
+  POINT_TEXT_MAX,
+  POINTS_MAX,
   type Slide,
 } from "@tj/domain/documents";
 import { isThemeId, liveThemeId } from "@tj/slides";
@@ -37,7 +40,7 @@ import {
 import { existingTitle, materialiseObjectives, materialiseTitle } from "./plan";
 import { audienceOf, planClassFor, shapeOf } from "./shared";
 import { selectSourceTexts } from "./source-texts";
-import { writerBrief } from "./write";
+import { slideRange, writerBrief } from "./write";
 
 /*
  * The objectives step of the objectives-first planner (TEACH-93, ADR 0033): the `plan-objectives`
@@ -138,7 +141,8 @@ export function writerObjectivesUser(
   template: string = writerBundle().objectivesUser,
   pitchFloor: boolean = writerBundle().features?.pitchFloor === true,
 ): string {
-  const brief = writerBrief(lesson);
+  // The tier's own range: a stored set of points never moves the count the objectives are sized by.
+  const brief = { ...writerBrief(lesson), slides: slideRange(lesson.brief) };
   const query = {
     country: locale().country,
     subject: pitchFloor ? brief.subject.trim() || (brief.inferredSubject ?? "") : brief.subject,
@@ -163,6 +167,32 @@ export function buildsOnOf(raw: unknown): string | undefined {
 }
 
 /**
+ * `points` as stored (v5.3-gold): each with an objective from 1 to `n` and its text, trimmed and cut
+ * at a word within `POINT_TEXT_MAX`; at most `POINTS_MAX`, in the order written. Undefined when none
+ * is usable.
+ */
+export function pointsOf(raw: unknown, n: number): LessonPoint[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: LessonPoint[] = [];
+  for (const r of raw) {
+    const p = (r ?? {}) as { objective?: unknown; point?: unknown };
+    const o = p.objective;
+    if (typeof o !== "number" || !Number.isInteger(o) || o < 1 || o > n) continue;
+    if (typeof p.point !== "string") continue;
+    let text = p.point.trim().replace(/\s+/g, " ");
+    if (!text) continue;
+    if (text.length > POINT_TEXT_MAX) {
+      const cut = text.slice(0, POINT_TEXT_MAX + 1);
+      const space = cut.lastIndexOf(" ");
+      text = (space > 0 ? cut.slice(0, space) : text.slice(0, POINT_TEXT_MAX)).trimEnd();
+    }
+    out.push({ objective: o, text });
+    if (out.length === POINTS_MAX) break;
+  }
+  return out.length ? out : undefined;
+}
+
+/**
  * One writer objectives call: `objectives.txt` as the system text, `writerObjectivesUser` as the
  * user turn, `objectives-schema.json` strict. It loads no uploaded source and writes no retrieval
  * questions or anchors, as in the lab. A schema with `builds_on` (base4f-p127) returns it as
@@ -171,7 +201,12 @@ export function buildsOnOf(raw: unknown): string | undefined {
 export async function writerObjectivesCall(
   lesson: Lesson,
   deps: PipelineDeps,
-): Promise<{ objectives: { text: string }[]; theme?: string; buildsOn?: string }> {
+): Promise<{
+  objectives: { text: string }[];
+  theme?: string;
+  buildsOn?: string;
+  points?: LessonPoint[];
+}> {
   const P = writerBundle();
   const r = await aiWriterServices(deps).chat({
     ...WRITER_OBJECTIVES,
@@ -181,17 +216,21 @@ export async function writerObjectivesCall(
     name: "objectives",
     strict: true,
   });
-  const out = r.out as { objectives?: unknown; theme?: unknown; builds_on?: unknown } | undefined;
+  const out = r.out as
+    | { objectives?: unknown; theme?: unknown; builds_on?: unknown; points?: unknown }
+    | undefined;
   const list = out?.objectives;
   if (!Array.isArray(list)) throw new Error("objectives: no objectives array");
   const objectives = list
     .filter((t): t is string => typeof t === "string")
     .map((text) => ({ text }));
   const buildsOn = buildsOnOf(out?.builds_on);
+  const points = pointsOf(out?.points, objectives.length);
   return {
     objectives,
     ...(typeof out?.theme === "string" ? { theme: out.theme } : {}),
     ...(buildsOn ? { buildsOn } : {}),
+    ...(points ? { points } : {}),
   };
 }
 
@@ -226,6 +265,8 @@ export async function runObjectivesStep(
   let plannerTheme: string | undefined;
   /** What earlier years taught (v5.2-gold `builds_on`); a pinned set keeps the stored one. */
   let buildsOn: string | undefined;
+  /** What the lesson must teach (v5.3-gold `points`); a pinned set keeps the stored ones. */
+  let points: LessonPoint[] | undefined;
   const pinned = state.pinObjectives ? (given.facts?.objectives ?? []) : undefined;
   if (pinned) {
     if (pinned.length === 0) {
@@ -233,6 +274,7 @@ export async function runObjectivesStep(
     }
     objectives = pinned.map((o) => ({ text: o.text }));
     buildsOn = given.facts?.buildsOn;
+    points = given.facts?.points;
     const kept = given.facts?.retrieval;
     retrieval = kept && kept.length > 0 ? kept : undefined;
     deps.logger.info(
@@ -269,6 +311,7 @@ export async function runObjectivesStep(
         if (!got) continue;
         plannerTheme = got.theme;
         buildsOn = got.buildsOn;
+        points = got.points;
         const check = checkObjectives(got.objectives, shape.verb, { hasSource: false });
         issues = describeIssues(check.issues.filter((i) => i.kind !== "too-long"));
         deps.logger.info(
@@ -364,6 +407,7 @@ export async function runObjectivesStep(
       ? { retrieval: retrieval.map((r) => ({ question: r.question, answer: r.answer })) }
       : {}),
     ...(buildsOn ? { buildsOn } : {}),
+    ...(points ? { points } : {}),
   };
   const title = existingTitle(lesson) ?? materialiseTitle(lesson, deps);
   const objectivesSlide = keepId(

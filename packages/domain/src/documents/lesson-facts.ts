@@ -280,7 +280,20 @@ export type LessonFacts = {
    * it; never shown to the teacher, and kept as is when the teacher edits the objectives.
    */
   buildsOn?: string;
+  /**
+   * What the lesson must teach, in teaching order, each under the objective it serves, as the
+   * objectives call wrote it (v5.3-gold `points`). The writer's user turn lists them and its flow
+   * says which slide teaches each; never shown to the teacher, and kept as is when the teacher
+   * edits the objectives.
+   */
+  points?: LessonPoint[];
 };
+
+/** One thing a lesson teaches (`LessonFacts.points`): `objective` counts from 1. */
+export type LessonPoint = { objective: number; text: string };
+/** The most points a lesson stores, and the longest one. */
+export const POINTS_MAX = 10;
+export const POINT_TEXT_MAX = 200;
 
 /** The longest `buildsOn` a lesson stores. */
 export const BUILDS_ON_MAX = 300;
@@ -432,6 +445,15 @@ export const LessonFactsSchema = z
     /** Lab r2: the starter's retrieval set, when the objectives call wrote one. */
     retrieval: z.array(RetrievalQuestionSchema).optional(),
     buildsOn: z.string().max(BUILDS_ON_MAX).optional(),
+    points: z
+      .array(
+        z.strictObject({
+          objective: z.number().int().min(1),
+          text: z.string().min(1).max(POINT_TEXT_MAX),
+        }),
+      )
+      .max(POINTS_MAX)
+      .optional(),
   })
   .superRefine((facts, ctx) => {
     // Ids are the addressing scheme for `factRefs`, so they must be unique across every array

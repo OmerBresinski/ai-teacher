@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test";
 import {
   figureNumbers,
   figureTextMismatch,
+  fractionBarFor,
   fractionsOf,
   numbersIn,
   rederiveFigure,
@@ -186,5 +187,48 @@ describe("the repair redraws or drops, never keeps a stale figure", () => {
   test("a slide with no figure is left alone", () => {
     const { figure: _f, ...plain } = REPAIRED;
     expect(syncFigure(BEFORE, plain).action).toBe("none");
+  });
+});
+
+describe("fractionBarFor (v5.3-gold B1): a fraction of an amount drawn by code from the words", () => {
+  const labels = (s: unknown) =>
+    ((s as { bars: { parts: { label: string; shaded?: boolean }[] }[] }).bars[0]?.parts ?? []).map(
+      (p) => `${p.label}${p.shaded ? "*" : ""}`,
+    );
+  test("3/4 of 10: four parts of 2 1/2, three shaded, the answer 7 1/2", () => {
+    const s = fractionBarFor(
+      { kind: "bar-model", bars: [{ whole: 10, parts: 4 }] },
+      "Find 3/4 of 10.",
+    );
+    expect(labels(s)).toEqual(["2 1/2*", "2 1/2*", "2 1/2*", "2 1/2"]);
+    expect(s).toMatchObject({ combined: "7 1/2" });
+  });
+  test("3/5 of 7: parts of 1 2/5", () => {
+    const s = fractionBarFor({ kind: "bar-model", bars: [] }, "Find 3/5 of 7.");
+    expect(labels(s)[0]).toBe("1 2/5*");
+    expect(s).toMatchObject({ combined: "4 1/5" });
+  });
+  test("a remainder: 2/3 of 8 m used, what is left is braced, its unit read from the words", () => {
+    const s = fractionBarFor(
+      { kind: "bar-model", bars: [{ whole: 8, parts: 3 }] },
+      "Use 2/3 of 8 m. How much is left?",
+    );
+    expect(labels(s)).toEqual(["2 2/3 m*", "2 2/3 m*", "2 2/3 m"]);
+    expect(s).toMatchObject({ combined: "2 2/3 m left", rest: true });
+  });
+  test("money from the words: 1/4 of £10 is £2.50 a part", () => {
+    const s = fractionBarFor({ kind: "bar-model", bars: [] }, "Find 1/4 of £10.");
+    expect(labels(s)[0]).toBe("£2.50*");
+  });
+  test("no single n/d of N, another kind or several bars: nothing", () => {
+    expect(
+      fractionBarFor({ kind: "bar-model", bars: [] }, "Find 3/4 of 10 and 1/2 of 8."),
+    ).toBeUndefined();
+    expect(fractionBarFor({ kind: "bar-model", bars: [] }, "Share 10 between 4.")).toBeUndefined();
+    expect(fractionBarFor({ kind: "number-line" }, "Find 3/4 of 10.")).toBeUndefined();
+    expect(
+      fractionBarFor({ kind: "bar-model", bars: [{}, {}] }, "Find 3/4 of 10."),
+    ).toBeUndefined();
+    expect(fractionBarFor({ kind: "bar-model", bars: [] }, "Find 3/13 of 26.")).toBeUndefined();
   });
 });
