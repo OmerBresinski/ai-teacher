@@ -928,6 +928,13 @@ export function packFromEnv(env: string | undefined, live: PilotPackId): PilotPa
 export const PILOT_PACK_LIVE: PilotPackId = PILOT_PACK_LIVE_ID;
 /** The pack a revert goes back to (one line: set PILOT_PACK_LIVE to it). Kept measured by the prompt budget so a revert passes CI. */
 export const PILOT_PACK_REVERT: PilotPackId = "v4.17";
+/**
+ * The pack a writer lesson finishes on when its stamps name no pack and its bundle belongs to no
+ * pack (`PACK_WRITER_BUNDLE`): such a lesson was planned before the planned stamp carried the
+ * pack (12 Nov 2026), when the live pack was v5.0b, which runs the shared bundle. A fact about the
+ * past: it never changes when the live pack does.
+ */
+export const PILOT_PACK_BEFORE_STAMP: PilotPackId = "v5.0b";
 export const PILOT_PACK_ID: PilotPackId = packFromEnv(
   typeof process === "undefined" ? undefined : process.env.TJ_PILOT_PACK,
   PILOT_PACK_LIVE,
