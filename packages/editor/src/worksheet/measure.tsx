@@ -6,6 +6,7 @@ import { pageMetrics, pxToPt } from "./metrics";
 import {
   buildFlow,
   type FlowItem,
+  fillPages,
   HEADER_KEY,
   type Pagination,
   paginate,
@@ -128,6 +129,8 @@ export function useSheetPagination(
   theme: Theme,
   /** What the pages carry: a `SheetPart`, or the editor's boolean (`true` = both). */
   part: SheetPart | boolean,
+  /** Print: grow each page's answer space into its leftover room (`fillPages`). */
+  fill = false,
 ): SheetPagination {
   const [heights, setHeights] = useState<Record<string, number>>({});
   const [fontsReady, setFontsReady] = useState(false);
@@ -144,11 +147,12 @@ export function useSheetPagination(
   // Switching paper changes the page box, so the split and the oversize check both re-run off the
   // worksheet's own size rather than a fixed A4 constant.
   const contentH = pageMetrics(worksheet?.pageSize).contentH;
-  const lineGapPt = worksheet ? sheetSizes(worksheet).lineGapPt : SHEET_SIZES.secondary.lineGapPt;
-  const { pages, oversize } = useMemo(
-    () => paginate(items, heights, headerHeight, contentH, lineGapPt),
-    [items, heights, headerHeight, contentH, lineGapPt],
-  );
+  const sizes = worksheet ? sheetSizes(worksheet) : SHEET_SIZES.secondary;
+  const { lineGapPt, boxScale } = sizes;
+  const { pages, oversize } = useMemo(() => {
+    const flowed = paginate(items, heights, headerHeight, contentH, lineGapPt);
+    return fill ? fillPages(flowed, heights, headerHeight, contentH, lineGapPt, boxScale) : flowed;
+  }, [items, heights, headerHeight, contentH, lineGapPt, boxScale, fill]);
 
   const ready =
     fontsReady &&

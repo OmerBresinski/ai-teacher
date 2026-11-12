@@ -262,7 +262,15 @@ describe("round 2: sizes by year band", () => {
     >;
     expect(vars["--ws-type"]).toBe("1.5");
     expect(vars["--ws-line-gap"]).toBe(`${SHEET_SIZES.ks1.lineGapPt}pt`);
-    expect(vars["--ws-box"]).toBe("1.6");
+    // R3: boxes start at 1.3 and print fills each page's spare room into them.
+    expect(vars["--ws-box"]).toBe("1.3");
+    // R3: Reception to Year 2 print in the young-children theme's rounded face, whatever the theme.
+    expect(vars["--ws-font-body"]).toContain("--font-playpen");
+    const y5 = sheetVars(getTheme("studio"), "A4", sheetSizes({ yearGroup: "Year 5" })) as Record<
+      string,
+      string
+    >;
+    expect(y5["--ws-font-body"]).toBe(getTheme("studio").fonts.body);
     const css = readFileSync(new URL("../styles/worksheet.css", import.meta.url), "utf8");
     // Only the footer keeps a fixed size.
     expect(css.match(/font-size: \d+(\.\d+)?pt;/g)).toHaveLength(1);

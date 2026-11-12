@@ -13,6 +13,7 @@ import { exitTicketBlocks, type SlideSheetBuild } from "@tj/slides/worksheet/exi
 import type { CallUsage } from "../call";
 import type { FillDeps } from "./fill";
 import { gateSheet } from "./gate";
+import { sheetSubject } from "./subject";
 import { writeSheet } from "./write-sheet";
 
 /*
@@ -169,7 +170,7 @@ function assemble(
     lessonId: lesson.id,
     ...(lesson.ageBand !== undefined ? { ageBand: lesson.ageBand } : {}),
     ...(lesson.yearGroup !== undefined ? { yearGroup: lesson.yearGroup } : {}),
-    ...(lesson.subject !== undefined ? { subject: lesson.subject } : {}),
+    ...(sheetSubject(lesson) ? { subject: sheetSubject(lesson) } : {}),
     ...(lesson.readingLevel !== undefined ? { readingLevel: lesson.readingLevel } : {}),
     ...(lesson.language !== undefined ? { language: lesson.language } : {}),
   };

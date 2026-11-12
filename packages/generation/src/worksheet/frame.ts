@@ -9,6 +9,7 @@ import {
 } from "@tj/slides";
 import type { FillBlockType, WorksheetFillSlot } from "../prompts";
 import type { PipelineDeps } from "../types";
+import { sheetSubject } from "./subject";
 
 /*
  * Frame (ADR 0030 item 3.i; TDD §7 step 1): the recipe builds the sheet from the lesson's facts
@@ -129,7 +130,7 @@ export function buildFrame(input: BuildFrameInput, deps: Pick<PipelineDeps, "now
     showMarks: recipe.jobs.includes("assess") ? true : undefined,
     ageBand: lesson.ageBand,
     yearGroup: lesson.yearGroup,
-    subject: lesson.subject,
+    subject: sheetSubject(lesson),
     readingLevel: lesson.readingLevel,
     language: lesson.language,
     lessonId: lesson.id,

@@ -193,6 +193,19 @@ async function xmlFor(
 }
 
 describe("worksheet Word export", () => {
+  it("prints the confidence circles in red, amber and green, each with its word (R3)", async () => {
+    const { xml } = await xmlFor(everyBlockSheet());
+    for (const [word, colour] of [
+      ["Red", "C62828"],
+      ["Amber", "D98A00"],
+      ["Green", "2E7D32"],
+    ]) {
+      expect(xml).toMatch(new RegExp(`<w:color w:val="${colour}"/>[\\s\\S]{0,200}●`));
+      expect(xml).toContain(`  ${word}`);
+    }
+    expect(xml).not.toContain("◯");
+  });
+
   it("writes a Word file with the parts Word needs", async () => {
     const { names } = await xmlFor(everyBlockSheet());
     expect(names).toContain("[Content_Types].xml");
@@ -286,7 +299,7 @@ describe("worksheet Word export", () => {
   it("adds the self-assessment strip and the answer key on a new page", async () => {
     const { xml } = await xmlFor(everyBlockSheet());
     expect(xml).toContain("How confident do you feel?");
-    expect(xml).toContain("◯  Red");
+    expect(xml).toContain("  Red");
     expect(xml).toContain("Answer key");
     expect(xml).toContain("Evaporation.");
     expect(xml).toContain("The answers are the letters in bold and underlined.");

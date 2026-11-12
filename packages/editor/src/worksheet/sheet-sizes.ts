@@ -1,4 +1,5 @@
 import { deriveAgeBand, type Worksheet } from "@tj/domain/documents";
+import { FONT_STACKS } from "@tj/slides/fonts";
 import { LINE_GAP, MM } from "./metrics";
 
 /*
@@ -24,11 +25,25 @@ export type SheetSizes = {
   lineGapPt: number;
   /** Multiplier on an answer box's stored `heightPt`. */
   boxScale: number;
+  /**
+   * The band's own typeface for the whole sheet, else the theme's. R3: Reception to Year 2 use the
+   * young-children theme's rounded face (Playpen Sans, the crayon theme's body), shipped with the
+   * editor (`fonts-playful.css`) and so embedded in print.
+   */
+  font?: string;
 };
 
 export const SHEET_SIZES: Record<SheetBand, SheetSizes> = {
-  ks1: { type: 1.5, lineGapPt: Math.round(15 * MM * 100) / 100, boxScale: 1.6 },
-  ks2: { type: 1.18, lineGapPt: Math.round(11 * MM * 100) / 100, boxScale: 1.25 },
+  // R3: boxes start smaller (ks1 1.6 -> 1.3, ks2 1.25 -> 1) because print now grows every box into
+  // its page's spare room (`fillPages`, up to twice): the base size decides the page count, the
+  // fill gives the room back. Ruled lines keep the band's handwriting height.
+  ks1: {
+    type: 1.5,
+    lineGapPt: Math.round(15 * MM * 100) / 100,
+    boxScale: 1.3,
+    font: FONT_STACKS.playpen,
+  },
+  ks2: { type: 1.18, lineGapPt: Math.round(11 * MM * 100) / 100, boxScale: 1 },
   secondary: { type: 1, lineGapPt: LINE_GAP, boxScale: 1 },
 };
 

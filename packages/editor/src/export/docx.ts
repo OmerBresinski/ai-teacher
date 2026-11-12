@@ -760,7 +760,8 @@ function headerChildren(worksheet: Worksheet): (Paragraph | Table)[] {
 
 /**
  * The self-assessment strip, as on paper (`RagStrip`): the criteria as tick boxes under "Tick what
- * you can do now", then Red / Amber / Green, told apart by their labels, never by colour.
+ * you can do now", then Red / Amber / Green: each circle in its own colour (R3, CRITIQUE-2: grey
+ * circles could not be told apart by a young pupil), and its word beside it for a grey copy.
  */
 function ragChildren(worksheet: Worksheet): Paragraph[] {
   const { criteria } = sheetHead(worksheet);
@@ -780,9 +781,22 @@ function ragChildren(worksheet: Worksheet): Paragraph[] {
         ]
       : []),
     plain("How confident do you feel?", { size: 10.5, after: 4, keepNext: true }),
-    plain("◯  Red        ◯  Amber        ◯  Green", { size: 11, after: 6 }),
+    new Paragraph({
+      spacing: { after: twip(6) },
+      children: RAG_COLOURS.flatMap(([word, colour], i) => [
+        new TextRun({ text: `${i > 0 ? "        " : ""}●`, color: colour, size: halfPt(16) }),
+        new TextRun({ text: `  ${word}`, size: halfPt(11) }),
+      ]),
+    }),
   ];
 }
+
+/** The confidence circles' words and print colours, as the sheet's `.ws-rag-*` rings. */
+export const RAG_COLOURS = [
+  ["Red", "C62828"],
+  ["Amber", "D98A00"],
+  ["Green", "2E7D32"],
+] as const;
 
 /** One answer-key line, its fractions stacked as in the stems (and as the print key draws them). */
 const keyLine = (line: string): ParagraphChild[] =>

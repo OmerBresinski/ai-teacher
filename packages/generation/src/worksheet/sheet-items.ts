@@ -294,7 +294,92 @@ export function practiceSheetIssues(out: PracticeOutput, { digest }: Context): S
   }
   if (!all.some(([, , it]) => it.demand === "reason"))
     issues.push({ path: ["core"], message: 'The sheet has no "reason" item.' });
+  // R3 (CRITIQUE-2): the same story with other numbers, and a challenge easier than what precedes it.
+  const labels = all.map(([key, i]) => (i === null ? "the challenge" : `${key} item ${i + 1}`));
+  for (const [n, m] of nearDuplicates(all.map(([, , it]) => it.question))) {
+    const [key, i] = all[n] as [string, number | null, PracticeItem];
+    issues.push({
+      path: i === null ? [key] : [key, i],
+      message: `${cap(labels[n] as string)} is ${labels[m]} again with other numbers: change what it asks, not only the numbers.`,
+    });
+  }
+  const easier = challengeEasierThan(all.map(([, , it]) => it));
+  if (easier !== null)
+    issues.push({
+      path: ["challenge"],
+      message: `The challenge is easier than ${labels[easier]} (fewer steps, or a whole-number answer where that item's is a fraction): make it the hardest item.`,
+    });
   return issues;
+}
+
+const cap = (s: string) => `${s[0]?.toUpperCase() ?? ""}${s.slice(1)}`;
+
+/** A question's words with every number (whole, decimal, fraction, mixed number) as "qnum". */
+export function maskNumbers(question: string): string[] {
+  return normaliseText(
+    question
+      .replace(/\d+(?:[.,]\d+)?(?:\s+\d+\/\d+|\/\d+)?/g, " qnum ")
+      .replace(/[^\p{L}\s]/gu, " "),
+  )
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/** Two questions this alike after masking numbers are the same task (word-set overlap). */
+export const NEAR_DUPLICATE = 0.9;
+
+/**
+ * Pairs [later, earlier] of questions that are the same text once numbers are masked, or share at
+ * least `NEAR_DUPLICATE` of their words (Jaccard), with at least one number each: the same story
+ * with the numbers changed. Exact repeats are `repeatedQuestions`' job and are left out.
+ */
+export function nearDuplicates(questions: readonly string[]): [number, number][] {
+  const sets = questions.map((q) => maskNumbers(q));
+  const out: [number, number][] = [];
+  questions.forEach((q, i) => {
+    const a = sets[i] as string[];
+    if (!a.includes("qnum")) return;
+    for (let j = 0; j < i; j++) {
+      const b = sets[j] as string[];
+      if (!b.includes("qnum") || normaliseText(q) === normaliseText(questions[j] as string))
+        continue;
+      const A = new Set(a);
+      const B = new Set(b);
+      const shared = [...A].filter((w) => B.has(w)).length;
+      if (shared / new Set([...A, ...B]).size >= NEAR_DUPLICATE) {
+        out.push([i, j]);
+        break;
+      }
+    }
+  });
+  return out;
+}
+
+/** The operations a worked calculation takes (× ÷ + − -, a fraction's "/" not counted). */
+export const workingSteps = (working: string | null): number =>
+  working ? (working.match(/[×÷+−*]|\s-\s/g) ?? []).length : 0;
+
+/** Whether a worked calculation ends on a fraction or a mixed number ("= 6 4/5 m"). */
+export const endsOnFraction = (working: string | null): boolean =>
+  !!working && /\d+\/\d+[^=]*$/.test(working.split("=").pop() ?? "");
+
+/**
+ * The index of the first earlier item the challenge (the last item) is easier than, or null: it
+ * has worked steps and takes fewer than that item, or as many with a whole-number answer where
+ * that item's answer is a fraction. Only worked calculations are compared (a cheap, logged check).
+ */
+export function challengeEasierThan(items: readonly { working: string | null }[]): number | null {
+  const last = items[items.length - 1];
+  if (!last?.working?.trim()) return null;
+  const steps = workingSteps(last.working);
+  const fraction = endsOnFraction(last.working);
+  for (let i = 0; i < items.length - 1; i++) {
+    const it = items[i] as { working: string | null };
+    if (!it.working?.trim()) continue;
+    const s = workingSteps(it.working);
+    if (steps < s || (steps === s && !fraction && endsOnFraction(it.working))) return i;
+  }
+  return null;
 }
 
 /**
