@@ -132,6 +132,11 @@ export const BarModelSchema = z
      * code (`barPanelSpec`), never by a writer: it is kept off the wire (`drawerOnly`).
      */
     panel: BarPanelSchema.optional().meta({ drawerOnly: true }),
+    /**
+     * One bar's `combined` braces the parts left unshaded instead of the shaded run: what is left
+     * of an amount once a fraction is used (`fractionOfAmountBar`). Set by code, never by a writer.
+     */
+    rest: z.boolean().optional().meta({ drawerOnly: true }),
   })
   .superRefine((m, ctx) => {
     if (m.panel) {

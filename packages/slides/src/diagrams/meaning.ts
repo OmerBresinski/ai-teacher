@@ -11,6 +11,7 @@
  */
 import { z } from "zod";
 import { captionRule, fitsMeasured, LIMITS, measuredLabel } from "./limits";
+import { decimalText, partsText, withUnit } from "./quantity";
 import {
   type DiagramKind,
   DiagramSpecSchema,
@@ -452,12 +453,7 @@ export const BarModelMeaningSchema = z
   })
   .strict();
 
-const fmt = (v: number) => {
-  const r = Math.round(v * 100) / 100;
-  return Number.isInteger(r) ? String(r) : String(r);
-};
-const withUnit = (v: string, unit?: string) =>
-  !unit ? v : /^[£$€¥]$/.test(unit) ? `${unit}${v}` : `${v} ${unit}`;
+const fmt = (v: number, unit?: string) => decimalText(v, unit);
 
 function barFrom(m: z.infer<typeof BarModelMeaningSchema>): unknown {
   let all = 0;
@@ -466,14 +462,19 @@ function barFrom(m: z.infer<typeof BarModelMeaningSchema>): unknown {
       b.values ?? Array(b.parts as number).fill((b.whole as number) / (b.parts as number));
     const sum = values.reduce((a, v) => a + v, 0);
     all += sum;
+    // B3: an equal part of a whole number is written as a fraction lesson writes it, 10 in 4
+    // parts as 2 1/2 (drawn stacked), never 2.5; money keeps its pence.
+    const each = b.values
+      ? undefined
+      : partsText(b.whole as number, b.parts as number, 1, b.unit ?? null);
     return {
       ...(b.label ? { label: b.label } : {}),
       parts: values.map((v, i) => ({
         value: v,
-        label: b.unknown === "each" ? "?" : withUnit(fmt(v), b.unit),
+        label: b.unknown === "each" ? "?" : withUnit(each ?? fmt(v, b.unit), b.unit),
         ...(i < (b.shaded ?? 0) ? { shaded: true } : {}),
       })),
-      total: b.unknown === "whole" ? "?" : withUnit(fmt(sum), b.unit),
+      total: b.unknown === "whole" ? "?" : withUnit(fmt(sum, b.unit), b.unit),
     };
   });
   const unit = m.bars[0]?.unit;
@@ -482,7 +483,7 @@ function barFrom(m: z.infer<typeof BarModelMeaningSchema>): unknown {
     alt: m.alt,
     ...(m.title ? { title: m.title } : {}),
     bars,
-    ...(m.combined && m.bars.length > 1 ? { combined: withUnit(fmt(all), unit) } : {}),
+    ...(m.combined && m.bars.length > 1 ? { combined: withUnit(fmt(all, unit), unit) } : {}),
   };
 }
 

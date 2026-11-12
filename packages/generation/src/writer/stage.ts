@@ -73,7 +73,7 @@ import {
   tableRows,
   tilesAsPictures,
 } from "./fallbacks";
-import { figureTextMismatch, specKey, syncFigure } from "./figure-sync";
+import { figureTextMismatch, fractionBarFor, specKey, syncFigure } from "./figure-sync";
 import {
   FIGURE_SPEC_REPAIR_DEFAULT,
   FIGURE_TEXT_FROM_SPEC_DEFAULT,
@@ -2026,10 +2026,16 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
       // A new or changed writer spec is drawn by code at once (no drawer call after editable).
       if (a.type === "diagram" && a.spec !== undefined && run.drawDiagrams) {
         const ask = diagramAsk(a, next);
-        const r = acceptWriterSpec(a.spec, ask, base.theme, layoutSlotProbe, {
-          fitActs: act,
-          log: (e) => log({ ...e, slide: i + 1 }),
-        });
+        const r = acceptWriterSpec(
+          fractionBarFor(a.spec, ask.words) ?? a.spec,
+          ask,
+          base.theme,
+          layoutSlotProbe,
+          {
+            fitActs: act,
+            log: (e) => log({ ...e, slide: i + 1 }),
+          },
+        );
         if (r.spec)
           drawnDiagrams.set(`${i}:${a.key}`, {
             status: "diagram",
