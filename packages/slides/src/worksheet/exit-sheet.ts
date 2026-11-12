@@ -66,16 +66,86 @@ export function answerSpace(task: string, working: string | undefined): AnswerSp
   return "short";
 }
 
-/** Lines for a task written on ruled lines (explain or short). */
+const yearOf = (yearGroup: string) =>
+  isEarlyYears(yearGroup) ? 2 : Number(/\d+/.exec(yearGroup)?.[0]) || 7;
+
+/**
+ * R5 (12 Nov key check: "a one-word answer gets 3 lines while a two-part explanation gets 2"):
+ * answer space comes from the key, within the year band's limits. Words a pupil writes on one
+ * ruled line (bigger hands, the 15 mm/11 mm/9 mm rulings of `SHEET_SIZES`; a key is written in
+ * full sentences, a pupil's answer is usually shorter) and the most lines a task gets.
+ */
+export const WORDS_PER_LINE = { ks1: 8, ks2: 9, secondary: 11 } as const;
+export const MAX_ANSWER_LINES = { ks1: 4, ks2: 5, secondary: 6 } as const;
+const bandOfYear = (year: number) => (year <= 2 ? "ks1" : year <= 6 ? "ks2" : "secondary");
+
+const plain = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^\p{L}\p{N}'\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * The task names its options and the key is one of them, near word for word ("...: leaving close
+ * wooden houses standing or pulling houses down to make gaps?" / "Pulling houses down to make
+ * gaps."): the pupil copies a choice, one line.
+ */
+export function picksAnOption(task: string, answer: string): boolean {
+  const a = plain(answer).replace(/^(the|a|an) /, "");
+  return a.length > 0 && wordCount(a) <= 8 && / or /.test(plain(task)) && plain(task).includes(a);
+}
+
+/** The task asks for two or three things ("Name two ways", "Give one reason and one example"). */
+const ASKS_PARTS =
+  /\b(two|three|2|3|both)\b(?:\s+\w+)?\s+(reasons?|ways?|things?|facts?|examples?|products?|features?|differences?|changes?|causes?|jobs?|steps?|gases?|substances?)\b|\bone\b[^.?]*\band one\b|,? (?:and|then) (?:what|how|why|which|explain|say|give|name)\b/i;
+
+/** The task asks the pupil to judge a claim or give a reason: an explanation, wherever the word sits. */
+const ASKS_REASON =
+  /\b(explain|why|because|is (?:the \w+|this|that|it|she|he|they) (?:right|correct|true)|are they right|correct (?:the|this|their|his|her) )/i;
+
+/** How many parts the key has: its sentences, or its ";" parts. */
+const answerParts = (answer: string) =>
+  Math.max(sentencesOf(answer).length, answer.split(";").filter((p) => p.trim()).length);
+
+/**
+ * Lines for a task written on ruled lines (explain or short), from the key: its length at the
+ * band's words per line, at
+ * least one line per part the key has or the task asks for, an explanation at least 2 lines (3 from
+ * Year 3) when its key is more than a few words, a picked option one line; at most the band's cap.
+ */
 export function answerLinesFor(
   space: "explain" | "short",
   answer: string,
   yearGroup: string,
+  task = "",
 ): number {
-  const year = isEarlyYears(yearGroup) ? 2 : Number(/\d+/.exec(yearGroup)?.[0]) || 7;
-  if (space === "explain") return year >= 10 ? 4 : year <= 2 ? 2 : 3;
+  const band = bandOfYear(yearOf(yearGroup));
   const words = wordCount(answer);
-  return words <= 4 ? 1 : Math.min(4, Math.max(2, Math.ceil(words / 10)));
+  if (task && picksAnOption(task, answer)) return 1;
+  // A short list ("Glucose and oxygen.") fits one line however many things the task asks for.
+  const asked = words > 4 && ASKS_PARTS.test(task) ? 2 : 1;
+  const parts = Math.max(answerParts(answer), asked);
+  let lines = Math.max(Math.ceil(words / WORDS_PER_LINE[band]), parts);
+  if ((space === "explain" || ASKS_REASON.test(task)) && words > 4)
+    lines = Math.max(lines, band === "ks1" ? 2 : 3);
+  return Math.min(MAX_ANSWER_LINES[band], Math.max(1, lines));
+}
+
+/** A task drawn rather than written: a bar model, number line or diagram to make. */
+const DRAWN_METHOD = /\b(bar model|number line|diagram|tape diagram|array)\b/i;
+
+/**
+ * The working box (R5): a bar model or number line gets a box to draw in; otherwise the base box
+ * for up to two steps of working and a sixth of a box more for each step after, at most a third
+ * more than the base (print's page fill grows a box up to twice). Steps are the operations in
+ * the key's working.
+ */
+export function workingBoxPt(task: string, working: string | undefined): number {
+  if (DRAWN_METHOD.test(task)) return DRAW_BOX_PT;
+  const steps = (working?.match(/[×÷+−*]|\s-\s|=/g) ?? []).filter((s) => s !== "=").length;
+  return Math.min(64, WORKING_BOX_PT + Math.max(0, steps - 2) * 8);
 }
 
 /** The blocks under a task (or a lettered part) that give the pupil room to answer. */
@@ -85,6 +155,8 @@ function spaceBlocks(
   yearGroup: string,
   ids: () => string,
   label?: string,
+  task = "",
+  working?: string,
 ): WorksheetBlock[] {
   const box = (heightPt: number, text?: string): WorksheetBlock => ({
     id: ids(),
@@ -95,9 +167,10 @@ function spaceBlocks(
   if (space === "draw") return [box(DRAW_BOX_PT, label)];
   // One box for the working and the answer, so a short sheet stays on one page.
   if (space === "calculation") {
-    return [box(WORKING_BOX_PT, label ? `${label} Working and answer` : "Working and answer")];
+    const h = workingBoxPt(task, working);
+    return [box(h, label ? `${label} Working and answer` : "Working and answer")];
   }
-  const lines = answerLinesFor(space, answer, yearGroup);
+  const lines = answerLinesFor(space, answer, yearGroup, task);
   return label ? [box(lines * LINE_PT, label)] : [{ id: ids(), type: "lines", count: lines }];
 }
 
@@ -146,10 +219,12 @@ export function answeredTaskBlocks(
         id: ids(),
         type: "question",
         doc: docFromText(item.question),
-        answerLines: ruled ? answerLinesFor(space, item.answer, yearGroup) : 0,
+        answerLines: ruled ? answerLinesFor(space, item.answer, yearGroup, item.question) : 0,
         answer: answerWithWorking(item),
       },
-      ...(ruled ? [] : spaceBlocks(space, item.answer, yearGroup, ids)),
+      ...(ruled
+        ? []
+        : spaceBlocks(space, item.answer, yearGroup, ids, undefined, item.question, item.working)),
     ];
   }
   // The working belongs to the last part (it is where the slide's sum ends).
@@ -176,6 +251,8 @@ export function answeredTaskBlocks(
         yearGroup,
         ids,
         label(i),
+        p.task,
+        i === last ? item.working : undefined,
       ),
     ),
   ];

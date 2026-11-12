@@ -303,11 +303,15 @@ export function fillPages(
   return { ...pagination, pages };
 }
 
-/** Answer space that can take a page's spare room: a box, or a question with ruled lines. */
+/**
+ * Answer space that can take a page's spare room: a box, or a question with two or more ruled
+ * lines. R5 (12 Nov key check: "a one-word answer gets 3 lines while a two-part explanation gets
+ * 2"): a one-line question is sized to a word or a number from its key and keeps its one line.
+ */
 const isFillable = (it: FlowItem) =>
   it.kind === "block" &&
   !it.split &&
-  (it.block.type === "answer-box" || (it.block.type === "question" && it.block.answerLines > 0));
+  (it.block.type === "answer-box" || (it.block.type === "question" && it.block.answerLines > 1));
 
 /* ---- fewest pages (R5, 12 Nov) ------------------------------------------------ */
 
