@@ -63,7 +63,7 @@ describe("v5.2-gold system text", () => {
 
 describe("v5.2-gold runs writer bundle base4f-p127", () => {
   test("the pack names it; other packs run the active bundle", () => {
-    expect(PACK_WRITER_BUNDLE).toEqual({ "v5.2-gold": "base4f-p127" });
+    expect(PACK_WRITER_BUNDLE["v5.2-gold"]).toBe("base4f-p127");
     expect(packOwnBundleId("v5.2-gold")).toBe("base4f-p127");
     expect(packOwnBundleId("v5.1b-gold")).toBeUndefined();
     expect(packOwnBundleId(undefined)).toBeUndefined();

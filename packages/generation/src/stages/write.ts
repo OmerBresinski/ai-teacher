@@ -90,10 +90,29 @@ export function stageOf(ageBand: string | undefined, yearGroup?: string): Stage 
   return STAGE_OF_BAND[band as AgeBand];
 }
 
+/**
+ * v5.3-gold: the fewest slides that give every point a slide of its own: the title, the
+ * objectives and the close, a slide a point, and a check an objective (at least two). Held inside
+ * the tier's range, so the writer still picks the count (ruling 164) from a floor the content sets.
+ * A lesson with no points keeps its range.
+ */
+export function coverageFloor(
+  range: { min: number; max: number },
+  points: number,
+  objectives: number,
+): { min: number; max: number } {
+  if (points <= 0) return range;
+  const need = 3 + points + Math.max(2, objectives);
+  return { min: Math.min(range.max, Math.max(range.min, need)), max: range.max };
+}
+
 /** The writer's brief, read off the lesson. */
 export function writerBrief(lesson: Lesson): Brief {
   const year = Number(/\d+/.exec(lesson.yearGroup ?? "")?.[0] ?? 7);
   const b = lesson.brief;
+  // v5.3-gold: the stored points whose objective the lesson still has.
+  const nObjectives = lesson.facts?.objectives?.length ?? 0;
+  const points = (lesson.facts?.points ?? []).filter((p) => p.objective <= nObjectives);
   return {
     id: lesson.id,
     topic: b?.topic ?? lesson.title,
@@ -113,9 +132,10 @@ export function writerBrief(lesson: Lesson): Brief {
     // The writer reads the flag through its user turn (rulings 141, 148). Ruling 201: the exit
     // ticket goes on the last slide unless the teacher queued a worksheet with the confirm.
     exitTicketOnSlides: b?.worksheet !== true,
-    slides: slideRange(b),
+    slides: coverageFloor(slideRange(b), points.length, nObjectives),
     ...(b?.durationDefaulted === true ? { durationDefaulted: true } : {}),
     ...(lesson.facts?.buildsOn ? { buildsOn: lesson.facts.buildsOn } : {}),
+    ...(points.length ? { points } : {}),
   };
 }
 

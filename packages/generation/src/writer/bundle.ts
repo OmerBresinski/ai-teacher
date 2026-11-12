@@ -6,6 +6,7 @@ import * as base4fP124 from "./bundles/base4f-p124/prompts.gen";
 import * as base4fP125 from "./bundles/base4f-p125/prompts.gen";
 import * as base4fP126 from "./bundles/base4f-p126/prompts.gen";
 import * as base4fP127 from "./bundles/base4f-p127/prompts.gen";
+import * as base4fP128 from "./bundles/base4f-p128/prompts.gen";
 import ACTIVITY_MENU_G from "./bundles/base4g/activity-menu.txt" with { type: "text" };
 import * as base4g from "./bundles/base4g/prompts.gen";
 import { PACK_WRITER_BUNDLE, PILOT_PACK_LIVE_ID } from "./pilot-live";
@@ -96,6 +97,11 @@ export const WRITER_BUNDLES = {
   // writer's user turn says what pupils already know and drops a defaulted length line; the notes
   // give no minutes. Pack v5.2-gold runs it (PACK_WRITER_BUNDLE). Writer hash unchanged.
   "base4f-p127": bundle("base4f-p127", base4fP127, "8a0f9b4f6dde", base4Defs, { pitchFloor: true }),
+  // base4f-p127 with five files from scratchpad/tuning/v5.3-gold (12 Nov 2026): the objectives call
+  // also writes points (what the lesson must teach, sized by the slide range), the writer's user
+  // turn lists them with a Coverage paragraph in place of Depth, and the notes rely on no picture
+  // detail. Pack v5.3-gold runs it (PACK_WRITER_BUNDLE). Writer hash unchanged.
+  "base4f-p128": bundle("base4f-p128", base4fP128, "8a0f9b4f6dde", base4Defs, { pitchFloor: true }),
   // base4f-p123 with slot-fill (lab/slotfill round 2), anatomy routed to a flow, cycle or picture,
   // the curriculum statements and the theme in the objectives call, and the practice example cut.
   // Its line edits are listed in base4g.test.ts (SYSTEM_EDITS). Production switches by WRITER_BUNDLE_ID.

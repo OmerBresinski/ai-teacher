@@ -102,6 +102,7 @@ import {
   offPlanSlides,
   overflowPt,
   plainWords,
+  pointLabels,
   promptStage,
   pupilCharLimit,
   pupilLinesProblem,
@@ -1719,7 +1720,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
         : undefined;
   if (miss) log({ ev: "count-miss", level: "warn", ...miss });
   // v5.2-gold's proof counts (BUILDER B7): logged per lesson, never acted on.
-  log({ ev: "proof-checks", ...proofChecks(out, brief.slides, run.objectives.length) });
+  log({
+    ev: "proof-checks",
+    ...proofChecks(out, brief.slides, run.objectives.length, pointLabels(brief.points ?? [])),
+  });
   plan.design = out.design;
   plan.flow = out.flow;
   if (!designShown) run.onDesign?.(plan.design);
