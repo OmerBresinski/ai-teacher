@@ -5,6 +5,8 @@
  * numbers out; `runWriter` logs them as one `proof-checks` event per lesson, on every pack.
  */
 
+import { pointCount } from "./fixes";
+
 type S = Record<string, unknown>;
 
 /** Lower case, letters, digits and the maths signs a row's line uses; nothing else. */
@@ -269,7 +271,24 @@ export type ProofChecks = {
   checkReadback: { slide: number; question: string; share: number }[];
   /** v5.3-gold B4: panel-list slides with item pictures at a count not offered with pictures. */
   itemPictures: { slide: number; items: number; offered: number[] }[];
+  /** v5.3-gold B5: fewer points than the slide range asks for (the tier grew after the objectives). */
+  pointsShort: { points: number; lo: number } | null;
 };
+
+/**
+ * BUILDER v5.3-gold B5: points sized for a smaller lesson than the one being written (a Standard
+ * plan confirmed as Detailed: 4 to 6 points for 13 to 16 slides). The points still lead and the
+ * count floor sits at the tier's minimum, so the writer fills the rest with practice and checks;
+ * this records it. Null without points or when they meet the range's low end.
+ */
+export function pointsShort(
+  points: number,
+  range: { min: number; max: number },
+): { points: number; lo: number } | null {
+  if (points <= 0) return null;
+  const { lo } = pointCount({ slides: range });
+  return points < lo ? { points, lo } : null;
+}
 
 /**
  * BUILDER v5.3-gold B4: panel-list slides written with a picture on every item at a count the menu
@@ -315,5 +334,6 @@ export function proofChecks(
     workedCaption: workedCaptions(slides),
     checkReadback: checkReadbacks(slides),
     itemPictures: itemPicturesNotOffered(slides, offeredItemPictures),
+    pointsShort: pointsShort(pointLabels.length, range),
   };
 }

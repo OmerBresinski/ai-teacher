@@ -3,6 +3,7 @@ import {
   checkReadbacks,
   itemPicturesNotOffered,
   leadingNumber,
+  pointsShort,
   pointsUntaught,
   proofChecks,
   workedCaptionFault,
@@ -54,6 +55,7 @@ describe("proofChecks", () => {
       workedCaption: [],
       checkReadback: [],
       itemPictures: [],
+      pointsShort: null,
     });
   });
   test("no exit ticket on the slides: null", () =>
@@ -215,5 +217,15 @@ describe("itemPicturesNotOffered (v5.3-gold B4)", () => {
     expect(
       itemPicturesNotOffered([{ template: "panel-list", items: items(4) }], undefined),
     ).toEqual([]);
+  });
+});
+
+describe("pointsShort (v5.3-gold B5)", () => {
+  test("five points for a Detailed 13 to 16 lesson is short of six", () => {
+    expect(pointsShort(5, { min: 13, max: 16 })).toEqual({ points: 5, lo: 6 });
+  });
+  test("five points for Standard, or no points, is not", () => {
+    expect(pointsShort(5, { min: 11, max: 12 })).toBeNull();
+    expect(pointsShort(0, { min: 13, max: 16 })).toBeNull();
   });
 });
