@@ -60,6 +60,8 @@ export const EDIT_MESSAGES = {
   needsMore: "That needs more than a change to this text, which isn’t available here yet.",
   noChange: "No change.",
   failed: "That edit didn’t work. Try again, or word it differently.",
+  /** The provider or the server failed (a timeout, a 429, no model): not the teacher's wording. */
+  serverFailed: "Something went wrong on our side. Your slide is unchanged. Try again.",
 } as const;
 
 /** Said when a follow-up twice went the wrong way: names the direction that was asked for. */
@@ -148,8 +150,53 @@ const textOfElement = (el: SlideElement): string =>
 const isHeading = (el: SlideElement) =>
   el.type === "text" && (el.style.preset === "title" || el.style.preset === "heading");
 
+type TextBox = Extract<SlideElement, { type: "text" }>;
+type Group = Extract<SlideElement, { type: "group" }>;
+
+/**
+ * Every element under `elements`, a group's children at any depth after the group itself, in
+ * drawing order. A v5 slide holds its words in groups (objectives, lists, sequences, Layout
+ * components): edit chat reads and writes them where they sit, never lifting them out.
+ */
+export function deepElements(elements: readonly SlideElement[]): SlideElement[] {
+  return elements.flatMap((e) => (e.type === "group" ? [e, ...deepElements(e.children)] : [e]));
+}
+
+const findDeep = (slide: Slide, id: string): SlideElement | undefined =>
+  deepElements(slide.elements).find((e) => e.id === id);
+
+const textBoxesIn = (elements: readonly SlideElement[]): TextBox[] =>
+  deepElements(elements).filter((e): e is TextBox => e.type === "text");
+
+/** Each text box's new doc written in place, at any depth; ids, order and everything else kept. */
+function withDocs(elements: SlideElement[], docs: ReadonlyMap<string, RichDoc>): SlideElement[] {
+  return elements.map((e) => {
+    if (e.type === "group") {
+      const children = withDocs(e.children, docs);
+      return children.some((c, i) => c !== e.children[i]) ? { ...e, children } : e;
+    }
+    const doc = docs.get(e.id);
+    return doc && e.type === "text" ? { ...e, doc } : e;
+  });
+}
+
+/**
+ * What a request may change: one text box (element scope), or the text boxes of the whole slide,
+ * or of one selected group (slide scope over that group's boxes only).
+ */
+export function editScope(
+  slide: Slide,
+  elementId: string | undefined,
+): { box?: TextBox; group?: Group; boxes: TextBox[] } {
+  if (elementId === undefined) return { boxes: textBoxesIn(slide.elements) };
+  const el = findDeep(slide, elementId);
+  if (el?.type === "text") return { box: el, boxes: [el] };
+  if (el?.type === "group") return { group: el, boxes: textBoxesIn(el.children) };
+  return { boxes: [] };
+}
+
 function headingOf(slide: Slide): string | undefined {
-  const texts = slide.elements.filter((e) => e.type === "text");
+  const texts = textBoxesIn(slide.elements);
   const first = texts.find(isHeading) ?? texts[0];
   const text = first ? textOfElement(first).trim() : "";
   return text === "" ? undefined : text.split("\n")[0];
@@ -175,18 +222,18 @@ export const targetOf = (slidePath: string, elementId: string) =>
 
 /** The user turn's input: the lesson with the editor's current slide laid over the saved one. */
 export function packEditFast(req: EditFastRequest): EditFastInput {
-  const el =
-    req.elementId === undefined
-      ? undefined
-      : req.slide.elements.find((e) => e.id === req.elementId);
-  if (req.elementId !== undefined && el?.type !== "text")
+  const scope = editScope(req.slide, req.elementId);
+  const el = scope.box;
+  if (req.elementId !== undefined && !scope.box && !scope.group)
     throw new EditTargetError("the selection is not a text box");
-  if (req.elementId === undefined && !req.slide.elements.some((e) => e.type === "text"))
-    throw new EditTargetError("the slide has no text to edit");
+  if (scope.boxes.length === 0) throw new EditTargetError("the slide has no text to edit");
   const slides = req.lesson.slides.map((s) => (s.id === req.slide.id ? req.slide : s));
   const slidePath = slidePathOf(req.lesson, req.slide.id);
+  // The slide's words as before, a group's by its children's own ids (the group itself has none);
+  // a selected group shows only its own.
   const elements: Record<string, { text: string }> = {};
-  for (const e of req.slide.elements) {
+  for (const e of deepElements(scope.group ? scope.group.children : req.slide.elements)) {
+    if (e.type === "group") continue;
     const text = textOfElement(e).trim();
     if (text !== "") elements[e.id] = { text };
   }
@@ -266,7 +313,13 @@ const isFault = (x: unknown): x is { fault: string } =>
  * text box, each on `s4/elements/<id>/text`, or the slide node itself as
  * `{ elements: { <id>: { text } } }`; nothing outside the slide's text boxes.
  */
-export function applyEdit(out: EditFastOutput, target: string, slide: Slide): Applied {
+export function applyEdit(
+  out: EditFastOutput,
+  target: string,
+  slide: Slide,
+  /** The boxes a slide-scope edit may change (a selected group's); absent: every text box. */
+  allowed?: ReadonlySet<string>,
+): Applied {
   const elementScope = ELEMENT_TEXT.test(target);
   if (elementScope && out.changes.length !== 1)
     return { fault: `change exactly one node: ${target}` };
@@ -294,18 +347,15 @@ export function applyEdit(out: EditFastOutput, target: string, slide: Slide): Ap
   }
   const changes: EditFastChange[] = [];
   for (const [id, text] of texts) {
-    const el = slide.elements.find((e) => e.id === id);
-    if (el?.type !== "text") return { fault: `scope: ${id} is not a text box on this slide` };
+    const el = findDeep(slide, id);
+    if (el?.type !== "text" || (allowed && !allowed.has(id)))
+      return { fault: `scope: ${id} is not a text box on this slide` };
     const doc = textToDoc(text, el.doc);
     const now = richDocToPlainText(doc);
     if (now.trim() !== richDocToPlainText(el.doc).trim())
       changes.push({ elementId: id, doc, text: now });
   }
-  const byId = new Map(changes.map((c) => [c.elementId, c]));
-  const elements = slide.elements.map((e) => {
-    const c = byId.get(e.id);
-    return c && e.type === "text" ? { ...e, doc: c.doc } : e;
-  });
+  const elements = withDocs(slide.elements, new Map(changes.map((c) => [c.elementId, c.doc])));
   return { changes, slide: { ...slide, elements } };
 }
 
@@ -322,8 +372,11 @@ export function fitFaults(
 ): string[] {
   const theme = getTheme(themeId);
   const measure = measureHeadless(theme);
-  const was = lintAsDrawn(before, measure, theme);
-  const now = lintAsDrawn(after, measure, theme);
+  // The linter compares a group as one box; a box inside one is checked on a flat copy of the
+  // slide, children placed where they are drawn. The copy is for the check only, never written.
+  const nested = !before.elements.some((e) => e.id === elementId);
+  const was = lintAsDrawn(nested ? flatForLint(before) : before, measure, theme);
+  const now = lintAsDrawn(nested ? flatForLint(after) : after, measure, theme);
   const touches = (pair: [string, string]) => pair.includes(elementId);
   const key = (pair: [string, string]) => [...pair].sort().join("|");
   const overlapsBefore = new Set(was.overlaps.filter(touches).map(key));
@@ -335,6 +388,17 @@ export function fitFaults(
   if (now.laneOverflow.includes(elementId) && !was.laneOverflow.includes(elementId))
     faults.push("the new text runs into the space kept for the answer; make it shorter");
   return faults;
+}
+
+/** The slide with every group's children lifted to slide space (groups themselves dropped). */
+function flatForLint(slide: Slide): Slide {
+  const lift = (els: readonly SlideElement[], dx: number, dy: number): SlideElement[] =>
+    els.flatMap((e) =>
+      e.type === "group"
+        ? lift(e.children, dx + e.x, dy + e.y)
+        : [dx === 0 && dy === 0 ? e : { ...e, x: e.x + dx, y: e.y + dy }],
+    );
+  return { ...slide, elements: lift(slide.elements, 0, 0) };
 }
 
 const STOP = new Set(["the", "and", "its", "his", "her", "their", "which", "what"]);
@@ -358,7 +422,7 @@ export function echoes(text: string, answer: string): boolean {
 /** The answers a question slide keys, and the ids of the elements that show them. */
 function answersOf(slide: Slide): { answers: string[]; answerIds: Set<string> } {
   const q = slide.question;
-  const byId = new Map(slide.elements.map((e) => [e.id, e]));
+  const byId = new Map(deepElements(slide.elements).map((e) => [e.id, e]));
   if (q?.type === "multiple-choice") {
     const right = q.options.filter((o) => o.correct).map((o) => o.id);
     return {
@@ -378,7 +442,7 @@ export function leakFaults(before: Slide, after: Slide, elementId: string): stri
   const { answers, answerIds } = answersOf(before);
   if (answerIds.has(elementId)) return [];
   const textIn = (s: Slide) => {
-    const el = s.elements.find((e) => e.id === elementId);
+    const el = findDeep(s, elementId);
     return el ? textOfElement(el) : "";
   };
   const was = textIn(before);
@@ -412,6 +476,8 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
   const start = performance.now();
   const ms = () => Math.round(performance.now() - start);
   const input = packEditFast(req);
+  const scope = editScope(req.slide, req.elementId);
+  const allowed = scope.group ? new Set(scope.boxes.map((b) => b.id)) : undefined;
   const budget = deps.budget ?? createBudget(EDIT_FAST_BUDGET);
   // Two rounds, each with `callStructured`'s own shape retry: never an unbounded wait.
   const deadline = AbortSignal.timeout(EDIT_FAST_TIMEOUT_MS * 3);
@@ -485,7 +551,7 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
       };
     if (out.changes.length === 0)
       return { action: "no-change", reason: EDIT_MESSAGES.noChange, attempts, ms: ms() };
-    const applied = applyEdit(out, input.target, req.slide);
+    const applied = applyEdit(out, input.target, req.slide, allowed);
     let faults: string[];
     if ("fault" in applied) {
       faults = [applied.fault];
@@ -511,9 +577,7 @@ export async function editFast(req: EditFastRequest, deps: EditFastDeps): Promis
         const fault = directionFault(
           direction,
           applied.changes
-            .map((c) =>
-              textOfElement(req.slide.elements.find((e) => e.id === c.elementId) as SlideElement),
-            )
+            .map((c) => textOfElement(findDeep(req.slide, c.elementId) as SlideElement))
             .join("\n"),
           applied.changes.map((c) => c.text).join("\n"),
         );

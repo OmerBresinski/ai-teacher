@@ -1,0 +1,2218 @@
+{
+  "source": "scratchpad/tuning/e2e-11nov/out/round3 (12 Nov 2026): y2-greatfire s2, s4, s6; y5-fractions s4",
+  "themeId": "crayon",
+  "objectives": {
+    "id": "s2",
+    "kind": "objectives",
+    "elements": [
+      {
+        "id": "d-s2-layout",
+        "x": 56,
+        "y": 38,
+        "w": 848,
+        "h": 467,
+        "name": "Layout",
+        "authoredBy": "ai",
+        "type": "group",
+        "children": [
+          {
+            "id": "d-s2-layout:heading",
+            "x": 8,
+            "y": 8,
+            "w": 832,
+            "h": 52,
+            "name": "Heading",
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Today we are learning to"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "heading",
+              "fontSize": 46,
+              "lineHeight": 1.12,
+              "fontWeight": 700,
+              "autoHeight": true,
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s2-layout:~Objective_card-0",
+            "x": 8,
+            "y": 122,
+            "w": 832,
+            "h": 109,
+            "name": "Objective card",
+            "type": "shape",
+            "shape": "rounded",
+            "fill": "#FFFFFF",
+            "stroke": "#A31F2E",
+            "strokeWidth": 2,
+            "radius": 6
+          },
+          {
+            "id": "d-s2-layout:~Marker-0",
+            "x": 13,
+            "y": 152,
+            "w": 50,
+            "h": 50,
+            "name": "Marker",
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#A31F2E",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "1"
+                    }
+                  ]
+                }
+              ]
+            },
+            "textStyle": {
+              "preset": "body",
+              "fontSize": 28,
+              "fontWeight": 700,
+              "color": "#FFFFFF",
+              "align": "center",
+              "valign": "middle",
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s2-layout:points.0",
+            "x": 83,
+            "y": 130,
+            "w": 752,
+            "h": 93,
+            "name": "Item",
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Say where the Great Fire began and what took place before it ended."
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "body",
+              "fontSize": 33,
+              "lineHeight": 1.4,
+              "fontWeight": 400,
+              "color": "#232120",
+              "autoHeight": true,
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s2-layout:~Objective_card-1",
+            "x": 8,
+            "y": 236,
+            "w": 832,
+            "h": 109,
+            "name": "Objective card",
+            "type": "shape",
+            "shape": "rounded",
+            "fill": "#FFFFFF",
+            "stroke": "#A31F2E",
+            "strokeWidth": 2,
+            "radius": 6
+          },
+          {
+            "id": "d-s2-layout:~Marker-1",
+            "x": 13,
+            "y": 266,
+            "w": 50,
+            "h": 50,
+            "name": "Marker",
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#A31F2E",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "2"
+                    }
+                  ]
+                }
+              ]
+            },
+            "textStyle": {
+              "preset": "body",
+              "fontSize": 28,
+              "fontWeight": 700,
+              "color": "#FFFFFF",
+              "align": "center",
+              "valign": "middle",
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s2-layout:points.1",
+            "x": 83,
+            "y": 244,
+            "w": 752,
+            "h": 93,
+            "name": "Item",
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Say why the fire spread and how people helped stop it."
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "body",
+              "fontSize": 33,
+              "lineHeight": 1.4,
+              "fontWeight": 400,
+              "color": "#232120",
+              "autoHeight": true,
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s2-layout:~Objective_card-2",
+            "x": 8,
+            "y": 350,
+            "w": 832,
+            "h": 109,
+            "name": "Objective card",
+            "type": "shape",
+            "shape": "rounded",
+            "fill": "#FFFFFF",
+            "stroke": "#A31F2E",
+            "strokeWidth": 2,
+            "radius": 6
+          },
+          {
+            "id": "d-s2-layout:~Marker-2",
+            "x": 13,
+            "y": 380,
+            "w": 50,
+            "h": 50,
+            "name": "Marker",
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#A31F2E",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "3"
+                    }
+                  ]
+                }
+              ]
+            },
+            "textStyle": {
+              "preset": "body",
+              "fontSize": 28,
+              "fontWeight": 700,
+              "color": "#FFFFFF",
+              "align": "center",
+              "valign": "middle",
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s2-layout:points.2",
+            "x": 83,
+            "y": 358,
+            "w": 752,
+            "h": 93,
+            "name": "Item",
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Say what Samuel Pepys’s diary tells us about the fire."
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "body",
+              "fontSize": 33,
+              "lineHeight": 1.4,
+              "fontWeight": 400,
+              "color": "#232120",
+              "autoHeight": true,
+              "padding": 0
+            }
+          }
+        ],
+        "layout": {
+          "template": "objectives",
+          "input": {
+            "points": [
+              "Say where the Great Fire began and what took place before it ended.",
+              "Say why the fire spread and how people helped stop it.",
+              "Say what Samuel Pepys’s diary tells us about the fire."
+            ],
+            "heading": "Today we are learning to",
+            "template": "objectives"
+          },
+          "frame": {
+            "x": 56,
+            "y": 38,
+            "w": 848,
+            "h": 467
+          }
+        }
+      }
+    ],
+    "notes": ""
+  },
+  "visualText": {
+    "id": "s4",
+    "kind": "image-text",
+    "elements": [
+      {
+        "id": "d-s4-Heading-0",
+        "x": 64,
+        "y": 46,
+        "w": 832,
+        "h": 52,
+        "name": "Heading",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The fire ends"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontSize": 46,
+          "lineHeight": 1.12,
+          "fontWeight": 700,
+          "autoHeight": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Photo-0",
+        "x": 533,
+        "y": 130,
+        "w": 435,
+        "h": 418,
+        "name": "Photo",
+        "authoredBy": "ai",
+        "type": "image",
+        "src": "/files/01a1cf35-7824-72e3-bb87-03abc407455b/images/01a1cf36-9968-7508-b022-c51eab31e15f.jpg",
+        "alt": "Wenceslaus Hollar - Burning of old St Paul's Cathedral in the Fire of London - B1977.14.17818 - Yale Center for British Art",
+        "fit": "cover",
+        "radius": 8,
+        "source": {
+          "provider": "commons",
+          "id": "commons-113325787",
+          "pageUrl": "https://commons.wikimedia.org/wiki/File:Wenceslaus_Hollar_-_Burning_of_old_St_Paul%27s_Cathedral_in_the_Fire_of_London_-_B1977.14.17818_-_Yale_Center_for_British_Art.jpg",
+          "photographer": "Wenceslaus Hollar",
+          "photographerUrl": "https://commons.wikimedia.org/wiki/File:Wenceslaus_Hollar_-_Burning_of_old_St_Paul%27s_Cathedral_in_the_Fire_of_London_-_B1977.14.17818_-_Yale_Center_for_British_Art.jpg",
+          "author": "Wenceslaus Hollar",
+          "licence": "CC0",
+          "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+          "sourceUrl": "https://commons.wikimedia.org/wiki/File:Wenceslaus_Hollar_-_Burning_of_old_St_Paul%27s_Cathedral_in_the_Fire_of_London_-_B1977.14.17818_-_Yale_Center_for_British_Art.jpg",
+          "evidence": {
+            "visible": ["old cathedral spire", "flames and smoke"],
+            "count": "one",
+            "alt": "Wenceslaus Hollar - Burning of old St Paul's Cathedral in the Fire of London - B1977.14.17818 - Yale Center for British Art",
+            "promptVersion": "pick-or-requery-photo.v21",
+            "thumbnail": "data:image/jpeg;base64,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"
+          }
+        }
+      },
+      {
+        "id": "d-s4-Lead-0",
+        "x": 64,
+        "y": 134,
+        "w": 421,
+        "h": 90,
+        "name": "Lead",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The fire burned until 6 September."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "fontSize": 33,
+          "lineHeight": 1.35,
+          "fontWeight": 500,
+          "color": "#232120",
+          "autoHeight": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Point_dot-0",
+        "x": 67,
+        "y": 259,
+        "w": 9,
+        "h": 9,
+        "opacity": 0.55,
+        "name": "Point dot",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#232120",
+        "radius": 6
+      },
+      {
+        "id": "d-s4-Point-0",
+        "x": 93,
+        "y": 245,
+        "w": 392,
+        "h": 79,
+        "name": "Point",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "It destroyed thousands of London homes."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "fontSize": 28,
+          "lineHeight": 1.4,
+          "fontWeight": 400,
+          "color": "#5C5752",
+          "autoHeight": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Point_dot-1",
+        "x": 67,
+        "y": 354,
+        "w": 9,
+        "h": 9,
+        "opacity": 0.55,
+        "name": "Point dot",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#232120",
+        "radius": 6
+      },
+      {
+        "id": "d-s4-Point-1",
+        "x": 93,
+        "y": 340,
+        "w": 392,
+        "h": 79,
+        "name": "Point",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "It destroyed St Paul’s Cathedral too."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "fontSize": 28,
+          "lineHeight": 1.4,
+          "fontWeight": 400,
+          "color": "#5C5752",
+          "autoHeight": true,
+          "padding": 0
+        }
+      }
+    ],
+    "notes": "Misconceptions\nPupils may think the whole of London was destroyed. Clarify that thousands of homes were destroyed, not every building in the city.\n\nBackground\nThe St Paul’s destroyed in the fire was the old medieval cathedral. The present St Paul’s was built later."
+  },
+  "reasons": {
+    "id": "s6",
+    "kind": "content",
+    "elements": [
+      {
+        "id": "d-s6-layout",
+        "x": 0,
+        "y": 0,
+        "w": 914,
+        "h": 521,
+        "name": "Layout",
+        "authoredBy": "ai",
+        "type": "group",
+        "children": [
+          {
+            "id": "d-s6-layout:~Question_panel-0",
+            "x": 0,
+            "y": 0,
+            "w": 387,
+            "h": 540,
+            "name": "Question panel",
+            "type": "shape",
+            "shape": "rect",
+            "fill": "#F2F0EA",
+            "radius": 0
+          },
+          {
+            "id": "d-s6-layout:heading",
+            "x": 64,
+            "y": 198,
+            "w": 291,
+            "h": 144,
+            "name": "Question",
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Why did flames spread?"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "title",
+              "fontSize": 46,
+              "lineHeight": 1.04,
+              "fontWeight": 700,
+              "color": "#1A52A8",
+              "autoHeight": true,
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s6-layout:~Reason_line__to_come_-0",
+            "x": 387,
+            "y": 70.86,
+            "w": 64,
+            "h": 198.9,
+            "name": "Reason line (to come)",
+            "type": "path",
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 0.06,
+                "y": 0.9949
+              },
+              {
+                "x": 0.1152,
+                "y": 0.9803
+              },
+              {
+                "x": 0.166,
+                "y": 0.957
+              },
+              {
+                "x": 0.213,
+                "y": 0.9259
+              },
+              {
+                "x": 0.2564,
+                "y": 0.8879
+              },
+              {
+                "x": 0.2969,
+                "y": 0.8438
+              },
+              {
+                "x": 0.3347,
+                "y": 0.7944
+              },
+              {
+                "x": 0.3704,
+                "y": 0.7407
+              },
+              {
+                "x": 0.4043,
+                "y": 0.6836
+              },
+              {
+                "x": 0.4369,
+                "y": 0.6238
+              },
+              {
+                "x": 0.4687,
+                "y": 0.5624
+              },
+              {
+                "x": 0.5,
+                "y": 0.5
+              },
+              {
+                "x": 0.5313,
+                "y": 0.4376
+              },
+              {
+                "x": 0.5631,
+                "y": 0.3762
+              },
+              {
+                "x": 0.5957,
+                "y": 0.3164
+              },
+              {
+                "x": 0.6296,
+                "y": 0.2593
+              },
+              {
+                "x": 0.6653,
+                "y": 0.2056
+              },
+              {
+                "x": 0.7031,
+                "y": 0.1563
+              },
+              {
+                "x": 0.7436,
+                "y": 0.1121
+              },
+              {
+                "x": 0.787,
+                "y": 0.0741
+              },
+              {
+                "x": 0.834,
+                "y": 0.043
+              },
+              {
+                "x": 0.8848,
+                "y": 0.0197
+              },
+              {
+                "x": 0.94,
+                "y": 0.0051
+              },
+              {
+                "x": 1,
+                "y": 0
+              }
+            ],
+            "stroke": "#DDDBD6",
+            "strokeWidth": 2.33
+          },
+          {
+            "id": "d-s6-layout:~Reason_dot__to_come_-0",
+            "x": 444.67,
+            "y": 64.53,
+            "w": 12.65,
+            "h": 12.65,
+            "name": "Reason dot (to come)",
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#DDDBD6"
+          },
+          {
+            "id": "d-s6-layout:~Reason_line-0",
+            "x": 387,
+            "y": 70.86,
+            "w": 64,
+            "h": 198.9,
+            "name": "Reason line",
+            "revealStep": 1,
+            "type": "path",
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 0.06,
+                "y": 0.9949
+              },
+              {
+                "x": 0.1152,
+                "y": 0.9803
+              },
+              {
+                "x": 0.166,
+                "y": 0.957
+              },
+              {
+                "x": 0.213,
+                "y": 0.9259
+              },
+              {
+                "x": 0.2564,
+                "y": 0.8879
+              },
+              {
+                "x": 0.2969,
+                "y": 0.8438
+              },
+              {
+                "x": 0.3347,
+                "y": 0.7944
+              },
+              {
+                "x": 0.3704,
+                "y": 0.7407
+              },
+              {
+                "x": 0.4043,
+                "y": 0.6836
+              },
+              {
+                "x": 0.4369,
+                "y": 0.6238
+              },
+              {
+                "x": 0.4687,
+                "y": 0.5624
+              },
+              {
+                "x": 0.5,
+                "y": 0.5
+              },
+              {
+                "x": 0.5313,
+                "y": 0.4376
+              },
+              {
+                "x": 0.5631,
+                "y": 0.3762
+              },
+              {
+                "x": 0.5957,
+                "y": 0.3164
+              },
+              {
+                "x": 0.6296,
+                "y": 0.2593
+              },
+              {
+                "x": 0.6653,
+                "y": 0.2056
+              },
+              {
+                "x": 0.7031,
+                "y": 0.1563
+              },
+              {
+                "x": 0.7436,
+                "y": 0.1121
+              },
+              {
+                "x": 0.787,
+                "y": 0.0741
+              },
+              {
+                "x": 0.834,
+                "y": 0.043
+              },
+              {
+                "x": 0.8848,
+                "y": 0.0197
+              },
+              {
+                "x": 0.94,
+                "y": 0.0051
+              },
+              {
+                "x": 1,
+                "y": 0
+              }
+            ],
+            "stroke": "#A31F2E",
+            "strokeWidth": 3.33
+          },
+          {
+            "id": "d-s6-layout:~Reason_dot-0",
+            "x": 444.67,
+            "y": 64.53,
+            "w": 12.65,
+            "h": 12.65,
+            "name": "Reason dot",
+            "revealStep": 1,
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#A31F2E"
+          },
+          {
+            "id": "d-s6-layout:reasons.0.head",
+            "x": 465,
+            "y": 43,
+            "w": 441,
+            "h": 56,
+            "name": "Reason head",
+            "revealStep": 1,
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Strong winds"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "heading",
+              "fontSize": 33,
+              "lineHeight": 1.08,
+              "fontWeight": 700,
+              "color": "#1A52A8",
+              "valign": "bottom",
+              "autoHeight": false,
+              "padding": 10
+            }
+          },
+          {
+            "id": "d-s6-layout:reasons.0.line",
+            "x": 475,
+            "y": 94,
+            "w": 421,
+            "h": 70,
+            "name": "Reason text",
+            "revealStep": 1,
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Winds carried flames between the houses."
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "body",
+              "fontSize": 28,
+              "lineHeight": 1.25,
+              "fontWeight": 400,
+              "color": "#5C5752",
+              "autoHeight": true,
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s6-layout:~Reason_line__to_come_-1",
+            "x": 387,
+            "y": 232.5,
+            "w": 64,
+            "h": 37.26,
+            "name": "Reason line (to come)",
+            "type": "path",
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 0.06,
+                "y": 0.9949
+              },
+              {
+                "x": 0.1152,
+                "y": 0.9803
+              },
+              {
+                "x": 0.166,
+                "y": 0.957
+              },
+              {
+                "x": 0.213,
+                "y": 0.9259
+              },
+              {
+                "x": 0.2564,
+                "y": 0.8879
+              },
+              {
+                "x": 0.2969,
+                "y": 0.8438
+              },
+              {
+                "x": 0.3347,
+                "y": 0.7944
+              },
+              {
+                "x": 0.3704,
+                "y": 0.7407
+              },
+              {
+                "x": 0.4043,
+                "y": 0.6836
+              },
+              {
+                "x": 0.4369,
+                "y": 0.6238
+              },
+              {
+                "x": 0.4687,
+                "y": 0.5624
+              },
+              {
+                "x": 0.5,
+                "y": 0.5
+              },
+              {
+                "x": 0.5313,
+                "y": 0.4376
+              },
+              {
+                "x": 0.5631,
+                "y": 0.3762
+              },
+              {
+                "x": 0.5957,
+                "y": 0.3164
+              },
+              {
+                "x": 0.6296,
+                "y": 0.2593
+              },
+              {
+                "x": 0.6653,
+                "y": 0.2056
+              },
+              {
+                "x": 0.7031,
+                "y": 0.1563
+              },
+              {
+                "x": 0.7436,
+                "y": 0.1121
+              },
+              {
+                "x": 0.787,
+                "y": 0.0741
+              },
+              {
+                "x": 0.834,
+                "y": 0.043
+              },
+              {
+                "x": 0.8848,
+                "y": 0.0197
+              },
+              {
+                "x": 0.94,
+                "y": 0.0051
+              },
+              {
+                "x": 1,
+                "y": 0
+              }
+            ],
+            "stroke": "#DDDBD6",
+            "strokeWidth": 2.33
+          },
+          {
+            "id": "d-s6-layout:~Reason_dot__to_come_-1",
+            "x": 444.67,
+            "y": 226.17,
+            "w": 12.65,
+            "h": 12.65,
+            "name": "Reason dot (to come)",
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#DDDBD6"
+          },
+          {
+            "id": "d-s6-layout:~Reason_line-1",
+            "x": 387,
+            "y": 232.5,
+            "w": 64,
+            "h": 37.26,
+            "name": "Reason line",
+            "revealStep": 2,
+            "type": "path",
+            "points": [
+              {
+                "x": 0,
+                "y": 1
+              },
+              {
+                "x": 0.06,
+                "y": 0.9949
+              },
+              {
+                "x": 0.1152,
+                "y": 0.9803
+              },
+              {
+                "x": 0.166,
+                "y": 0.957
+              },
+              {
+                "x": 0.213,
+                "y": 0.9259
+              },
+              {
+                "x": 0.2564,
+                "y": 0.8879
+              },
+              {
+                "x": 0.2969,
+                "y": 0.8438
+              },
+              {
+                "x": 0.3347,
+                "y": 0.7944
+              },
+              {
+                "x": 0.3704,
+                "y": 0.7407
+              },
+              {
+                "x": 0.4043,
+                "y": 0.6836
+              },
+              {
+                "x": 0.4369,
+                "y": 0.6238
+              },
+              {
+                "x": 0.4687,
+                "y": 0.5624
+              },
+              {
+                "x": 0.5,
+                "y": 0.5
+              },
+              {
+                "x": 0.5313,
+                "y": 0.4376
+              },
+              {
+                "x": 0.5631,
+                "y": 0.3762
+              },
+              {
+                "x": 0.5957,
+                "y": 0.3164
+              },
+              {
+                "x": 0.6296,
+                "y": 0.2593
+              },
+              {
+                "x": 0.6653,
+                "y": 0.2056
+              },
+              {
+                "x": 0.7031,
+                "y": 0.1563
+              },
+              {
+                "x": 0.7436,
+                "y": 0.1121
+              },
+              {
+                "x": 0.787,
+                "y": 0.0741
+              },
+              {
+                "x": 0.834,
+                "y": 0.043
+              },
+              {
+                "x": 0.8848,
+                "y": 0.0197
+              },
+              {
+                "x": 0.94,
+                "y": 0.0051
+              },
+              {
+                "x": 1,
+                "y": 0
+              }
+            ],
+            "stroke": "#A31F2E",
+            "strokeWidth": 3.33
+          },
+          {
+            "id": "d-s6-layout:~Reason_dot-1",
+            "x": 444.67,
+            "y": 226.17,
+            "w": 12.65,
+            "h": 12.65,
+            "name": "Reason dot",
+            "revealStep": 2,
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#A31F2E"
+          },
+          {
+            "id": "d-s6-layout:reasons.1.head",
+            "x": 465,
+            "y": 205,
+            "w": 441,
+            "h": 56,
+            "name": "Reason head",
+            "revealStep": 2,
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Close houses"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "heading",
+              "fontSize": 33,
+              "lineHeight": 1.08,
+              "fontWeight": 700,
+              "color": "#1A52A8",
+              "valign": "bottom",
+              "autoHeight": false,
+              "padding": 10
+            }
+          },
+          {
+            "id": "d-s6-layout:reasons.1.line",
+            "x": 475,
+            "y": 255,
+            "w": 421,
+            "h": 70,
+            "name": "Reason text",
+            "revealStep": 2,
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Wooden houses were built close together."
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "body",
+              "fontSize": 28,
+              "lineHeight": 1.25,
+              "fontWeight": 400,
+              "color": "#5C5752",
+              "autoHeight": true,
+              "padding": 0
+            }
+          },
+          {
+            "id": "d-s6-layout:~Reason_line__to_come_-2",
+            "x": 387,
+            "y": 269.76,
+            "w": 64,
+            "h": 124.38,
+            "name": "Reason line (to come)",
+            "type": "path",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 0.06,
+                "y": 0.0051
+              },
+              {
+                "x": 0.1152,
+                "y": 0.0197
+              },
+              {
+                "x": 0.166,
+                "y": 0.043
+              },
+              {
+                "x": 0.213,
+                "y": 0.0741
+              },
+              {
+                "x": 0.2564,
+                "y": 0.1121
+              },
+              {
+                "x": 0.2969,
+                "y": 0.1562
+              },
+              {
+                "x": 0.3347,
+                "y": 0.2056
+              },
+              {
+                "x": 0.3704,
+                "y": 0.2593
+              },
+              {
+                "x": 0.4043,
+                "y": 0.3164
+              },
+              {
+                "x": 0.4369,
+                "y": 0.3762
+              },
+              {
+                "x": 0.4687,
+                "y": 0.4376
+              },
+              {
+                "x": 0.5,
+                "y": 0.5
+              },
+              {
+                "x": 0.5313,
+                "y": 0.5624
+              },
+              {
+                "x": 0.5631,
+                "y": 0.6238
+              },
+              {
+                "x": 0.5957,
+                "y": 0.6836
+              },
+              {
+                "x": 0.6296,
+                "y": 0.7407
+              },
+              {
+                "x": 0.6653,
+                "y": 0.7944
+              },
+              {
+                "x": 0.7031,
+                "y": 0.8437
+              },
+              {
+                "x": 0.7436,
+                "y": 0.8879
+              },
+              {
+                "x": 0.787,
+                "y": 0.9259
+              },
+              {
+                "x": 0.834,
+                "y": 0.957
+              },
+              {
+                "x": 0.8848,
+                "y": 0.9803
+              },
+              {
+                "x": 0.94,
+                "y": 0.9949
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#DDDBD6",
+            "strokeWidth": 2.33
+          },
+          {
+            "id": "d-s6-layout:~Reason_dot__to_come_-2",
+            "x": 444.67,
+            "y": 387.81,
+            "w": 12.65,
+            "h": 12.65,
+            "name": "Reason dot (to come)",
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#DDDBD6"
+          },
+          {
+            "id": "d-s6-layout:~Reason_line-2",
+            "x": 387,
+            "y": 269.76,
+            "w": 64,
+            "h": 124.38,
+            "name": "Reason line",
+            "revealStep": 3,
+            "type": "path",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 0.06,
+                "y": 0.0051
+              },
+              {
+                "x": 0.1152,
+                "y": 0.0197
+              },
+              {
+                "x": 0.166,
+                "y": 0.043
+              },
+              {
+                "x": 0.213,
+                "y": 0.0741
+              },
+              {
+                "x": 0.2564,
+                "y": 0.1121
+              },
+              {
+                "x": 0.2969,
+                "y": 0.1562
+              },
+              {
+                "x": 0.3347,
+                "y": 0.2056
+              },
+              {
+                "x": 0.3704,
+                "y": 0.2593
+              },
+              {
+                "x": 0.4043,
+                "y": 0.3164
+              },
+              {
+                "x": 0.4369,
+                "y": 0.3762
+              },
+              {
+                "x": 0.4687,
+                "y": 0.4376
+              },
+              {
+                "x": 0.5,
+                "y": 0.5
+              },
+              {
+                "x": 0.5313,
+                "y": 0.5624
+              },
+              {
+                "x": 0.5631,
+                "y": 0.6238
+              },
+              {
+                "x": 0.5957,
+                "y": 0.6836
+              },
+              {
+                "x": 0.6296,
+                "y": 0.7407
+              },
+              {
+                "x": 0.6653,
+                "y": 0.7944
+              },
+              {
+                "x": 0.7031,
+                "y": 0.8437
+              },
+              {
+                "x": 0.7436,
+                "y": 0.8879
+              },
+              {
+                "x": 0.787,
+                "y": 0.9259
+              },
+              {
+                "x": 0.834,
+                "y": 0.957
+              },
+              {
+                "x": 0.8848,
+                "y": 0.9803
+              },
+              {
+                "x": 0.94,
+                "y": 0.9949
+              },
+              {
+                "x": 1,
+                "y": 1
+              }
+            ],
+            "stroke": "#A31F2E",
+            "strokeWidth": 3.33
+          },
+          {
+            "id": "d-s6-layout:~Reason_dot-2",
+            "x": 444.67,
+            "y": 387.81,
+            "w": 12.65,
+            "h": 12.65,
+            "name": "Reason dot",
+            "revealStep": 3,
+            "type": "shape",
+            "shape": "ellipse",
+            "fill": "#A31F2E"
+          },
+          {
+            "id": "d-s6-layout:reasons.2.head",
+            "x": 465,
+            "y": 366,
+            "w": 441,
+            "h": 56,
+            "name": "Reason head",
+            "revealStep": 3,
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Dry summer"
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "heading",
+              "fontSize": 33,
+              "lineHeight": 1.08,
+              "fontWeight": 700,
+              "color": "#1A52A8",
+              "valign": "bottom",
+              "autoHeight": false,
+              "padding": 10
+            }
+          },
+          {
+            "id": "d-s6-layout:reasons.2.line",
+            "x": 475,
+            "y": 417,
+            "w": 421,
+            "h": 70,
+            "name": "Reason text",
+            "revealStep": 3,
+            "type": "text",
+            "doc": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The summer before the fire was dry."
+                    }
+                  ]
+                }
+              ]
+            },
+            "style": {
+              "preset": "body",
+              "fontSize": 28,
+              "lineHeight": 1.25,
+              "fontWeight": 400,
+              "color": "#5C5752",
+              "autoHeight": true,
+              "padding": 0
+            }
+          }
+        ],
+        "layout": {
+          "template": "reasons",
+          "input": {
+            "chain": false,
+            "heading": "Why did flames spread?",
+            "reasons": [
+              {
+                "head": "Strong winds",
+                "icon": "wind",
+                "line": "Winds carried flames between the houses."
+              },
+              {
+                "head": "Close houses",
+                "line": "Wooden houses were built close together."
+              },
+              {
+                "head": "Dry summer",
+                "line": "The summer before the fire was dry."
+              }
+            ],
+            "template": "reasons"
+          },
+          "frame": {
+            "x": 0,
+            "y": 0,
+            "w": 914,
+            "h": 521
+          }
+        }
+      }
+    ],
+    "notes": "Running\nTalk through how each factor helped the fire spread. Ask pupils to explain the link between the factors and the flames.\n\nMisconceptions\nPupils may think only one thing made the fire spread. Explain that wind carried flames, while close wooden houses and a dry summer helped the fire spread.\n\nBackground\nDry conditions can make materials catch fire more easily. Houses built close together leave flames a short distance to travel between buildings."
+  },
+  "workedExample": {
+    "id": "s4",
+    "kind": "worked-example",
+    "elements": [
+      {
+        "id": "d-s4-Heading-0",
+        "x": 64,
+        "y": 46,
+        "w": 832,
+        "h": 54,
+        "name": "Heading",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Find 3/4 of 10 metres."
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontSize": 48,
+          "lineHeight": 1.12,
+          "fontWeight": 600,
+          "autoHeight": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Rail-0",
+        "x": 79,
+        "y": 175,
+        "w": 3,
+        "h": 82,
+        "name": "Rail",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "rect",
+        "fill": "#BFE1F0"
+      },
+      {
+        "id": "d-s4-Rail_fill-0",
+        "x": 79,
+        "y": 175,
+        "w": 3,
+        "h": 82,
+        "name": "Rail fill",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "rect",
+        "fill": "#10252F"
+      },
+      {
+        "id": "d-s4-Badge_ghost-0",
+        "x": 64,
+        "y": 159,
+        "w": 32,
+        "h": 32,
+        "name": "Badge ghost",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#EDF8FC",
+        "stroke": "#BFE1F0",
+        "strokeWidth": 2
+      },
+      {
+        "id": "d-s4-Badge_ghost-1",
+        "x": 64,
+        "y": 241,
+        "w": 32,
+        "h": 32,
+        "name": "Badge ghost",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#EDF8FC",
+        "stroke": "#BFE1F0",
+        "strokeWidth": 2
+      },
+      {
+        "id": "d-s4-Badge-0",
+        "x": 64,
+        "y": 159,
+        "w": 32,
+        "h": 32,
+        "name": "Badge",
+        "revealStep": 1,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#B8175A",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "1"
+                }
+              ]
+            }
+          ]
+        },
+        "textStyle": {
+          "preset": "body",
+          "fontSize": 25,
+          "fontWeight": 700,
+          "color": "#FFFFFF",
+          "align": "center",
+          "valign": "middle",
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Badge-1",
+        "x": 64,
+        "y": 241,
+        "w": 32,
+        "h": 32,
+        "name": "Badge",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#B8175A",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "2"
+                }
+              ]
+            }
+          ]
+        },
+        "textStyle": {
+          "preset": "body",
+          "fontSize": 25,
+          "fontWeight": 700,
+          "color": "#FFFFFF",
+          "align": "center",
+          "valign": "middle",
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Badge_done-0",
+        "x": 64,
+        "y": 159,
+        "w": 32,
+        "h": 32,
+        "name": "Badge done",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "ellipse",
+        "fill": "#0A5CA2",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "1"
+                }
+              ]
+            }
+          ]
+        },
+        "textStyle": {
+          "preset": "body",
+          "fontSize": 25,
+          "fontWeight": 700,
+          "color": "#FFFFFF",
+          "align": "center",
+          "valign": "middle",
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Eq_left-0",
+        "x": 166,
+        "y": 153,
+        "w": 128,
+        "h": 43,
+        "name": "Eq left",
+        "revealStep": 1,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "10 ÷ 4"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+          "fontSize": 36,
+          "lineHeight": 1.2,
+          "fontWeight": 500,
+          "color": "#10252F",
+          "align": "right",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Eq_sign-0",
+        "x": 301,
+        "y": 153,
+        "w": 26,
+        "h": 43,
+        "name": "Eq sign",
+        "revealStep": 1,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "="
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+          "fontSize": 36,
+          "lineHeight": 1.2,
+          "fontWeight": 500,
+          "color": "#10252F",
+          "align": "center",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Eq_right-0",
+        "x": 334,
+        "y": 153,
+        "w": 66,
+        "h": 43,
+        "name": "Eq right",
+        "revealStep": 1,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "2½"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+          "fontSize": 36,
+          "lineHeight": 1.2,
+          "fontWeight": 500,
+          "color": "#10252F",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Answer_plate-0",
+        "x": 143,
+        "y": 230,
+        "w": 307,
+        "h": 54,
+        "name": "Answer plate",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "shape",
+        "shape": "rounded",
+        "fill": "#FFFFFF",
+        "stroke": "#0A5CA2",
+        "strokeWidth": 2,
+        "radius": 26
+      },
+      {
+        "id": "d-s4-Eq_left-1",
+        "x": 152,
+        "y": 236,
+        "w": 142,
+        "h": 43,
+        "name": "Eq left",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "2½ × 3"
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+          "fontSize": 36,
+          "lineHeight": 1.2,
+          "fontWeight": 500,
+          "color": "#10252F",
+          "align": "right",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Eq_sign-1",
+        "x": 301,
+        "y": 236,
+        "w": 26,
+        "h": 43,
+        "name": "Eq sign",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "="
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+          "fontSize": 36,
+          "lineHeight": 1.2,
+          "fontWeight": 500,
+          "color": "#10252F",
+          "align": "center",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Eq_right-1",
+        "x": 334,
+        "y": 236,
+        "w": 106,
+        "h": 43,
+        "name": "Eq right",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "7½ m",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#0A5CA2"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "heading",
+          "fontFamily": "var(--font-nunito), Verdana, sans-serif",
+          "fontSize": 36,
+          "lineHeight": 1.2,
+          "fontWeight": 500,
+          "color": "#10252F",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Move_arrow-0",
+        "x": 455,
+        "y": 104,
+        "w": 47,
+        "h": 71,
+        "name": "Move arrow",
+        "revealStep": 1,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "image",
+        "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2247%22%20height%3D%2271%22%20viewBox%3D%220%200%2047%2071%22%20overflow%3D%22visible%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M5.33%208.48%20C31.25%2012.62%2037.02%2039.57%2022.63%2053.86%20L5.33%2062.19%22%20data-end%3D%225.33%2C62.19%22%20fill%3D%22none%22%20stroke%3D%22%230A5CA2%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%225.33%2C62.19%22%20data-dir%3D%22-0.90100%2C0.43382%22%20d%3D%22M18.05%2063.59%20L5.33%2062.19%20L12.17%2051.37%22%20fill%3D%22none%22%20stroke%3D%22%230A5CA2%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E",
+        "alt": "",
+        "fit": "contain"
+      },
+      {
+        "id": "d-s4-Move-0",
+        "x": 502,
+        "y": 104,
+        "w": 394,
+        "h": 71,
+        "name": "Move",
+        "revealStep": 1,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Find ",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "one ",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "quarter ",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "in ",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "metres.",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "fontSize": 22.666666666666668,
+          "lineHeight": 1.12,
+          "fontWeight": 500,
+          "color": "#0A5CA2",
+          "valign": "middle",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      },
+      {
+        "id": "d-s4-Move_arrow-1",
+        "x": 455,
+        "y": 175,
+        "w": 47,
+        "h": 82,
+        "name": "Move arrow",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "image",
+        "src": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2247%22%20height%3D%2282%22%20viewBox%3D%220%200%2047%2082%22%20overflow%3D%22visible%22%3E%3Cpath%20class%3D%22ashaft%22%20d%3D%22M5.33%209.92%20C31.47%2014.1%2037.12%2047.08%2022.26%2063.69%20L5.33%2072.75%22%20data-end%3D%225.33%2C72.75%22%20fill%3D%22none%22%20stroke%3D%22%230A5CA2%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20class%3D%22ahead%22%20data-tip%3D%225.33%2C72.75%22%20data-dir%3D%22-0.88169%2C0.47184%22%20d%3D%22M18.1%2073.61%20L5.33%2072.75%20L11.7%2061.65%22%20fill%3D%22none%22%20stroke%3D%22%230A5CA2%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E",
+        "alt": "",
+        "fit": "contain"
+      },
+      {
+        "id": "d-s4-Move-1",
+        "x": 502,
+        "y": 175,
+        "w": 394,
+        "h": 82,
+        "name": "Move",
+        "revealStep": 2,
+        "reveal": "fade",
+        "authoredBy": "ai",
+        "type": "text",
+        "doc": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Find ",
+                  "marks": [
+                    {
+                      "type": "bold"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "three ",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "quarters ",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "in ",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "metres.",
+                  "marks": [
+                    {
+                      "type": "textStyle",
+                      "attrs": {
+                        "color": "#10252F"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "style": {
+          "preset": "body",
+          "fontSize": 22.666666666666668,
+          "lineHeight": 1.12,
+          "fontWeight": 500,
+          "color": "#0A5CA2",
+          "valign": "middle",
+          "autoHeight": false,
+          "fixedSize": true,
+          "padding": 0
+        }
+      }
+    ],
+    "notes": "Running\nPupils find each answer independently, then compare their working with a partner. Take feedback, asking how the first answer helps find the second.\n\nAnswers\n1. 2½ m\n2. 7½ m\n\nMisconceptions\nPupils may multiply 10 by 3 before dividing, or stop at 2½ m after finding one quarter. Reinforce the order: divide by 4 to find one quarter, then multiply by 3 to find three quarters."
+  }
+}

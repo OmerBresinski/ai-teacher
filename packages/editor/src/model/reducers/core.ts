@@ -61,12 +61,16 @@ export function editSlide(
   });
 }
 
-/** Top-level element or a group's direct child. */
+/** A top-level element, or a group's child at any depth (edit chat writes into nested groups). */
 export function findElement(slide: Slide, id: Id): SlideElement | undefined {
-  for (const el of slide.elements) {
+  return findIn(slide.elements, id);
+}
+
+function findIn(elements: readonly SlideElement[], id: Id): SlideElement | undefined {
+  for (const el of elements) {
     if (el.id === id) return el;
     if (el.type === "group") {
-      const inner = el.children.find((c) => c.id === id);
+      const inner = findIn(el.children, id);
       if (inner) return inner;
     }
   }

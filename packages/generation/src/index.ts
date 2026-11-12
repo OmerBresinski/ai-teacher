@@ -31,6 +31,7 @@ export {
 } from "./curriculum";
 export * from "./debug";
 export {
+  deepElements,
   EDIT_FAST_EFFORT,
   EDIT_FAST_MODEL_ID,
   EDIT_INSTRUCTION_MAX,
