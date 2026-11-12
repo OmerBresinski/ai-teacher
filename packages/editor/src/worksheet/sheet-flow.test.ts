@@ -7,11 +7,15 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { buildWorksheetDocx } from "../export/docx";
 import { docFromText } from "../model/factories";
+import { getTheme } from "../model/themes";
 import { plainLineHTML } from "../text/serialize";
 import { renderDocHTML } from "../text/static";
 import { FlowItemContent } from "./BlockContent";
 import { CONTENT_H } from "./metrics";
-import { blockKeepsWithNext, buildFlow, type FlowItem, paginate } from "./paginate";
+import { blockKeepsWithNext, buildFlow, type FlowItem, paginate, splitLines } from "./paginate";
+import { sheetVars } from "./Sheet";
+import { sheetHead } from "./sheet-head";
+import { SHEET_SIZES, sheetBand, sheetSizes } from "./sheet-sizes";
 
 /*
  * WS8: what the 11 Nov Y5 Practice sheet got wrong on paper and in Word. Fractions printed flat,
@@ -230,6 +234,129 @@ function readZipEntry(buffer: Buffer, name: string): string {
 }
 
 async function documentXml(worksheet: Worksheet): Promise<string> {
-  const buffer = Buffer.from(await Packer.toBuffer(await buildWorksheetDocx(worksheet)));
+  const buffer = Buffer.from(
+    await Packer.toBuffer(await buildWorksheetDocx(worksheet, { part: "both" })),
+  );
   return readZipEntry(buffer, "word/document.xml");
 }
+
+describe("round 2: sizes by year band", () => {
+  test("one table: Reception to Year 2 large, Years 3 to 6 between, secondary as it was", () => {
+    expect(sheetBand({ yearGroup: "Year 2" })).toBe("ks1");
+    expect(sheetBand({ yearGroup: "Reception" })).toBe("ks1");
+    expect(sheetBand({ yearGroup: "Year 5" })).toBe("ks2");
+    expect(sheetBand({ yearGroup: "Year 8" })).toBe("secondary");
+    expect(sheetBand({ ageBand: "ks1" } as never)).toBe("ks1");
+    expect(sheetBand({})).toBe("secondary");
+    // Year 2 question text 11pt x 1.5 = 16.5pt; handwriting lines 15mm (42.52pt).
+    expect(11 * SHEET_SIZES.ks1.type).toBeCloseTo(16.5);
+    expect(SHEET_SIZES.ks1.lineGapPt).toBeCloseTo(42.52, 1);
+    expect(SHEET_SIZES.ks2.type).toBeGreaterThan(SHEET_SIZES.secondary.type);
+    expect(SHEET_SIZES.ks2.type).toBeLessThan(SHEET_SIZES.ks1.type);
+  });
+
+  test("print and the editor page view read it through sheetVars; the CSS scales every type size", () => {
+    const vars = sheetVars(getTheme("studio"), "A4", sheetSizes({ yearGroup: "Year 1" })) as Record<
+      string,
+      string
+    >;
+    expect(vars["--ws-type"]).toBe("1.5");
+    expect(vars["--ws-line-gap"]).toBe(`${SHEET_SIZES.ks1.lineGapPt}pt`);
+    expect(vars["--ws-box"]).toBe("1.6");
+    const css = readFileSync(new URL("../styles/worksheet.css", import.meta.url), "utf8");
+    // Only the footer keeps a fixed size.
+    expect(css.match(/font-size: \d+(\.\d+)?pt;/g)).toHaveLength(1);
+  });
+
+  test("Word reads the same table: a Year 2 stem is 16.5pt and its lines 15mm apart", async () => {
+    const xml = await documentXml({
+      ...sheet([{ ...q("q1", "Why did the fire spread?", 1), answerLines: 2 } as WorksheetBlock]),
+      yearGroup: "Year 2",
+    });
+    expect(xml).toContain('<w:sz w:val="33"/>');
+    expect(xml).toContain(`w:before="${Math.round((SHEET_SIZES.ks1.lineGapPt - 6) * 20)}"`);
+  });
+});
+
+describe("round 2: a stacked fraction reads at close to body size", () => {
+  test("on a sheet the parts are 0.9em and the line grows", () => {
+    const css = readFileSync(new URL("../styles/worksheet.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.ws-sheet \.td-frac \{[^}]*height: 2\.1em/);
+    expect(css).toMatch(/\.ws-sheet \.td-frac-den \{[^}]*font-size: 0\.9em/);
+  });
+});
+
+describe("round 2: every objective in the header", () => {
+  test("the objective line, then the other criteria, four in all, none repeated", () => {
+    const ws = sheet([]);
+    ws.header = {
+      ...ws.header,
+      subtitle: "I can find a unit fraction.",
+      criteria: [
+        "I can find a unit fraction.",
+        "I can find a non-unit fraction.",
+        "I can solve a problem.",
+        "I can explain.",
+        "I can check.",
+      ],
+    };
+    expect(sheetHead(ws).moreObjectives).toEqual([
+      "I can find a non-unit fraction.",
+      "I can solve a problem.",
+      "I can explain.",
+    ]);
+  });
+});
+
+describe("round 2: a lines question splits rather than leave a third of a page empty", () => {
+  const long = { ...q("q9", "Explain how the fire spread.", 9), answerLines: 6 } as WorksheetBlock;
+  const item: FlowItem = { key: "q9", kind: "block", block: long };
+  const gap = 25;
+  const height = 30 + 6 * gap; // text 30pt + 6 lines
+
+  test("splits after the text with at least two lines each side when the gap would be over a third", () => {
+    const left = CONTENT_H / 3 + 10;
+    const split = splitLines(item, height, left, CONTENT_H, gap);
+    expect(split).not.toBeNull();
+    const head = split?.head as Extract<FlowItem, { kind: "block" }>;
+    const tail = split?.tail as Extract<FlowItem, { kind: "block" }>;
+    expect(head.split).toBe("head");
+    expect(tail.split).toBe("tail");
+    const hl = (head.block as { answerLines: number }).answerLines;
+    const tl = (tail.block as { answerLines: number }).answerLines;
+    expect(hl + tl).toBe(6);
+    expect(hl).toBeGreaterThanOrEqual(2);
+    expect(tl).toBeGreaterThanOrEqual(2);
+    expect(split?.headH ?? 0).toBeLessThanOrEqual(left);
+  });
+
+  test("moves whole when the gap is small, when it has under four lines, or when it has a box", () => {
+    expect(splitLines(item, height, CONTENT_H / 4, CONTENT_H, gap)).toBeNull();
+    const short: FlowItem = {
+      key: "s",
+      kind: "block",
+      block: { ...long, answerLines: 3 } as WorksheetBlock,
+    };
+    expect(splitLines(short, 30 + 3 * gap, CONTENT_H / 2, CONTENT_H, gap)).toBeNull();
+    const boxed: FlowItem = { key: "b", kind: "block", block: box("b") };
+    expect(splitLines(boxed, 70, CONTENT_H / 2, CONTENT_H, gap)).toBeNull();
+  });
+
+  test("paginate puts the head on this page and the rest of the lines on the next", () => {
+    const tall = { ...long, answerLines: 12 } as WorksheetBlock; // 330pt: more than the room left
+    const items = flow([para("filler"), tall]);
+    const filler = CONTENT_H - CONTENT_H / 3 - 60; // leaves a third of the page and 60pt
+    const { pages } = paginate(items, { filler, q9: 30 + 12 * gap }, 0, CONTENT_H, gap);
+    expect(keys(pages[0]?.items)).toEqual(["filler", "q9#head"]);
+    expect(keys(pages[1]?.items)).toEqual(["q9#tail"]);
+    const tail = renderToStaticMarkup(
+      createElement(FlowItemContent, {
+        item: pages[1]?.items[0] as FlowItem,
+        worksheet: sheet([]),
+        mode: "print",
+      }),
+    );
+    expect(tail).not.toContain("Explain how the fire spread.");
+    expect(tail).toContain("ws-line");
+  });
+});

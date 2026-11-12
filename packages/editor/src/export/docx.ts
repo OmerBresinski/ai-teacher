@@ -43,9 +43,10 @@ import { resolveImageSrc } from "../images/resolve-src";
 import { findFractions } from "../text/fractions";
 import { answerKey, matchingOrder, optionLetter } from "../worksheet/answers";
 import { gapWidths } from "../worksheet/gaps";
-import { LINE_GAP, PAGE_PAD, pageMetrics } from "../worksheet/metrics";
-import { blockKeepsWithNext } from "../worksheet/paginate";
+import { PAGE_PAD, pageMetrics } from "../worksheet/metrics";
+import { blockKeepsWithNext, type SheetPart } from "../worksheet/paginate";
 import { CRITERIA_HEADING, sheetHead } from "../worksheet/sheet-head";
+import { SHEET_SIZES, type SheetSizes, sheetSizes } from "../worksheet/sheet-sizes";
 import { buildWordSearch, solutionMask, wordSearchLead } from "../worksheet/word-search";
 import { imageCredentials } from "./image-credentials";
 import { slugify } from "./json";
@@ -57,8 +58,14 @@ import { docToRuns, type Run, type RunParagraph } from "./runs";
 
 /** Word measures in twentieths of a point. */
 const twip = (pt: number) => Math.round(pt * 20);
-/** Run sizes are in half-points. */
-const halfPt = (pt: number) => Math.round(pt * 2);
+/**
+ * The sheet's sizes by year band (`worksheet/sheet-sizes.ts`, the table print reads too). Set at
+ * the top of `buildWorksheetDocx`, after its one await, and read by the synchronous build that
+ * follows it, so two builds never interleave on it.
+ */
+let sizes: SheetSizes = SHEET_SIZES.secondary;
+/** Run sizes are in half-points; every type size is its secondary size times the band's `type`. */
+const halfPt = (pt: number) => Math.round(pt * 2 * sizes.type);
 /** docx sizes images in CSS pixels at 96dpi. */
 const px = (pt: number) => Math.round((pt * 96) / 72);
 
@@ -106,7 +113,7 @@ function ruledLine(keepNext = true): Paragraph {
   return new Paragraph({
     text: "",
     keepNext,
-    spacing: { before: twip(LINE_GAP - 6), after: 0 },
+    spacing: { before: twip(sizes.lineGapPt - 6), after: 0 },
     border: { bottom: hairline },
   });
 }
@@ -627,7 +634,7 @@ function blockChildren(
           rows: [
             new TableRow({
               cantSplit: true,
-              height: { value: twip(block.heightPt), rule: HeightRule.ATLEAST },
+              height: { value: twip(block.heightPt * sizes.boxScale), rule: HeightRule.ATLEAST },
               children: [new TableCell({ children: [plain("", { after: 0 })] })],
             }),
           ],
@@ -746,6 +753,7 @@ function headerChildren(worksheet: Worksheet): (Paragraph | Table)[] {
   );
   // The criteria are not repeated here: they print in the self-assessment strip, as on paper.
   if (head.objective) out.push(plain(head.objective, { size: 10.5, after: 6 }));
+  for (const text of head.moreObjectives) out.push(plain(text, { size: 10.5, after: 6 }));
   out.push(plain("", { after: 8 }));
   return out;
 }
@@ -777,11 +785,17 @@ function ragChildren(worksheet: Worksheet): Paragraph[] {
 const keyLine = (line: string): ParagraphChild[] =>
   withFractions([{ text: line }], (run) => textRun(run, { size: halfPt(10.5) }));
 
-function answerKeyChildren(worksheet: Worksheet, contentW: number): (Paragraph | Table)[] {
+function answerKeyChildren(
+  worksheet: Worksheet,
+  contentW: number,
+  /** After the pupil sheet: start a new page. Alone: the key is the first page. */
+  afterSheet: boolean,
+): (Paragraph | Table)[] {
   const entries = answerKey(worksheet.blocks);
   if (entries.length === 0) return [];
   const out: (Paragraph | Table)[] = [
-    new Paragraph({ children: [new PageBreak()] }),
+    ...(afterSheet ? [new Paragraph({ children: [new PageBreak()] })] : []),
+    plain("Teacher copy", { size: 9.5, bold: true, after: 4 }),
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { after: twip(4) },
@@ -818,7 +832,9 @@ function answerKeyChildren(worksheet: Worksheet, contentW: number): (Paragraph |
 /* ------------------------------------------------------------------ */
 
 export type DocxOptions = {
-  /** Append the answer key on a new page. Defaults to the sheet's own toggle (ADR 0023 §7). */
+  /** The pupil sheet (default), the answer key alone, or both (the key on its own page). */
+  part?: SheetPart;
+  /** Older callers: `true` is both, `false` the pupil sheet. `part` wins when both are given. */
   includeAnswerKey?: boolean;
   /** The api origin (`${VITE_API_URL}`): image fetches to it carry the session cookie. */
   imageOrigin?: string;
@@ -829,17 +845,22 @@ export async function buildWorksheetDocx(
   options: DocxOptions = {},
 ): Promise<Document> {
   const metrics = pageMetrics(worksheet.pageSize);
-  const includeAnswerKey = options.includeAnswerKey ?? worksheet.includeAnswerKey;
+  const part: SheetPart = options.part ?? (options.includeAnswerKey === true ? "both" : "pupil");
   const images = await resolveImages(worksheet, options.imageOrigin);
+  sizes = sheetSizes(worksheet);
 
-  const children: (Paragraph | Table)[] = [...headerChildren(worksheet)];
-  const gaps = gapWidths(worksheet.blocks);
-  for (const [i, block] of worksheet.blocks.entries()) {
-    const keep = blockKeepsWithNext(block, worksheet.blocks[i + 1]);
-    children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id), keep));
+  const children: (Paragraph | Table)[] = [];
+  if (part !== "key") {
+    children.push(...headerChildren(worksheet));
+    const gaps = gapWidths(worksheet.blocks);
+    for (const [i, block] of worksheet.blocks.entries()) {
+      const keep = blockKeepsWithNext(block, worksheet.blocks[i + 1]);
+      children.push(...blockChildren(block, metrics.contentW, images, gaps.get(block.id), keep));
+    }
+    if (worksheet.selfAssessment) children.push(...ragChildren(worksheet));
   }
-  if (worksheet.selfAssessment) children.push(...ragChildren(worksheet));
-  if (includeAnswerKey) children.push(...answerKeyChildren(worksheet, metrics.contentW));
+  if (part !== "pupil")
+    children.push(...answerKeyChildren(worksheet, metrics.contentW, part === "both"));
 
   const section: ISectionOptions = {
     properties: {

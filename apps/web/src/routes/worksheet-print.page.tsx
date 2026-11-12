@@ -22,7 +22,7 @@ import "@tj/editor/styles/print.css";
  */
 export function WorksheetPrintPage() {
   const { worksheetId } = useParams({ from: worksheetPrintRoute.id });
-  const { auto } = useSearch({ from: worksheetPrintRoute.id });
+  const { auto, part } = useSearch({ from: worksheetPrintRoute.id });
   const queryClient = useQueryClient();
   const { data } = useQuery(libraryQueries.document(worksheetId, queryClient));
 
@@ -56,6 +56,7 @@ export function WorksheetPrintPage() {
     <WorksheetPrint
       worksheet={data}
       auto={auto === "1"}
+      part={part ?? "pupil"}
       backSlot={
         <Link to="/w/$worksheetId" params={{ worksheetId }}>
           Go back

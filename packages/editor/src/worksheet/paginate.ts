@@ -1,7 +1,7 @@
 import type { Worksheet, WorksheetBlock } from "@tj/domain/documents";
 import { type AnswerEntry, answerKey } from "./answers";
 import { gapWidths } from "./gaps";
-import { CONTENT_H } from "./metrics";
+import { BLOCK_GAP, CONTENT_H, LINE_GAP } from "./metrics";
 
 /**
  * Pagination (TeachDeck `lib/worksheet/paginate.ts`; SPEC §9): blocks flow across the sheet's
@@ -11,8 +11,18 @@ import { CONTENT_H } from "./metrics";
  */
 
 export type FlowItem =
-  /** `gapChars`: a fill-gap block's blank width (`gapWidths`); unset on every other block. */
-  | { key: string; kind: "block"; block: WorksheetBlock; gapChars?: number }
+  /**
+   * `gapChars`: a fill-gap block's blank width (`gapWidths`); unset on every other block.
+   * `split`: a lines question broken across a page (`splitLines`): "head" is the question with
+   * its first lines, "tail" the rest of its lines on the next page, with no number or text.
+   */
+  | {
+      key: string;
+      kind: "block";
+      block: WorksheetBlock;
+      gapChars?: number;
+      split?: "head" | "tail";
+    }
   | { key: string; kind: "rag" }
   | { key: string; kind: "key-title" }
   | { key: string; kind: "key-entry"; entry: AnswerEntry };
@@ -32,8 +42,22 @@ export const HEADER_KEY = "__header__";
 export const KEY_TITLE_KEY = "__answer-key__";
 export const RAG_KEY = "__rag__";
 
+/**
+ * What a print or export carries (WS8, from the 11 Nov teacher review: "one careless photocopy
+ * and the class has the answers"): the pupil sheet alone (the default), the answer key alone, or
+ * both, the key on its own page marked "Teacher copy". The editor's page view passes a boolean
+ * (its "Show answer key" switch): `true` is both, `false` the pupil sheet.
+ */
+export type SheetPart = "pupil" | "key" | "both";
+export const SHEET_PARTS: readonly SheetPart[] = ["pupil", "key", "both"];
+
+const partOf = (part: SheetPart | boolean): SheetPart =>
+  part === true ? "both" : part === false ? "pupil" : part;
+
 /** The document as a single ordered flow: blocks, then the answer key pages. */
-export function buildFlow(worksheet: Worksheet, includeAnswerKey: boolean): FlowItem[] {
+export function buildFlow(worksheet: Worksheet, part: SheetPart | boolean): FlowItem[] {
+  const which = partOf(part);
+  if (which === "key") return keyItems(worksheet);
   const gaps = gapWidths(worksheet.blocks);
   const items: FlowItem[] = worksheet.blocks.map((block) => ({
     key: block.id,
@@ -44,13 +68,21 @@ export function buildFlow(worksheet: Worksheet, includeAnswerKey: boolean): Flow
   // The self-assessment strip is the last thing a pupil fills in, so it goes after the questions
   // and before the answer key. It flows straight after them, on whichever page it fits.
   if (worksheet.selfAssessment) items.push({ key: RAG_KEY, kind: "rag" });
-  if (!includeAnswerKey) return items;
-  const entries = answerKey(worksheet.blocks);
-  if (entries.length === 0) return items;
-  items.push({ key: KEY_TITLE_KEY, kind: "key-title" });
-  for (const entry of entries) items.push({ key: `key:${entry.id}`, kind: "key-entry", entry });
-  return items;
+  return which === "both" ? [...items, ...keyItems(worksheet)] : items;
 }
+
+/** The answer key's flow: its title, then one entry per answered question; none without answers. */
+function keyItems(worksheet: Worksheet): FlowItem[] {
+  const entries = answerKey(worksheet.blocks);
+  if (entries.length === 0) return [];
+  return [
+    { key: KEY_TITLE_KEY, kind: "key-title" },
+    ...entries.map((entry) => ({ key: `key:${entry.id}`, kind: "key-entry" as const, entry })),
+  ];
+}
+
+/** Whether a part prints the sheet's header strip on its first page (the key alone does not). */
+export const partHasHeader = (part: SheetPart | boolean): boolean => partOf(part) !== "key";
 
 const isPageBreak = (item: FlowItem) => item.kind === "block" && item.block.type === "page-break";
 
@@ -83,12 +115,56 @@ export function keepsWithNext(item: FlowItem, next: FlowItem | undefined): boole
 /** The answer key always starts a fresh page (research/02 decision 17). */
 const startsPage = (item: FlowItem) => item.kind === "key-title";
 
+/** A lines question splits only with at least this many lines on each side of the break. */
+export const MIN_SPLIT_LINES = 2;
+
+/**
+ * A question with ruled lines that does not fit what is left of the page, split after its text
+ * when moving it whole would leave more than a third of the page empty (WS8). Each side keeps at
+ * least `MIN_SPLIT_LINES` lines, the text never leaves its first lines, and a question answered
+ * in a box never splits (a box is one space to write in). Null when it should move whole.
+ */
+export function splitLines(
+  item: FlowItem,
+  height: number,
+  left: number,
+  contentH: number,
+  lineGapPt: number,
+): { head: FlowItem; headH: number; tail: FlowItem; tailH: number } | null {
+  if (item.kind !== "block" || item.block.type !== "question" || item.split) return null;
+  const n = item.block.answerLines;
+  if (left <= contentH / 3 || n < 2 * MIN_SPLIT_LINES) return null;
+  const fixed = height - n * lineGapPt;
+  const fit = Math.min(n - MIN_SPLIT_LINES, Math.floor((left - fixed) / lineGapPt));
+  if (fit < MIN_SPLIT_LINES) return null;
+  const rest = n - fit;
+  return {
+    head: {
+      ...item,
+      key: `${item.key}#head`,
+      block: { ...item.block, answerLines: fit },
+      split: "head",
+    },
+    headH: fixed + fit * lineGapPt,
+    tail: {
+      ...item,
+      key: `${item.key}#tail`,
+      block: { ...item.block, answerLines: rest },
+      split: "tail",
+    },
+    // The lines' 6pt top margin and the block gap under them; no question text.
+    tailH: rest * lineGapPt + 6 + BLOCK_GAP,
+  };
+}
+
 export function paginate(
   items: FlowItem[],
   heights: Record<string, number>,
   headerHeight: number,
   /** Height of one page's content box; varies with the paper (A4 or Letter). */
   contentH: number = CONTENT_H,
+  /** The sheet's ruled-line spacing (`sheetSizes`), for splitting a lines question. */
+  lineGapPt: number = LINE_GAP,
 ): Pagination {
   const pages: WorksheetPage[] = [];
   const oversize: string[] = [];
@@ -137,6 +213,14 @@ export function paginate(
     // prints as a baffling blank first page; instead the block stays put and is reported as
     // oversize, which blocks Print with the existing "won't fit" warning.
     if (used + height > room && current.length > 0) {
+      const split = splitLines(item, height, room - used, contentH, lineGapPt);
+      if (split) {
+        current.push(split.head);
+        flush();
+        current.push(split.tail);
+        used = split.tailH;
+        continue;
+      }
       flush();
       room = available();
     }

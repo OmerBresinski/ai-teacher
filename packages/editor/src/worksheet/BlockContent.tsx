@@ -140,6 +140,7 @@ export function BlockContent({
   renderAnswer,
   showMarks = false,
   gapChars,
+  continued = false,
 }: {
   block: WorksheetBlock;
   mode: SheetMode;
@@ -154,6 +155,8 @@ export function BlockContent({
    * and fall back to blanks that say which word fills them.
    */
   gapChars: number | undefined;
+  /** The rest of a lines question's lines, on the page after its text (`splitLines`). */
+  continued?: boolean;
 }) {
   const rich = (doc: RichDoc, className?: string, emptyLabel?: string) => {
     if (renderStem) return renderStem({ doc, className });
@@ -174,6 +177,15 @@ export function BlockContent({
       return rich(block.doc, "ws-instructions", "Instructions for the task");
 
     case "question":
+      if (continued)
+        return (
+          <div className="ws-q ws-q-continued">
+            <div className="ws-q-no" />
+            <div className="ws-q-main">
+              <Lines count={block.answerLines} />
+            </div>
+          </div>
+        );
       return (
         <QuestionRow number={block.number}>
           <div className="ws-q-head">
@@ -272,7 +284,10 @@ export function BlockContent({
           {block.label !== undefined ? (
             <div className="ws-answerbox-label">{fieldText(block.label)}</div>
           ) : null}
-          <div className="ws-answerbox" style={{ height: `${block.heightPt}pt` }} />
+          <div
+            className="ws-answerbox"
+            style={{ height: `calc(${block.heightPt}pt * var(--ws-box, 1))` }}
+          />
         </div>
       );
 
@@ -334,6 +349,20 @@ const HEADER_FIELDS = [
   ["showClass", "Class", "ws-field-class"],
 ] as const;
 
+/** The lesson's other objectives under the objective line (`sheetHead`), in print and the editor. */
+export function MoreObjectives({ worksheet }: { worksheet: Worksheet }) {
+  const { moreObjectives } = sheetHead(worksheet);
+  return (
+    <>
+      {moreObjectives.map((text) => (
+        <p className="ws-objective" key={text}>
+          {text}
+        </p>
+      ))}
+    </>
+  );
+}
+
 export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
   const { header } = worksheet;
   const fields = HEADER_FIELDS.filter(([flag]) => header[flag]);
@@ -356,6 +385,7 @@ export function SheetHeader({ worksheet }: { worksheet: Worksheet }) {
       {header.subtitle !== undefined ? (
         <p className="ws-objective">{header.subtitle || "\u00a0"}</p>
       ) : null}
+      <MoreObjectives worksheet={worksheet} />
       <SheetMeta
         blocks={worksheet.blocks}
         showMarks={worksheet.showMarks}
@@ -431,6 +461,7 @@ export function RagStrip({
 export function AnswerKeyTitle({ worksheet }: { worksheet: Worksheet }) {
   return (
     <div>
+      <p className="ws-key-teacher">Teacher copy</p>
       <h2 className="ws-key-title">Answer key</h2>
       <p className="ws-key-sub">{worksheet.header.title || worksheet.title}</p>
       <div className="ws-key-rule" />
@@ -467,7 +498,7 @@ export function FlowItemContent({
   renderStem,
 }: {
   item:
-    | { kind: "block"; block: WorksheetBlock; gapChars?: number }
+    | { kind: "block"; block: WorksheetBlock; gapChars?: number; split?: "head" | "tail" }
     | { kind: "rag" }
     | { kind: "key-title" }
     | { kind: "key-entry"; entry: AnswerEntry };
@@ -483,6 +514,7 @@ export function FlowItemContent({
         renderStem={renderStem}
         showMarks={worksheet.showMarks}
         gapChars={item.gapChars}
+        continued={item.split === "tail"}
       />
     );
   }

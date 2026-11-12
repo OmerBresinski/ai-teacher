@@ -12,6 +12,11 @@
 @import "./fractions.css";
 
 .ws-sheet {
+  /* Sizes by year band (`worksheet/sheet-sizes.ts`), set inline by `sheetVars()`: every type
+     size below is its secondary size times --ws-type, ruled lines sit --ws-line-gap apart and
+     answer boxes are their stored height times --ws-box. The footer keeps its size. */
+  --ws-type: 1;
+  --ws-box: 1;
   /* Every fraction on a sheet is running text (a question, an answer, a key line): set tall
      (`fractions.css`), 1.6em, so it reads from a desk as on a slide's body text. */
   --td-frac: 1;
@@ -36,7 +41,7 @@
   background: #ffffff;
   color: var(--ws-ink);
   font-family: var(--ws-font-body);
-  font-size: 11pt;
+  font-size: calc(11pt * var(--ws-type, 1));
   line-height: 1.5;
   overflow: hidden;
 }
@@ -97,7 +102,7 @@
   display: flex;
   align-items: flex-end;
   gap: 18pt;
-  font-size: 10pt;
+  font-size: calc(10pt * var(--ws-type, 1));
   line-height: 14pt;
 }
 
@@ -130,15 +135,19 @@
 .ws-title {
   margin: 14pt 0 0;
   font-family: var(--ws-font-title);
-  font-size: 16pt;
+  font-size: calc(16pt * var(--ws-type, 1));
   line-height: 1.25;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
+.ws-objective + .ws-objective {
+  margin-top: 2pt;
+}
+
 .ws-objective {
   margin: 6pt 0 0;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.45;
   color: var(--ws-muted);
 }
@@ -146,7 +155,7 @@
 /* "12 marks · about 25 min" (TEACH-183): the sheet's weight and time, printed like an exam paper's. */
 .ws-meta {
   margin: 4pt 0 0;
-  font-size: 9.5pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
   line-height: 1.4;
   color: var(--ws-muted);
 }
@@ -168,7 +177,7 @@
 }
 
 .ws-rag-heading {
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.4;
   font-weight: 600;
 }
@@ -188,7 +197,7 @@
   display: flex;
   align-items: flex-start;
   gap: 7pt;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.45;
 }
 
@@ -216,7 +225,7 @@
 }
 
 .ws-rag-prompt {
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.4;
 }
 
@@ -257,7 +266,7 @@
 }
 
 .ws-rag-label {
-  font-size: 8.5pt;
+  font-size: calc(8.5pt * var(--ws-type, 1));
   line-height: 1.2;
   color: var(--ws-muted);
 }
@@ -285,7 +294,7 @@
 .ws-h1 {
   margin: 0;
   font-family: var(--ws-font-title);
-  font-size: 14pt;
+  font-size: calc(14pt * var(--ws-type, 1));
   line-height: 1.3;
   font-weight: 600;
 }
@@ -293,13 +302,13 @@
 .ws-h2 {
   margin: 0;
   font-family: var(--ws-font-title);
-  font-size: 12pt;
+  font-size: calc(12pt * var(--ws-type, 1));
   line-height: 1.35;
   font-weight: 600;
 }
 
 .ws-instructions {
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   line-height: 1.5;
   color: var(--ws-muted);
   font-style: italic;
@@ -336,7 +345,7 @@
 
 .ws-marks {
   flex: 0 0 auto;
-  font-size: 10pt;
+  font-size: calc(10pt * var(--ws-type, 1));
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -437,7 +446,7 @@
 .ws-wordbank-label,
 .ws-answerbox-label,
 .ws-caption {
-  font-size: 9.5pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
   line-height: 1.4;
   color: var(--ws-muted);
 }
@@ -528,14 +537,14 @@
   margin: 10pt 0 0;
   padding: 0;
   list-style: none;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .ws-search-note {
   margin: 8pt 0 0;
-  font-size: 9.5pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
   line-height: 1.4;
   color: var(--ws-muted);
 }
@@ -543,7 +552,7 @@
 .ws-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
 }
 
 .ws-table th,
@@ -564,17 +573,26 @@
 
 /* Answer key -------------------------------------------------------- */
 
+/* "Teacher copy" above the key's title, so a key that strays into a pile of pupil sheets is seen. */
+.ws-key-teacher {
+  margin: 0 0 4pt;
+  font-size: calc(9.5pt * var(--ws-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .ws-key-title {
   margin: 0;
   font-family: var(--ws-font-title);
-  font-size: 16pt;
+  font-size: calc(16pt * var(--ws-type, 1));
   line-height: 1.25;
   font-weight: 600;
 }
 
 .ws-key-sub {
   margin: 4pt 0 10pt;
-  font-size: 10pt;
+  font-size: calc(10pt * var(--ws-type, 1));
   color: var(--ws-muted);
 }
 
@@ -586,7 +604,7 @@
   display: flex;
   /* The sheet's own question head gap, so the marks never crowd the answer. */
   gap: 16pt;
-  font-size: 10.5pt;
+  font-size: calc(10.5pt * var(--ws-type, 1));
 }
 
 .ws-key-line + .ws-key-line {
@@ -682,7 +700,7 @@
   background: #ffffff;
   color: var(--ws-ink);
   font-family: var(--ws-font-body);
-  font-size: 11pt;
+  font-size: calc(11pt * var(--ws-type, 1));
   line-height: 1.5;
 }
 
@@ -690,4 +708,23 @@
   .ws-measure {
     display: none;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Fractions on a sheet                                                */
+/* ------------------------------------------------------------------ */
+
+/* A stacked fraction's digits read at close to the body size on paper (a pupil reads them at
+   arm's length, not from the back of a room): parts at 0.9em, the fraction 2.1em tall, so its
+   line grows instead of the digits shrinking. Sheet heights are measured from the DOM, so the
+   slide ruler's fixed 1.6em does not bind here. The bar sits on the text's middle. */
+.ws-sheet .td-frac {
+  height: 2.1em;
+  vertical-align: middle;
+  margin: 0 0.1em;
+}
+.ws-sheet .td-frac-num,
+.ws-sheet .td-frac-den {
+  font-size: 0.9em;
+  line-height: 1.1;
 }

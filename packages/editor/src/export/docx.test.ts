@@ -180,7 +180,13 @@ async function xmlFor(
   worksheet: Worksheet,
 ): Promise<{ xml: string; buffer: Buffer; names: string[] }> {
   const buffer = await withOfflineFetch(async () =>
-    Packer.toBuffer(await buildWorksheetDocx(worksheet)),
+    // These tests say "key or not" with the sheet's flag: on is both parts, off the pupil sheet.
+    // The export's own default (the pupil sheet) has its own test below.
+    Packer.toBuffer(
+      await buildWorksheetDocx(worksheet, {
+        part: worksheet.includeAnswerKey === false ? "pupil" : "both",
+      }),
+    ),
   );
   const node = Buffer.from(buffer);
   return { xml: readZipEntry(node, "word/document.xml"), buffer: node, names: zipEntryNames(node) };
@@ -539,7 +545,7 @@ function headSheet(overrides: Partial<Worksheet["header"]> = {}, selfAssessment 
 }
 
 describe("header rule: print and Word match (worksheets plan T3)", () => {
-  it("prints the same title, objective and up to four criteria, in the same order", async () => {
+  it("prints the same title, objectives and up to four criteria, in the same order", async () => {
     const sheet = headSheet();
     const head = sheetHead(sheet);
     expect(head.criteria).toEqual([
@@ -548,9 +554,13 @@ describe("header rule: print and Word match (worksheets plan T3)", () => {
       "I can explain where deposition happens",
       "I can draw a meander",
     ]);
+    // WS8: the header lists every objective, up to four in all (the objective line plus three
+    // more); the strip still ticks all four criteria.
+    expect(head.moreObjectives).toEqual(head.criteria.slice(0, 3));
     const expected = [
       head.title,
       head.objective,
+      ...head.moreObjectives,
       "Tick what you can do now",
       ...head.criteria,
       "How confident do you feel?",
@@ -566,14 +576,18 @@ describe("header rule: print and Word match (worksheets plan T3)", () => {
     expect(word.filter((line) => line === "I can draw a meander")).toHaveLength(1);
   });
 
-  it("prints no tick boxes in either when the self-assessment strip is off", async () => {
+  it("prints no tick boxes in either when the self-assessment strip is off, but still the objectives", async () => {
     const sheet = headSheet({}, false);
     const word = wordLines((await xmlFor(sheet)).xml);
     const print = printLines(sheet);
     for (const lines of [word, print]) {
       expect(lines).toContain("Rivers: erosion and deposition");
       expect(lines).toContain("To explain how a meander forms.");
-      expect(lines.join("\n")).not.toContain("I can");
+      expect(lines.join("\n")).not.toContain("Tick what you can do now");
+      expect(lines.join("\n")).not.toContain("☐");
+      expect(lines.filter((line) => line === "I can name the inner and outer bank")).toHaveLength(
+        1,
+      );
     }
   });
 
@@ -581,5 +595,28 @@ describe("header rule: print and Word match (worksheets plan T3)", () => {
     const sheet = { ...headSheet({ title: "" }), title: "Rivers sheet" };
     expect(wordLines((await xmlFor(sheet)).xml)[0]).toBe("Rivers sheet");
     expect(printLines(sheet)[0]).toBe("Rivers sheet");
+  });
+});
+
+describe("what the Word file carries (WS8)", () => {
+  it("is the pupil sheet alone by default, whatever the sheet's own switch says", async () => {
+    const sheet = { ...headSheet(), includeAnswerKey: true };
+    const buffer = Buffer.from(await Packer.toBuffer(await buildWorksheetDocx(sheet)));
+    const xml = readZipEntry(buffer, "word/document.xml");
+    expect(xml).not.toContain("Answer key");
+    expect(xml).not.toContain("Teacher copy");
+  });
+
+  it("the answer key alone starts with Teacher copy, with no name line and no page break first", async () => {
+    const sheet = everyBlockSheet();
+    const buffer = Buffer.from(
+      await Packer.toBuffer(await buildWorksheetDocx(sheet, { part: "key" })),
+    );
+    const xml = readZipEntry(buffer, "word/document.xml");
+    const lines = wordLines(xml);
+    expect(lines[0]).toBe("Teacher copy");
+    expect(lines).toContain("Answer key");
+    expect(xml).not.toContain("Name:");
+    expect(xml).not.toContain('w:type="page"');
   });
 });

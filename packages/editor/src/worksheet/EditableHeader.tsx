@@ -1,5 +1,5 @@
 import { memo, type PointerEvent as ReactPointerEvent } from "react";
-import { SheetMeta } from "./BlockContent";
+import { MoreObjectives, SheetMeta } from "./BlockContent";
 import { SheetField } from "./EditableBlocks";
 import { HEADER_KEY } from "./paginate";
 import { setHeader, setTitle } from "./reducers";
@@ -90,6 +90,7 @@ export const EditableHeader = memo(function EditableHeader({
           />
         </p>
       ) : null}
+      <MoreObjectives worksheet={worksheet} />
       <SheetMeta
         blocks={worksheet.blocks}
         showMarks={worksheet.showMarks}
