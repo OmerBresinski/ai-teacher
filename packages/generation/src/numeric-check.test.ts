@@ -51,7 +51,9 @@ describe("numericMismatches", () => {
     "x = 5 cm",
     "a + 2 × 3 = 7",
     "x² = 16, so x = 4",
-    "£3 × 4 = £13",
+    // 12 Nov: £ is money now ("£3 × 4 = £13" is caught, below); a rate against money is not judged.
+    "€1 = £0.85",
+    "£5 = 2 drinks",
     "Year 10: 2 = 3",
   ])("not plain arithmetic on both sides, so not judged: %s", (text) => {
     expect(numericMismatches(text)).toEqual([]);
@@ -97,5 +99,23 @@ describe("numericFactMismatches / numericFindings", () => {
     expect(numericFindings(assignFactIds(FIXTURES.planSkeleton, FIXTURES.planFacts, 60))).toEqual(
       [],
     );
+  });
+});
+
+describe("money (y5 fractions, 12 Nov)", () => {
+  test("pounds and pence convert", () => {
+    expect(
+      numericMismatches("£9 = 900p; 900p ÷ 5 = 180p; 180p × 4 = 720p; 720p = 7.20 pounds"),
+    ).toEqual([]);
+    expect(numericMismatches("1440p = £14.40")).toEqual([]);
+    expect(numericMismatches("£2.50 + £1 = £3.50")).toEqual([]);
+  });
+  test("a wrong money sum is caught and quoted as written", () => {
+    expect(numericMismatches("£9 ÷ 3 = £4").map((m) => m.text)).toEqual(["£9 ÷ 3 = £4"]);
+    expect(numericMismatches("£9 = 800p").map((m) => m.text)).toEqual(["£9 = 800p"]);
+    expect(numericMismatches("£3 × 4 = £13").map((m) => m.text)).toEqual(["£3 × 4 = £13"]);
+  });
+  test("p is a name, not pence, when the text is not about money", () => {
+    expect(numericMismatches("2p = 8")).toEqual([]);
   });
 });

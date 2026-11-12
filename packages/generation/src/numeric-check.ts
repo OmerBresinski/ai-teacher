@@ -6,12 +6,13 @@ import type { Finding, LessonFacts } from "@tj/domain/documents";
  * numbers, + − × ÷ ^ √, sin/cos/tan in degrees, a small table of units — evaluates each side and
  * flags a pair that disagrees beyond the rounding its numbers show. It flags; it never rewrites.
  *
- * Structural only: a side with a word it does not know ("opposite", "x", "£") is not arithmetic
+ * Structural only: a side with a word it does not know ("opposite", "x", "$") is not arithmetic
  * and is skipped, never guessed. Rounding is read from the digits written: a decimal literal is
  * taken as rounded to its last place (0.423 is 0.4225–0.4235), and so is a side that is one bare
  * number (the stated result; "= 6" is 5.5–6.5), everything else is exact; the sides agree when
  * their ranges meet. Units convert when both sides carry the same dimension ("150 cm = 1.5 m");
  * when only one side carries a unit ("12 × 0.423 = 5.07 cm") the numbers are compared as written.
+ * Money (12 Nov) is £ and pence, compared only against money: "€1 = £0.85" is not judged.
  */
 
 /** One equality whose two sides do not agree. */
@@ -50,6 +51,20 @@ const UNITS: Record<string, Unit> = {
   "%": { factor: 0.01, dims: {} },
 };
 
+/**
+ * Money (y5 fractions, 12 Nov): pence as the base. Only read as units when the text is about money
+ * (a "£", "pence" or "pounds"), so an algebra "2p = 8" is never read as two pence. "£" comes
+ * before its number ("£9"); it is moved behind it so it reads like any other unit.
+ */
+const MONEY: Record<string, Unit> = {
+  "£": { factor: 100, dims: { GBP: 1 } },
+  pound: { factor: 100, dims: { GBP: 1 } },
+  pounds: { factor: 100, dims: { GBP: 1 } },
+  p: { factor: 1, dims: { GBP: 1 } },
+  pence: { factor: 1, dims: { GBP: 1 } },
+};
+const MONEY_TEXT = /£|\bpence\b|\bpounds?\b/i;
+
 type Tok =
   | { t: "num"; v: number; decimals: number }
   | { t: "op"; v: "+" | "-" | "*" | "/" | "^" }
@@ -66,13 +81,15 @@ const SUPERSCRIPT: Record<string, number> = { "²": 2, "³": 3 };
 
 function tokenize(text: string): Pos[] {
   const out: Pos[] = [];
+  const money = MONEY_TEXT.test(text);
   const re =
     /(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\.\d+)|(sin|cos|tan)(⁻¹|\^-1)?|([A-Za-zµ]+)|([=≈])|([+\-−–×*·÷/^()%°²³√])|(\s+)|(.)/gu;
   for (const m of text.matchAll(re)) {
     const [whole, num, fn, inv, word, eq, sym, space] = m;
     if (space) continue;
     let tok: Tok;
-    if (num) {
+    if (whole === "£") tok = { t: "unit", v: "£" };
+    else if (num) {
       const clean = num.replace(/,/g, "");
       tok = { t: "num", v: Number(clean), decimals: clean.split(".")[1]?.length ?? 0 };
     } else if (fn) tok = { t: "fn", v: fn as "sin" | "cos" | "tan", inverse: Boolean(inv) };
@@ -83,7 +100,7 @@ function tokenize(text: string): Pos[] {
           ? { t: "x" }
           : lower === "sqrt"
             ? { t: "sqrt" }
-            : lower in UNITS
+            : lower in UNITS || (money && lower in MONEY)
               ? { t: "unit", v: lower }
               : { t: "word" };
     } else if (eq) tok = { t: "eq" };
@@ -118,6 +135,18 @@ function tokenize(text: string): Pos[] {
     (t.t === "num" || t.t === ")" || t.t === "deg" || t.t === "unit" || t.t === "pow");
   const operandStart = (t?: Tok) =>
     t !== undefined && (t.t === "num" || t.t === "(" || t.t === "fn" || t.t === "sqrt");
+  // "£9" reads as "9 £": the sign moves behind its number; a "£" with no number after it is a word.
+  for (let i = 0; i < out.length; i++) {
+    const p = out[i] as Pos;
+    if (p.tok.t !== "unit" || p.tok.v !== "£") continue;
+    const next = out[i + 1];
+    if (next?.tok.t === "num") {
+      // Positions stay those of "£9" as a whole, so a mismatch quotes the text as written.
+      out[i] = { ...next, from: p.from };
+      out[i + 1] = { ...p, from: next.to, to: next.to };
+      i++;
+    } else out[i] = { ...p, tok: { t: "word" } };
+  }
   return out.map((p, i) =>
     p.tok.t !== "x"
       ? p
@@ -180,7 +209,7 @@ function evaluate(toks: Tok[], bare: boolean): Val | undefined {
       const t = peek();
       if (t?.t === "unit") {
         i++;
-        const u = UNITS[t.v];
+        const u = UNITS[t.v] ?? MONEY[t.v];
         if (!u) return out;
         let power = 1;
         const next = peek();
@@ -343,6 +372,8 @@ export function numericMismatches(text: string): NumericMismatch[] {
       if (!a || !b) continue;
       const converted = sameDims(a.dims, b.dims);
       if (!converted && !sameDims(a.dims, DIMLESS) && !sameDims(b.dims, DIMLESS)) continue;
+      // Money against a side that is not money ("€1 = £0.85", "£5 = 2 drinks") is a rate, not a sum.
+      if (!converted && (a.dims.GBP || b.dims.GBP)) continue;
       const range = (v: Val): [number, number] => (converted ? [v.lo, v.hi] : [v.rlo, v.rhi]);
       if (meets(range(a), range(b))) continue;
       const mid = (v: Val) => (range(v)[0] + range(v)[1]) / 2;
