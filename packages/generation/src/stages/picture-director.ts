@@ -1071,9 +1071,14 @@ export async function findDirected(args: {
     style === "illustration" &&
     (req.route === "real" || lastResort === "painted" || !!args.paintOnly) &&
     (!!req.period || lastResort === "painted" || !!args.paintOnly);
+  const caption = madeCaption({
+    provider: out.photo.source.provider,
+    ...(style ? { style } : {}),
+    reconstruction,
+  });
   return {
     ...out.photo,
-    ...(reconstruction ? { source: { ...out.photo.source, caption: RECONSTRUCTION_CAPTION } } : {}),
+    ...(caption ? { source: { ...out.photo.source, caption } } : {}),
     look:
       out.photo.source.provider === "generated"
         ? style === "drawn"
@@ -1158,6 +1163,29 @@ export function kindQueries(req: BankRequest, mustShow: readonly string[]): stri
 
 /** Ruling 300's caption on a painting made because no real picture exists. */
 export const RECONSTRUCTION_CAPTION = "Artist's reconstruction";
+
+/**
+ * 11 Nov blind review (CRITIQUE-1 item 9, y8 s4): the caption on a generated picture in photo
+ * style, which could pass for a real photograph (a "micrograph" pupils were told to find the
+ * chloroplasts in). New copy, for Greg's call: proposed in PIC-NOTES.md.
+ */
+export const MADE_PHOTO_CAPTION = "AI-generated image";
+
+/**
+ * The caption a generated picture carries, or undefined: ruling 300's on a painted reconstruction;
+ * otherwise every generated picture in photo style says it is made, so no made picture looks like
+ * evidence. Before, only paintings were labelled and a photoreal one never was. A drawing (code or
+ * drawn style) and a painting that is no reconstruction carry none.
+ */
+export function madeCaption(o: {
+  provider: string;
+  style?: string;
+  reconstruction: boolean;
+}): string | undefined {
+  if (o.provider !== "generated") return undefined;
+  if (o.reconstruction) return RECONSTRUCTION_CAPTION;
+  return (o.style ?? "photo") === "photo" ? MADE_PHOTO_CAPTION : undefined;
+}
 
 /**
  * TEACH-251 part ay: the last step's request. A subject that may be painted is painted again; a
