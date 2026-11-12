@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, render } from "@testing-library/react";
 import type { ImageElement } from "@tj/domain/documents";
+import { licenceCredits } from "../../export/credits";
 import { getTheme } from "../../model/themes";
 import { ImageView } from "./ImageView";
 
@@ -157,5 +158,60 @@ describe("ImageView diagram builds: review fixes", () => {
     rerender(view(2, { question: q, diagramAnswer: false }));
     expect(srcOf(container)).toContain('[data-ans="1"]{opacity:0}');
     cleanup();
+  });
+});
+
+/* Greg, 12 Nov 2026 ("no labels pls"; supersedes ruling 300's "Artist's reconstruction"): no
+ * label is drawn on a made picture, even one a saved lesson still carries. A found photo's
+ * licence credit is no label and stays. */
+describe("ImageView labels", () => {
+  const made = (caption: string): ImageElement => ({
+    ...base,
+    src: "data:image/png;base64,AAAA",
+    source: {
+      provider: "generated",
+      id: "g1",
+      pageUrl: "https://dayback.app",
+      photographer: "",
+      photographerUrl: "https://dayback.app",
+      caption,
+    },
+  });
+  const found: ImageElement = {
+    ...base,
+    src: "https://upload.wikimedia.org/a.jpg",
+    source: {
+      provider: "commons",
+      id: "commons-Roman_wall",
+      pageUrl: "https://commons.wikimedia.org/wiki/File:Roman_wall.jpg",
+      photographer: "Basile Morin",
+      photographerUrl: "https://commons.wikimedia.org/wiki/File:Roman_wall.jpg",
+      author: "Basile Morin",
+      licence: "CC BY 2.0",
+      sourceUrl: "https://commons.wikimedia.org/wiki/File:Roman_wall.jpg",
+    },
+  };
+  const textOf = (element: ImageElement, mode: "edit" | "present" | "thumb" | "capture") =>
+    render(
+      <ImageView
+        element={element}
+        theme={theme}
+        mode={mode}
+        slideId="s1"
+        hidden={false}
+        ghost={false}
+        revealAnswer={false}
+      />,
+    ).container.textContent ?? "";
+
+  test("a made picture carries no label in any mode; a found photo keeps its credit", () => {
+    for (const mode of ["edit", "present", "thumb", "capture"] as const) {
+      for (const caption of ["Artist's reconstruction", "AI-generated image"])
+        expect(textOf(made(caption), mode)).toBe("");
+      cleanup();
+    }
+    expect(licenceCredits({ elements: [found, made("Artist's reconstruction")] })).toEqual([
+      "Roman wall, Basile Morin, CC BY 2.0",
+    ]);
   });
 });

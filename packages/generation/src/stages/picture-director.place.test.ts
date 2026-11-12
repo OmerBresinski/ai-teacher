@@ -999,7 +999,8 @@ describe("a planned picture is never missing", () => {
     const { got, made, lines } = run({ paints: true });
     const photo = await got;
     expect(photo?.source.provider).toBe("generated");
-    expect(photo?.source.caption).toBe("Artist's reconstruction");
+    expect(photo?.source.caption).toBeUndefined();
+    expect(photo).toMatchObject({ reconstruction: true });
     const last = made.at(-1);
     expect(last && isLastResort(last)).toBe(true);
     expect(last?.text).toContain("Tudor England");
@@ -1017,10 +1018,11 @@ describe("a planned picture is never missing", () => {
       expect.objectContaining({ outcome: "missed" }),
     ]);
   });
-  test("a forced-real sole slot that misses gets the captioned period scene", async () => {
+  test("a forced-real sole slot that misses gets the unlabelled period scene", async () => {
     const { got, made, lines } = run({ paints: true, realOnly: true });
     const photo = await got;
-    expect(photo?.source.caption).toBe("Artist's reconstruction");
+    expect(photo?.source.caption).toBeUndefined();
+    expect(photo).toMatchObject({ reconstruction: true });
     expect(made.at(-1)?.text).not.toContain("Henry");
     expect(lines.filter((l) => l.ev === "picture-last-resort")).toHaveLength(1);
   });
@@ -1069,7 +1071,8 @@ describe("a planned picture is never missing", () => {
     });
     judged = made.length;
     expect(photo?.source.provider).toBe("generated");
-    expect(photo?.source.caption).toBe("Artist's reconstruction");
+    expect(photo?.source.caption).toBeUndefined();
+    expect(photo).toMatchObject({ reconstruction: true });
     expect(made.at(-1) && isLastResort(made.at(-1) as BankRequest)).toBe(true);
     expect(judged).toBeGreaterThan(1);
     expect(lines.filter((l) => l.ev === "picture-last-resort")).toEqual([
