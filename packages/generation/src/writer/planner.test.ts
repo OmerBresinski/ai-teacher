@@ -88,7 +88,8 @@ describe("the writer bundle travels with the lesson", () => {
   test("the planned stamp names the shipped bundle and a lesson resumes on its own", async () => {
     const { writerBundleOf } = await import("../stages/objectives-first");
     const { WRITER_BUNDLE_ID } = await import("./bundle");
-    expect(WRITER_PLANNED_VERSION.endsWith(`+bundle-${WRITER_BUNDLE_ID}`)).toBe(true);
+    // The bundle, then the pack it was planned for (12 Nov: a pack switch never mixes them).
+    expect(WRITER_PLANNED_VERSION).toContain(`+bundle-${WRITER_BUNDLE_ID}+pilot-`);
     expect(writerBundleOf(lesson(WRITER_PLANNED_VERSION))).toBe(WRITER_BUNDLE_ID);
     // An unknown bundle (removed since) falls back to the shipped one.
     expect(writerBundleOf(lesson(`${WRITER_VERSION}+x+bundle-gone`))).toBe(WRITER_BUNDLE_ID);

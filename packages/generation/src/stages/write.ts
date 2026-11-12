@@ -19,17 +19,24 @@ import { PICTURE_DIRECTOR_BATCH_SYSTEM } from "../prompts/picture-director-batch
 import type { PipelineDeps, PipelineState } from "../types";
 import { StageFailure } from "../types";
 import { aiWriterServices, WRITER_VERSION } from "../writer/ai-services";
+import { packOwnBundleId, type WriterBundleId } from "../writer/bundle";
 import { faultKind, shipCounts, shipGate } from "../writer/final-gate";
 import type { Brief, Stage } from "../writer/fixes";
 import { locale } from "../writer/locale";
 import { withEndAnswers } from "../writer/materialise";
 import { overflowFindings, withOverflowFindings } from "../writer/overflow-findings";
-import { PILOT_PACK_ID } from "../writer/pilot-pack";
+import { PACK_WRITER_BUNDLE } from "../writer/pilot-live";
+import {
+  PILOT_PACK_BEFORE_STAMP,
+  PILOT_PACK_ID,
+  PILOT_PACKS,
+  type PilotPackId,
+} from "../writer/pilot-pack";
 import { notesForSavedSlides } from "../writer/resume-notes";
 import { SMALL_MODEL } from "../writer/services";
 import { MODEL_REPAIRS_DEFAULT, runWriter, WriterIncompleteError } from "../writer/stage";
 import type { DirectedPlacer } from "./illustrate";
-import { isWriterStamp, writerBundleOf } from "./objectives-first";
+import { isWriterStamp, stampedPack, writerBundleOf } from "./objectives-first";
 import { hasOpenJobSlots, type OpenSlot, resolveOpenSlots } from "./open-slots";
 import { createWriterPictures, setLookOf, withPhotoSources } from "./picture-director";
 import { createProgressiveDeck, type ProgressiveDeck } from "./progressive";
@@ -154,6 +161,46 @@ function inferred(lesson: Lesson, topic: string): { inferredSubject?: string } {
 export function finishedSlides(lesson: Lesson): Map<string, Slide> {
   const states = lesson.generation?.slideStates ?? {};
   return new Map(lesson.slides.filter((s) => states[s.id] === "done").map((s) => [s.id, s]));
+}
+
+const isPack = (id: string | undefined): id is PilotPackId => !!id && id in PILOT_PACKS;
+/** The pack that owns a bundle (`PACK_WRITER_BUNDLE`), or undefined for the shared bundle. */
+const packOwning = (bundle: string): PilotPackId | undefined =>
+  Object.entries(PACK_WRITER_BUNDLE).find(([pack, own]) => own === bundle && isPack(pack))?.[0] as
+    | PilotPackId
+    | undefined;
+
+/**
+ * The pilot pack and writer bundle a writer lesson is written with: always a pair that belongs
+ * together, so a lesson planned under one pack is never written (or finished) under another. The
+ * teacher confirmed the plan, so the lesson cannot be re-planned in the generate job; instead the
+ * lesson's own pack wins over the live one:
+ * 1. the pack its planned stamp names (stamps from 12 Nov 2026 carry it);
+ * 2. else the pack its `generated` stamp names (a deck already being written under it);
+ * 3. else the live pack, when the planned bundle is the live pack's (its own, or the shared one
+ *    for a pack with none);
+ * 4. else the pack that owns the planned bundle (a gold bundle: its gold pack);
+ * 5. else (a shared-bundle stamp under a live pack with a bundle of its own) the pack of the
+ *    time before stamps carried the pack.
+ * A stamped pack that no longer exists falls through to the next rule. `planned` is the bundle
+ * the objectives were planned with (`writerBundleOf`), and stays the bundle at every step.
+ */
+export function writerPackOf(
+  lesson: Lesson,
+  live: PilotPackId = PILOT_PACK_ID,
+): { pack: PilotPackId; bundle: WriterBundleId; rule: 1 | 2 | 3 | 4 | 5 } {
+  const bundle = writerBundleOf(lesson);
+  const v = lesson.generation?.promptVersions;
+  const planned = stampedPack(v?.planned);
+  if (isPack(planned)) return { pack: planned, bundle, rule: 1 };
+  const generated = stampedPack(v?.generated);
+  if (isPack(generated)) return { pack: generated, bundle, rule: 2 };
+  const liveOwn = packOwnBundleId(live);
+  const owner = packOwning(bundle);
+  if (liveOwn === undefined ? owner === undefined : liveOwn === bundle)
+    return { pack: live, bundle, rule: 3 };
+  if (owner) return { pack: owner, bundle, rule: 4 };
+  return { pack: PILOT_PACK_BEFORE_STAMP, bundle, rule: 5 };
 }
 
 /** True when an earlier attempt saved the whole editable deck: a retry finishes from it. */
@@ -364,6 +411,14 @@ export async function withQueuedWorksheet(lesson: Lesson, deps: PipelineDeps): P
 export async function write(state: PipelineState, deps: PipelineDeps): Promise<PipelineState> {
   const lesson = await withQueuedWorksheet(state.lesson, deps);
   const objectives = (lesson.facts?.objectives ?? []).map((o) => o.text);
+  // The lesson's own pack and bundle, never the live pack with another pack's planned bundle: a
+  // lesson planned (or half written) before a pack switch finishes as it began (`writerPackOf`).
+  const { pack, bundle, rule } = writerPackOf(lesson);
+  if (pack !== PILOT_PACK_ID)
+    deps.logger.info(
+      { stage: "generate", ev: "lesson-pack", pack, bundle, live: PILOT_PACK_ID, rule },
+      "writer lesson finishes on the pack it was planned under",
+    );
   const toLesson = (
     slides: { id: string; notes?: string }[],
     stage: "generated" | "planned",
@@ -384,7 +439,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
           ...(lesson.generation?.promptVersions ?? {}),
           // The pilot pack rides on the bundle: the stamp names both, so a render and a replay
           // know which menu and caps wrote the deck (TEACH-110 part s).
-          generated: `${WRITER_VERSION}+bundle-${writerBundleOf(lesson)}+pilot-${PILOT_PACK_ID}`,
+          generated: `${WRITER_VERSION}+bundle-${bundle}+pilot-${pack}`,
         },
         usage: deps.budget.totals(),
         ...(slideStates ? { slideStates } : {}),
@@ -461,7 +516,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       slides: resumed,
       brief: writerBrief(lesson),
       objectives,
-      bundle: writerBundleOf(lesson),
+      bundle,
       services: aiWriterServices(deps),
       warn: (e) =>
         deps.logger.warn({ stage: "generate", ...e }, "resumed deck shipped without speaker notes"),
@@ -641,10 +696,10 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
       brief: writerBrief(lesson),
       ...(deps.themeNow ? { themeNow: deps.themeNow } : {}),
       objectives,
-      bundle: writerBundleOf(lesson),
+      bundle,
       // The pilot layouts (TEACH-110 part s): the writer runs the pilot pack, its system text
       // assembled from the layout menus and its caps from the measured tables (pilot-pack.ts).
-      pilotPack: PILOT_PACK_ID,
+      pilotPack: pack,
       services,
       // The writer's diagrams are drawn before editable: its own spec by code, else the drawer
       // call on the small model (TEACH-247).
@@ -913,7 +968,7 @@ export async function write(state: PipelineState, deps: PipelineDeps): Promise<P
         slides: kept(credited(out.slides)),
         brief: writerBrief(lesson),
         objectives,
-        bundle: writerBundleOf(lesson),
+        bundle,
         services: aiWriterServices(deps),
         only: new Set(finished.keys()),
         warn: (e) =>

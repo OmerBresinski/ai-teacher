@@ -582,6 +582,20 @@ export type ModelRepair = "fit" | "leak" | "restage" | "meaning" | "picture-retr
  * one errored) and meaning (never triggered) did not earn their place.
  */
 export const MODEL_REPAIRS_DEFAULT: readonly ModelRepair[] = ["leak", "picture-retry"];
+/**
+ * The bundle a run writes with: the pack's own bundle when it has one (a different stamped bundle
+ * is logged and overridden), else the run's bundle, else the active one.
+ */
+export function runBundle(
+  run: Pick<WriterRun, "bundle" | "pilotPack">,
+  note: (e: Record<string, unknown>) => void = () => {},
+): WriterBundleId | undefined {
+  const own = packOwnBundleId(run.pilotPack);
+  if (own !== undefined && run.bundle !== undefined && run.bundle !== own)
+    note({ ev: "bundle-mismatch", pack: run.pilotPack, stamped: run.bundle, runs: own });
+  return own ?? run.bundle;
+}
+
 export async function runWriter(run: WriterRun): Promise<WriterOutput> {
   /** A model-calling repair or retry round may run (RC2; absent option: every one). */
   const repairOn = (k: ModelRepair) => !run.modelRepairs || run.modelRepairs.includes(k);
@@ -596,8 +610,10 @@ export async function runWriter(run: WriterRun): Promise<WriterOutput> {
     return act;
   };
   const { brief } = run;
-  // A pack with its own bundle (v5.2-gold: base4f-p127) runs it unless the lesson's stamp names one.
-  const P = writerBundle(run.bundle ?? packOwnBundleId(run.pilotPack));
+  // A pack with its own bundle (v5.2-gold: base4f-p127) always runs it: a stamp naming another
+  // bundle would pair this pack's schema with that bundle's user turn (a mixed deck). The write
+  // stage passes a matching pair (`writerPackOf`); this is the backstop, and it logs.
+  const P = writerBundle(runBundle(run, (e) => run.services.log(e)));
   // The pinned repair schema without the hinge's counted `correct`: code finds the key by the
   // answer's words (`keepAnswerKey`), so the model is not asked to count (ANSWER-BUG.md).
   const repairSchemaFor = (k: string) =>
