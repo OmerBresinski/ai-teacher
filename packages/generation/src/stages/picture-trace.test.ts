@@ -204,7 +204,15 @@ describe("the outcome's codes", () => {
     expect(
       failedChecks(
         { mustShow: [] },
-        { ...v, pick: "1", onSubject: true, kindMatches: null, clear: true, fits: true },
+        {
+          ...v,
+          pick: "1",
+          onSubject: true,
+          kindMatches: null,
+          clear: true,
+          fits: true,
+          showsNeeds: true,
+        },
       ),
     ).toEqual([]);
   });

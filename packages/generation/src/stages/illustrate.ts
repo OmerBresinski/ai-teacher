@@ -581,12 +581,24 @@ export function gatePasses(brief: Pick<ImageBrief, "mustShow">, verdict: PickOrR
  * its judge): the subject, clearly, and the picture as a whole fits the request; a named sex, age
  * or kind the picked subject is not (a cockerel for "hen") fails.
  */
+/**
+ * The verdict fields the gate reads. `showsNeeds` (judge v21) is optional here only so callers that
+ * build a verdict by hand type-check; anything but `true` refuses.
+ */
+export type DirectedGateVerdict = Omit<
+  DirectedVerdict,
+  "kindMatches" | "boxes" | "needs" | "seen" | "showsNeeds"
+> & { kindMatches?: boolean | null; showsNeeds?: boolean };
+
 export function directedGatePasses(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
-  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+  verdict: DirectedGateVerdict,
   claim?: SlideClaim,
 ): boolean {
   if (!verdict.onSubject || !verdict.clear || !verdict.fits) return false;
+  // Judge v21 (12 Nov blind review): the judge's own reading of what this slide's words name,
+  // against what the picture shows. "Fits, though it does not show people passing buckets" ends here.
+  if (verdict.showsNeeds !== true) return false;
   if (verdict.kindMatches === false) return false;
   if (brief.mustShow.length === 0) return true;
   // Items taken from the writer's request are the things the slide's words name (the sheep AND
@@ -641,7 +653,7 @@ export function claimItems(mustShow: readonly string[], claim?: SlideClaim): str
  */
 export function failedChecks(
   brief: Pick<ImageBrief, "mustShow" | "request" | "specific">,
-  verdict: Omit<DirectedVerdict, "kindMatches" | "boxes"> & { kindMatches?: boolean | null },
+  verdict: DirectedGateVerdict,
   claim?: SlideClaim,
 ): JudgeCheck[] {
   const out: JudgeCheck[] = [];
@@ -654,8 +666,9 @@ export function failedChecks(
   const seen = itemsSeen(brief, verdict);
   const claimed = claimItems(brief.mustShow, claim);
   if (
-    brief.mustShow.length > 0 &&
-    (seen.length < need || (claimed.length > 0 && !claimed.some((i) => seen.includes(i))))
+    (verdict.pick !== null && verdict.showsNeeds !== true) ||
+    (brief.mustShow.length > 0 &&
+      (seen.length < need || (claimed.length > 0 && !claimed.some((i) => seen.includes(i)))))
   )
     out.push("items-missing");
   return out;
@@ -1186,7 +1199,7 @@ async function shortlistDirected(args: PlaceArgs, pool: PhotoResult[]): Promise<
   }
 }
 
-/** Judge v17 over `pool`: thumbnails as image parts, each candidate's source record as text. */
+/** Judge v21 over `pool`: thumbnails as image parts, each candidate's source record as text. */
 async function judgeDirected(
   args: PlaceArgs,
   pool: PhotoResult[],
