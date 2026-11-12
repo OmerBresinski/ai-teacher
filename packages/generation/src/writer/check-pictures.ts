@@ -479,7 +479,10 @@ export function borrowCheckVisuals(a: BorrowArgs): { routes: CheckRoute[]; skips
         if (score <= 0) continue;
         // A visual of other numbers (12 counters in 4 groups beside "1/4 of 28") shows a wrong
         // value for the question: never lent (y5 fractions, 11 Nov review).
-        const clash = numberClash(`${askText(src, ask)} ${visibleText(st)}`, checkWords(s));
+        // A photo's numbers are its request and alt, never its credits ("gpt-image-2.5", a date).
+        const shown =
+          st.status === "photo" ? str((st.photo as { alt?: unknown }).alt) : visibleText(st);
+        const clash = numberClash(`${askText(src, ask)} ${shown}`, checkWords(s));
         if (clash) {
           mismatched.push(`slide ${j + 1} ${key}: ${clash}`);
           continue;

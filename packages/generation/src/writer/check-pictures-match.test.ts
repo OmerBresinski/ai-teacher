@@ -178,3 +178,35 @@ describe("a picture is never shown again on a check slide (y8 photosynthesis s4 
     ]);
   });
 });
+
+test("a photo's credits are not its numbers (y8 replay s10: gpt-image-2.5, 2026-10)", () => {
+  const credited: VisualState = {
+    status: "photo",
+    photo: {
+      src: "/files/x/images/p.png",
+      alt: "Leaf cells with green chloroplasts.",
+      photographer: "AI-generated (gpt-image-2.5-sunburst)",
+      licence: "generated (openai-2026-10)",
+      aspect: 1,
+    } as never,
+  };
+  const teachCells: S = {
+    template: "visual-text",
+    heading: "Capturing light energy",
+    figure: { shows: "Leaf cells with chloroplasts", subject: "generic" },
+  };
+  const quiz: S = {
+    template: "exit-ticket",
+    heading: "Exit ticket",
+    items: [
+      { question: "Name 2 things chloroplasts in leaf cells need.", answer: "Light and water" },
+    ],
+  };
+  const r = borrowCheckVisuals({
+    slides: [undefined, undefined, teachCells, quiz],
+    teaches: () => [1],
+    state: (i) => () => (i === 2 ? credited : none),
+    fits: () => true,
+  });
+  expect(r.skips[0]?.reason).toBe("repeat");
+});
